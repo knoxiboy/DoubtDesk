@@ -67,6 +67,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                         <button
                             onClick={onClose}
                             className="lg:hidden p-2 text-slate-400 hover:bg-white/5 rounded-lg"
+                            aria-label="Close sidebar"
                         >
                             <X className="w-6 h-6" />
                         </button>
@@ -160,23 +161,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                     `}
                                 >
                                     <div className={`p-1.5 rounded-lg bg-slate-900 border border-white/5 group-hover:border-white/10 transition-colors`}>
-                                        <Zap className={`w-4 h-4 ${pathname === '/ask-ai' ? 'text-cyan-400 fill-cyan-400/20' : 'text-slate-500 group-hover:text-cyan-400 transition-colors'}`} />
+                                        <Zap className={`w-4 h-4 ${pathname === '/ask-ai' ? 'text-cyan-400 fill-cyan-400/20' : 'text-slate-500'}`} />
                                     </div>
-                                    <span className="text-sm font-medium">Ask AI Solver</span>
+                                    <span className="text-sm font-medium">Ask AI</span>
                                     {pathname === '/ask-ai' && (
-                                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                                        <div className="ml-auto w-1.5 h-1.5 rounded-full bg-cyan-400" />
                                     )}
                                 </Link>
                             </div>
                         </div>
                     </nav>
-
-                    {/* Footer */}
-                    <div className="p-4 border-t border-white/5">
-                        <div className="text-[10px] text-slate-600 text-center font-bold uppercase tracking-widest">
-                            © 2026 DoubtDesk
-                        </div>
-                    </div>
                 </div>
             </aside>
         </>

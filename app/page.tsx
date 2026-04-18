@@ -136,6 +136,37 @@ export default function Home() {
         </div>
       </main>
 
+      {/* Features Section */}
+      <section className="px-6 py-20 relative z-10">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-8 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.07] transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <FileText className="w-6 h-6 text-blue-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Resume Analysis</h3>
+              <p className="text-slate-400 leading-relaxed">Get instant feedback on your resume with AI-powered analysis and personalized improvement suggestions.</p>
+            </div>
+
+            <div className="p-8 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.07] transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Map className="w-6 h-6 text-purple-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Learning Roadmaps</h3>
+              <p className="text-slate-400 leading-relaxed">Get personalized learning paths tailored to your career goals and current skill level.</p>
+            </div>
+
+            <div className="p-8 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/[0.07] transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <MessageCircle className="w-6 h-6 text-cyan-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Doubt Resolution</h3>
+              <p className="text-slate-400 leading-relaxed">Stuck on a concept? Get clear explanations from our AI tutor trained on educational content.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-white/5 bg-slate-950/50 py-5">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-slate-500">
@@ -145,17 +176,15 @@ export default function Home() {
           </div>
           <p className="text-sm">© 2026 DoubtDesk. Engineered for Excellence.</p>
           <div className="flex items-center gap-6">
-            <a href="mailto:divysaxena2402@gmail.com" className="hover:text-blue-400 transition-colors" title="Email">
+            <a href="mailto:divysaxena2402@gmail.com" className="hover:text-blue-400 transition-colors" aria-label="Email">
               <Mail className="w-5 h-5" />
             </a>
-            <a href="https://linkedin.com/in/divyasaxena24/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors" title="LinkedIn">
+            <a href="https://linkedin.com/in/divyasaxena24/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors" aria-label="LinkedIn">
               <Linkedin className="w-5 h-5" />
             </a>
-            <a href="https://github.com/divysaxena24" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors" title="GitHub">
+            <a href="https://github.com/knoxiboy" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors" aria-label="GitHub">
               <Github className="w-5 h-5" />
             </a>
-          </div>
-          <div className="flex gap-6 text-sm">
           </div>
         </div>
       </footer>
