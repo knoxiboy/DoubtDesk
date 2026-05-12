@@ -1,7 +1,7 @@
 import { db } from "@/configs/db";
 import { doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, usersTable } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
-import { and, eq, desc, isNull, or, not, sql } from "drizzle-orm";
+import { and, eq, desc, isNull, or, not, sql, ilike } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
@@ -9,6 +9,7 @@ import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const subject = searchParams.get("subject");
+    const search = searchParams.get("search");
     const userName = searchParams.get("userName");
     const classroomIdStr = searchParams.get("classroomId");
     const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
@@ -69,6 +70,16 @@ export async function GET(req: Request) {
         // Filters
         if (subject && subject !== "All") {
             conditions.push(eq(doubtsTable.subject, subject));
+        }
+
+        if (search) {
+            conditions.push(
+                or(
+                    ilike(doubtsTable.content, `%${search}%`),
+                    ilike(doubtsTable.subject, `%${search}%`),
+                    ilike(doubtsTable.userName, `%${search}%`)
+                )
+            );
         }
 
         if (type && type !== "All") {

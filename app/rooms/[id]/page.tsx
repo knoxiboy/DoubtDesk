@@ -27,6 +27,7 @@ import {
     Zap,
     AlertTriangle,
     Target,
+    Search,
     Trophy,
     Medal
 } from "lucide-react";
@@ -62,6 +63,8 @@ export default function ClassroomPage() {
     const [copied, setCopied] = useState(false);
     const [doubtFilter, setDoubtFilter] = useState<'pending' | 'solved'>('pending');
     const [tabCache, setTabCache] = useState<Record<string, any>>({});
+    const [searchQuery, setSearchQuery] = useState("");
+    const [subjectFilter, setSubjectFilter] = useState("All");
 
     useEffect(() => {
         initialFetch();
@@ -110,11 +113,22 @@ export default function ClassroomPage() {
         setDoubtsLoading(true);
         try {
             const userName = localStorage.getItem("anonymous_user");
-            const res = await fetch(`/api/doubts?classroomId=${id}&userName=${userName}&type=${type}`);
+            const params = new URLSearchParams({
+                classroomId: id as string,
+                userName: userName || "",
+                type: type
+            });
+            
+            if (searchQuery) params.append("search", searchQuery);
+            if (subjectFilter !== "All") params.append("subject", subjectFilter);
+
+            const res = await fetch(`/api/doubts?${params.toString()}`);
             const data = await res.json();
             if (res.ok && Array.isArray(data)) {
                 setDoubts(data);
-                setTabCache(prev => ({ ...prev, [activeTab]: data }));
+                if (!searchQuery && subjectFilter === "All") {
+                    setTabCache(prev => ({ ...prev, [activeTab]: data }));
+                }
             } else {
                 console.error("Invalid doubts data received:", data);
                 setDoubts([]);
@@ -129,16 +143,22 @@ export default function ClassroomPage() {
 
     useEffect(() => {
         // Don't refetch if we have a cache AND it's not Insights (insights are dynamic/real-time)
+        // AND no filters are active
         if (activeTab === "insights") return; 
 
-        if (tabCache[activeTab]) {
+        if (tabCache[activeTab] && !searchQuery && subjectFilter === "All") {
             setDoubts(tabCache[activeTab]);
             return;
         }
 
         const type = activeTab === 'teacher-doubts' ? 'teacher' : activeTab === 'community' ? 'community' : 'ai';
-        fetchScopedDoubts(type);
-    }, [activeTab]);
+        
+        const delayDebounceFn = setTimeout(() => {
+            fetchScopedDoubts(type);
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [activeTab, searchQuery, subjectFilter]);
 
     const copyCode = () => {
         if (classroom?.inviteCode) {
@@ -314,15 +334,64 @@ export default function ClassroomPage() {
                             </button>
                         </div>
 
+                        {/* Search and Subject Filters */}
+                        <div className="flex flex-col md:flex-row items-center gap-4">
+                            <div className="relative flex-1 w-full group">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
+                                <input 
+                                    type="text"
+                                    placeholder="Search classroom board..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-11 pr-4 text-[11px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50 transition-all shadow-inner"
+                                />
+                            </div>
+                            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide w-full md:w-auto">
+                                {["All", "Math", "Science", "Physics", "Chemistry", "Programming"].map((s) => (
+                                    <button
+                                        key={s}
+                                        onClick={() => setSubjectFilter(s)}
+                                        className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${
+                                            subjectFilter === s 
+                                            ? "bg-blue-600/20 border-blue-500/50 text-blue-400" 
+                                            : "bg-white/5 border-white/10 text-slate-500 hover:bg-white/10 hover:text-white"
+                                        }`}
+                                    >
+                                        {s}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         {doubtsLoading ? (
                             <div className="h-[300px] flex items-center justify-center">
                                 <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
                             </div>
                         ) : doubts.length === 0 ? (
-                            <div className="py-24 text-center space-y-4 bg-white/5 border border-dashed border-white/10 rounded-[2.5rem]">
-                                <MessageSquare className="w-12 h-12 text-slate-700 mx-auto" />
-                                <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">No community posts yet.</p>
-                                <button onClick={() => setIsAskModalOpen(true)} className="text-blue-500 font-black uppercase tracking-widest text-[10px] hover:underline underline-offset-4">Be the first to ask</button>
+                            <div className="py-24 text-center space-y-6 bg-white/[0.02] border border-dashed border-white/10 rounded-[3rem] animate-in fade-in duration-500">
+                                <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-2 border border-white/5">
+                                    <MessageSquare className="w-10 h-10 text-slate-700" />
+                                </div>
+                                <div className="space-y-2">
+                                    <h3 className="text-xl font-black uppercase italic tracking-tight">
+                                        {searchQuery ? "No matching doubts" : "No community posts yet."}
+                                    </h3>
+                                    <p className="text-slate-500 font-medium text-xs max-w-xs mx-auto leading-relaxed">
+                                        {searchQuery 
+                                            ? `We couldn't find anything for "${searchQuery}" in this classroom.` 
+                                            : "Be the first to start a discussion or ask a question to your classmates."}
+                                    </p>
+                                </div>
+                                {searchQuery ? (
+                                    <button 
+                                        onClick={() => setSearchQuery("")}
+                                        className="px-8 py-3 bg-white/5 hover:bg-white text-slate-400 hover:text-slate-950 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                    >
+                                        Clear Search
+                                    </button>
+                                ) : (
+                                    <button onClick={() => setIsAskModalOpen(true)} className="text-blue-500 font-black uppercase tracking-widest text-[10px] hover:underline underline-offset-4">Be the first to ask</button>
+                                )}
                             </div>
                         ) : (
                             <div className="space-y-8 animate-in fade-in duration-500">
@@ -406,6 +475,35 @@ export default function ClassroomPage() {
                                     <Plus className="w-4 h-4" /> Ask Teacher
                                 </button>
                             )}
+                        </div>
+
+                        {/* Search and Subject Filters */}
+                        <div className="flex flex-col md:flex-row items-center gap-4">
+                            <div className="relative flex-1 w-full group">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-500 transition-colors" />
+                                <input 
+                                    type="text"
+                                    placeholder="Search teacher queries..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-11 pr-4 text-[11px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500/50 transition-all shadow-inner"
+                                />
+                            </div>
+                            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide w-full md:w-auto">
+                                {["All", "Math", "Science", "Physics", "Chemistry", "Programming"].map((s) => (
+                                    <button
+                                        key={s}
+                                        onClick={() => setSubjectFilter(s)}
+                                        className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${
+                                            subjectFilter === s 
+                                            ? "bg-purple-600/20 border-purple-500/50 text-purple-400" 
+                                            : "bg-white/5 border-white/10 text-slate-500 hover:bg-white/10 hover:text-white"
+                                        }`}
+                                    >
+                                        {s}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
                         {doubtsLoading ? (

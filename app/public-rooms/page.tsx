@@ -12,6 +12,7 @@ export default function PublicRoomsPage() {
     const [filter, setFilter] = useState("All");
     const [customFilter, setCustomFilter] = useState("");
     const [isOthersActive, setIsOthersActive] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const fetchDoubts = async () => {
         setLoading(true);
@@ -22,6 +23,9 @@ export default function PublicRoomsPage() {
             if (filter !== "All") {
                 const subjectFilter = filter === "Others" ? customFilter : filter;
                 if (subjectFilter) params.append("subject", subjectFilter);
+            }
+            if (searchQuery) {
+                params.append("search", searchQuery);
             }
             if (userName) params.append("userName", userName);
             
@@ -36,8 +40,12 @@ export default function PublicRoomsPage() {
     };
 
     useEffect(() => {
-        fetchDoubts();
-    }, [filter]);
+        const delayDebounceFn = setTimeout(() => {
+            fetchDoubts();
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [filter, searchQuery]);
 
     return (
         <div className="p-4 md:p-8 space-y-6 max-w-[1000px] mx-auto pb-24">
@@ -59,55 +67,70 @@ export default function PublicRoomsPage() {
                 </button>
             </header>
 
-            {/* Filter Section */}
-            <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-slate-500">
-                    <SlidersHorizontal className="w-4 h-4" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Filter:</span>
-                </div>
-                {["All", "Math", "Physics", "Programming", "Others"].map((f) => (
-                    <button
-                        key={f}
-                        onClick={() => {
-                            setFilter(f);
-                            if (f !== "Others") {
-                                setCustomFilter("");
-                                setIsOthersActive(false);
-                            } else {
-                                setIsOthersActive(true);
-                            }
-                        }}
-                        className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${
-                            filter === f 
-                            ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" 
-                            : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white"
-                        }`}
-                    >
-                        {f}
-                    </button>
-                ))}
-
-                {/* Custom Filter Input */}
-                {filter === "Others" && (
-                    <div className="flex items-center gap-2 animate-in slide-in-from-left-4 duration-300">
-                        <input 
-                            type="text"
-                            placeholder="Type filter..."
-                            value={customFilter}
-                            onChange={(e) => setCustomFilter(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') fetchDoubts();
-                            }}
-                            className="bg-slate-900 border border-blue-500/30 rounded-xl px-4 py-2 text-[10px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all w-40"
-                        />
-                        <button 
-                            onClick={fetchDoubts}
-                            className="px-4 py-2 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/20 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all"
-                        >
-                            Apply
-                        </button>
+            {/* Controls Section: Search & Filters */}
+            <div className="space-y-4">
+                <div className="relative group">
+                    <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+                        <MessageSquare className="w-5 h-5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
                     </div>
-                )}
+                    <input 
+                        type="text"
+                        placeholder="Search for doubts, subjects, or keywords..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] py-5 pl-14 pr-6 text-sm font-medium text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 focus:bg-white/[0.08] transition-all shadow-inner"
+                    />
+                </div>
+
+                <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-slate-500">
+                        <SlidersHorizontal className="w-4 h-4" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Filter:</span>
+                    </div>
+                    {["All", "Math", "Science", "Physics", "Chemistry", "Programming", "Others"].map((f) => (
+                        <button
+                            key={f}
+                            onClick={() => {
+                                setFilter(f);
+                                if (f !== "Others") {
+                                    setCustomFilter("");
+                                    setIsOthersActive(false);
+                                } else {
+                                    setIsOthersActive(true);
+                                }
+                            }}
+                            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${
+                                filter === f 
+                                ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" 
+                                : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white"
+                            }`}
+                        >
+                            {f}
+                        </button>
+                    ))}
+
+                    {/* Custom Filter Input */}
+                    {filter === "Others" && (
+                        <div className="flex items-center gap-2 animate-in slide-in-from-left-4 duration-300">
+                            <input 
+                                type="text"
+                                placeholder="Type filter..."
+                                value={customFilter}
+                                onChange={(e) => setCustomFilter(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') fetchDoubts();
+                                }}
+                                className="bg-slate-900 border border-blue-500/30 rounded-xl px-4 py-2 text-[10px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all w-40"
+                            />
+                            <button 
+                                onClick={fetchDoubts}
+                                className="px-4 py-2 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/20 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all"
+                            >
+                                Apply
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {loading ? (
@@ -122,22 +145,39 @@ export default function PublicRoomsPage() {
                     ))}
                 </div>
             ) : (
-                <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-white/5 rounded-[3rem] bg-white/[0.02] text-center px-6">
-                    <div className="w-20 h-20 bg-blue-600/10 rounded-3xl flex items-center justify-center mb-6">
-                        <MessageSquare className="w-10 h-10 text-blue-500/50" />
+                <div className="flex flex-col items-center justify-center py-24 border-2 border-dashed border-white/5 rounded-[3rem] bg-white/[0.02] text-center px-6 animate-in fade-in duration-500">
+                    <div className="w-24 h-24 bg-blue-600/10 rounded-[2.5rem] flex items-center justify-center mb-8 border border-blue-500/10 shadow-2xl shadow-blue-600/5">
+                        {searchQuery ? (
+                             <MessageSquare className="w-12 h-12 text-slate-700" />
+                        ) : (
+                             <Plus className="w-12 h-12 text-blue-500/50" />
+                        )}
                     </div>
-                    <h2 className="text-2xl font-bold text-white tracking-tight">The board is clean!</h2>
-                    <p className="text-slate-500 max-w-sm mx-auto mb-8 font-medium">
-                        {filter === "All" 
-                            ? "Be the first one to post a doubt and kickstart the community discussion." 
-                            : `No doubts found in ${filter}. Try switching filters or ask one yourself!`}
+                    <h2 className="text-3xl font-black text-white tracking-tighter uppercase italic mb-2">
+                        {searchQuery ? "No results found" : "The board is clean!"}
+                    </h2>
+                    <p className="text-slate-500 max-w-sm mx-auto mb-10 font-medium leading-relaxed">
+                        {searchQuery 
+                            ? `We couldn't find any doubts matching "${searchQuery}". Try a different keyword or filter.`
+                            : filter === "All" 
+                                ? "Be the first one to post a doubt and kickstart the community discussion." 
+                                : `No doubts found in ${filter}. Try switching filters or ask one yourself!`}
                     </p>
-                    <button 
-                        onClick={() => setIsAskModalOpen(true)}
-                        className="px-10 py-5 bg-white/5 hover:bg-white text-slate-400 hover:text-slate-950 border border-white/10 rounded-[2rem] text-xs font-black uppercase tracking-[0.3em] transition-all"
-                    >
-                        Post the first doubt
-                    </button>
+                    {searchQuery ? (
+                        <button 
+                            onClick={() => setSearchQuery("")}
+                            className="px-10 py-5 bg-white text-slate-950 border border-white/10 rounded-[2rem] text-xs font-black uppercase tracking-[0.3em] transition-all hover:scale-105 active:scale-95 shadow-xl shadow-white/10"
+                        >
+                            Clear Search
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={() => setIsAskModalOpen(true)}
+                            className="px-10 py-5 bg-white/5 hover:bg-white text-slate-400 hover:text-slate-950 border border-white/10 rounded-[2rem] text-xs font-black uppercase tracking-[0.3em] transition-all active:scale-95"
+                        >
+                            Post the first doubt
+                        </button>
+                    )}
                 </div>
             )}
 
