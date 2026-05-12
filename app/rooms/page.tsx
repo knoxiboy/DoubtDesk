@@ -69,6 +69,15 @@ export default function RoomsPage() {
     const [joinCode, setJoinCode] = useState("");
     const [isActionLoading, setIsActionLoading] = useState(false);
 
+    const [joinCodeError, setJoinCodeError] = useState("");
+
+    function validateJoinCode(code: string) {
+    if (!code) return "Invitation code is required.";
+    if (code.length < 6 || code.length > 8) return "Code must be 6–8 characters.";
+    if (!/^[a-zA-Z0-9]+$/.test(code)) return "Only letters and numbers allowed.";
+    return "";
+    }
+
     useEffect(() => {
         fetchRooms();
     }, []);
@@ -115,6 +124,9 @@ export default function RoomsPage() {
     const handleJoinRoom = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsActionLoading(true);
+        const error = validateJoinCode(joinCode);
+        setJoinCodeError(error);
+        if (error) return; // don’t submit if code is invalid
         try {
             const res = await fetch("/api/rooms/join", {
                 method: "POST",
@@ -318,10 +330,20 @@ export default function RoomsPage() {
                                     required 
                                     maxLength={8}
                                     value={joinCode}
-                                    onChange={(e) => setJoinCode(e.target.value)}
+                                    onChange={
+                                        (e) => {
+                                            setJoinCode(e.target.value);
+                                            setJoinCodeError(validateJoinCode(e.target.value));
+                                        }
+                                    }
                                     placeholder="XXXXXX"
                                     className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-black text-center text-3xl tracking-[0.5em] uppercase placeholder:text-slate-700" 
                                 />
+                                {joinCodeError && (
+                                    <span className="text-red-500 text-xs font-medium block px-1 pt-1">
+                                        {joinCodeError}
+                                    </span>
+                                )}
                             </div>
 
                             <div className="flex gap-4 pt-4">
@@ -334,7 +356,7 @@ export default function RoomsPage() {
                                 </button>
                                 <button 
                                     type="submit"
-                                    disabled={isActionLoading}
+                                    disabled={!!joinCodeError || !joinCode || isActionLoading}
                                     className="flex-[2] py-5 bg-blue-600 rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2"
                                 >
                                     {isActionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Access Circle"}
