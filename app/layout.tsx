@@ -16,6 +16,20 @@ const AppFont = DM_Sans({
 export const metadata: Metadata = {
   title: "DoubtDesk - AI Doubt Solver",
   description: "DoubtDesk is an AI-powered collaborative classroom platform where students get instant doubt resolution, teachers manage virtual classrooms, and analytics drive better learning outcomes.",
+  keywords: ["doubt solver", "AI education", "classroom platform", "student help", "instant doubt resolution"],
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: "DoubtDesk - AI Doubt Solver",
+    description: "AI-powered collaborative classroom platform for instant doubt resolution and better learning outcomes.",
+    siteName: "DoubtDesk",
+    type: "website",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DoubtDesk - AI Doubt Solver",
+    description: "AI-powered collaborative classroom platform for instant doubt resolution and better learning outcomes.",
+  },
 };
 
 export default function RootLayout({
