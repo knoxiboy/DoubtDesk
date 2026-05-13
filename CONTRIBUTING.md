@@ -262,3 +262,8 @@ These are the most frequent reasons PRs get rejected or require revision:
 ---
 
 Thank you for helping make DoubtDesk better.
+
+
+## Add a CONTRIBUTING.md with development guidelines
+
+Added per issue [#39](https://github.com/knoxiboy/DoubtDesk/issues/39).
