@@ -212,6 +212,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                                     <button
                                         onClick={() => setImageBase64(null)}
                                         className="absolute top-3 right-3 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg"
+                                        aria-label="Remove uploaded image"
                                     >
                                         <X className="w-4 h-4 text-white" />
                                     </button>

@@ -428,7 +428,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl text-slate-400 transition-colors">
+                    <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl text-slate-400 transition-colors" aria-label="Close">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
@@ -576,15 +576,16 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                         </p>
                                     </div>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => {
                                         setShowSolutionForm(false);
                                         setEditingId(null);
                                         setSolutionContent("");
                                         setSolutionImage("");
                                         setFileName("");
-                                    }} 
+                                    }}
                                     className="p-3 hover:bg-white/5 rounded-2xl text-slate-500 hover:text-white transition-all hover:rotate-90"
+                                    aria-label="Close solution form"
                                 >
                                     <X className="w-6 h-6" />
                                 </button>
@@ -696,9 +697,10 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-300"
                     onClick={() => setIsFullscreenImageOpen(false)}
                 >
-                    <button 
+                    <button
                         onClick={() => setIsFullscreenImageOpen(false)}
                         className="absolute top-8 right-8 p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all hover:rotate-90 z-[210]"
+                        aria-label="Close fullscreen image"
                     >
                         <X className="w-8 h-8" />
                     </button>
