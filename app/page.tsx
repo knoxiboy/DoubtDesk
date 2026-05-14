@@ -32,7 +32,7 @@ export default function Home() {
             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_20px_rgba(37,99,235,0.3)]">
               D
             </div>
-            <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-blue-500 to-purple-500">
+            <h1 className="text-2xl font-bold text-blue-400 hover:text-blue-300 transition-colors">
               DoubtDesk
             </h1>
           </Link>
@@ -145,8 +145,8 @@ export default function Home() {
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
         </div>
       </main>
-
-      {/* Footer */}
+{/*Here's Your Previous Footer. I have just commented it in case */}
+      {/* Footer
       <footer className="border-t border-white/5 bg-slate-950/50 py-5">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-slate-500">
           <div className="flex items-center gap-2">
@@ -168,7 +168,7 @@ export default function Home() {
           <div className="flex gap-6 text-sm">
           </div>
         </div>
-      </footer>
+      </footer> */}
     </div>
   );
 }

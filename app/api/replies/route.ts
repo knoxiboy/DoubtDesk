@@ -1,5 +1,5 @@
 import { db } from "@/configs/db";
-import { repliesTable, doubtsTable, classroomsTable } from "@/configs/schema";
+import { repliesTable, doubtsTable, classroomsTable, replyLikesTable } from "@/configs/schema";
 import { eq, asc, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
@@ -24,6 +24,7 @@ export async function GET(req: Request) {
 
         const { searchParams } = new URL(req.url);
         const doubtIdStr = searchParams.get("doubtId");
+        const userName = searchParams.get("userName");
 
         if (!doubtIdStr) {
             return NextResponse.json({ error: "Doubt ID required" }, { status: 400 });
@@ -49,7 +50,22 @@ export async function GET(req: Request) {
             .where(eq(repliesTable.doubtId, doubtId))
             .orderBy(asc(repliesTable.createdAt));
 
-        return NextResponse.json(data);
+        // If userName is provided, check which replies are upvoted by this user
+        let repliesWithVotes = data;
+        if (userName) {
+            const userUpvotes = await db.select()
+                .from(replyLikesTable)
+                .where(eq(replyLikesTable.userName, userName));
+            
+            const upvotedReplyIds = new Set(userUpvotes.map(v => v.replyId));
+            
+            repliesWithVotes = data.map(reply => ({
+                ...reply,
+                hasUpvoted: upvotedReplyIds.has(reply.id)
+            }));
+        }
+
+        return NextResponse.json(repliesWithVotes);
     } catch (error) {
         console.error("Error fetching replies:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

@@ -24,6 +24,8 @@ interface Reply {
     type: "comment" | "solution";
     content: string | null;
     imageUrl: string | null;
+    upvotes: number;
+    hasUpvoted?: boolean;
     createdAt: string;
 }
 
@@ -83,8 +85,9 @@ export default function DoubtRepliesModal({
     }, [replies]);
 
     const fetchReplies = async () => {
+        const storedUserName = localStorage.getItem("anonymous_user") || "";
         try {
-            const res = await fetch(`/api/replies?doubtId=${doubt.id}`);
+            const res = await fetch(`/api/replies?doubtId=${doubt.id}&userName=${storedUserName}`);
             if (res.ok) {
                 const data = await res.json();
                 setReplies(data);
@@ -240,6 +243,30 @@ export default function DoubtRepliesModal({
             toast.error("Failed to delete");
         } finally {
             setMenuOpenId(null);
+        }
+    };
+
+    const handleVote = async (replyId: number) => {
+        const storedUserName = localStorage.getItem("anonymous_user");
+        if (!storedUserName) return;
+
+        try {
+            const res = await fetch("/api/replies/vote", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ replyId, userName: storedUserName })
+            });
+
+            if (res.ok) {
+                const updatedReply = await res.json();
+                setReplies(prev => prev.map(r => r.id === replyId ? {
+                    ...r,
+                    upvotes: updatedReply.upvotes,
+                    hasUpvoted: updatedReply.hasUpvoted
+                } : r));
+            }
+        } catch (error) {
+            console.error("Failed to vote:", error);
         }
     };
 
@@ -446,6 +473,23 @@ export default function DoubtRepliesModal({
                                 )}
                             </>
                         )}
+                    </div>
+
+                    {/* Vote Action */}
+                    <div className="mt-4 flex items-center justify-end">
+                        <button 
+                            onClick={() => handleVote(reply.id)}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group/vote ${
+                                reply.hasUpvoted 
+                                ? "bg-blue-600/20 text-blue-400 border-blue-500/30 shadow-lg shadow-blue-500/10" 
+                                : "bg-white/5 text-slate-500 border-white/5 hover:text-white hover:bg-white/10"
+                            }`}
+                        >
+                            <ThumbsUp className={`w-3.5 h-3.5 ${reply.hasUpvoted ? 'fill-blue-400' : 'group-hover/vote:scale-110 transition-transform'}`} />
+                            <span className="text-[10px] font-black uppercase tracking-widest">
+                                {reply.upvotes || 0} <span className="hidden sm:inline ml-1 opacity-60">Helpful</span>
+                            </span>
+                        </button>
                     </div>
                 </div>
 

@@ -26,7 +26,9 @@ import {
     PieChart,
     Zap,
     AlertTriangle,
-    Target
+    Target,
+    Trophy,
+    Medal
 } from "lucide-react";
 import AskDoubt from "@/components/AskDoubt";
 import DoubtCard from "@/components/DoubtCard";
@@ -638,6 +640,58 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Top Contributors Leaderboard */}
+            <div className="bg-gradient-to-br from-amber-500/5 via-white/5 to-yellow-500/5 border border-white/10 rounded-[3rem] p-10 space-y-8 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 blur-[100px] rounded-full translate-x-1/3 -translate-y-1/3 group-hover:bg-amber-500/10 transition-all duration-700" />
+                <div className="flex items-center justify-between relative z-10">
+                    <h3 className="text-xl font-black uppercase italic tracking-tight flex items-center gap-3">
+                        <Trophy className="w-5 h-5 text-amber-400" /> Top Contributors
+                    </h3>
+                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Community Heroes</span>
+                </div>
+                {data?.topContributors && data.topContributors.length > 0 ? (
+                    <div className="space-y-3 relative z-10">
+                        {(() => {
+                            const rankStyles = [
+                                { bg: 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20', border: 'border-amber-500/30', text: 'text-amber-400', icon: <Trophy className="w-5 h-5 text-amber-400" />, glow: 'shadow-lg shadow-amber-500/10' },
+                                { bg: 'bg-gradient-to-r from-slate-300/10 to-slate-400/10', border: 'border-slate-400/20', text: 'text-slate-300', icon: <Medal className="w-5 h-5 text-slate-300" />, glow: '' },
+                                { bg: 'bg-gradient-to-r from-orange-700/10 to-orange-600/10', border: 'border-orange-700/20', text: 'text-orange-400', icon: <Medal className="w-5 h-5 text-orange-400" />, glow: '' },
+                            ];
+                            return data.topContributors.map((contributor: any, i: number) => {
+                                const style = rankStyles[i] || { bg: 'bg-white/5', border: 'border-white/10', text: 'text-slate-400', icon: null, glow: '' };
+                                return (
+                                    <div
+                                        key={`${contributor.name}-${i}`}
+                                        className={`flex items-center gap-5 ${style.bg} border ${style.border} rounded-2xl p-5 hover:scale-[1.01] transition-all duration-300 ${style.glow}`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${i < 3 ? style.bg : 'bg-white/10'} border ${style.border}`}>
+                                            {style.icon || <span className={`text-sm font-black ${style.text}`}>{i + 1}</span>}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className={`text-sm font-black uppercase tracking-tight truncate ${i === 0 ? 'text-amber-300' : 'text-white'}`}>
+                                                {contributor.name}
+                                            </p>
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-0.5">
+                                                {i === 0 ? '👑 Top Helper' : i === 1 ? '🥈 Rising Star' : i === 2 ? '🥉 Consistent' : `Rank #${i + 1}`}
+                                            </p>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <p className={`text-2xl font-black italic tracking-tighter ${style.text}`}>{contributor.replyCount}</p>
+                                            <p className="text-[8px] font-black uppercase tracking-widest text-slate-600">Replies</p>
+                                        </div>
+                                    </div>
+                                );
+                            });
+                        })()}
+                    </div>
+                ) : (
+                    <div className="py-12 text-center space-y-3 relative z-10">
+                        <Trophy className="w-10 h-10 text-slate-700 mx-auto" />
+                        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">No community replies yet. Be the first to help!</p>
+                    </div>
+                )}
             </div>
 
             {/* 4. Peak Doubt Time Heatmap */}

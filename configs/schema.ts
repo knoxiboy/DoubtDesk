@@ -151,10 +151,18 @@ export const repliesTable = pgTable("replies", {
     type: varchar({ length: 20 }).notNull(), // 'comment' or 'solution'
     content: text(),
     imageUrl: text(),
+    upvotes: integer().default(0).notNull(),
     createdAt: timestamp().defaultNow().notNull(),
 }, (table) => ({
     doubtIdIndex: index("doubtId_idx").on(table.doubtId),
 }));
+
+export const replyLikesTable = pgTable("reply_likes", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userName: varchar({ length: 255 }).notNull(),
+    replyId: integer().notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+});
 
 /**
  * Audit log for AI moderation actions.

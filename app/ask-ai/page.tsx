@@ -369,8 +369,44 @@ export default function AskAIPage() {
                         <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
                             <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
                             <div>
-                                <p className="text-red-400 font-bold text-sm">Could not get a response</p>
-                                <p className="text-red-400/70 text-xs mt-1">{errorMsg}</p>
+                                <p className="text-red-400 font-bold text-sm">Oops! Something went wrong 😅</p>
+                                <p className="text-red-400/70 text-xs mt-1">
+                                    {(() => {       {/* Map technical errors to user-friendly messages */}
+                                        const error = errorMsg.toLowerCase();
+
+                                        if (error.includes("overloaded")) {
+                                            return "Looks like our AI is taking a quick nap 😴 Please try again in a few seconds.";
+                                        }
+
+                                        if (error.includes("network")) {
+                                            return "Looks like there is a network issue 🌐 Please check your internet connection and try again.";
+                                        }
+
+                                        if (error.includes("rate limit")) {
+                                            return "Too many requests right now 🚦 Please wait a moment and try again.";
+                                        }
+
+                                        if (
+                                            error.includes("unexpected token") ||
+                                            error.includes("json")
+                                        ) {
+                                            return "The AI service is having trouble responding right now 🤖 Please try again in a moment.";
+                                        }
+
+                                        if (
+                                            error.includes("academic") ||
+                                            error.includes("flagged")
+                                        ) {
+                                            return "That does not seem like an academic question 📚 Try asking something related to studies.";
+                                        }
+
+                                        return "Something unexpected happened 😓 Please try again.";
+                                    })()}
+                                </p>
+                                <button onClick={() => window.location.reload()}
+                                    className="mt-3 px-3 py-1 rounded-lg bg-red-500 text-white text-xs hover:bg-red-600 transition">
+                                    Retry
+                                </button>
                             </div>
                         </div>
                     )}
