@@ -10,6 +10,7 @@ export default function PublicRoomsPage() {
     const [doubts, setDoubts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState("All");
+    const [tagFilter, setTagFilter] = useState("");
     const [customFilter, setCustomFilter] = useState("");
     const [isOthersActive, setIsOthersActive] = useState(false);
 
@@ -24,6 +25,7 @@ export default function PublicRoomsPage() {
                 if (subjectFilter) params.append("subject", subjectFilter);
             }
             if (userName) params.append("userName", userName);
+            if (tagFilter.trim()) params.append("tag", tagFilter.trim());
             
             const res = await fetch(`/api/doubts?${params.toString()}`);
             const data = await res.json();
@@ -108,6 +110,25 @@ export default function PublicRoomsPage() {
                         </button>
                     </div>
                 )}
+
+                <div className="flex items-center gap-2 ml-auto">
+                    <input
+                        type="text"
+                        placeholder="Filter by tag..."
+                        value={tagFilter}
+                        onChange={(e) => setTagFilter(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") fetchDoubts();
+                        }}
+                        className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all w-40"
+                    />
+                    <button
+                        onClick={fetchDoubts}
+                        className="px-4 py-2 bg-white/5 text-slate-300 hover:bg-blue-600 hover:text-white border border-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all"
+                    >
+                        Tag
+                    </button>
+                </div>
             </div>
 
             {loading ? (

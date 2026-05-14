@@ -1,4 +1,4 @@
-import { integer, pgTable, varchar, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
 
 /**
  * Users table storing core user profiles.
@@ -131,6 +131,36 @@ export const doubtsTable = pgTable("doubts", {
         subjectIndex: index("subject_idx").on(table.subject),
     };
 });
+
+/**
+ * Classroom-aware tags that can be attached to doubts.
+ * Public tags have a null classroomId; classroom tags are scoped to one room.
+ */
+export const tagsTable = pgTable("tags", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    name: varchar({ length: 80 }).notNull(),
+    normalizedName: varchar({ length: 80 }).notNull(),
+    classroomId: integer(),
+    createdByEmail: varchar({ length: 255 }),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    classroomIdIndex: index("tag_classroomId_idx").on(table.classroomId),
+    normalizedNameIndex: uniqueIndex("tag_scope_name_idx").on(table.normalizedName, table.classroomId),
+}));
+
+/**
+ * Many-to-many relationship between doubts and tags.
+ */
+export const doubtTagsTable = pgTable("doubt_tags", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    doubtId: integer().notNull(),
+    tagId: integer().notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    doubtIdIndex: index("doubt_tag_doubtId_idx").on(table.doubtId),
+    tagIdIndex: index("doubt_tag_tagId_idx").on(table.tagId),
+    uniqueDoubtTag: uniqueIndex("doubt_tag_unique_idx").on(table.doubtId, table.tagId),
+}));
 
 export const likesTable = pgTable("likes", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),

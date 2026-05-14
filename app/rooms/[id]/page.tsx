@@ -61,6 +61,7 @@ export default function ClassroomPage() {
     const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
     const [copied, setCopied] = useState(false);
     const [doubtFilter, setDoubtFilter] = useState<'pending' | 'solved'>('pending');
+    const [tagFilter, setTagFilter] = useState("");
     const [tabCache, setTabCache] = useState<Record<string, any>>({});
 
     useEffect(() => {
@@ -110,11 +111,20 @@ export default function ClassroomPage() {
         setDoubtsLoading(true);
         try {
             const userName = localStorage.getItem("anonymous_user");
-            const res = await fetch(`/api/doubts?classroomId=${id}&userName=${userName}&type=${type}`);
+            const params = new URLSearchParams({
+                classroomId: id?.toString() || "",
+                userName: userName || "",
+                type,
+            });
+            if (tagFilter.trim()) params.append("tag", tagFilter.trim());
+
+            const res = await fetch(`/api/doubts?${params.toString()}`);
             const data = await res.json();
             if (res.ok && Array.isArray(data)) {
                 setDoubts(data);
-                setTabCache(prev => ({ ...prev, [activeTab]: data }));
+                if (!tagFilter.trim()) {
+                    setTabCache(prev => ({ ...prev, [activeTab]: data }));
+                }
             } else {
                 console.error("Invalid doubts data received:", data);
                 setDoubts([]);
@@ -131,14 +141,14 @@ export default function ClassroomPage() {
         // Don't refetch if we have a cache AND it's not Insights (insights are dynamic/real-time)
         if (activeTab === "insights") return; 
 
-        if (tabCache[activeTab]) {
+        if (!tagFilter.trim() && tabCache[activeTab]) {
             setDoubts(tabCache[activeTab]);
             return;
         }
 
         const type = activeTab === 'teacher-doubts' ? 'teacher' : activeTab === 'community' ? 'community' : 'ai';
         fetchScopedDoubts(type);
-    }, [activeTab]);
+    }, [activeTab, tagFilter]);
 
     const copyCode = () => {
         if (classroom?.inviteCode) {
@@ -306,6 +316,24 @@ export default function ClassroomPage() {
                                 </button>
                             </div>
 
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={tagFilter}
+                                    onChange={(e) => setTagFilter(e.target.value)}
+                                    placeholder="Filter tag"
+                                    className="w-32 bg-slate-950/50 border border-white/10 rounded-xl px-3 py-2.5 text-[10px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50"
+                                />
+                                {tagFilter && (
+                                    <button
+                                        onClick={() => setTagFilter("")}
+                                        className="text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-white"
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+
                             <button 
                                 onClick={() => setIsAskModalOpen(true)}
                                 className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center gap-2 shrink-0"
@@ -396,6 +424,24 @@ export default function ClassroomPage() {
                                 >
                                     Resolved
                                 </button>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={tagFilter}
+                                    onChange={(e) => setTagFilter(e.target.value)}
+                                    placeholder="Filter tag"
+                                    className="w-32 bg-slate-950/50 border border-white/10 rounded-xl px-3 py-2.5 text-[10px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500/50"
+                                />
+                                {tagFilter && (
+                                    <button
+                                        onClick={() => setTagFilter("")}
+                                        className="text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-white"
+                                    >
+                                        Clear
+                                    </button>
+                                )}
                             </div>
 
                             {classroom?.role !== 'teacher' && (
@@ -926,4 +972,3 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
         </div>
     );
 }
-

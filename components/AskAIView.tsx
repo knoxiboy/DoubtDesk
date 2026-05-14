@@ -61,6 +61,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
     const [isLoading, setIsLoading] = useState(false);
     const [currentType, setCurrentType] = useState<SolveType>('standard');
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [errorCode, setErrorCode] = useState<string | null>(null);
     const [isVideoLoading, setIsVideoLoading] = useState(false);
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -71,6 +72,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
             setImageBase64(initialDoubt.imageUrl);
             setResponse(null);
             setErrorMsg(null);
+            setErrorCode(null);
             setVideoUrl(null);
 
             // Fetch the solution from replies
@@ -140,6 +142,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
         setIsLoading(true);
         setCurrentType(type);
         setErrorMsg(null);
+        setErrorCode(null);
         setResponse(null);
         try {
             const res = await fetch('/api/ask-ai', {
@@ -148,7 +151,10 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                 body: JSON.stringify({ prompt, type, imageBase64, classroomId })
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data?.error || "The AI couldn't process your request.");
+            if (!res.ok) {
+                setErrorCode(data?.code || null);
+                throw new Error(data?.error || "The AI couldn't process your request.");
+            }
             setResponse(data.reply);
             if (onSuccess) onSuccess();
         } catch (err: any) {
@@ -267,8 +273,12 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
             )}
 
             {errorMsg && (
-                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-500 text-xs font-bold">
-                    <AlertCircle className="w-4 h-4" /> {errorMsg}
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3 text-red-500 text-xs font-bold">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <div>
+                        <p>{errorCode === "IMAGE_QUALITY_LOW" ? "Image quality issue" : "Unable to solve this doubt"}</p>
+                        <p className="mt-1 text-red-400/75 font-medium">{errorMsg}</p>
+                    </div>
                 </div>
             )}
 
