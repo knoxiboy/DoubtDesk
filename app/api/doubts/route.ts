@@ -13,6 +13,9 @@ export async function GET(req: Request) {
     const classroomIdStr = searchParams.get("classroomId");
     const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
     const type = searchParams.get("type") || 'community';
+    const isSolved = searchParams.get("isSolved");
+    const limit = parseInt(searchParams.get("limit") || "20");
+    const offset = parseInt(searchParams.get("offset") || "0");
 
     try {
         const user = await currentUser();
@@ -34,8 +37,6 @@ export async function GET(req: Request) {
             }
         } else if (classroomId && !email) {
             console.warn(`Anonymous user attempting to access classroom ${classroomId}`);
-            // For hackathon simplicity, we might allow it if they have the link, 
-            // but usually this should be blocked.
         }
 
         let query = db.select().from(doubtsTable);
@@ -53,7 +54,6 @@ export async function GET(req: Request) {
         const isTeacher = room && email && room.teacherEmail === email;
 
         // GLOBAL VISIBILITY FILTER
-        // If not the teacher, you can only see 'teacher' doubts if you are the owner
         if (!isTeacher && email) {
             conditions.push(
                 or(
@@ -62,7 +62,6 @@ export async function GET(req: Request) {
                 )
             );
         } else if (!isTeacher && !email) {
-            // Extreme fallback: if no email, only show non-teacher doubts
             conditions.push(not(eq(doubtsTable.type, 'teacher')));
         }
 
@@ -73,13 +72,26 @@ export async function GET(req: Request) {
 
         if (type && type !== "All") {
             conditions.push(eq(doubtsTable.type, type));
-            // Security/Privacy: AI history is personal
             if (type === 'ai' && email) {
                 conditions.push(eq(doubtsTable.userEmail, email));
             }
         }
 
-        let doubts = await query.where(and(...conditions)).orderBy(desc(doubtsTable.createdAt));
+        if (isSolved) {
+            const status = isSolved === 'pending' ? 'unsolved' : 'solved';
+            conditions.push(eq(doubtsTable.isSolved, status));
+        }
+
+        // Count total for pagination metadata
+        const [totalCount] = await db.select({ count: sql<number>`count(*)` })
+            .from(doubtsTable)
+            .where(and(...conditions));
+
+        let doubts = await query
+            .where(and(...conditions))
+            .orderBy(desc(doubtsTable.createdAt))
+            .limit(limit)
+            .offset(offset);
 
         if (userName && doubts.length > 0) {
             const userLikes = await db.select({ doubtId: likesTable.doubtId })
@@ -94,12 +106,13 @@ export async function GET(req: Request) {
             }));
         }
 
-        // Fetch reply counts using an aggregate query
+        // Fetch reply counts
         const replyCounts = await db.select({
             doubtId: repliesTable.doubtId,
             count: sql<number>`count(*)`.mapWith(Number)
         })
         .from(repliesTable)
+        .where(sql`${repliesTable.doubtId} IN (${sql.join(doubts.length > 0 ? doubts.map(d => d.id) : [0], sql`, `)})`)
         .groupBy(repliesTable.doubtId);
 
         const countsMap = Object.fromEntries(replyCounts.map(r => [r.doubtId, r.count]));
@@ -109,7 +122,15 @@ export async function GET(req: Request) {
             replyCount: countsMap[doubt.id] || 0
         }));
 
-        return NextResponse.json(doubts);
+        return NextResponse.json({
+            doubts,
+            pagination: {
+                total: Number(totalCount.count),
+                limit,
+                offset,
+                hasMore: Number(totalCount.count) > offset + limit
+            }
+        });
     } catch (error) {
         console.error("Error fetching doubts:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

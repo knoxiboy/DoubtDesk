@@ -31,10 +31,11 @@ import {
     Medal
 } from "lucide-react";
 import AskDoubt from "@/components/AskDoubt";
-import DoubtCard from "@/components/DoubtCard";
-import Dashboard from "@/app/dashboard/page"; // We can reuse or adapt the Analytics view
+import Dashboard from "@/app/dashboard/page";
 import AskAIView from "../../../components/AskAIView"; 
+import { useSWRConfig } from "swr";
 import { toast } from "sonner";
+import InfiniteDoubtFeed from "@/components/InfiniteDoubtFeed";
 
 interface Classroom {
     id: number;
@@ -50,18 +51,16 @@ export default function ClassroomPage() {
     const { id } = useParams();
     const router = useRouter();
     const { appUser } = useAppUser();
+    const { mutate } = useSWRConfig();
     
     const [classroom, setClassroom] = useState<Classroom | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("ask-ai");
     const [activeAIDoubt, setActiveAIDoubt] = useState<any>(null);
-    const [doubts, setDoubts] = useState<any[]>([]);
-    const [doubtsLoading, setDoubtsLoading] = useState(false);
     const [isAskModalOpen, setIsAskModalOpen] = useState(false);
     const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
     const [copied, setCopied] = useState(false);
     const [doubtFilter, setDoubtFilter] = useState<'pending' | 'solved'>('pending');
-    const [tabCache, setTabCache] = useState<Record<string, any>>({});
 
     useEffect(() => {
         initialFetch();
@@ -70,22 +69,13 @@ export default function ClassroomPage() {
     const initialFetch = async () => {
         setLoading(true);
         try {
-            // Parallelize classroom data and initial Ask AI doubts
-            const [roomRes, doubtsRes] = await Promise.all([
-                fetch(`/api/rooms/${id}`),
-                fetch(`/api/doubts?classroomId=${id}&userName=${localStorage.getItem("anonymous_user")}&type=ai`)
-            ]);
+            const res = await fetch(`/api/rooms/${id}`);
+            const data = await res.json();
 
-            const roomData = await roomRes.json();
-            const doubtsData = await doubtsRes.json();
-
-            if (roomRes.ok) {
-                setClassroom(roomData);
-                const validatedDoubts = Array.isArray(doubtsData) ? doubtsData : [];
-                setTabCache(prev => ({ ...prev, "ask-ai": validatedDoubts }));
-                setDoubts(validatedDoubts);
+            if (res.ok) {
+                setClassroom(data);
             } else {
-                toast.error(roomData.error || "Error loading classroom");
+                toast.error(data.error || "Error loading classroom");
                 router.push("/rooms");
             }
         } catch (err) {
@@ -95,50 +85,10 @@ export default function ClassroomPage() {
         }
     };
 
-    const fetchClassroom = async () => {
-        // This is now handled by initialFetch, but keeping a simplified version for refresh if needed
-        try {
-            const res = await fetch(`/api/rooms/${id}`);
-            const data = await res.json();
-            if (res.ok) setClassroom(data);
-        } catch (err) {
-            console.error("Error refreshing classroom:", err);
-        }
+    const refreshDoubts = () => {
+        // This will refresh any SWR query that starts with /api/doubts
+        mutate((key) => typeof key === 'string' && key.startsWith('/api/doubts'), undefined, { revalidate: true });
     };
-
-    const fetchScopedDoubts = async (type: string = 'community') => {
-        setDoubtsLoading(true);
-        try {
-            const userName = localStorage.getItem("anonymous_user");
-            const res = await fetch(`/api/doubts?classroomId=${id}&userName=${userName}&type=${type}`);
-            const data = await res.json();
-            if (res.ok && Array.isArray(data)) {
-                setDoubts(data);
-                setTabCache(prev => ({ ...prev, [activeTab]: data }));
-            } else {
-                console.error("Invalid doubts data received:", data);
-                setDoubts([]);
-                if (data?.error) toast.error(data.error);
-            }
-        } catch (err) {
-            toast.error("Failed to load doubts");
-        } finally {
-            setDoubtsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        // Don't refetch if we have a cache AND it's not Insights (insights are dynamic/real-time)
-        if (activeTab === "insights") return; 
-
-        if (tabCache[activeTab]) {
-            setDoubts(tabCache[activeTab]);
-            return;
-        }
-
-        const type = activeTab === 'teacher-doubts' ? 'teacher' : activeTab === 'community' ? 'community' : 'ai';
-        fetchScopedDoubts(type);
-    }, [activeTab]);
 
     const copyCode = () => {
         if (classroom?.inviteCode) {
@@ -235,7 +185,7 @@ export default function ClassroomPage() {
                             <div className="max-w-3xl mx-auto">
                                 <AskAIView 
                                     classroomId={Number(id)} 
-                                    onSuccess={() => fetchScopedDoubts('ai')} 
+                                    onSuccess={refreshDoubts} 
                                     initialDoubt={activeAIDoubt}
                                 />
                             </div>
@@ -251,29 +201,16 @@ export default function ClassroomPage() {
                                 <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent"></div>
                             </div>
 
-                            {doubtsLoading ? (
-                                <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 text-blue-500 animate-spin" /></div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {Array.isArray(doubts) && doubts.filter((d: any) => d.type === 'ai').map((doubt: any) => (
-                                        <DoubtCard 
-                                            key={doubt.id} 
-                                            doubt={doubt} 
-                                            role={classroom?.role} 
-                                            onUpdate={() => fetchScopedDoubts('ai')} 
-                                            onViewAISolution={(d) => {
-                                                setActiveAIDoubt(d);
-                                                setActiveTab("ask-ai");
-                                            }}
-                                        />
-                                    ))}
-                                    {Array.isArray(doubts) && doubts.filter((d: any) => d.type === 'ai').length === 0 && (
-                                        <div className="col-span-full py-12 text-center text-slate-500 text-xs font-bold uppercase tracking-widest opacity-30">
-                                            No resolved AI queries in this classroom yet.
-                                        </div>
-                                    )}
-                                </div>
-                            )}
+                            <InfiniteDoubtFeed 
+                                classroomId={Number(id)}
+                                type="ai"
+                                role={classroom?.role}
+                                onViewAISolution={(d) => {
+                                    setActiveAIDoubt(d);
+                                    setActiveTab("ask-ai");
+                                }}
+                                emptyMessage="No resolved AI queries in this classroom yet."
+                            />
                         </div>
                     </div>
                 )}
@@ -314,57 +251,25 @@ export default function ClassroomPage() {
                             </button>
                         </div>
 
-                        {doubtsLoading ? (
-                            <div className="h-[300px] flex items-center justify-center">
-                                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                        <div className="space-y-8 animate-in fade-in duration-500">
+                            <div className="flex items-center gap-4">
+                                <div className={`h-[1px] flex-1 bg-gradient-to-r from-transparent via-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/20 to-transparent`}></div>
+                                <h3 className={`text-[10px] font-black uppercase tracking-[0.4em] text-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/60 bg-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/5 px-4 py-1.5 rounded-full border border-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/10`}>
+                                    {doubtFilter === 'pending' ? 'Unsolved Queries' : 'Resolved & Validated'}
+                                </h3>
+                                <div className={`h-[1px] flex-1 bg-gradient-to-r from-transparent via-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/20 to-transparent`}></div>
                             </div>
-                        ) : doubts.length === 0 ? (
-                            <div className="py-24 text-center space-y-4 bg-white/5 border border-dashed border-white/10 rounded-[2.5rem]">
-                                <MessageSquare className="w-12 h-12 text-slate-700 mx-auto" />
-                                <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">No community posts yet.</p>
-                                <button onClick={() => setIsAskModalOpen(true)} className="text-blue-500 font-black uppercase tracking-widest text-[10px] hover:underline underline-offset-4">Be the first to ask</button>
-                            </div>
-                        ) : (
-                            <div className="space-y-8 animate-in fade-in duration-500">
-                                {doubtFilter === 'pending' ? (
-                                    <div className="space-y-8">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red-500/20 to-transparent"></div>
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-red-500/60 bg-red-500/5 px-4 py-1.5 rounded-full border border-red-500/10">Unsolved Queries</h3>
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red-500/20 to-transparent"></div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved !== "solved").map((doubt: any) => (
-                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => fetchScopedDoubts('community')} />
-                                             ))}
-                                            {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved !== "solved").length === 0) && (
-                                                <div className="col-span-full py-12 text-center text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
-                                                    No pending queries in this category.
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-8">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500/60 bg-emerald-500/5 px-4 py-1.5 rounded-full border border-emerald-500/10">Resolved & Validated</h3>
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "solved").map((doubt: any) => (
-                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => fetchScopedDoubts('community')} />
-                                            ))}
-                                            {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "solved").length === 0) && (
-                                                <div className="col-span-full py-12 text-center text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
-                                                    No resolved queries yet.
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                            
+                            <InfiniteDoubtFeed 
+                                classroomId={Number(id)}
+                                type="community"
+                                isSolved={doubtFilter}
+                                role={classroom?.role}
+                                emptyMessage={doubtFilter === 'pending' ? "No pending queries in this category." : "No resolved queries yet."}
+                                emptyAction={doubtFilter === 'pending' ? () => setIsAskModalOpen(true) : undefined}
+                                emptyActionLabel="Be the first to ask"
+                            />
+                        </div>
                     </div>
                 )}
 
@@ -408,57 +313,25 @@ export default function ClassroomPage() {
                             )}
                         </div>
 
-                        {doubtsLoading ? (
-                            <div className="h-[300px] flex items-center justify-center">
-                                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                        <div className="space-y-8 animate-in fade-in duration-500">
+                            <div className="flex items-center gap-4">
+                                <div className={`h-[1px] flex-1 bg-gradient-to-r from-transparent via-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/20 to-transparent`}></div>
+                                <h3 className={`text-[10px] font-black uppercase tracking-[0.4em] text-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/60 bg-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/5 px-4 py-1.5 rounded-full border border-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/10`}>
+                                    {doubtFilter === 'pending' ? 'Pending Doubts' : 'Teacher Resolved'}
+                                </h3>
+                                <div className={`h-[1px] flex-1 bg-gradient-to-r from-transparent via-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/20 to-transparent`}></div>
                             </div>
-                        ) : (
-                            <div className="space-y-8 animate-in fade-in duration-500">
-                                {doubtFilter === 'pending' ? (
-                                    <div className="space-y-8">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red-500/20 to-transparent"></div>
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-red-500/60 bg-red-500/5 px-4 py-1.5 rounded-full border border-red-500/10">Pending Doubts</h3>
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red-500/20 to-transparent"></div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved !== "solved").map((doubt: any) => (
-                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => fetchScopedDoubts('teacher')} />
-                                            ))}
-                                            {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved !== "solved").length === 0) && (
-                                                <div className="col-span-full py-24 text-center space-y-4 bg-white/5 border border-dashed border-white/10 rounded-[2.5rem]">
-                                                    <GraduationCap className="w-12 h-12 text-slate-700 mx-auto" />
-                                                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">
-                                                        {classroom?.role === 'teacher' ? "No doubts from students yet." : "No teacher doubts yet."}
-                                                    </p>
-                                                    {classroom?.role !== 'teacher' && (
-                                                        <button onClick={() => setIsAskModalOpen(true)} className="text-purple-500 font-black uppercase tracking-widest text-[10px] hover:underline underline-offset-4">Send the first query</button>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-8">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500/60 bg-emerald-500/5 px-4 py-1.5 rounded-full border border-emerald-500/10">Teacher Resolved</h3>
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "solved").map((doubt: any) => (
-                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => fetchScopedDoubts('teacher')} />
-                                            ))}
-                                            {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "solved").length === 0) && (
-                                                <div className="col-span-full py-12 text-center text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
-                                                    No resolved queries yet.
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                            
+                            <InfiniteDoubtFeed 
+                                classroomId={Number(id)}
+                                type="teacher"
+                                isSolved={doubtFilter}
+                                role={classroom?.role}
+                                emptyMessage={classroom?.role === 'teacher' ? "No doubts from students yet." : "No teacher doubts yet."}
+                                emptyAction={classroom?.role !== 'teacher' ? () => setIsAskModalOpen(true) : undefined}
+                                emptyActionLabel="Send the first query"
+                            />
+                        </div>
                     </div>
                 )}
 
@@ -476,8 +349,7 @@ export default function ClassroomPage() {
                     onClose={() => setIsAskModalOpen(false)}
                     onSuccess={() => {
                         setIsAskModalOpen(false);
-                        const type = activeTab === 'teacher-doubts' ? 'teacher' : activeTab === 'ask-ai' ? 'ai' : 'community';
-                        fetchScopedDoubts(type);
+                        refreshDoubts();
                     }}
                     classroomId={Number(id)}
                     type={activeTab === 'teacher-doubts' ? 'teacher' : activeTab === 'ask-ai' ? 'ai' : 'community'}
