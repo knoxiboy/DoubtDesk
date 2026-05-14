@@ -79,7 +79,13 @@ export async function GET(req: Request) {
             }
         }
 
-        let doubts = await query.where(and(...conditions)).orderBy(desc(doubtsTable.createdAt));
+        const pageStr = searchParams.get("page");
+        const limitStr = searchParams.get("limit");
+        const page = pageStr ? parseInt(pageStr) : 1;
+        const limit = limitStr ? parseInt(limitStr) : 20;
+        const offset = (page - 1) * limit;
+
+        let doubts = await query.where(and(...conditions)).orderBy(desc(doubtsTable.createdAt)).limit(limit).offset(offset);
 
         if (userName && doubts.length > 0) {
             const userLikes = await db.select({ doubtId: likesTable.doubtId })

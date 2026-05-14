@@ -99,14 +99,16 @@ export async function POST(req: Request) {
         const newReply = await db.insert(repliesTable).values({
             doubtId: parseInt(doubtId),
             userName,
+            userEmail: email,
             type,
             content: content || null,
             imageUrl: imageUrl || null
         }).returning();
 
         return NextResponse.json(newReply[0]);
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Internal Server Error";
         console.error("Error creating reply:", error);
-        return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 });
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

@@ -52,10 +52,10 @@ export default function Home() {
             </SignedOut>
             <SignedIn>
               <div className="flex items-center gap-4">
-                <Link href="/rooms" className="hidden sm:block px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors">
+                <Link href="/rooms" className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors">
                   Classrooms
                 </Link>
-                <Link href="/profile" className="hidden sm:block px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors">
+                <Link href="/profile" className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors">
                   Profile
                 </Link>
                 <UserButton 

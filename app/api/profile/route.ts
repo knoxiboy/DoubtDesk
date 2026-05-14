@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq, inArray } from "drizzle-orm";
+import { eq, or, inArray } from "drizzle-orm";
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, membershipsTable, classroomsTable, usersTable } from "@/configs/schema";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import type { ProfileClassroom } from "@/types/profile";
 
 export async function GET(req: NextRequest) {
     try {
@@ -22,20 +23,33 @@ export async function GET(req: NextRequest) {
         // Get user details from DB
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
 
-        // Get user's doubts
+        // Get user's doubts (email is a stable identifier)
         const doubts = await db.select().from(doubtsTable).where(eq(doubtsTable.userEmail, email));
 
-        // Fetch replies (matching by userName as replies table doesn't have email currently)
-        const replies = await db.select().from(repliesTable).where(eq(repliesTable.userName, name));
+        // Fetch replies using email (stable) with fallback to userName (legacy rows).
+        // Once all existing replies have been backfilled with userEmail, the
+        // userName fallback can be safely removed.
+        const replies = await db
+            .select()
+            .from(repliesTable)
+            .where(
+                or(
+                    eq(repliesTable.userEmail, email),
+                    eq(repliesTable.userName, name)
+                )
+            );
 
         // Get user's classroom memberships
         const memberships = await db.select().from(membershipsTable).where(eq(membershipsTable.userEmail, email));
-        
+
         const classroomIds = memberships.map((m) => m.classroomId);
-        let classrooms: any[] = [];
-        
+        let classrooms: ProfileClassroom[] = [];
+
         if (classroomIds.length > 0) {
-            classrooms = await db.select().from(classroomsTable).where(inArray(classroomsTable.id, classroomIds));
+            classrooms = await db
+                .select()
+                .from(classroomsTable)
+                .where(inArray(classroomsTable.id, classroomIds));
         }
 
         // Calculate stats
@@ -46,8 +60,8 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
             user: {
                 ...dbUser,
-                name: name,
-                email: email,
+                name,
+                email,
                 imageUrl: clerkUser?.imageUrl,
                 joinDate: dbUser?.createdAt || clerkUser?.createdAt || new Date(),
             },
@@ -63,10 +77,11 @@ export async function GET(req: NextRequest) {
                 classrooms,
             },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Server error";
         console.error("Profile fetch error:", error);
         return NextResponse.json(
-            { error: error?.message || "Server error" },
+            { error: message },
             { status: 500 }
         );
     }

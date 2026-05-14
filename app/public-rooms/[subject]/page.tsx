@@ -2,33 +2,38 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Zap, MessageSquare, Plus } from "lucide-react";
+import { Zap, MessageSquare, Plus, Loader2 } from "lucide-react";
 import AskDoubt from "@/components/AskDoubt";
 import DoubtCard from "@/components/DoubtCard";
+import useSWRInfinite from "swr/infinite";
+import { useInView } from "react-intersection-observer";
 
 export default function PublicRoomPage() {
     const params = useParams();
     const subject = params.subject as string;
     const [isAskModalOpen, setIsAskModalOpen] = useState(false);
-    const [doubts, setDoubts] = useState([]);
-    const [loading, setLoading] = useState(true);
 
-    const fetchDoubts = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch(`/api/doubts?subject=${subject}`);
-            const data = await res.json();
-            setDoubts(data);
-        } catch (error) {
-            console.error("Failed to fetch doubts:", error);
-        } finally {
-            setLoading(false);
-        }
+    const fetcher = (url: string) => fetch(url).then(res => res.json());
+    const getKey = (pageIndex: number, previousPageData: any[]) => {
+        if (previousPageData && !previousPageData.length) return null;
+        return `/api/doubts?subject=${subject}&page=${pageIndex + 1}&limit=20`;
     };
 
+    const { data, isLoading, size, setSize, mutate } = useSWRInfinite(getKey, fetcher, {
+        revalidateFirstPage: false
+    });
+
+    const doubts = data ? [].concat(...data) : [];
+    const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
+    const isReachingEnd = data && data[data.length - 1]?.length < 20;
+
+    const { ref: loadMoreRef, inView } = useInView();
+
     useEffect(() => {
-        fetchDoubts();
-    }, [subject]);
+        if (inView && !isReachingEnd && !isLoadingMore) {
+            setSize(size + 1);
+        }
+    }, [inView, isReachingEnd, isLoadingMore]);
 
     return (
         <div className="p-6 md:p-12 space-y-8 max-w-7xl mx-auto pb-24">
@@ -50,17 +55,22 @@ export default function PublicRoomPage() {
                 </button>
             </header>
 
-            {loading ? (
+            {isLoading && doubts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 space-y-4">
                     <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                     <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Loading Doubts...</p>
                 </div>
             ) : doubts.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {doubts.map((doubt: any) => (
-                        <DoubtCard key={doubt.id} doubt={doubt} />
-                    ))}
-                </div>
+                <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {doubts.map((doubt: any) => (
+                            <DoubtCard key={doubt.id} doubt={doubt} onUpdate={() => mutate()} />
+                        ))}
+                    </div>
+                    <div ref={loadMoreRef} className="py-8 flex justify-center">
+                        {isLoadingMore && <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />}
+                    </div>
+                </>
             ) : (
                 <div className="flex flex-col items-center justify-center py-32 border-2 border-dashed border-white/5 rounded-[3rem] bg-white/[0.02] text-center px-6">
                     <div className="w-20 h-20 bg-blue-600/10 rounded-3xl flex items-center justify-center mb-6">
@@ -86,7 +96,7 @@ export default function PublicRoomPage() {
                     onClose={() => setIsAskModalOpen(false)} 
                     onSuccess={() => {
                         setIsAskModalOpen(false);
-                        fetchDoubts();
+                        mutate();
                     }}
                 />
             )}

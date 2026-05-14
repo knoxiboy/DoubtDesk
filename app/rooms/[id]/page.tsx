@@ -33,6 +33,8 @@ import DoubtCard from "@/components/DoubtCard";
 import Dashboard from "@/app/dashboard/page"; // We can reuse or adapt the Analytics view
 import AskAIView from "../../../components/AskAIView"; 
 import { toast } from "sonner";
+import useSWRInfinite from "swr/infinite";
+import { useInView } from "react-intersection-observer";
 
 interface Classroom {
     id: number;
@@ -53,13 +55,36 @@ export default function ClassroomPage() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("ask-ai");
     const [activeAIDoubt, setActiveAIDoubt] = useState<any>(null);
-    const [doubts, setDoubts] = useState<any[]>([]);
-    const [doubtsLoading, setDoubtsLoading] = useState(false);
     const [isAskModalOpen, setIsAskModalOpen] = useState(false);
     const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
     const [copied, setCopied] = useState(false);
     const [doubtFilter, setDoubtFilter] = useState<'pending' | 'solved'>('pending');
-    const [tabCache, setTabCache] = useState<Record<string, any>>({});
+
+    const type = activeTab === 'teacher-doubts' ? 'teacher' : activeTab === 'community' ? 'community' : 'ai';
+    const userName = typeof window !== 'undefined' ? localStorage.getItem("anonymous_user") : "";
+
+    const fetcher = (url: string) => fetch(url).then(res => res.json());
+    const getKey = (pageIndex: number, previousPageData: any[]) => {
+        if (previousPageData && !previousPageData.length) return null; // reached the end
+        if (activeTab === 'insights') return null;
+        return `/api/doubts?classroomId=${id}&userName=${userName}&type=${type}&page=${pageIndex + 1}&limit=20`;
+    };
+
+    const { data, error, isLoading: doubtsLoading, size, setSize, mutate } = useSWRInfinite(getKey, fetcher, {
+        revalidateFirstPage: false
+    });
+
+    const doubts = data ? [].concat(...data) : [];
+    const isLoadingMore = doubtsLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
+    const isReachingEnd = data && data[data.length - 1]?.length < 20;
+
+    const { ref: loadMoreRef, inView } = useInView();
+
+    useEffect(() => {
+        if (inView && !isReachingEnd && !isLoadingMore) {
+            setSize(size + 1);
+        }
+    }, [inView, isReachingEnd, isLoadingMore]);
 
     useEffect(() => {
         initialFetch();
@@ -68,20 +93,10 @@ export default function ClassroomPage() {
     const initialFetch = async () => {
         setLoading(true);
         try {
-            // Parallelize classroom data and initial Ask AI doubts
-            const [roomRes, doubtsRes] = await Promise.all([
-                fetch(`/api/rooms/${id}`),
-                fetch(`/api/doubts?classroomId=${id}&userName=${localStorage.getItem("anonymous_user")}&type=ai`)
-            ]);
-
+            const roomRes = await fetch(`/api/rooms/${id}`);
             const roomData = await roomRes.json();
-            const doubtsData = await doubtsRes.json();
-
             if (roomRes.ok) {
                 setClassroom(roomData);
-                const validatedDoubts = Array.isArray(doubtsData) ? doubtsData : [];
-                setTabCache(prev => ({ ...prev, "ask-ai": validatedDoubts }));
-                setDoubts(validatedDoubts);
             } else {
                 toast.error(roomData.error || "Error loading classroom");
                 router.push("/rooms");
@@ -92,51 +107,6 @@ export default function ClassroomPage() {
             setLoading(false);
         }
     };
-
-    const fetchClassroom = async () => {
-        // This is now handled by initialFetch, but keeping a simplified version for refresh if needed
-        try {
-            const res = await fetch(`/api/rooms/${id}`);
-            const data = await res.json();
-            if (res.ok) setClassroom(data);
-        } catch (err) {
-            console.error("Error refreshing classroom:", err);
-        }
-    };
-
-    const fetchScopedDoubts = async (type: string = 'community') => {
-        setDoubtsLoading(true);
-        try {
-            const userName = localStorage.getItem("anonymous_user");
-            const res = await fetch(`/api/doubts?classroomId=${id}&userName=${userName}&type=${type}`);
-            const data = await res.json();
-            if (res.ok && Array.isArray(data)) {
-                setDoubts(data);
-                setTabCache(prev => ({ ...prev, [activeTab]: data }));
-            } else {
-                console.error("Invalid doubts data received:", data);
-                setDoubts([]);
-                if (data?.error) toast.error(data.error);
-            }
-        } catch (err) {
-            toast.error("Failed to load doubts");
-        } finally {
-            setDoubtsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        // Don't refetch if we have a cache AND it's not Insights (insights are dynamic/real-time)
-        if (activeTab === "insights") return; 
-
-        if (tabCache[activeTab]) {
-            setDoubts(tabCache[activeTab]);
-            return;
-        }
-
-        const type = activeTab === 'teacher-doubts' ? 'teacher' : activeTab === 'community' ? 'community' : 'ai';
-        fetchScopedDoubts(type);
-    }, [activeTab]);
 
     const copyCode = () => {
         if (classroom?.inviteCode) {
@@ -233,7 +203,7 @@ export default function ClassroomPage() {
                             <div className="max-w-3xl mx-auto">
                                 <AskAIView 
                                     classroomId={Number(id)} 
-                                    onSuccess={() => fetchScopedDoubts('ai')} 
+                                    onSuccess={() => mutate()} 
                                     initialDoubt={activeAIDoubt}
                                 />
                             </div>
@@ -258,7 +228,7 @@ export default function ClassroomPage() {
                                             key={doubt.id} 
                                             doubt={doubt} 
                                             role={classroom?.role} 
-                                            onUpdate={() => fetchScopedDoubts('ai')} 
+                                            onUpdate={() => mutate()} 
                                             onViewAISolution={(d) => {
                                                 setActiveAIDoubt(d);
                                                 setActiveTab("ask-ai");
@@ -333,7 +303,7 @@ export default function ClassroomPage() {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved !== "solved").map((doubt: any) => (
-                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => fetchScopedDoubts('community')} />
+                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
                                              ))}
                                             {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved !== "solved").length === 0) && (
                                                 <div className="col-span-full py-12 text-center text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
@@ -351,7 +321,7 @@ export default function ClassroomPage() {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "solved").map((doubt: any) => (
-                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => fetchScopedDoubts('community')} />
+                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
                                             ))}
                                             {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "solved").length === 0) && (
                                                 <div className="col-span-full py-12 text-center text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
@@ -421,7 +391,7 @@ export default function ClassroomPage() {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved !== "solved").map((doubt: any) => (
-                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => fetchScopedDoubts('teacher')} />
+                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
                                             ))}
                                             {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved !== "solved").length === 0) && (
                                                 <div className="col-span-full py-24 text-center space-y-4 bg-white/5 border border-dashed border-white/10 rounded-[2.5rem]">
@@ -445,7 +415,7 @@ export default function ClassroomPage() {
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "solved").map((doubt: any) => (
-                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => fetchScopedDoubts('teacher')} />
+                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
                                             ))}
                                             {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "solved").length === 0) && (
                                                 <div className="col-span-full py-12 text-center text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
@@ -466,6 +436,12 @@ export default function ClassroomPage() {
                          <ClassroomInsightsView classroomId={Number(id)} role={classroom?.role} />
                     </div>
                 )}
+
+                {activeTab !== 'insights' && (
+                    <div ref={loadMoreRef} className="py-8 flex justify-center">
+                        {isLoadingMore && <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />}
+                    </div>
+                )}
             </div>
 
             {isAskModalOpen && (
@@ -474,8 +450,7 @@ export default function ClassroomPage() {
                     onClose={() => setIsAskModalOpen(false)}
                     onSuccess={() => {
                         setIsAskModalOpen(false);
-                        const type = activeTab === 'teacher-doubts' ? 'teacher' : activeTab === 'ask-ai' ? 'ai' : 'community';
-                        fetchScopedDoubts(type);
+                        mutate();
                     }}
                     classroomId={Number(id)}
                     type={activeTab === 'teacher-doubts' ? 'teacher' : activeTab === 'ask-ai' ? 'ai' : 'community'}

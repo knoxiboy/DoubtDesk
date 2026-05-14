@@ -1,43 +1,53 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageSquare, Plus, SlidersHorizontal } from "lucide-react";
+import { MessageSquare, Plus, SlidersHorizontal, Loader2 } from "lucide-react";
 import AskDoubt from "@/components/AskDoubt";
 import DoubtCard from "@/components/DoubtCard";
+import useSWRInfinite from "swr/infinite";
+import { useInView } from "react-intersection-observer";
 
 export default function PublicRoomsPage() {
     const [isAskModalOpen, setIsAskModalOpen] = useState(false);
-    const [doubts, setDoubts] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState("All");
     const [customFilter, setCustomFilter] = useState("");
     const [isOthersActive, setIsOthersActive] = useState(false);
+    const [appliedCustomFilter, setAppliedCustomFilter] = useState("");
 
-    const fetchDoubts = async () => {
-        setLoading(true);
-        try {
-            const userName = localStorage.getItem("anonymous_user");
-            const params = new URLSearchParams();
-            
-            if (filter !== "All") {
-                const subjectFilter = filter === "Others" ? customFilter : filter;
-                if (subjectFilter) params.append("subject", subjectFilter);
-            }
-            if (userName) params.append("userName", userName);
-            
-            const res = await fetch(`/api/doubts?${params.toString()}`);
-            const data = await res.json();
-            setDoubts(data);
-        } catch (error) {
-            console.error("Failed to fetch doubts:", error);
-        } finally {
-            setLoading(false);
+    const fetcher = (url: string) => fetch(url).then(res => res.json());
+
+    const getKey = (pageIndex: number, previousPageData: any[]) => {
+        if (previousPageData && !previousPageData.length) return null;
+        
+        const userName = typeof window !== 'undefined' ? localStorage.getItem("anonymous_user") : "";
+        const params = new URLSearchParams();
+        
+        if (filter !== "All") {
+            const subjectFilter = filter === "Others" ? appliedCustomFilter : filter;
+            if (subjectFilter) params.append("subject", subjectFilter);
         }
+        if (userName) params.append("userName", userName);
+        params.append("page", (pageIndex + 1).toString());
+        params.append("limit", "20");
+        
+        return `/api/doubts?${params.toString()}`;
     };
 
+    const { data, isLoading, size, setSize, mutate } = useSWRInfinite(getKey, fetcher, {
+        revalidateFirstPage: false
+    });
+
+    const doubts = data ? [].concat(...data) : [];
+    const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
+    const isReachingEnd = data && data[data.length - 1]?.length < 20;
+
+    const { ref: loadMoreRef, inView } = useInView();
+
     useEffect(() => {
-        fetchDoubts();
-    }, [filter]);
+        if (inView && !isReachingEnd && !isLoadingMore) {
+            setSize(size + 1);
+        }
+    }, [inView, isReachingEnd, isLoadingMore]);
 
     return (
         <div className="p-4 md:p-8 space-y-6 max-w-[1000px] mx-auto pb-24">
@@ -96,12 +106,12 @@ export default function PublicRoomsPage() {
                             value={customFilter}
                             onChange={(e) => setCustomFilter(e.target.value)}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') fetchDoubts();
+                                if (e.key === 'Enter') setAppliedCustomFilter(customFilter);
                             }}
                             className="bg-slate-900 border border-blue-500/30 rounded-xl px-4 py-2 text-[10px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all w-40"
                         />
                         <button 
-                            onClick={fetchDoubts}
+                            onClick={() => setAppliedCustomFilter(customFilter)}
                             className="px-4 py-2 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/20 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all"
                         >
                             Apply
@@ -110,17 +120,22 @@ export default function PublicRoomsPage() {
                 )}
             </div>
 
-            {loading ? (
+            {isLoading && doubts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 space-y-4">
                     <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                     <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Syncing with community...</p>
                 </div>
             ) : doubts.length > 0 ? (
-                <div className="flex flex-col gap-6 lg:gap-8">
-                    {doubts.map((doubt: any) => (
-                        <DoubtCard key={doubt.id} doubt={doubt} onUpdate={fetchDoubts} />
-                    ))}
-                </div>
+                <>
+                    <div className="flex flex-col gap-6 lg:gap-8">
+                        {doubts.map((doubt: any) => (
+                            <DoubtCard key={doubt.id} doubt={doubt} onUpdate={() => mutate()} />
+                        ))}
+                    </div>
+                    <div ref={loadMoreRef} className="py-8 flex justify-center">
+                        {isLoadingMore && <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />}
+                    </div>
+                </>
             ) : (
                 <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-white/5 rounded-[3rem] bg-white/[0.02] text-center px-6">
                     <div className="w-20 h-20 bg-blue-600/10 rounded-3xl flex items-center justify-center mb-6">
@@ -148,7 +163,7 @@ export default function PublicRoomsPage() {
                     onClose={() => setIsAskModalOpen(false)} 
                     onSuccess={() => {
                         setIsAskModalOpen(false);
-                        fetchDoubts();
+                        mutate();
                     }}
                 />
             )}
