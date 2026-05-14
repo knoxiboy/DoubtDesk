@@ -26,9 +26,6 @@ export async function GET(req: NextRequest) {
         // Get user's doubts (email is a stable identifier)
         const doubts = await db.select().from(doubtsTable).where(eq(doubtsTable.userEmail, email));
 
-        // Fetch replies using email (stable) with fallback to userName (legacy rows).
-        // Once all existing replies have been backfilled with userEmail, the
-        // userName fallback can be safely removed.
         const replies = await db
             .select()
             .from(repliesTable)
