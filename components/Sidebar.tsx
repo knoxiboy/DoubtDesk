@@ -18,12 +18,14 @@ import {
     Code,
     MoreHorizontal,
     Zap,
-    School
+    School,
+    Bookmark
 } from 'lucide-react'
 
 const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
     { name: 'Virtual Campus', icon: School, href: '/rooms' },
+    { name: 'Bookmarks', icon: Bookmark, href: '/bookmarks' },
 ]
 
 interface SidebarProps {

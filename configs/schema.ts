@@ -123,6 +123,7 @@ export const doubtsTable = pgTable("doubts", {
     isSolved: varchar({ length: 20 }).default("unsolved"), // unsolved, solved
     solvedReplyId: integer(), // ID of the specific reply that solved it
     type: varchar({ length: 20 }).default("community"), // 'ai', 'community', 'teacher'
+    isPinned: boolean().default(false),
     createdAt: timestamp().defaultNow().notNull(),
 }, (table) => {
     return {
@@ -175,3 +176,13 @@ export const moderationLogsTable = pgTable("moderation_logs", {
     contentSnippet: text(),
     createdAt: timestamp().defaultNow().notNull(),
 });
+
+export const bookmarksTable = pgTable("bookmarks", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userEmail: varchar({ length: 255 }).notNull(),
+    doubtId: integer().notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    userEmailIndex: index("bookmark_userEmail_idx").on(table.userEmail),
+    doubtIdIndex: index("bookmark_doubtId_idx").on(table.doubtId),
+}));

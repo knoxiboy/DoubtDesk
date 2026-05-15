@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle } from "lucide-react";
+import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark } from "lucide-react";
 import AskDoubt from "./AskDoubt";
 import DoubtRepliesModal from "./DoubtRepliesModal";
 import { toast } from "sonner";
@@ -22,6 +22,8 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [isRepliesOpen, setIsRepliesOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isPinning, setIsPinning] = useState(false);
+    const [isBookmarking, setIsBookmarking] = useState(false);
 
     const isTeacher = role === 'teacher';
 
@@ -87,6 +89,47 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
         }
     };
 
+    const handlePin = async () => {
+        setIsPinning(true);
+        try {
+            const res = await fetch(`/api/doubts/${doubt.id}/pin`, {
+                method: doubt.isPinned ? "DELETE" : "POST",
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                toast.success(doubt.isPinned ? "Doubt unpinned" : "Doubt pinned to top!");
+                if (onUpdate) onUpdate();
+            } else {
+                toast.error(data.error || "Failed to update pin status");
+            }
+        } catch (error) {
+            toast.error("Error updating pin status");
+        } finally {
+            setIsPinning(false);
+        }
+    };
+
+    const handleBookmark = async () => {
+        setIsBookmarking(true);
+        try {
+            const res = await fetch(`/api/doubts/${doubt.id}/bookmark`, {
+                method: doubt.hasBookmarked ? "DELETE" : "POST",
+            });
+
+            if (res.ok) {
+                toast.success(doubt.hasBookmarked ? "Bookmark removed" : "Added to bookmarks!");
+                if (onUpdate) onUpdate();
+            } else {
+                toast.error("Failed to update bookmark");
+            }
+        } catch (error) {
+            toast.error("Error updating bookmark");
+        } finally {
+            setIsBookmarking(false);
+        }
+    };
+
     return (
         <>
             <div className="group bg-slate-900/50 border border-white/5 rounded-[2.5rem] p-8 hover:border-blue-500/30 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/5 flex flex-col h-full relative overflow-hidden">
@@ -110,6 +153,26 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        {isTeacher && doubt.classroomId && (
+                            <button
+                                onClick={handlePin}
+                                disabled={isPinning}
+                                className={`p-2 rounded-xl border transition-all ${
+                                    doubt.isPinned 
+                                        ? "bg-blue-600/20 border-blue-500/40 text-blue-400" 
+                                        : "bg-white/5 border-white/10 text-slate-500 hover:text-blue-400"
+                                }`}
+                                title={doubt.isPinned ? "Unpin doubt" : "Pin doubt to top"}
+                            >
+                                <Pin className={`w-4 h-4 ${doubt.isPinned ? 'fill-blue-400' : ''} ${isPinning ? 'animate-pulse' : ''}`} />
+                            </button>
+                        )}
+                        {doubt.isPinned && !isTeacher && (
+                            <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
+                                <Pin className="w-3 h-3 text-blue-400 fill-blue-400" />
+                                <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Pinned</span>
+                            </div>
+                        )}
                         {doubt.isSolved === "solved" ? (
                             <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center gap-1.5">
                                 <CheckCircle className="w-3 h-3 text-emerald-500" />
@@ -166,6 +229,19 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                         >
                             <ThumbsUp className={`w-4 h-4 ${isLiking ? 'animate-pulse' : 'group-hover/btn:scale-110 transition-transform'} ${doubt.hasLiked ? 'fill-blue-400' : ''}`} />
                             <span className="text-xs font-black">{doubt.likes || 0}</span>
+                        </button>
+
+                        <button 
+                            onClick={handleBookmark}
+                            disabled={isBookmarking}
+                            className={`flex items-center justify-center p-3 rounded-2xl transition-all ${
+                                doubt.hasBookmarked 
+                                    ? "bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-lg shadow-purple-500/10" 
+                                    : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5"
+                            }`}
+                            title={doubt.hasBookmarked ? "Remove bookmark" : "Add to bookmarks"}
+                        >
+                            <Bookmark className={`w-4 h-4 ${isBookmarking ? 'animate-pulse' : ''} ${doubt.hasBookmarked ? 'fill-purple-400' : ''}`} />
                         </button>
                         
                         {((isOwner && doubt.type !== 'ai') || isTeacher) && doubt.isSolved !== "solved" && (
