@@ -102,3 +102,17 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #1e293b #020617;
 }
+/* Markdown Renderer Styles */
+.markdown-renderer p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-renderer .katex-display {
+  margin: 1em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.markdown-renderer pre {
+  margin: 0 !important;
+}

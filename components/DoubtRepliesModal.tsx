@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, MoreVertical, Pencil, Trash2, PlusCircle } from "lucide-react";
+import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, MoreVertical, Pencil, Trash2, PlusCircle, Eye, EyeOff, Bold, Italic, Code, List } from "lucide-react";
 import { toast } from "sonner";
+import MarkdownRenderer from "./MarkdownRenderer";
 
 interface Reply {
     id: number;
@@ -45,6 +46,9 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
     const [isFullscreenImageOpen, setIsFullscreenImageOpen] = useState(false);
     const [fullscreenImageUrl, setFullscreenImageUrl] = useState("");
+    const [isPreviewMode, setIsPreviewMode] = useState(false);
+    const [isEditPreviewMode, setIsEditPreviewMode] = useState(false);
+    const [isChatPreviewMode, setIsChatPreviewMode] = useState(false);
     
     const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -226,6 +230,37 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
         }
     };
 
+    const insertMarkdown = (textareaRef: React.RefObject<HTMLTextAreaElement>, type: string, stateSetter: (val: string) => void) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const selectedText = text.substring(start, end);
+        let replacement = "";
+
+        switch (type) {
+            case "bold": replacement = `**${selectedText || "bold text"}**`; break;
+            case "italic": replacement = `*${selectedText || "italic text"}*`; break;
+            case "code": replacement = `\`\`\`\n${selectedText || "code"}\n\`\`\``; break;
+            case "list": replacement = `\n- ${selectedText || "list item"}`; break;
+        }
+
+        const newText = text.substring(0, start) + replacement + text.substring(end);
+        stateSetter(newText);
+        
+        // Focus back and set selection
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start + replacement.length, start + replacement.length);
+        }, 0);
+    };
+
+    const solutionTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const chatInputRef = useRef<HTMLInputElement>(null);
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -326,11 +361,31 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     <div className="space-y-4">
                         {editingId === reply.id && reply.type === 'comment' ? (
                             <div className="space-y-4 min-w-[240px] animate-in fade-in duration-200">
-                                <textarea
-                                    value={editContent}
-                                    onChange={(e) => setEditContent(e.target.value)}
-                                    className="w-full bg-slate-950/50 border border-blue-500/20 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all h-28 resize-none"
-                                />
+                                <div className="flex items-center gap-2 mb-2">
+                                    <button onClick={() => insertMarkdown(editTextareaRef, "bold", setEditContent)} className="p-1.5 hover:bg-white/10 rounded text-slate-400"><Bold className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => insertMarkdown(editTextareaRef, "italic", setEditContent)} className="p-1.5 hover:bg-white/10 rounded text-slate-400"><Italic className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => insertMarkdown(editTextareaRef, "code", setEditContent)} className="p-1.5 hover:bg-white/10 rounded text-slate-400"><Code className="w-3.5 h-3.5" /></button>
+                                    <div className="w-px h-4 bg-white/10 mx-1" />
+                                    <button 
+                                        onClick={() => setIsEditPreviewMode(!isEditPreviewMode)} 
+                                        className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-black uppercase transition-all ${isEditPreviewMode ? 'bg-blue-500 text-white' : 'hover:bg-white/10 text-slate-400'}`}
+                                    >
+                                        {isEditPreviewMode ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                        {isEditPreviewMode ? "Edit" : "Preview"}
+                                    </button>
+                                </div>
+                                {isEditPreviewMode ? (
+                                    <div className="w-full bg-slate-950/50 border border-blue-500/20 rounded-2xl p-4 min-h-[112px] text-sm text-white overflow-y-auto">
+                                        <MarkdownRenderer content={editContent || "*Nothing to preview*"} />
+                                    </div>
+                                ) : (
+                                    <textarea
+                                        ref={editTextareaRef}
+                                        value={editContent}
+                                        onChange={(e) => setEditContent(e.target.value)}
+                                        className="w-full bg-slate-950/50 border border-blue-500/20 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all h-28 resize-none"
+                                    />
+                                )}
                                 <div className="flex gap-2 justify-end">
                                     <button onClick={() => setEditingId(null)} className="px-4 py-2 text-[10px] font-black uppercase text-slate-500 hover:text-white">Cancel</button>
                                     <button onClick={() => handleEditReply(reply.id)} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-900/40">Save</button>
@@ -338,7 +393,11 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             </div>
                         ) : (
                             <>
-                                {reply.content && <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-medium">{reply.content}</p>}
+                                {reply.content && (
+                                    <div className="text-sm text-slate-200 leading-relaxed font-medium">
+                                        <MarkdownRenderer content={reply.content} />
+                                    </div>
+                                )}
                                 {reply.imageUrl && (
                                     <button 
                                         onClick={() => { setFullscreenImageUrl(reply.imageUrl!); setIsFullscreenImageOpen(true); }}
@@ -546,12 +605,34 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                 </button>
                             </div>
                             
-                            <textarea
-                                value={solutionContent}
-                                onChange={(e) => setSolutionContent(e.target.value)}
-                                placeholder="Explain your solution clearly and step-by-step..."
-                                className="w-full h-40 bg-slate-950/50 border border-white/10 rounded-[1.5rem] p-5 text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none font-medium leading-relaxed placeholder:text-slate-600 shadow-inner"
-                            />
+                            <div className="flex items-center gap-2 mb-2">
+                                <button onClick={() => insertMarkdown(solutionTextareaRef, "bold", setSolutionContent)} className="p-2 hover:bg-white/10 rounded-xl text-slate-400"><Bold className="w-4 h-4" /></button>
+                                <button onClick={() => insertMarkdown(solutionTextareaRef, "italic", setSolutionContent)} className="p-2 hover:bg-white/10 rounded-xl text-slate-400"><Italic className="w-4 h-4" /></button>
+                                <button onClick={() => insertMarkdown(solutionTextareaRef, "code", setSolutionContent)} className="p-2 hover:bg-white/10 rounded-xl text-slate-400"><Code className="w-4 h-4" /></button>
+                                <button onClick={() => insertMarkdown(solutionTextareaRef, "list", setSolutionContent)} className="p-2 hover:bg-white/10 rounded-xl text-slate-400"><List className="w-4 h-4" /></button>
+                                <div className="w-px h-6 bg-white/10 mx-2" />
+                                <button 
+                                    onClick={() => setIsPreviewMode(!isPreviewMode)} 
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isPreviewMode ? 'bg-emerald-500 text-white' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
+                                >
+                                    {isPreviewMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    {isPreviewMode ? "Editing" : "Preview Mode"}
+                                </button>
+                            </div>
+
+                            {isPreviewMode ? (
+                                <div className="w-full h-40 bg-slate-950/50 border border-white/10 rounded-[1.5rem] p-5 text-white text-sm overflow-y-auto">
+                                    <MarkdownRenderer content={solutionContent || "*Nothing to preview*"} />
+                                </div>
+                            ) : (
+                                <textarea
+                                    ref={solutionTextareaRef}
+                                    value={solutionContent}
+                                    onChange={(e) => setSolutionContent(e.target.value)}
+                                    placeholder="Explain your solution clearly and step-by-step..."
+                                    className="w-full h-40 bg-slate-950/50 border border-white/10 rounded-[1.5rem] p-5 text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none font-medium leading-relaxed placeholder:text-slate-600 shadow-inner"
+                                />
+                            )}
 
                             {solutionImage && (
                                 <div className="relative group/preview animate-in zoom-in-95 duration-300 w-full sm:w-fit">
@@ -623,22 +704,47 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     <span className="text-[10px] font-black uppercase tracking-widest">Post Solution</span>
                                 </button>
                             )}
-                            <div className="flex-1 relative">
-                                <input
-                                    type="text"
-                                    value={chatText}
-                                    onChange={(e) => setChatText(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handlePost('comment')}
-                                    placeholder="Ask for clarification or chat with peers..."
-                                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 flex-1 pl-6 pr-14 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all font-medium"
-                                />
-                                <button 
-                                    onClick={() => handlePost('comment')}
-                                    disabled={isPosting || !chatText.trim()}
-                                    className="absolute right-2 top-2 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all disabled:opacity-50"
-                                >
-                                    {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                </button>
+                            <div className="flex-1 flex flex-col gap-2">
+                                {isChatPreviewMode ? (
+                                    <div className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm min-h-[54px] max-h-32 overflow-y-auto">
+                                        <MarkdownRenderer content={chatText || "*Nothing to preview*"} />
+                                    </div>
+                                ) : (
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={chatText}
+                                            onChange={(e) => setChatText(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && handlePost('comment')}
+                                            placeholder="Ask for clarification or chat with peers..."
+                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 flex-1 pl-6 pr-24 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+                                        />
+                                        <div className="absolute right-2 top-2 flex items-center gap-1">
+                                            <button 
+                                                onClick={() => setIsChatPreviewMode(!isChatPreviewMode)}
+                                                className="p-2 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-all"
+                                                title="Preview Markdown"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </button>
+                                            <button 
+                                                onClick={() => handlePost('comment')}
+                                                disabled={isPosting || !chatText.trim()}
+                                                className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all disabled:opacity-50"
+                                            >
+                                                {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                {isChatPreviewMode && (
+                                    <button 
+                                        onClick={() => setIsChatPreviewMode(false)}
+                                        className="text-[10px] font-black uppercase text-blue-500 hover:text-blue-400 self-start px-2"
+                                    >
+                                        Back to Edit
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
