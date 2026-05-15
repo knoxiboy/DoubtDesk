@@ -1,5 +1,5 @@
 import { db } from "@/configs/db";
-import { doubtTagsTable, doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, tagsTable, usersTable } from "@/configs/schema";
+import { bookmarksTable, doubtTagsTable, doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, tagsTable, usersTable } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
 import { and, eq, desc, inArray, isNull, or, not, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
             }
         }
 
-        let doubts = await query.where(and(...conditions)).orderBy(desc(doubtsTable.createdAt));
+        let doubts = await query.where(and(...conditions)).orderBy(desc(doubtsTable.isPinned), desc(doubtsTable.createdAt));
 
         if (tag && tag !== "All" && doubts.length > 0) {
             const normalizedTag = tag.trim().replace(/\s+/g, " ").toLowerCase();
@@ -107,6 +107,19 @@ export async function GET(req: Request) {
             doubts = doubts.map(doubt => ({
                 ...doubt,
                 hasLiked: likedIds.has(doubt.id)
+            }));
+        }
+
+        if (email && doubts.length > 0) {
+            const userBookmarks = await db.select({ doubtId: bookmarksTable.doubtId })
+                .from(bookmarksTable)
+                .where(eq(bookmarksTable.userEmail, email));
+
+            const bookmarkedIds = new Set(userBookmarks.map(b => b.doubtId));
+
+            doubts = doubts.map(doubt => ({
+                ...doubt,
+                hasBookmarked: bookmarkedIds.has(doubt.id)
             }));
         }
 

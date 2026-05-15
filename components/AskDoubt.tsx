@@ -93,6 +93,16 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
         }
     }, [content, subjectWasEdited]);
 
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === "Escape") onClose();
+        };
+        if (isOpen) {
+            window.addEventListener("keydown", handleEsc);
+        }
+        return () => window.removeEventListener("keydown", handleEsc);
+    }, [isOpen, onClose]);
+
     /**
      * Handles anonymous user generation and retrieval from localStorage.
      * This creates a persistent "Academic Personality" for the student without requiring friction-heavy sign-ups.
@@ -189,6 +199,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                     <button 
                         onClick={onClose}
                         className="p-2 hover:bg-white/5 rounded-full text-slate-400 transition-colors"
+                        aria-label="Close modal"
                     >
                         <X className="w-6 h-6" />
                     </button>
@@ -231,6 +242,14 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                         <textarea
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                                    e.preventDefault();
+                                    if (content.trim() || imageUrl) {
+                                        handleSubmit(e as any);
+                                    }
+                                }
+                            }}
                             placeholder="Type your question here..."
                             className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all resize-none"
                         />

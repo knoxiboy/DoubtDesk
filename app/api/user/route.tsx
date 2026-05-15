@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
             const [createdUser] = await db
                 .insert(usersTable)
                 .values({ email, name })
+                .onConflictDoNothing()
                 .returning();
 
             if (!createdUser) {

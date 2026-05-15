@@ -238,7 +238,7 @@ export default function AskAIPage() {
             <main className="flex-1 flex flex-col overflow-y-auto">
                 {/* Mobile Header */}
                 <header className="flex lg:hidden items-center gap-3 px-4 py-3 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-20">
-                    <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-white/5 rounded-lg">
+                    <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-white/5 rounded-lg" aria-label="Open sidebar">
                         <div className="w-5 h-0.5 bg-white mb-1 rounded" /><div className="w-5 h-0.5 bg-white mb-1 rounded" /><div className="w-5 h-0.5 bg-white rounded" />
                     </button>
                     <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg flex items-center justify-center">
@@ -329,6 +329,7 @@ export default function AskAIPage() {
                                             <button
                                                 onClick={() => { setImageBase64(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                                                 className="absolute top-3 right-3 w-8 h-8 bg-red-500/90 hover:bg-red-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+                                                aria-label="Remove image"
                                             >
                                                 <X className="w-4 h-4 text-white" />
                                             </button>
@@ -359,11 +360,16 @@ export default function AskAIPage() {
                                     className="flex items-center gap-2.5 px-7 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-2xl font-black uppercase tracking-widest text-sm transition-all shadow-xl shadow-cyan-500/20 disabled:opacity-40 disabled:cursor-not-allowed group/btn"
                                 >
                                     {isLoading && currentType === 'standard' ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <span>Solving...</span>
+                                        </>
                                     ) : (
-                                        <Send className="w-4 h-4 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
+                                        <>
+                                            <Send className="w-4 h-4 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
+                                            <span>Solve Doubt</span>
+                                        </>
                                     )}
-                                    Solve Doubt
                                 </button>
                             </div>
                         </div>
@@ -508,6 +514,7 @@ export default function AskAIPage() {
                                             <button 
                                                 onClick={() => { setActiveStepContext(null); setFollowUpPrompt(''); }}
                                                 className="ml-2 hover:bg-white/5 p-1 rounded-md transition-colors"
+                                                aria-label="Clear context"
                                             >
                                                 <X className="w-3 h-3 text-slate-500" />
                                             </button>
@@ -527,10 +534,11 @@ export default function AskAIPage() {
                                         </div>
                                         <button
                                             onClick={() => handleAskAI('standard', true)}
-                                            disabled={!followUpPrompt.trim()}
+                                            disabled={isLoading || !followUpPrompt.trim()}
                                             className="p-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-40"
+                                            aria-label="Send follow-up"
                                         >
-                                            <Send className="w-5 h-5" />
+                                            {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                                         </button>
                                     </div>
                                     <p className="text-[10px] text-slate-500 mt-2 ml-1">AI remembers previous steps. Ask things like "Can you explain Step 2 more?"</p>
@@ -558,16 +566,38 @@ export default function AskAIPage() {
                                     </div>
                                     <div className="flex gap-3 sm:ml-auto flex-wrap">
                                         <button
-                                            onClick={() => handleAskAI('simple')}
-                                            className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded-xl border border-yellow-500/20 hover:border-yellow-500/40 transition-all text-xs font-bold uppercase tracking-wider"
+                                            onClick={() => handleAskAI('standard')}
+                                            disabled={isLoading}
+                                            className="flex items-center gap-2 px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 rounded-xl border border-yellow-500/20 hover:border-yellow-500/40 transition-all text-xs font-bold uppercase tracking-wider disabled:opacity-50"
                                         >
-                                            <Lightbulb className="w-3.5 h-3.5" /> Explain Simply
+                                            {isLoading && currentType === 'standard' ? (
+                                                <>
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    <span>Simplifying...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Lightbulb className="w-3.5 h-3.5" />
+                                                    <span>Explain Simply</span>
+                                                </>
+                                            )}
                                         </button>
                                         <button
-                                            onClick={() => handleAskAI('exam')}
-                                            className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-xl border border-purple-500/20 hover:border-purple-500/40 transition-all text-xs font-bold uppercase tracking-wider"
+                                            onClick={() => handleAskAI('standard')}
+                                            disabled={isLoading}
+                                            className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-xl border border-purple-500/20 hover:border-purple-500/40 transition-all text-xs font-bold uppercase tracking-wider disabled:opacity-50"
                                         >
-                                            <BookOpen className="w-3.5 h-3.5" /> Exam-Ready
+                                            {isLoading && currentType === 'standard' ? (
+                                                <>
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    <span>Preparing...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <BookOpen className="w-3.5 h-3.5" />
+                                                    <span>Exam-Ready</span>
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 </div>
