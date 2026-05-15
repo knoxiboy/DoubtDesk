@@ -1,6 +1,6 @@
 import { db } from "@/configs/db";
-import { doubtsTable, likesTable, classroomsTable, repliesTable } from "@/configs/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { doubtTagsTable, doubtsTable, likesTable, classroomsTable, repliesTable, tagsTable } from "@/configs/schema";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 
@@ -9,7 +9,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
         
-        const { action, content, subject, imageUrl, userName, replyId } = await req.json();
+        const { action, content, subject, imageUrl, userName, replyId, tags = [] } = await req.json();
         const { id } = await params;
         const doubtId = parseInt(id);
 
@@ -118,7 +118,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 return NextResponse.json({ error: "Only the owner can edit their doubt" }, { status: 403 });
             }
 
-            const updated = await db.update(doubtsTable)
+            const [updated] = await db.update(doubtsTable)
                 .set({ 
                     content: content || null, 
                     subject, 
@@ -126,7 +126,39 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 })
                 .where(eq(doubtsTable.id, doubtId))
                 .returning();
-            return NextResponse.json(updated[0]);
+
+            const normalizedTags: string[] = Array.from(new Set(
+                (Array.isArray(tags) ? tags : [])
+                    .map((tag: string) => tag.trim().replace(/\s+/g, " ").toLowerCase())
+                    .filter(Boolean)
+            )).slice(0, 8);
+
+            await db.delete(doubtTagsTable).where(eq(doubtTagsTable.doubtId, doubtId));
+
+            const savedTags: any[] = [];
+            for (const normalizedName of normalizedTags) {
+                const [existingTag] = await db.select().from(tagsTable).where(and(
+                    eq(tagsTable.normalizedName, normalizedName),
+                    doubt.classroomId ? eq(tagsTable.classroomId, doubt.classroomId) : isNull(tagsTable.classroomId)
+                )).limit(1);
+
+                const [tagRecord] = existingTag
+                    ? [existingTag]
+                    : await db.insert(tagsTable).values({
+                        name: normalizedName.replace(/\b\w/g, (char) => char.toUpperCase()),
+                        normalizedName,
+                        classroomId: doubt.classroomId,
+                        createdByEmail: email || null,
+                    }).returning();
+
+                savedTags.push(tagRecord);
+                await db.insert(doubtTagsTable).values({
+                    doubtId,
+                    tagId: tagRecord.id,
+                }).onConflictDoNothing();
+            }
+
+            return NextResponse.json({ ...updated, tags: savedTags });
         }
 
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });

@@ -4,15 +4,15 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useAppUser } from "../../provider";
-import { 
-    Brain, 
-    MessageSquare, 
-    TrendingUp, 
-    Users, 
-    Settings, 
-    Plus, 
-    Loader2, 
-    Sparkles, 
+import {
+    Brain,
+    MessageSquare,
+    TrendingUp,
+    Users,
+    Settings,
+    Plus,
+    Loader2,
+    Sparkles,
     ChevronLeft,
     School,
     GraduationCap,
@@ -34,7 +34,7 @@ import {
 import AskDoubt from "@/components/AskDoubt";
 import DoubtCard from "@/components/DoubtCard";
 import Dashboard from "@/app/dashboard/page"; // We can reuse or adapt the Analytics view
-import AskAIView from "../../../components/AskAIView"; 
+import AskAIView from "../../../components/AskAIView";
 import ExportButton from "@/components/ExportButton";
 import { toast } from "sonner";
 
@@ -52,7 +52,7 @@ export default function ClassroomPage() {
     const { id } = useParams();
     const router = useRouter();
     const { appUser } = useAppUser();
-    
+
     const [classroom, setClassroom] = useState<Classroom | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("ask-ai");
@@ -63,8 +63,9 @@ export default function ClassroomPage() {
     const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
     const [copied, setCopied] = useState(false);
     const [doubtFilter, setDoubtFilter] = useState<'pending' | 'solved'>('pending');
+    const [tagFilter, setTagFilter] = useState("");
     const [tabCache, setTabCache] = useState<Record<string, any>>({});
-    
+
     useHotkeys("n", (e) => {
         e.preventDefault();
         setIsAskModalOpen(true);
@@ -119,11 +120,20 @@ export default function ClassroomPage() {
         setDoubtsLoading(true);
         try {
             const userName = localStorage.getItem("anonymous_user");
-            const res = await fetch(`/api/doubts?classroomId=${id}&userName=${userName}&type=${type}`);
+            const params = new URLSearchParams({
+                classroomId: id?.toString() || "",
+                userName: userName || "",
+                type,
+            });
+            if (tagFilter.trim()) params.append("tag", tagFilter.trim());
+
+            const res = await fetch(`/api/doubts?${params.toString()}`);
             const data = await res.json();
             if (res.ok && Array.isArray(data)) {
                 setDoubts(data);
-                setTabCache(prev => ({ ...prev, [activeTab]: data }));
+                if (!tagFilter.trim()) {
+                    setTabCache(prev => ({ ...prev, [activeTab]: data }));
+                }
             } else {
                 console.error("Invalid doubts data received:", data);
                 setDoubts([]);
@@ -138,16 +148,16 @@ export default function ClassroomPage() {
 
     useEffect(() => {
         // Don't refetch if we have a cache AND it's not Insights (insights are dynamic/real-time)
-        if (activeTab === "insights") return; 
+        if (activeTab === "insights") return;
 
-        if (tabCache[activeTab]) {
+        if (!tagFilter.trim() && tabCache[activeTab]) {
             setDoubts(tabCache[activeTab]);
             return;
         }
 
         const type = activeTab === 'teacher-doubts' ? 'teacher' : activeTab === 'community' ? 'community' : 'ai';
         fetchScopedDoubts(type);
-    }, [activeTab]);
+    }, [activeTab, tagFilter]);
 
     const copyCode = () => {
         if (classroom?.inviteCode) {
@@ -173,10 +183,10 @@ export default function ClassroomPage() {
             {/* Header / Banner */}
             <div className="sticky top-0 z-50 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 pt-6 pb-6 px-6 md:px-12 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/5 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3" />
-                
+
                 <div className="max-w-7xl mx-auto relative z-10">
                     <div className="flex items-center justify-between mb-2">
-                        <button 
+                        <button
                             onClick={() => router.push("/rooms")}
                             className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-xs font-black uppercase tracking-widest"
                         >
@@ -184,12 +194,12 @@ export default function ClassroomPage() {
                         </button>
 
                         <div className="flex items-center gap-2">
-                            <ExportButton 
-                                classroomId={String(id)} 
-                                classroomName={classroom?.name || ""} 
-                                isTeacher={classroom?.role === "teacher"} 
+                            <ExportButton
+                                classroomId={String(id)}
+                                classroomName={classroom?.name || ""}
+                                isTeacher={classroom?.role === "teacher"}
                             />
-                            <button 
+                            <button
                                 onClick={() => setIsCodeModalOpen(true)}
                                 className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-inner"
                             >
@@ -229,8 +239,8 @@ export default function ClassroomPage() {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${
-                                        activeTab === tab.id 
-                                        ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" 
+                                        activeTab === tab.id
+                                        ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20"
                                         : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white"
                                     }`}
                                 >
@@ -249,9 +259,9 @@ export default function ClassroomPage() {
                         <div className="space-y-8">
                             <h2 className="text-2xl font-black uppercase italic tracking-tight text-center">ASK <span className="text-blue-500">AI Teacher</span></h2>
                             <div className="max-w-3xl mx-auto">
-                                <AskAIView 
-                                    classroomId={Number(id)} 
-                                    onSuccess={() => fetchScopedDoubts('ai')} 
+                                <AskAIView
+                                    classroomId={Number(id)}
+                                    onSuccess={() => fetchScopedDoubts('ai')}
                                     initialDoubt={activeAIDoubt}
                                 />
                             </div>
@@ -272,11 +282,11 @@ export default function ClassroomPage() {
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     {Array.isArray(doubts) && doubts.filter((d: any) => d.type === 'ai').map((doubt: any) => (
-                                        <DoubtCard 
-                                            key={doubt.id} 
-                                            doubt={doubt} 
-                                            role={classroom?.role} 
-                                            onUpdate={() => fetchScopedDoubts('ai')} 
+                                        <DoubtCard
+                                            key={doubt.id}
+                                            doubt={doubt}
+                                            role={classroom?.role}
+                                            onUpdate={() => fetchScopedDoubts('ai')}
                                             onViewAISolution={(d) => {
                                                 setActiveAIDoubt(d);
                                                 setActiveTab("ask-ai");
@@ -298,23 +308,23 @@ export default function ClassroomPage() {
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-12">
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 bg-white/[0.02] border border-white/5 p-4 rounded-[2rem]">
                             <h2 className="text-2xl font-black uppercase italic tracking-tight px-4">Classroom <span className="text-blue-500">Board</span></h2>
-                            
+
                             <div className="flex items-center gap-2 bg-slate-950/50 p-1.5 rounded-2xl border border-white/5">
-                                <button 
+                                <button
                                     onClick={() => setDoubtFilter('pending')}
                                     className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                                        doubtFilter === 'pending' 
-                                        ? "bg-red-500/10 text-red-500 border border-red-500/20" 
+                                        doubtFilter === 'pending'
+                                        ? "bg-red-500/10 text-red-500 border border-red-500/20"
                                         : "text-slate-500 hover:text-white"
                                     }`}
                                 >
-                                    Pending 
+                                    Pending
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setDoubtFilter('solved')}
                                     className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                                        doubtFilter === 'solved' 
-                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
+                                        doubtFilter === 'solved'
+                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
                                         : "text-slate-500 hover:text-white"
                                     }`}
                                 >
@@ -322,7 +332,25 @@ export default function ClassroomPage() {
                                 </button>
                             </div>
 
-                            <button 
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={tagFilter}
+                                    onChange={(e) => setTagFilter(e.target.value)}
+                                    placeholder="Filter tag"
+                                    className="w-32 bg-slate-950/50 border border-white/10 rounded-xl px-3 py-2.5 text-[10px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50"
+                                />
+                                {tagFilter && (
+                                    <button
+                                        onClick={() => setTagFilter("")}
+                                        className="text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-white"
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+
+                            <button
                                 onClick={() => setIsAskModalOpen(true)}
                                 className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center gap-2 shrink-0"
                             >
@@ -392,21 +420,21 @@ export default function ClassroomPage() {
                             </h2>
 
                             <div className="flex items-center gap-2 bg-slate-950/50 p-1.5 rounded-2xl border border-white/5">
-                                <button 
+                                <button
                                     onClick={() => setDoubtFilter('pending')}
                                     className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                                        doubtFilter === 'pending' 
-                                        ? "bg-red-500/10 text-red-500 border border-red-500/20" 
+                                        doubtFilter === 'pending'
+                                        ? "bg-red-500/10 text-red-500 border border-red-500/20"
                                         : "text-slate-500 hover:text-white"
                                     }`}
                                 >
-                                    Pending 
+                                    Pending
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setDoubtFilter('solved')}
                                     className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                                        doubtFilter === 'solved' 
-                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
+                                        doubtFilter === 'solved'
+                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
                                         : "text-slate-500 hover:text-white"
                                     }`}
                                 >
@@ -414,8 +442,26 @@ export default function ClassroomPage() {
                                 </button>
                             </div>
 
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={tagFilter}
+                                    onChange={(e) => setTagFilter(e.target.value)}
+                                    placeholder="Filter tag"
+                                    className="w-32 bg-slate-950/50 border border-white/10 rounded-xl px-3 py-2.5 text-[10px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500/50"
+                                />
+                                {tagFilter && (
+                                    <button
+                                        onClick={() => setTagFilter("")}
+                                        className="text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-white"
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+
                             {classroom?.role !== 'teacher' && (
-                                <button 
+                                <button
                                     onClick={() => setIsAskModalOpen(true)}
                                     className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center gap-2 shrink-0"
                                 >
@@ -487,7 +533,7 @@ export default function ClassroomPage() {
             </div>
 
             {isAskModalOpen && (
-                <AskDoubt 
+                <AskDoubt
                     isOpen={isAskModalOpen}
                     onClose={() => setIsAskModalOpen(false)}
                     onSuccess={() => {
@@ -511,7 +557,7 @@ export default function ClassroomPage() {
                                 <h2 className="text-2xl font-black uppercase tracking-tighter">Access <span className="text-blue-500">Key</span></h2>
                                 <p className="text-slate-500 font-bold uppercase tracking-widest text-[9px]">Invite your students</p>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => setIsCodeModalOpen(false)}
                                 className="p-2 text-slate-500 hover:text-white transition-colors"
                                 aria-label="Close modal"
@@ -523,8 +569,8 @@ export default function ClassroomPage() {
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex items-center justify-between gap-6 relative group overflow-hidden">
                             <div className="absolute inset-0 bg-blue-600/5 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
                             <code className="text-4xl font-black text-blue-400 tracking-[0.2em] relative z-10">{classroom?.inviteCode}</code>
-                            
-                            <button 
+
+                            <button
                                 onClick={copyCode}
                                 className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] relative z-10"
                             >
@@ -583,7 +629,7 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                     <h2 className="text-3xl font-black uppercase italic tracking-tighter">Live Classroom <span className="text-blue-500">Pulse</span></h2>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Real-time pedagogical analytics & student engagement</p>
                 </div>
-                <button 
+                <button
                     onClick={fetchData}
                     disabled={loading}
                     className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 hover:text-blue-400 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
@@ -626,17 +672,17 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                             const intensity = Math.min(Number(topic.count) * 10, 100);
                             return (
                                 <div key={i} className="p-4 rounded-2xl border border-white/5 relative overflow-hidden group">
-                                    <div 
-                                        className="absolute inset-0 bg-red-500 transition-opacity duration-500 pointer-events-none" 
-                                        style={{ opacity: intensity / 300 }} 
+                                    <div
+                                        className="absolute inset-0 bg-red-500 transition-opacity duration-500 pointer-events-none"
+                                        style={{ opacity: intensity / 300 }}
                                     />
                                     <div className="relative z-10 space-y-2">
                                         <p className="text-sm font-bold text-white uppercase tracking-tight">{topic.subject}</p>
                                         <div className="flex items-center justify-between">
                                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{topic.count} Doubts</span>
                                             <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${
-                                                topic.severity === 'High' ? 'bg-red-500/20 text-red-500' : 
-                                                topic.severity === 'Medium' ? 'bg-orange-500/20 text-orange-500' : 
+                                                topic.severity === 'High' ? 'bg-red-500/20 text-red-500' :
+                                                topic.severity === 'Medium' ? 'bg-orange-500/20 text-orange-500' :
                                                 'bg-emerald-500/20 text-emerald-500'
                                             }`}>
                                                 {topic.severity}
@@ -658,8 +704,8 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                         <div className="relative w-48 h-48 flex items-center justify-center">
                             <svg className="w-full h-full transform -rotate-90">
                                 <circle cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/5" />
-                                <circle 
-                                    cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent" 
+                                <circle
+                                    cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent"
                                     strokeDasharray={2 * Math.PI * 80}
                                     strokeDashoffset={2 * Math.PI * 80 * (1 - solvedPercentage / 100)}
                                     strokeLinecap="round"
@@ -754,8 +800,8 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                         const heightPercentage = Math.min((activity / 10) * 100, 100);
                         return (
                             <div key={hour} className="group relative flex flex-col items-center gap-2">
-                                <div 
-                                    className="w-full bg-gradient-to-t from-purple-600 to-blue-400 rounded-t-md hover:from-white hover:to-white transition-all duration-500" 
+                                <div
+                                    className="w-full bg-gradient-to-t from-purple-600 to-blue-400 rounded-t-md hover:from-white hover:to-white transition-all duration-500"
                                     style={{ height: `${Math.max(heightPercentage, 2)}%` }}
                                 />
                                 <span className="text-[7px] font-black text-slate-600 uppercase group-hover:text-white transition-colors">
@@ -851,7 +897,7 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
                 <div className="bg-slate-950/40 backdrop-blur-xl rounded-[2.9rem] p-6 md:p-10 flex flex-col md:flex-row items-center gap-8 overflow-hidden relative">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/10 blur-[100px] rounded-full -ml-32 -mb-32"></div>
-                    
+
                     <div className="relative shrink-0">
                         <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-[2rem] flex items-center justify-center shadow-2xl relative z-10 group">
                             <Brain className="w-12 h-12 text-white group-hover:scale-110 transition-transform duration-500" />
@@ -907,7 +953,7 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
                     </h4>
                     <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-[3rem] p-8 space-y-8 relative overflow-hidden group">
                         <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-emerald-500/10 blur-[100px] rounded-full group-hover:bg-emerald-500/20 transition-all"></div>
-                        
+
                         <div className="space-y-6 relative z-10">
                             <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/20">
@@ -944,4 +990,3 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
         </div>
     );
 }
-

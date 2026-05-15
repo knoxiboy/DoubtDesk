@@ -37,7 +37,7 @@ export default function BookmarksPage() {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="space-y-2">
-                        <button 
+                        <button
                             onClick={() => router.back()}
                             className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-sm font-bold uppercase tracking-widest mb-4"
                         >
@@ -68,9 +68,9 @@ export default function BookmarksPage() {
                 ) : bookmarks.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {bookmarks.map((doubt) => (
-                            <DoubtCard 
-                                key={doubt.id} 
-                                doubt={doubt} 
+                            <DoubtCard
+                                key={doubt.id}
+                                doubt={doubt}
                                 onUpdate={fetchBookmarks}
                                 role={appUser?.role}
                             />
@@ -85,7 +85,7 @@ export default function BookmarksPage() {
                         <p className="text-slate-500 max-w-md mx-auto font-medium leading-relaxed mb-8 text-sm">
                             You haven't bookmarked any doubts yet. Click the bookmark icon on any doubt to save it here for later!
                         </p>
-                        <button 
+                        <button
                             onClick={() => router.push("/dashboard")}
                             className="px-8 py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-200 transition-all active:scale-95 shadow-xl"
                         >

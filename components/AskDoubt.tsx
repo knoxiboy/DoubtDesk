@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Loader2, Upload, File } from "lucide-react";
+import { X, Loader2, Upload, File, Tags, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface AskDoubtProps {
@@ -13,6 +13,37 @@ interface AskDoubtProps {
     classroomId?: number | null;
     type?: string;
 }
+
+const SUBJECT_KEYWORDS: Record<string, string[]> = {
+    Calculus: ["derivative", "integral", "limit", "differentiation", "maxima", "minima"],
+    Algebra: ["equation", "polynomial", "matrix", "linear", "quadratic", "factor"],
+    Geometry: ["triangle", "circle", "angle", "area", "perimeter", "theorem"],
+    Physics: ["force", "motion", "velocity", "acceleration", "current", "voltage", "energy"],
+    Chemistry: ["molecule", "reaction", "acid", "base", "organic", "periodic"],
+    Biology: ["cell", "dna", "photosynthesis", "organ", "enzyme", "genetics"],
+    Programming: ["code", "function", "react", "javascript", "python", "api", "bug"],
+    "Data Structures": ["array", "linked list", "stack", "queue", "tree", "graph"],
+    Algorithms: ["sort", "search", "complexity", "recursion", "dynamic programming"],
+};
+
+const suggestSubject = (text: string) => {
+    const normalized = text.toLowerCase();
+    return Object.entries(SUBJECT_KEYWORDS).find(([, keywords]) =>
+        keywords.some((keyword) => normalized.includes(keyword))
+    )?.[0] || "";
+};
+
+const suggestTags = (text: string, subject: string) => {
+    const normalized = text.toLowerCase();
+    const tags = new Set<string>();
+
+    if (subject) tags.add(subject);
+    Object.entries(SUBJECT_KEYWORDS).forEach(([topic, keywords]) => {
+        if (keywords.some((keyword) => normalized.includes(keyword))) tags.add(topic);
+    });
+
+    return Array.from(tags).slice(0, 4);
+};
 
 /**
  * AskDoubt Component
@@ -29,6 +60,10 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
     const [fileName, setFileName] = useState(doubtToEdit?.imageUrl ? "Existing Image" : "");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [userName, setUserName] = useState("");
+    const [tags, setTags] = useState<string[]>(doubtToEdit?.tags?.map((tag: any) => tag.name) || []);
+    const [tagDraft, setTagDraft] = useState("");
+    const [subjectWasEdited, setSubjectWasEdited] = useState(false);
+    const [suggestedSubject, setSuggestedSubject] = useState("");
 
     useEffect(() => {
         if (doubtToEdit) {
@@ -36,10 +71,27 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
             setSubject(doubtToEdit.subject || defaultSubject);
             setImageUrl(doubtToEdit.imageUrl || "");
             setFileName(doubtToEdit.imageUrl ? "Existing Image" : "");
+            setTags(doubtToEdit.tags?.map((tag: any) => tag.name) || []);
         } else {
             setSubject(defaultSubject);
+            setTags([]);
+            setSubjectWasEdited(false);
         }
     }, [defaultSubject, doubtToEdit]);
+
+    useEffect(() => {
+        if (content.trim().length < 20) {
+            setSuggestedSubject("");
+            return;
+        }
+
+        const detectedSubject = suggestSubject(content);
+        setSuggestedSubject(detectedSubject);
+
+        if (detectedSubject && !subjectWasEdited) {
+            setSubject(detectedSubject);
+        }
+    }, [content, subjectWasEdited]);
 
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
@@ -76,6 +128,22 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
         }
     };
 
+    const addTag = (tagName: string) => {
+        const cleanTag = tagName.trim().replace(/\s+/g, " ");
+        if (!cleanTag) return;
+        setTags((currentTags) => {
+            if (currentTags.some((tag) => tag.toLowerCase() === cleanTag.toLowerCase())) {
+                return currentTags;
+            }
+            return [...currentTags, cleanTag].slice(0, 8);
+        });
+        setTagDraft("");
+    };
+
+    const addSuggestedTags = () => {
+        suggestTags(content, subject).forEach(addTag);
+    };
+
     /**
      * Submits the doubt to the API.
      * Handles both creation (POST) and updates (PATCH).
@@ -89,8 +157,8 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
             const url = doubtToEdit ? `/api/doubts/action/${doubtToEdit.id}` : "/api/doubts";
             const method = doubtToEdit ? "PATCH" : "POST";
             const body = doubtToEdit 
-                ? { action: "edit", content, subject, imageUrl }
-                : { userName, subject, content, imageUrl, classroomId, type };
+                ? { action: "edit", content, subject, imageUrl, tags }
+                : { userName, subject, content, imageUrl, classroomId, type, tags };
 
             const res = await fetch(url, {
                 method,
@@ -143,11 +211,30 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                         <input
                             type="text"
                             value={subject}
-                            onChange={(e) => setSubject(e.target.value)}
+                            onChange={(e) => {
+                                setSubject(e.target.value);
+                                setSubjectWasEdited(true);
+                            }}
                             placeholder="e.g. Quantum Mechanics, React Hooks, etc."
                             className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white focus:outline-none focus:border-blue-500/50 font-bold text-sm"
                             required
                         />
+                        {suggestedSubject && (
+                            <div className="flex items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-widest text-blue-300">
+                                <Sparkles className="w-3 h-3" />
+                                Suggested subject: {suggestedSubject}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSubject(suggestedSubject);
+                                        setSubjectWasEdited(false);
+                                    }}
+                                    className="text-blue-400 hover:text-blue-200 underline underline-offset-4"
+                                >
+                                    Apply
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-2">
@@ -166,6 +253,58 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                             placeholder="Type your question here..."
                             className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all resize-none"
                         />
+                    </div>
+
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-3 px-1">
+                            <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Tags</label>
+                            <button
+                                type="button"
+                                onClick={addSuggestedTags}
+                                disabled={!content.trim()}
+                                className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 disabled:opacity-40"
+                            >
+                                <Sparkles className="w-3 h-3" /> Suggest
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 focus-within:border-blue-500/50">
+                            <Tags className="w-4 h-4 text-slate-500" />
+                            <input
+                                type="text"
+                                value={tagDraft}
+                                onChange={(e) => setTagDraft(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === ",") {
+                                        e.preventDefault();
+                                        addTag(tagDraft);
+                                    }
+                                }}
+                                placeholder="Add a tag and press Enter"
+                                className="flex-1 bg-transparent text-sm text-white placeholder:text-slate-600 focus:outline-none"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => addTag(tagDraft)}
+                                className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white"
+                            >
+                                Add
+                            </button>
+                        </div>
+                        {tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {tags.map((tag) => (
+                                    <button
+                                        key={tag}
+                                        type="button"
+                                        onClick={() => setTags((currentTags) => currentTags.filter((item) => item !== tag))}
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-200 text-[10px] font-bold"
+                                    >
+                                        {tag}
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-2">

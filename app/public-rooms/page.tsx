@@ -10,6 +10,7 @@ export default function PublicRoomsPage() {
     const [doubts, setDoubts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState("All");
+    const [tagFilter, setTagFilter] = useState("");
     const [customFilter, setCustomFilter] = useState("");
     const [isOthersActive, setIsOthersActive] = useState(false);
 
@@ -18,13 +19,14 @@ export default function PublicRoomsPage() {
         try {
             const userName = localStorage.getItem("anonymous_user");
             const params = new URLSearchParams();
-            
+
             if (filter !== "All") {
                 const subjectFilter = filter === "Others" ? customFilter : filter;
                 if (subjectFilter) params.append("subject", subjectFilter);
             }
             if (userName) params.append("userName", userName);
-            
+            if (tagFilter.trim()) params.append("tag", tagFilter.trim());
+
             const res = await fetch(`/api/doubts?${params.toString()}`);
             const data = await res.json();
             setDoubts(data);
@@ -72,7 +74,7 @@ export default function PublicRoomsPage() {
                         Collaborate with student community. <span className="text-blue-400/80 font-bold">Ask, Solve, Learn anonymously.</span>
                     </p>
                 </div>
-                <button 
+                <button
                     onClick={() => setIsAskModalOpen(true)}
                     className="flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition-all shadow-lg shadow-blue-600/20 active:scale-95"
                 >
@@ -100,8 +102,8 @@ export default function PublicRoomsPage() {
                             }
                         }}
                         className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${
-                            filter === f 
-                            ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" 
+                            filter === f
+                            ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20"
                             : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white"
                         }`}
                     >
@@ -112,7 +114,7 @@ export default function PublicRoomsPage() {
                 {/* Custom Filter Input */}
                 {filter === "Others" && (
                     <div className="flex items-center gap-2 animate-in slide-in-from-left-4 duration-300">
-                        <input 
+                        <input
                             type="text"
                             placeholder="Type filter..."
                             value={customFilter}
@@ -122,7 +124,7 @@ export default function PublicRoomsPage() {
                             }}
                             className="bg-slate-900 border border-blue-500/30 rounded-xl px-4 py-2 text-[10px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all w-40"
                         />
-                        <button 
+                        <button
                             onClick={fetchDoubts}
                             className="px-4 py-2 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/20 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all"
                         >
@@ -130,6 +132,25 @@ export default function PublicRoomsPage() {
                         </button>
                     </div>
                 )}
+
+                <div className="flex items-center gap-2 ml-auto">
+                    <input
+                        type="text"
+                        placeholder="Filter by tag..."
+                        value={tagFilter}
+                        onChange={(e) => setTagFilter(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") fetchDoubts();
+                        }}
+                        className="bg-slate-900 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all w-40"
+                    />
+                    <button
+                        onClick={fetchDoubts}
+                        className="px-4 py-2 bg-white/5 text-slate-300 hover:bg-blue-600 hover:text-white border border-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all"
+                    >
+                        Tag
+                    </button>
+                </div>
             </div>
 
             {loading ? (
@@ -144,7 +165,7 @@ export default function PublicRoomsPage() {
                     ))}
                 </div>
             ) : (
-                
+
                 <div className="relative flex flex-col items-center justify-center py-20 rounded-[3rem] text-center px-6 overflow-hidden border border-white/5">
                 {/* Layered gradient background */}
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-950/40 via-slate-900/20 to-indigo-950/30 rounded-[3rem]" />
@@ -217,10 +238,10 @@ export default function PublicRoomsPage() {
             )}
 
             {isAskModalOpen && (
-                <AskDoubt 
+                <AskDoubt
                     defaultSubject={filter !== "All" ? filter : "Math"}
-                    isOpen={isAskModalOpen} 
-                    onClose={() => setIsAskModalOpen(false)} 
+                    isOpen={isAskModalOpen}
+                    onClose={() => setIsAskModalOpen(false)}
                     onSuccess={() => {
                         setIsAskModalOpen(false);
                         fetchDoubts();

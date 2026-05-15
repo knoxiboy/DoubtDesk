@@ -34,7 +34,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [solutionImage, setSolutionImage] = useState("");
     const [fileName, setFileName] = useState("");
     const [userName, setUserName] = useState("");
-    
+
     const [isDoubtOwner, setIsDoubtOwner] = useState(false);
     const [isSolving, setIsSolving] = useState(false);
     const [isEditingReply, setIsEditingReply] = useState(false);
@@ -42,14 +42,14 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
     // UI State
     const [activeTab, setActiveTab] = useState<'all' | 'chat' | 'solutions'>('all');
-    
+
     // Edit/Delete State
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editContent, setEditContent] = useState("");
     const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
     const [isFullscreenImageOpen, setIsFullscreenImageOpen] = useState(false);
     const [fullscreenImageUrl, setFullscreenImageUrl] = useState("");
-    
+
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -64,7 +64,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [replies]);
-    
+
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
             if (e.key === "Escape") onClose();
@@ -112,7 +112,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
             if (res.ok) {
                 const updatedReply = await res.json();
-                
+
                 if (editingId && type === 'solution') {
                     setReplies(replies.map(r => r.id === editingId ? updatedReply : r));
                     setEditingId(null);
@@ -283,13 +283,13 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const ReplyBubble = ({ reply }: { reply: Reply }) => {
         const isMe = reply.userName === userName;
         const isOfficial = doubt.solvedReplyId === reply.id;
-        
+
         return (
             <div className={`flex flex-col group/msg relative w-full mb-6 ${isMe ? 'items-end' : 'items-start'}`}>
                 {/* Message Bubble */}
                 <div className={`relative max-w-[85%] sm:max-w-[75%] rounded-[2rem] p-6 ${
-                    reply.type === 'solution' 
-                    ? `${isOfficial ? 'bg-emerald-500/10 border-2 border-emerald-500/40 ring-4 ring-emerald-500/5' : 'bg-white/5 border border-white/10'}` 
+                    reply.type === 'solution'
+                    ? `${isOfficial ? 'bg-emerald-500/10 border-2 border-emerald-500/40 ring-4 ring-emerald-500/5' : 'bg-white/5 border border-white/10'}`
                     : isMe ? 'bg-blue-600/10 border border-blue-500/20' : 'bg-white/5 border border-white/10'
                 }`}>
                     {/* Header */}
@@ -307,7 +307,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
                         <div className="flex items-center gap-2 shrink-0">
                             {(isDoubtOwner || isTeacher) && reply.type === 'solution' && !editingId && (
-                                <button 
+                                <button
                                     onClick={() => handleMarkAsSolution(reply.id)}
                                     disabled={isSolving}
                                     className={`text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border transition-all ${
@@ -319,20 +319,20 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     {isOfficial ? "Unmark" : "Mark Official"}
                                 </button>
                             )}
-                            
+
                             {isMe && !editingId && (
                                 <div className="relative">
-                                    <button 
+                                    <button
                                         onClick={() => setMenuOpenId(menuOpenId === reply.id ? null : reply.id)}
                                         className="p-1.5 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-all"
                                         aria-label="More options"
                                     >
                                         <MoreVertical className="w-3.5 h-3.5" />
                                     </button>
-                                    
+
                                     {menuOpenId === reply.id && (
                                         <div className="absolute top-10 right-0 bg-slate-800 border border-white/10 rounded-xl shadow-2xl py-1 w-32 animate-in zoom-in-95 duration-200 z-50 overflow-hidden">
-                                            <button 
+                                            <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     if (reply.type === 'solution') {
@@ -351,7 +351,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                             >
                                                 <Pencil className="w-3 h-3" /> Edit
                                             </button>
-                                            <button 
+                                            <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleDeleteReply(reply.id);
@@ -379,8 +379,8 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                 />
                                 <div className="flex gap-2 justify-end">
                                     <button onClick={() => setEditingId(null)} disabled={isEditingReply} className="px-4 py-2 text-[10px] font-black uppercase text-slate-500 hover:text-white disabled:opacity-50">Cancel</button>
-                                    <button 
-                                        onClick={() => handleEditReply(reply.id)} 
+                                    <button
+                                        onClick={() => handleEditReply(reply.id)}
                                         disabled={isEditingReply || !editContent.trim()}
                                         className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-900/40 disabled:opacity-50 flex items-center gap-2"
                                     >
@@ -392,7 +392,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             <>
                                 {reply.content && <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-medium">{reply.content}</p>}
                                 {reply.imageUrl && (
-                                    <button 
+                                    <button
                                         onClick={() => { setFullscreenImageUrl(reply.imageUrl!); setIsFullscreenImageOpen(true); }}
                                         className="mt-2 rounded-2xl overflow-hidden border border-white/5 group/img relative cursor-zoom-in active:scale-[0.98] transition-all w-full"
                                         aria-label="View image fullscreen"
@@ -409,11 +409,11 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
                     {/* Vote Action */}
                     <div className="mt-4 flex items-center justify-end">
-                        <button 
+                        <button
                             onClick={() => handleVote(reply.id)}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group/vote ${
-                                reply.hasUpvoted 
-                                ? "bg-blue-600/20 text-blue-400 border-blue-500/30 shadow-lg shadow-blue-500/10" 
+                                reply.hasUpvoted
+                                ? "bg-blue-600/20 text-blue-400 border-blue-500/30 shadow-lg shadow-blue-500/10"
                                 : "bg-white/5 text-slate-500 border-white/5 hover:text-white hover:bg-white/10"
                             }`}
                         >
@@ -468,7 +468,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 {/* Tab Navigation - Hidden for 'Ask Teacher' Doubts */}
                 {doubt.type !== 'teacher' && (
                     <div className="px-8 border-b border-white/5 flex gap-8 h-14 bg-white/[0.01]">
-                        <button 
+                        <button
                             onClick={() => setActiveTab('all')}
                             className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
                                 activeTab === 'all' ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300'
@@ -480,7 +480,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             </span>
                             {activeTab === 'all' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 animate-in fade-in slide-in-from-bottom-1" />}
                         </button>
-                        <button 
+                        <button
                             onClick={() => setActiveTab('chat')}
                             className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
                                 activeTab === 'chat' ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300'
@@ -492,7 +492,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             </span>
                             {activeTab === 'chat' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 animate-in fade-in slide-in-from-bottom-1" />}
                         </button>
-                        <button 
+                        <button
                             onClick={() => setActiveTab('solutions')}
                             className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
                                 activeTab === 'solutions' ? 'text-emerald-500' : 'text-slate-500 hover:text-slate-300'
@@ -525,9 +525,9 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     ) : (
                         <div className="space-y-6">
                             {(() => {
-                                const filteredReplies = activeTab === 'all' 
-                                    ? replies 
-                                    : activeTab === 'chat' 
+                                const filteredReplies = activeTab === 'all'
+                                    ? replies
+                                    : activeTab === 'chat'
                                         ? replies.filter(r => r.type === 'comment')
                                         : replies.filter(r => r.type === 'solution');
 
@@ -543,21 +543,21 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
                                 let lastDate = "";
                                 return filteredReplies.map((reply, index) => {
-                                    const replyDate = new Date(reply.createdAt).toLocaleDateString([], { 
-                                        day: 'numeric', 
-                                        month: 'long', 
-                                        year: 'numeric' 
+                                    const replyDate = new Date(reply.createdAt).toLocaleDateString([], {
+                                        day: 'numeric',
+                                        month: 'long',
+                                        year: 'numeric'
                                     });
-                                    
+
                                     let dateSeparator = null;
                                     if (replyDate !== lastDate) {
                                         lastDate = replyDate;
-                                        
+
                                         // WhatsApp style: Today, Yesterday, or Date
                                         const now = new Date();
                                         const today = now.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
                                         const yesterday = new Date(now.setDate(now.getDate() - 1)).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
-                                        
+
                                         let displayDate = replyDate;
                                         if (replyDate === today) displayDate = "Today";
                                         else if (replyDate === yesterday) displayDate = "Yesterday";
@@ -593,7 +593,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                         <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 bg-white/[0.03] p-8 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-y-auto max-h-[60vh] group/form custom-scrollbar">
                             {/* Decorative Background Blur */}
                             <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
-                            
+
                             <div className="flex items-center justify-between relative z-10">
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/20 flex items-center justify-center">
@@ -608,21 +608,21 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                         </p>
                                     </div>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => {
                                         setShowSolutionForm(false);
                                         setEditingId(null);
                                         setSolutionContent("");
                                         setSolutionImage("");
                                         setFileName("");
-                                    }} 
+                                    }}
                                     className="p-3 hover:bg-white/5 rounded-2xl text-slate-500 hover:text-white transition-all hover:rotate-90"
                                     aria-label="Close form"
                                 >
                                     <X className="w-6 h-6" />
                                 </button>
                             </div>
-                            
+
                             <textarea
                                 value={solutionContent}
                                 onChange={(e) => setSolutionContent(e.target.value)}
@@ -640,7 +640,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                 <div className="relative group/preview animate-in zoom-in-95 duration-300 w-full sm:w-fit">
                                     <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-slate-950 shadow-2xl group/img">
                                         <img src={solutionImage} className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500" />
-                                        
+
                                         {/* Image Overlay */}
                                         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent flex flex-col justify-end p-3 translate-y-2 group-hover/img:translate-y-0 transition-transform">
                                             <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400 truncate max-w-full">
@@ -650,7 +650,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
                                         {/* Actions on Hover */}
                                         <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover/img:opacity-100 flex items-center justify-center gap-3 transition-all duration-300">
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => { setFullscreenImageUrl(solutionImage); setIsFullscreenImageOpen(true); }}
                                                 className="w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100"
@@ -658,7 +658,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                             >
                                                 <ZoomIn className="w-5 h-5" />
                                             </button>
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => { setSolutionImage(""); setFileName(""); }}
                                                 className="w-10 h-10 bg-red-500/20 hover:bg-red-500 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100 border border-red-500/20 hover:border-transparent"
@@ -700,7 +700,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     ) : (
                         <div className="flex items-center gap-4">
                             {(doubt.isSolved !== "solved" && (doubt.type !== 'teacher' || isTeacher)) && (
-                                <button 
+                                <button
                                     onClick={() => setShowSolutionForm(true)}
                                     className="px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all group flex items-center gap-2 active:scale-95 shrink-0 shadow-lg shadow-emerald-600/20"
                                 >
@@ -722,7 +722,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     placeholder="Ask for clarification or chat with peers..."
                                     className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 flex-1 pl-6 pr-14 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all font-medium"
                                 />
-                                <button 
+                                <button
                                     onClick={() => handlePost('comment')}
                                     disabled={isPosting || !chatText.trim()}
                                     className="absolute right-2 top-2 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all disabled:opacity-50"
@@ -739,24 +739,24 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
             {/* Fullscreen Image Viewer */}
             {isFullscreenImageOpen && (
-                <div 
+                <div
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-300"
                     onClick={() => setIsFullscreenImageOpen(false)}
                 >
-                    <button 
+                    <button
                         onClick={() => setIsFullscreenImageOpen(false)}
                         className="absolute top-8 right-8 p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all hover:rotate-90 z-[210]"
                         aria-label="Close fullscreen view"
                     >
                         <X className="w-8 h-8" />
                     </button>
-                    
+
                     <div className="relative w-full h-full p-12 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                         <div className="relative max-w-full max-h-full">
-                            <img 
-                                src={fullscreenImageUrl} 
-                                alt="Fullscreen View" 
-                                className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl border border-white/10 object-contain animate-in zoom-in-95 duration-300" 
+                            <img
+                                src={fullscreenImageUrl}
+                                alt="Fullscreen View"
+                                className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl border border-white/10 object-contain animate-in zoom-in-95 duration-300"
                             />
                             <div className="absolute -bottom-12 left-0 right-0 flex justify-center">
                                 <div className="px-6 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full backdrop-blur-md">

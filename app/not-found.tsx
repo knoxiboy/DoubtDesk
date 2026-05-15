@@ -14,7 +14,7 @@ export default function NotFound() {
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest animate-pulse">
                         <AlertCircle className="w-3.5 h-3.5" /> Navigation Error
                     </div>
-                    
+
                     {/* Hero 404 Text */}
                     <h1 className="text-[120px] sm:text-[180px] font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-slate-800 leading-none tracking-tighter select-none drop-shadow-2xl">
                         404
@@ -34,8 +34,8 @@ export default function NotFound() {
 
                 {/* Action Button */}
                 <div className="pt-6">
-                    <Link 
-                        href="/" 
+                    <Link
+                        href="/"
                         className="inline-flex items-center gap-3 px-10 py-5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-3xl font-black uppercase tracking-widest text-xs transition-all shadow-2xl shadow-blue-500/20 active:scale-95 group border border-white/10"
                     >
                         <Home className="w-4 h-4 transition-transform group-hover:-translate-y-1" />

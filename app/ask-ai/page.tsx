@@ -63,6 +63,7 @@ export default function AskAIPage() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [currentType, setCurrentType] = useState<SolveType>('standard');
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [errorCode, setErrorCode] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -88,6 +89,7 @@ export default function AskAIPage() {
             setMessages([]); // Reset for new doubt
         }
         setErrorMsg(null);
+        setErrorCode(null);
 
         const newMessages = isFollowUp 
             ? [...messages, { role: 'user' as const, content: currentPrompt }]
@@ -112,7 +114,10 @@ export default function AskAIPage() {
                 })
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data?.error || "The AI couldn't process your request.");
+            if (!res.ok) {
+                setErrorCode(data?.code || null);
+                throw new Error(data?.error || "The AI couldn't process your request.");
+            }
             
             setMessages(prev => [...prev, { role: 'assistant', content: data.reply, type: isFollowUp ? 'standard' : type }]);
             setTimeout(scrollToBottom, 200);
@@ -375,10 +380,16 @@ export default function AskAIPage() {
                         <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
                             <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
                             <div>
-                                <p className="text-red-400 font-bold text-sm">Oops! Something went wrong 😅</p>
+                                <p className="text-red-400 font-bold text-sm">
+                                    {errorCode === "IMAGE_QUALITY_LOW" ? "Image quality issue" : "Oops! Something went wrong"}
+                                </p>
                                 <p className="text-red-400/70 text-xs mt-1">
                                     {(() => {       {/* Map technical errors to user-friendly messages */}
                                         const error = errorMsg.toLowerCase();
+
+                                        if (errorCode === "IMAGE_QUALITY_LOW") {
+                                            return "We couldn't read your image clearly. Please upload a clearer photo or type your doubt instead.";
+                                        }
 
                                         if (error.includes("overloaded")) {
                                             return "Looks like our AI is taking a quick nap 😴 Please try again in a few seconds.";

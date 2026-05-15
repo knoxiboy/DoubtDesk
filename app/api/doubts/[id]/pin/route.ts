@@ -29,7 +29,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const [pinCount] = await db.select({ value: count() })
             .from(doubtsTable)
             .where(and(eq(doubtsTable.classroomId, doubt.classroomId), eq(doubtsTable.isPinned, true)));
-        
+
         if (pinCount.value >= 3) {
             return NextResponse.json({ error: "Maximum of 3 pinned doubts allowed per classroom" }, { status: 400 });
         }
