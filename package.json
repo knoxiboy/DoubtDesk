@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "jest --watchAll=false --forceExit"
   },
   "dependencies": {
     "@clerk/nextjs": "6.37.3",
@@ -89,6 +90,11 @@
     "@remotion/bundler": "^4.0.435",
     "@remotion/cli": "^4.0.435",
     "@remotion/renderer": "^4.0.435",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "20.16.11",
     "@types/react": "18.3.11",
     "@types/react-dom": "18.3.1",
@@ -96,12 +102,16 @@
     "autoprefixer": "10.4.20",
     "drizzle-kit": "^0.31.10",
     "ffmpeg-static": "^5.3.0",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
     "openai": "^6.29.0",
     "postcss": "8.4.47",
     "remotion": "^4.0.435",
     "tailwindcss": "3.4.14",
+    "ts-node": "^10.9.2",
     "tsx": "4.19.1",
-    "typescript": "5.6.3"
+    "typescript": "5.6.3",
+    "undici": "^7.25.0"
   },
   "overrides": {
     "esbuild": "0.24.0"

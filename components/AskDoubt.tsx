@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Loader2, Upload, File, Tags, Sparkles } from "lucide-react";
+import { X, Loader2, Upload, File, Eye, EyeOff, Bold, Italic, Code, List, Tags, Sparkles, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 interface AskDoubtProps {
@@ -50,27 +50,31 @@ const suggestTags = (text: string, subject: string) => {
  * A modal form for students to submit doubts to the community or a specific classroom.
  * Features:
  * - Anonymous user identification via localStorage
- * - Image attachment support with base64 conversion
+ * - Image & PDF attachment support with base64 conversion and 5MB validation
  * - Edit mode for existing doubts
  */
 export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSuccess, doubtToEdit, classroomId = null, type = 'community' }: AskDoubtProps) {
     const [content, setContent] = useState(doubtToEdit?.content || "");
     const [subject, setSubject] = useState(doubtToEdit?.subject || defaultSubject);
     const [imageUrl, setImageUrl] = useState(doubtToEdit?.imageUrl || "");
-    const [fileName, setFileName] = useState(doubtToEdit?.imageUrl ? "Existing Image" : "");
+    const [fileName, setFileName] = useState(
+        doubtToEdit?.imageUrl ? (doubtToEdit.imageUrl.startsWith("data:application/pdf") ? "Attached Document.pdf" : "Existing Image") : ""
+    );
+    const [fileSize, setFileSize] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [userName, setUserName] = useState("");
     const [tags, setTags] = useState<string[]>(doubtToEdit?.tags?.map((tag: any) => tag.name) || []);
     const [tagDraft, setTagDraft] = useState("");
     const [subjectWasEdited, setSubjectWasEdited] = useState(false);
     const [suggestedSubject, setSuggestedSubject] = useState("");
+    const [isDragging, setIsDragging] = useState(false);
 
     useEffect(() => {
         if (doubtToEdit) {
             setContent(doubtToEdit.content || "");
             setSubject(doubtToEdit.subject || defaultSubject);
             setImageUrl(doubtToEdit.imageUrl || "");
-            setFileName(doubtToEdit.imageUrl ? "Existing Image" : "");
+            setFileName(doubtToEdit.imageUrl ? (doubtToEdit.imageUrl.startsWith("data:application/pdf") ? "Attached Document.pdf" : "Existing Image") : "");
             setTags(doubtToEdit.tags?.map((tag: any) => tag.name) || []);
         } else {
             setSubject(defaultSubject);
@@ -103,10 +107,6 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
         return () => window.removeEventListener("keydown", handleEsc);
     }, [isOpen, onClose]);
 
-    /**
-     * Handles anonymous user generation and retrieval from localStorage.
-     * This creates a persistent "Academic Personality" for the student without requiring friction-heavy sign-ups.
-     */
     useEffect(() => {
         let savedName = localStorage.getItem("anonymous_user");
         if (!savedName) {
@@ -119,13 +119,35 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setFileName(file.name);
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setImageUrl(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+            processFile(file);
         }
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) {
+            processFile(file);
+        }
+    };
+
+    const processFile = (file: File) => {
+        if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+            toast.error("Only image (PNG, JPG, GIF, WebP) and PDF files are supported.");
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error("File size exceeds 5MB limit.");
+            return;
+        }
+        setFileName(file.name);
+        setFileSize((file.size / (1024 * 1024)).toFixed(2));
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImageUrl(reader.result as string);
+        };
+        reader.readAsDataURL(file);
     };
 
     const addTag = (tagName: string) => {
@@ -144,10 +166,6 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
         suggestTags(content, subject).forEach(addTag);
     };
 
-    /**
-     * Submits the doubt to the API.
-     * Handles both creation (POST) and updates (PATCH).
-     */
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if ((!content.trim() && !imageUrl) || !subject.trim()) return;
@@ -308,37 +326,75 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 px-1">Attach Image or File</label>
-                        <div className="relative group">
+                        <div className="flex items-center justify-between px-1">
+                            <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Attach Visual or PDF (Max 5MB)</label>
+                            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">PNG, JPG, GIF, WEBP, PDF</span>
+                        </div>
+                        <div 
+                            className="relative group"
+                            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                            onDragLeave={() => setIsDragging(false)}
+                            onDrop={handleDrop}
+                        >
                             <input
                                 type="file"
                                 onChange={handleFileChange}
-                                accept="image/*"
+                                accept="image/png,image/jpeg,image/gif,image/webp,application/pdf"
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             />
-                            <div className="w-full py-8 border-2 border-dashed border-white/10 rounded-2xl bg-white/[0.02] flex flex-col items-center justify-center gap-3 group-hover:bg-white/[0.05] group-hover:border-blue-500/30 transition-all">
+                            <div className={`w-full py-8 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-3 transition-all ${
+                                isDragging ? 'bg-blue-500/10 border-blue-500/50 scale-[0.99]' : 'bg-white/[0.02] border-white/10 group-hover:bg-white/[0.05] group-hover:border-blue-500/30'
+                            }`}>
                                 {fileName ? (
-                                    <>
-                                        <div className="w-12 h-12 bg-blue-600/20 rounded-xl flex items-center justify-center">
-                                            <File className="w-6 h-6 text-blue-500" />
+                                    imageUrl.startsWith("data:application/pdf") ? (
+                                        <div className="flex flex-col items-center gap-2 px-6 text-center z-20">
+                                            <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center shadow-lg animate-in zoom-in-95">
+                                                <FileText className="w-8 h-8 text-red-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-white font-bold max-w-xs truncate">{fileName}</p>
+                                                {fileSize && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">PDF Document • {fileSize} MB</p>}
+                                            </div>
+                                            <button 
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); setFileName(""); setImageUrl(""); setFileSize(""); }}
+                                                className="mt-2 text-[10px] bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white px-4 py-1.5 rounded-xl font-black uppercase tracking-widest transition-all z-20"
+                                            >
+                                                Remove Attachment
+                                            </button>
                                         </div>
-                                        <span className="text-xs text-white font-bold">{fileName}</span>
-                                        <button 
-                                            type="button"
-                                            onClick={(e) => { e.stopPropagation(); setFileName(""); setImageUrl(""); }}
-                                            className="text-[10px] text-red-400 font-black uppercase tracking-widest hover:text-red-300"
-                                        >
-                                            Remove
-                                        </button>
-                                    </>
+                                    ) : (
+                                        <div className="flex flex-col items-center gap-3 px-6 text-center z-20">
+                                            <div className="relative max-h-40 rounded-xl overflow-hidden border border-white/10 shadow-xl bg-slate-950 animate-in zoom-in-95">
+                                                <img src={imageUrl} alt="Preview" className="max-h-40 object-contain" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-white font-bold max-w-xs truncate">{fileName}</p>
+                                                {fileSize && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Visual Image • {fileSize} MB</p>}
+                                            </div>
+                                            <button 
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); setFileName(""); setImageUrl(""); setFileSize(""); }}
+                                                className="text-[10px] bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-white px-4 py-1 rounded-xl font-black uppercase tracking-widest transition-all z-20"
+                                            >
+                                                Remove Attachment
+                                            </button>
+                                        </div>
+                                    )
                                 ) : (
                                     <>
-                                        <div className="w-12 h-12 bg-slate-800 rounded-xl flex items-center justify-center">
-                                            <Upload className="w-6 h-6 text-slate-500" />
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
+                                            isDragging ? 'bg-blue-600/20 text-blue-400 scale-110' : 'bg-slate-800 text-slate-500 group-hover:text-blue-400 group-hover:scale-105'
+                                        }`}>
+                                            <Upload className="w-7 h-7" />
                                         </div>
-                                        <div className="text-center">
-                                            <p className="text-xs text-slate-300 font-bold uppercase tracking-widest">Click or Drag to Upload</p>
-                                            <p className="text-[9px] text-slate-600 font-bold uppercase tracking-widest mt-1">Image files supported</p>
+                                        <div className="text-center px-4">
+                                            <p className="text-xs text-slate-200 font-bold uppercase tracking-wider">
+                                                {isDragging ? "Drop your file here!" : "Click or Drag File to Upload"}
+                                            </p>
+                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                                                Images (PNG, JPG, WebP) and PDF Documents up to 5MB
+                                            </p>
                                         </div>
                                     </>
                                 )}
@@ -359,14 +415,8 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                             disabled={isSubmitting || (!content.trim() && !imageUrl) || !subject.trim()}
                             className="flex-[2] py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    {doubtToEdit ? "Saving..." : "Posting..."}
-                                </>
-                            ) : (
-                                doubtToEdit ? "Save Changes" : "Post Doubt"
-                            )}
+                            {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {doubtToEdit ? "Update Doubt" : "Post Doubt"}
                         </button>
                     </div>
                 </form>

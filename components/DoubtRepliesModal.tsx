@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, MoreVertical, Pencil, Trash2, PlusCircle, ThumbsUp } from "lucide-react";
+import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, MoreVertical, Pencil, Trash2, PlusCircle, Eye, EyeOff, Bold, Italic, Code, List, ThumbsUp, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
 interface Reply {
@@ -300,6 +300,14 @@ export default function DoubtRepliesModal({
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+                toast.error("Only image (PNG, JPG, GIF, WebP) and PDF files are supported.");
+                return;
+            }
+            if (file.size > 5 * 1024 * 1024) {
+                toast.error("File size exceeds 5MB limit.");
+                return;
+            }
             setFileName(file.name);
             const reader = new FileReader();
             reader.onloadend = () => setSolutionImage(reader.result as string);
@@ -456,23 +464,39 @@ export default function DoubtRepliesModal({
                                     </p>
                                 )}
                                 {reply.imageUrl && (
-                                    <button
-                                        onClick={() => {
-                                            setFullscreenImageUrl(
-                                                reply.imageUrl!,
-                                            );
-                                            setIsFullscreenImageOpen(true);
-                                        }}
-                                        className="mt-2 rounded-2xl overflow-hidden border border-white/5 group/img relative cursor-zoom-in active:scale-[0.98] transition-all w-full">
-                                        <img
-                                            src={reply.imageUrl}
-                                            alt="Solution"
-                                            className="w-full h-auto object-cover max-h-[32rem]"
-                                        />
-                                        <div className="absolute inset-0 bg-white/0 group-hover/img:bg-white/5 flex items-center justify-center transition-all">
-                                            <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover/img:opacity-100 scale-50 group-hover/img:scale-100 transition-all" />
+                                    reply.imageUrl.startsWith("data:application/pdf") ? (
+                                        <div className="mt-3 p-4 rounded-2xl bg-slate-950/80 border border-red-500/20 flex items-center justify-between gap-4 group/pdf hover:border-red-500/40 transition-all shadow-lg w-full max-w-sm">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0 group-hover/pdf:scale-105 transition-transform">
+                                                    <FileText className="w-5 h-5 text-red-400" />
+                                                </div>
+                                                <div className="min-w-0 text-left">
+                                                    <p className="text-xs font-bold text-white truncate">Attached Document.pdf</p>
+                                                    <p className="text-[9px] text-slate-400 uppercase tracking-widest font-black mt-0.5">PDF Attachment</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); window.open(reply.imageUrl!, "_blank"); }}
+                                                className="p-2.5 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-400 rounded-xl transition-all border border-red-500/20 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0"
+                                                title="Open PDF in new tab"
+                                            >
+                                                <ExternalLink className="w-3.5 h-3.5" /> Open
+                                            </button>
                                         </div>
-                                    </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => { setFullscreenImageUrl(reply.imageUrl!); setIsFullscreenImageOpen(true); }}
+                                            className="mt-2 rounded-2xl overflow-hidden border border-white/5 group/img relative cursor-zoom-in active:scale-[0.98] transition-all w-full"
+                                            aria-label="View image fullscreen"
+                                        >
+                                            <img src={reply.imageUrl} alt="Solution" className="w-full h-auto object-cover max-h-[32rem]" />
+                                            <div className="absolute inset-0 bg-white/0 group-hover/img:bg-white/5 flex items-center justify-center transition-all">
+                                                <ZoomIn className="w-8 h-8 text-white opacity-0 group-hover/img:opacity-100 scale-50 group-hover/img:scale-100 transition-all" />
+                                            </div>
+                                        </button>
+                                    )
                                 )}
                             </>
                         )}
@@ -761,6 +785,7 @@ export default function DoubtRepliesModal({
                                     className="w-full h-40 bg-slate-950/50 border border-white/10 rounded-[1.5rem] p-5 text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none font-medium leading-relaxed placeholder:text-slate-600 shadow-inner"
                                 />
 
+<<<<<<< HEAD
                                 {solutionImage && (
                                     <div className="relative group/preview animate-in zoom-in-95 duration-300 w-full sm:w-fit">
                                         <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-slate-950 shadow-2xl group/img">
@@ -768,12 +793,43 @@ export default function DoubtRepliesModal({
                                                 src={solutionImage}
                                                 className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500"
                                             />
+=======
+                            {solutionImage && (
+                                <div className="relative group/preview animate-in zoom-in-95 duration-300 w-full sm:w-fit">
+                                    {solutionImage.startsWith("data:application/pdf") ? (
+                                        <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-slate-950 border border-red-500/20 shadow-2xl">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-12 h-12 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-center shrink-0">
+                                                    <FileText className="w-6 h-6 text-red-500" />
+                                                </div>
+                                                <div className="min-w-0 text-left">
+                                                    <p className="text-xs font-bold text-white truncate max-w-xs">{fileName}</p>
+                                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">PDF Attachment</p>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setSolutionImage(""); setFileName(""); }}
+                                                className="p-2.5 bg-red-500/10 hover:bg-red-500 hover:text-white text-red-400 rounded-xl transition-all border border-red-500/20 text-xs font-bold uppercase tracking-wider shrink-0"
+                                                title="Remove PDF"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-slate-950 shadow-2xl group/img">
+                                            <img src={solutionImage} className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500" />
+>>>>>>> upstream/main
 
                                             {/* Image Overlay */}
                                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent flex flex-col justify-end p-3 translate-y-2 group-hover/img:translate-y-0 transition-transform">
                                                 <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400 truncate max-w-full">
+<<<<<<< HEAD
                                                     {fileName ||
                                                         "Live Attachment"}
+=======
+                                                    {fileName || "Live Attachment"}
+>>>>>>> upstream/main
                                                 </span>
                                             </div>
 
@@ -781,6 +837,7 @@ export default function DoubtRepliesModal({
                                             <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover/img:opacity-100 flex items-center justify-center gap-3 transition-all duration-300">
                                                 <button
                                                     type="button"
+<<<<<<< HEAD
                                                     onClick={() => {
                                                         setFullscreenImageUrl(
                                                             solutionImage,
@@ -790,19 +847,33 @@ export default function DoubtRepliesModal({
                                                         );
                                                     }}
                                                     className="w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100">
+=======
+                                                    onClick={() => { setFullscreenImageUrl(solutionImage); setIsFullscreenImageOpen(true); }}
+                                                    className="w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100"
+                                                    aria-label="Zoom image"
+                                                >
+>>>>>>> upstream/main
                                                     <ZoomIn className="w-5 h-5" />
                                                 </button>
                                                 <button
                                                     type="button"
+<<<<<<< HEAD
                                                     onClick={() => {
                                                         setSolutionImage("");
                                                         setFileName("");
                                                     }}
                                                     className="w-10 h-10 bg-red-500/20 hover:bg-red-500 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100 border border-red-500/20 hover:border-transparent">
+=======
+                                                    onClick={() => { setSolutionImage(""); setFileName(""); }}
+                                                    className="w-10 h-10 bg-red-500/20 hover:bg-red-500 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100 border border-red-500/20 hover:border-transparent"
+                                                    aria-label="Delete image"
+                                                >
+>>>>>>> upstream/main
                                                     <Trash2 className="w-5 h-5" />
                                                 </button>
                                             </div>
                                         </div>
+<<<<<<< HEAD
                                     </div>
                                 )}
 
@@ -841,6 +912,97 @@ export default function DoubtRepliesModal({
                                         {editingId
                                             ? "Finalize Update"
                                             : "Post Solution"}
+=======
+                                    )}
+                                </div>
+                            )}
+
+                            <div className="flex flex-col sm:flex-row gap-4 relative z-10">
+                                <div className="flex-1 relative group overflow-hidden rounded-2xl">
+                                    <input type="file" onChange={handleFileChange} accept="image/png,image/jpeg,image/gif,image/webp,application/pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                    <div className="w-full h-full min-h-[60px] px-6 border-2 border-dashed border-white/5 bg-white/[0.02] flex items-center justify-center gap-3 group-hover:bg-emerald-500/5 group-hover:border-emerald-500/30 transition-all duration-300">
+                                        <div className="p-2 rounded-lg bg-white/5 group-hover:bg-emerald-500/20 transition-colors">
+                                            <Upload className="w-4 h-4 text-emerald-500" />
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] group-hover:text-emerald-400 transition-colors">
+                                            {solutionImage ? "Change Attachment" : "Attach Visual or PDF"}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handlePostOrUpdate}
+                                    disabled={isPosting || (!solutionContent.trim() && !solutionImage)}
+                                    className="px-10 py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] transition-all shadow-xl shadow-emerald-500/20 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-3 active:scale-95 group/submit"
+                                >
+                                    {isPosting ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                    )}
+                                    {editingId ? "Finalize Update" : "Post Solution"}
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-4">
+                            {(doubt.isSolved !== "solved" && (doubt.type !== 'teacher' || isTeacher)) && (
+                                <button
+                                    onClick={() => setShowSolutionForm(true)}
+                                    className="px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all group flex items-center gap-2 active:scale-95 shrink-0 shadow-lg shadow-emerald-600/20"
+                                >
+                                    <PlusCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Post Solution</span>
+                                </button>
+                            )}
+                            <div className="flex-1 flex flex-col gap-2">
+                                {isChatPreviewMode ? (
+                                    <div className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 px-6 text-white text-sm min-h-[54px] max-h-32 overflow-y-auto">
+                                        <MarkdownRenderer content={chatText || "*Nothing to preview*"} />
+                                    </div>
+                                ) : (
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={chatText}
+                                            onChange={(e) => setChatText(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    if (e.ctrlKey || e.metaKey) {
+                                                        e.preventDefault();
+                                                        handlePost('comment');
+                                                    } else {
+                                                        handlePost('comment');
+                                                    }
+                                                }
+                                            }}
+                                            placeholder="Ask for clarification or chat with peers..."
+                                            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 flex-1 pl-6 pr-24 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+                                        />
+                                        <div className="absolute right-2 top-2 flex items-center gap-1">
+                                            <button 
+                                                onClick={() => setIsChatPreviewMode(!isChatPreviewMode)}
+                                                className="p-2 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-all"
+                                                title="Preview Markdown"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </button>
+                                            <button 
+                                                onClick={() => handlePost('comment')}
+                                                disabled={isPosting || !chatText.trim()}
+                                                className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all disabled:opacity-50"
+                                            >
+                                                {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                                {isChatPreviewMode && (
+                                    <button 
+                                        onClick={() => setIsChatPreviewMode(false)}
+                                        className="text-[10px] font-black uppercase text-blue-500 hover:text-blue-400 self-start px-2"
+                                    >
+                                        Back to Edit
+>>>>>>> upstream/main
                                     </button>
                                 </div>
                             </div>
