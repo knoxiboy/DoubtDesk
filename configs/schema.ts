@@ -1,4 +1,4 @@
-import { integer, pgTable, varchar, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
 
 /**
  * Users table storing core user profiles.
@@ -123,6 +123,7 @@ export const doubtsTable = pgTable("doubts", {
     isSolved: varchar({ length: 20 }).default("unsolved"), // unsolved, solved
     solvedReplyId: integer(), // ID of the specific reply that solved it
     type: varchar({ length: 20 }).default("community"), // 'ai', 'community', 'teacher'
+    isPinned: boolean().default(false),
     createdAt: timestamp().defaultNow().notNull(),
 }, (table) => {
     return {
@@ -131,6 +132,36 @@ export const doubtsTable = pgTable("doubts", {
         subjectIndex: index("subject_idx").on(table.subject),
     };
 });
+
+/**
+ * Classroom-aware tags that can be attached to doubts.
+ * Public tags have a null classroomId; classroom tags are scoped to one room.
+ */
+export const tagsTable = pgTable("tags", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    name: varchar({ length: 80 }).notNull(),
+    normalizedName: varchar({ length: 80 }).notNull(),
+    classroomId: integer(),
+    createdByEmail: varchar({ length: 255 }),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    classroomIdIndex: index("tag_classroomId_idx").on(table.classroomId),
+    normalizedNameIndex: uniqueIndex("tag_scope_name_idx").on(table.normalizedName, table.classroomId),
+}));
+
+/**
+ * Many-to-many relationship between doubts and tags.
+ */
+export const doubtTagsTable = pgTable("doubt_tags", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    doubtId: integer().notNull(),
+    tagId: integer().notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    doubtIdIndex: index("doubt_tag_doubtId_idx").on(table.doubtId),
+    tagIdIndex: index("doubt_tag_tagId_idx").on(table.tagId),
+    uniqueDoubtTag: uniqueIndex("doubt_tag_unique_idx").on(table.doubtId, table.tagId),
+}));
 
 export const likesTable = pgTable("likes", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -150,10 +181,18 @@ export const repliesTable = pgTable("replies", {
     type: varchar({ length: 20 }).notNull(), // 'comment' or 'solution'
     content: text(),
     imageUrl: text(),
+    upvotes: integer().default(0).notNull(),
     createdAt: timestamp().defaultNow().notNull(),
 }, (table) => ({
     doubtIdIndex: index("doubtId_idx").on(table.doubtId),
 }));
+
+export const replyLikesTable = pgTable("reply_likes", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userName: varchar({ length: 255 }).notNull(),
+    replyId: integer().notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+});
 
 /**
  * Audit log for AI moderation actions.
@@ -167,3 +206,13 @@ export const moderationLogsTable = pgTable("moderation_logs", {
     contentSnippet: text(),
     createdAt: timestamp().defaultNow().notNull(),
 });
+
+export const bookmarksTable = pgTable("bookmarks", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userEmail: varchar({ length: 255 }).notNull(),
+    doubtId: integer().notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    userEmailIndex: index("bookmark_userEmail_idx").on(table.userEmail),
+    doubtIdIndex: index("bookmark_doubtId_idx").on(table.doubtId),
+}));

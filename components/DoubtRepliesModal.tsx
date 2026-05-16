@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, MoreVertical, Pencil, Trash2, PlusCircle, Eye, EyeOff, Bold, Italic, Code, List } from "lucide-react";
+import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, MoreVertical, Pencil, Trash2, PlusCircle, Eye, EyeOff, Bold, Italic, Code, List, ThumbsUp } from "lucide-react";
 import { toast } from "sonner";
 import MarkdownRenderer from "./MarkdownRenderer";
 
@@ -12,6 +12,8 @@ interface Reply {
     type: 'comment' | 'solution';
     content: string | null;
     imageUrl: string | null;
+    upvotes: number;
+    hasUpvoted?: boolean;
     createdAt: string;
 }
 
@@ -33,13 +35,15 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [solutionImage, setSolutionImage] = useState("");
     const [fileName, setFileName] = useState("");
     const [userName, setUserName] = useState("");
-    
+
     const [isDoubtOwner, setIsDoubtOwner] = useState(false);
     const [isSolving, setIsSolving] = useState(false);
+    const [isEditingReply, setIsEditingReply] = useState(false);
+    const [isDeletingReply, setIsDeletingReply] = useState(false);
 
     // UI State
     const [activeTab, setActiveTab] = useState<'all' | 'chat' | 'solutions'>('all');
-    
+
     // Edit/Delete State
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editContent, setEditContent] = useState("");
@@ -49,7 +53,6 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [isPreviewMode, setIsPreviewMode] = useState(false);
     const [isEditPreviewMode, setIsEditPreviewMode] = useState(false);
     const [isChatPreviewMode, setIsChatPreviewMode] = useState(false);
-    
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -65,9 +68,20 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [replies]);
 
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === "Escape") onClose();
+        };
+        if (isOpen) {
+            window.addEventListener("keydown", handleEsc);
+        }
+        return () => window.removeEventListener("keydown", handleEsc);
+    }, [isOpen, onClose]);
+
     const fetchReplies = async () => {
+        const storedUserName = localStorage.getItem("anonymous_user") || "";
         try {
-            const res = await fetch(`/api/replies?doubtId=${doubt.id}`);
+            const res = await fetch(`/api/replies?doubtId=${doubt.id}&userName=${storedUserName}`);
             if (res.ok) {
                 const data = await res.json();
                 setReplies(data);
@@ -101,7 +115,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
             if (res.ok) {
                 const updatedReply = await res.json();
-                
+
                 if (editingId && type === 'solution') {
                     setReplies(replies.map(r => r.id === editingId ? updatedReply : r));
                     setEditingId(null);
@@ -174,6 +188,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
     const handleEditReply = async (replyId: number) => {
         if (!editContent.trim()) return;
+        setIsEditingReply(true);
         try {
             const res = await fetch(`/api/replies/action/${replyId}`, {
                 method: "PATCH",
@@ -189,10 +204,13 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             }
         } catch (error) {
             toast.error("Failed to update");
+        } finally {
+            setIsEditingReply(false);
         }
     };
 
     const handleDeleteReply = async (replyId: number) => {
+        setIsDeletingReply(true);
         try {
             const res = await fetch(`/api/replies/action/${replyId}`, {
                 method: "DELETE"
@@ -205,7 +223,32 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
         } catch (error) {
             toast.error("Failed to delete");
         } finally {
+            setIsDeletingReply(false);
             setMenuOpenId(null);
+        }
+    };
+
+    const handleVote = async (replyId: number) => {
+        const storedUserName = localStorage.getItem("anonymous_user");
+        if (!storedUserName) return;
+
+        try {
+            const res = await fetch("/api/replies/vote", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ replyId, userName: storedUserName })
+            });
+
+            if (res.ok) {
+                const updatedReply = await res.json();
+                setReplies(prev => prev.map(r => r.id === replyId ? {
+                    ...r,
+                    upvotes: updatedReply.upvotes,
+                    hasUpvoted: updatedReply.hasUpvoted
+                } : r));
+            }
+        } catch (error) {
+            console.error("Failed to vote:", error);
         }
     };
 
@@ -274,13 +317,13 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const ReplyBubble = ({ reply }: { reply: Reply }) => {
         const isMe = reply.userName === userName;
         const isOfficial = doubt.solvedReplyId === reply.id;
-        
+
         return (
             <div className={`flex flex-col group/msg relative w-full mb-6 ${isMe ? 'items-end' : 'items-start'}`}>
                 {/* Message Bubble */}
                 <div className={`relative max-w-[85%] sm:max-w-[75%] rounded-[2rem] p-6 ${
-                    reply.type === 'solution' 
-                    ? `${isOfficial ? 'bg-emerald-500/10 border-2 border-emerald-500/40 ring-4 ring-emerald-500/5' : 'bg-white/5 border border-white/10'}` 
+                    reply.type === 'solution'
+                    ? `${isOfficial ? 'bg-emerald-500/10 border-2 border-emerald-500/40 ring-4 ring-emerald-500/5' : 'bg-white/5 border border-white/10'}`
                     : isMe ? 'bg-blue-600/10 border border-blue-500/20' : 'bg-white/5 border border-white/10'
                 }`}>
                     {/* Header */}
@@ -298,7 +341,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
                         <div className="flex items-center gap-2 shrink-0">
                             {(isDoubtOwner || isTeacher) && reply.type === 'solution' && !editingId && (
-                                <button 
+                                <button
                                     onClick={() => handleMarkAsSolution(reply.id)}
                                     disabled={isSolving}
                                     className={`text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border transition-all ${
@@ -310,19 +353,20 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     {isOfficial ? "Unmark" : "Mark Official"}
                                 </button>
                             )}
-                            
+
                             {isMe && !editingId && (
                                 <div className="relative">
-                                    <button 
+                                    <button
                                         onClick={() => setMenuOpenId(menuOpenId === reply.id ? null : reply.id)}
                                         className="p-1.5 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-all"
+                                        aria-label="More options"
                                     >
                                         <MoreVertical className="w-3.5 h-3.5" />
                                     </button>
-                                    
+
                                     {menuOpenId === reply.id && (
                                         <div className="absolute top-10 right-0 bg-slate-800 border border-white/10 rounded-xl shadow-2xl py-1 w-32 animate-in zoom-in-95 duration-200 z-50 overflow-hidden">
-                                            <button 
+                                            <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     if (reply.type === 'solution') {
@@ -341,14 +385,15 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                             >
                                                 <Pencil className="w-3 h-3" /> Edit
                                             </button>
-                                            <button 
+                                            <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleDeleteReply(reply.id);
                                                 }}
-                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase text-red-400 hover:bg-red-600 hover:text-white transition-all text-left"
+                                                disabled={isDeletingReply}
+                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase text-red-400 hover:bg-red-600 hover:text-white transition-all text-left disabled:opacity-50"
                                             >
-                                                <Trash2 className="w-3 h-3" /> Delete
+                                                {isDeletingReply ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Delete
                                             </button>
                                         </div>
                                     )}
@@ -387,8 +432,14 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     />
                                 )}
                                 <div className="flex gap-2 justify-end">
-                                    <button onClick={() => setEditingId(null)} className="px-4 py-2 text-[10px] font-black uppercase text-slate-500 hover:text-white">Cancel</button>
-                                    <button onClick={() => handleEditReply(reply.id)} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-900/40">Save</button>
+                                    <button onClick={() => setEditingId(null)} disabled={isEditingReply} className="px-4 py-2 text-[10px] font-black uppercase text-slate-500 hover:text-white disabled:opacity-50">Cancel</button>
+                                    <button
+                                        onClick={() => handleEditReply(reply.id)}
+                                        disabled={isEditingReply || !editContent.trim()}
+                                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-900/40 disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {isEditingReply ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Save
+                                    </button>
                                 </div>
                             </div>
                         ) : (
@@ -399,9 +450,10 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     </div>
                                 )}
                                 {reply.imageUrl && (
-                                    <button 
+                                    <button
                                         onClick={() => { setFullscreenImageUrl(reply.imageUrl!); setIsFullscreenImageOpen(true); }}
                                         className="mt-2 rounded-2xl overflow-hidden border border-white/5 group/img relative cursor-zoom-in active:scale-[0.98] transition-all w-full"
+                                        aria-label="View image fullscreen"
                                     >
                                         <img src={reply.imageUrl} alt="Solution" className="w-full h-auto object-cover max-h-[32rem]" />
                                         <div className="absolute inset-0 bg-white/0 group-hover/img:bg-white/5 flex items-center justify-center transition-all">
@@ -411,6 +463,29 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                 )}
                             </>
                         )}
+                    </div>
+
+                    {/* Vote Action */}
+                    <div className="mt-4 flex items-center justify-end">
+                        <button
+                            onClick={() => handleVote(reply.id)}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group/vote ${
+                                reply.hasUpvoted
+                                ? "bg-blue-600/20 text-blue-400 border-blue-500/30 shadow-lg shadow-blue-500/10"
+                                : "bg-white/5 text-slate-500 border-white/5 hover:text-white hover:bg-white/10"
+                            }`}
+                        >
+                            <ThumbsUp
+                                className={`w-3.5 h-3.5 ${
+                                    reply.hasUpvoted
+                                        ? 'fill-blue-400'
+                                        : 'group-hover/vote:scale-110 transition-transform'
+                                }`}
+                            />
+                            <span className="text-[10px] font-black uppercase tracking-widest">
+                                {reply.upvotes || 0} <span className="hidden sm:inline ml-1 opacity-60">Helpful</span>
+                            </span>
+                        </button>
                     </div>
                 </div>
 
@@ -443,7 +518,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl text-slate-400 transition-colors">
+                    <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl text-slate-400 transition-colors" aria-label="Close modal">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
@@ -451,7 +526,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 {/* Tab Navigation - Hidden for 'Ask Teacher' Doubts */}
                 {doubt.type !== 'teacher' && (
                     <div className="px-8 border-b border-white/5 flex gap-8 h-14 bg-white/[0.01]">
-                        <button 
+                        <button
                             onClick={() => setActiveTab('all')}
                             className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
                                 activeTab === 'all' ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300'
@@ -463,7 +538,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             </span>
                             {activeTab === 'all' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 animate-in fade-in slide-in-from-bottom-1" />}
                         </button>
-                        <button 
+                        <button
                             onClick={() => setActiveTab('chat')}
                             className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
                                 activeTab === 'chat' ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300'
@@ -475,7 +550,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             </span>
                             {activeTab === 'chat' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 animate-in fade-in slide-in-from-bottom-1" />}
                         </button>
-                        <button 
+                        <button
                             onClick={() => setActiveTab('solutions')}
                             className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
                                 activeTab === 'solutions' ? 'text-emerald-500' : 'text-slate-500 hover:text-slate-300'
@@ -508,9 +583,9 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     ) : (
                         <div className="space-y-6">
                             {(() => {
-                                const filteredReplies = activeTab === 'all' 
-                                    ? replies 
-                                    : activeTab === 'chat' 
+                                const filteredReplies = activeTab === 'all'
+                                    ? replies
+                                    : activeTab === 'chat'
                                         ? replies.filter(r => r.type === 'comment')
                                         : replies.filter(r => r.type === 'solution');
 
@@ -526,21 +601,21 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
                                 let lastDate = "";
                                 return filteredReplies.map((reply, index) => {
-                                    const replyDate = new Date(reply.createdAt).toLocaleDateString([], { 
-                                        day: 'numeric', 
-                                        month: 'long', 
-                                        year: 'numeric' 
+                                    const replyDate = new Date(reply.createdAt).toLocaleDateString([], {
+                                        day: 'numeric',
+                                        month: 'long',
+                                        year: 'numeric'
                                     });
-                                    
+
                                     let dateSeparator = null;
                                     if (replyDate !== lastDate) {
                                         lastDate = replyDate;
-                                        
+
                                         // WhatsApp style: Today, Yesterday, or Date
                                         const now = new Date();
                                         const today = now.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
                                         const yesterday = new Date(now.setDate(now.getDate() - 1)).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
-                                        
+
                                         let displayDate = replyDate;
                                         if (replyDate === today) displayDate = "Today";
                                         else if (replyDate === yesterday) displayDate = "Yesterday";
@@ -576,7 +651,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                         <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 bg-white/[0.03] p-8 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-y-auto max-h-[60vh] group/form custom-scrollbar">
                             {/* Decorative Background Blur */}
                             <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
-                            
+
                             <div className="flex items-center justify-between relative z-10">
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/20 flex items-center justify-center">
@@ -591,20 +666,20 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                         </p>
                                     </div>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => {
                                         setShowSolutionForm(false);
                                         setEditingId(null);
                                         setSolutionContent("");
                                         setSolutionImage("");
                                         setFileName("");
-                                    }} 
+                                    }}
                                     className="p-3 hover:bg-white/5 rounded-2xl text-slate-500 hover:text-white transition-all hover:rotate-90"
+                                    aria-label="Close form"
                                 >
                                     <X className="w-6 h-6" />
                                 </button>
                             </div>
-                            
                             <div className="flex items-center gap-2 mb-2">
                                 <button onClick={() => insertMarkdown(solutionTextareaRef, "bold", setSolutionContent)} className="p-2 hover:bg-white/10 rounded-xl text-slate-400"><Bold className="w-4 h-4" /></button>
                                 <button onClick={() => insertMarkdown(solutionTextareaRef, "italic", setSolutionContent)} className="p-2 hover:bg-white/10 rounded-xl text-slate-400"><Italic className="w-4 h-4" /></button>
@@ -629,6 +704,12 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     ref={solutionTextareaRef}
                                     value={solutionContent}
                                     onChange={(e) => setSolutionContent(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                                            e.preventDefault();
+                                            handlePostOrUpdate();
+                                        }
+                                    }}
                                     placeholder="Explain your solution clearly and step-by-step..."
                                     className="w-full h-40 bg-slate-950/50 border border-white/10 rounded-[1.5rem] p-5 text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none font-medium leading-relaxed placeholder:text-slate-600 shadow-inner"
                                 />
@@ -638,7 +719,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                 <div className="relative group/preview animate-in zoom-in-95 duration-300 w-full sm:w-fit">
                                     <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-slate-950 shadow-2xl group/img">
                                         <img src={solutionImage} className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500" />
-                                        
+
                                         {/* Image Overlay */}
                                         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent flex flex-col justify-end p-3 translate-y-2 group-hover/img:translate-y-0 transition-transform">
                                             <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400 truncate max-w-full">
@@ -648,17 +729,19 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
                                         {/* Actions on Hover */}
                                         <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover/img:opacity-100 flex items-center justify-center gap-3 transition-all duration-300">
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => { setFullscreenImageUrl(solutionImage); setIsFullscreenImageOpen(true); }}
                                                 className="w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100"
+                                                aria-label="Zoom image"
                                             >
                                                 <ZoomIn className="w-5 h-5" />
                                             </button>
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => { setSolutionImage(""); setFileName(""); }}
                                                 className="w-10 h-10 bg-red-500/20 hover:bg-red-500 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100 border border-red-500/20 hover:border-transparent"
+                                                aria-label="Delete image"
                                             >
                                                 <Trash2 className="w-5 h-5" />
                                             </button>
@@ -696,7 +779,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     ) : (
                         <div className="flex items-center gap-4">
                             {(doubt.isSolved !== "solved" && (doubt.type !== 'teacher' || isTeacher)) && (
-                                <button 
+                                <button
                                     onClick={() => setShowSolutionForm(true)}
                                     className="px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all group flex items-center gap-2 active:scale-95 shrink-0 shadow-lg shadow-emerald-600/20"
                                 >
@@ -715,7 +798,16 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                             type="text"
                                             value={chatText}
                                             onChange={(e) => setChatText(e.target.value)}
-                                            onKeyPress={(e) => e.key === 'Enter' && handlePost('comment')}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    if (e.ctrlKey || e.metaKey) {
+                                                        e.preventDefault();
+                                                        handlePost('comment');
+                                                    } else {
+                                                        handlePost('comment');
+                                                    }
+                                                }
+                                            }}
                                             placeholder="Ask for clarification or chat with peers..."
                                             className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 flex-1 pl-6 pr-24 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all font-medium"
                                         />
@@ -746,31 +838,32 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     </button>
                                 )}
                             </div>
-                        </div>
-                    )}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
 
             {/* Fullscreen Image Viewer */}
             {isFullscreenImageOpen && (
-                <div 
+                <div
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-300"
                     onClick={() => setIsFullscreenImageOpen(false)}
                 >
-                    <button 
+                    <button
                         onClick={() => setIsFullscreenImageOpen(false)}
                         className="absolute top-8 right-8 p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all hover:rotate-90 z-[210]"
+                        aria-label="Close fullscreen view"
                     >
                         <X className="w-8 h-8" />
                     </button>
-                    
+
                     <div className="relative w-full h-full p-12 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                         <div className="relative max-w-full max-h-full">
-                            <img 
-                                src={fullscreenImageUrl} 
-                                alt="Fullscreen View" 
-                                className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl border border-white/10 object-contain animate-in zoom-in-95 duration-300" 
+                            <img
+                                src={fullscreenImageUrl}
+                                alt="Fullscreen View"
+                                className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl border border-white/10 object-contain animate-in zoom-in-95 duration-300"
                             />
                             <div className="absolute -bottom-12 left-0 right-0 flex justify-center">
                                 <div className="px-6 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full backdrop-blur-md">
