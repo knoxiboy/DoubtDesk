@@ -1,20 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import {
-    X,
-    Send,
-    CheckCircle,
-    MessageSquare,
-    Loader2,
-    Upload,
-    File,
-    ZoomIn,
-    MoreVertical,
-    Pencil,
-    Trash2,
-    PlusCircle,
-} from "lucide-react";
+import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, MoreVertical, Pencil, Trash2, PlusCircle, ThumbsUp } from "lucide-react";
 import { toast } from "sonner";
 
 interface Reply {
@@ -56,11 +43,11 @@ export default function DoubtRepliesModal({
 
     const [isDoubtOwner, setIsDoubtOwner] = useState(false);
     const [isSolving, setIsSolving] = useState(false);
+    const [isEditingReply, setIsEditingReply] = useState(false);
+    const [isDeletingReply, setIsDeletingReply] = useState(false);
 
     // UI State
-    const [activeTab, setActiveTab] = useState<"all" | "chat" | "solutions">(
-        "all",
-    );
+    const [activeTab, setActiveTab] = useState<'all' | 'chat' | 'solutions'>('all');
 
     // Edit/Delete State
     const [editingId, setEditingId] = useState<number | null>(null);
@@ -83,6 +70,16 @@ export default function DoubtRepliesModal({
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [replies]);
+
+    useEffect(() => {
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === "Escape") onClose();
+        };
+        if (isOpen) {
+            window.addEventListener("keydown", handleEsc);
+        }
+        return () => window.removeEventListener("keydown", handleEsc);
+    }, [isOpen, onClose]);
 
     const fetchReplies = async () => {
         const storedUserName = localStorage.getItem("anonymous_user") || "";
@@ -209,6 +206,7 @@ export default function DoubtRepliesModal({
 
     const handleEditReply = async (replyId: number) => {
         if (!editContent.trim()) return;
+        setIsEditingReply(true);
         try {
             const res = await fetch(`/api/replies/action/${replyId}`, {
                 method: "PATCH",
@@ -226,10 +224,13 @@ export default function DoubtRepliesModal({
             }
         } catch (error) {
             toast.error("Failed to update");
+        } finally {
+            setIsEditingReply(false);
         }
     };
 
     const handleDeleteReply = async (replyId: number) => {
+        setIsDeletingReply(true);
         try {
             const res = await fetch(`/api/replies/action/${replyId}`, {
                 method: "DELETE",
@@ -242,6 +243,7 @@ export default function DoubtRepliesModal({
         } catch (error) {
             toast.error("Failed to delete");
         } finally {
+            setIsDeletingReply(false);
             setMenuOpenId(null);
         }
     };
@@ -408,9 +410,10 @@ export default function DoubtRepliesModal({
                                                     e.stopPropagation();
                                                     handleDeleteReply(reply.id);
                                                 }}
-                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase text-red-400 hover:bg-red-600 hover:text-white transition-all text-left">
-                                                <Trash2 className="w-3 h-3" />{" "}
-                                                Delete
+                                                disabled={isDeletingReply}
+                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase text-red-400 hover:bg-red-600 hover:text-white transition-all text-left disabled:opacity-50"
+                                            >
+                                                {isDeletingReply ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Delete
                                             </button>
                                         </div>
                                     )}
@@ -477,15 +480,21 @@ export default function DoubtRepliesModal({
 
                     {/* Vote Action */}
                     <div className="mt-4 flex items-center justify-end">
-                        <button 
+                        <button
                             onClick={() => handleVote(reply.id)}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group/vote ${
-                                reply.hasUpvoted 
-                                ? "bg-blue-600/20 text-blue-400 border-blue-500/30 shadow-lg shadow-blue-500/10" 
+                                reply.hasUpvoted
+                                ? "bg-blue-600/20 text-blue-400 border-blue-500/30 shadow-lg shadow-blue-500/10"
                                 : "bg-white/5 text-slate-500 border-white/5 hover:text-white hover:bg-white/10"
                             }`}
                         >
-                            <ThumbsUp className={`w-3.5 h-3.5 ${reply.hasUpvoted ? 'fill-blue-400' : 'group-hover/vote:scale-110 transition-transform'}`} />
+                            <ThumbsUp
+                                className={`w-3.5 h-3.5 ${
+                                    reply.hasUpvoted
+                                        ? 'fill-blue-400'
+                                        : 'group-hover/vote:scale-110 transition-transform'
+                                }`}
+                            />
                             <span className="text-[10px] font-black uppercase tracking-widest">
                                 {reply.upvotes || 0} <span className="hidden sm:inline ml-1 opacity-60">Helpful</span>
                             </span>
@@ -621,16 +630,11 @@ export default function DoubtRepliesModal({
                     ) : (
                         <div className="space-y-6">
                             {(() => {
-                                const filteredReplies =
-                                    activeTab === "all"
-                                        ? replies
-                                        : activeTab === "chat"
-                                          ? replies.filter(
-                                                (r) => r.type === "comment",
-                                            )
-                                          : replies.filter(
-                                                (r) => r.type === "solution",
-                                            );
+                                const filteredReplies = activeTab === 'all'
+                                    ? replies
+                                    : activeTab === 'chat'
+                                        ? replies.filter(r => r.type === 'comment')
+                                        : replies.filter(r => r.type === 'solution');
 
                                 if (filteredReplies.length === 0) {
                                     return (
@@ -646,12 +650,10 @@ export default function DoubtRepliesModal({
 
                                 let lastDate = "";
                                 return filteredReplies.map((reply, index) => {
-                                    const replyDate = new Date(
-                                        reply.createdAt,
-                                    ).toLocaleDateString([], {
-                                        day: "numeric",
-                                        month: "long",
-                                        year: "numeric",
+                                    const replyDate = new Date(reply.createdAt).toLocaleDateString([], {
+                                        day: 'numeric',
+                                        month: 'long',
+                                        year: 'numeric'
                                     });
 
                                     let dateSeparator = null;

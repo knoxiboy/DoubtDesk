@@ -11,21 +11,40 @@
 
 ## Table of Contents
 
-- [Problem Statement](#problem-statement)
-- [Solution](#solution)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Screenshots](#screenshots)
-- [Demo Access](#demo-access)
-- [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
-- [Contributing](#contributing)
-- [Issue Labels and Difficulty Levels](#issue-labels-and-difficulty-levels)
-- [Roadmap](#roadmap)
-- [Code of Conduct](#code-of-conduct)
-- [License](#license)
-- [Acknowledgments](#acknowledgments)
+- [DoubtDesk](#doubtdesk)
+  - [Table of Contents](#table-of-contents)
+  - [Problem Statement](#problem-statement)
+  - [Solution](#solution)
+  - [Features](#features)
+    - [AI Doubt Solver](#ai-doubt-solver)
+    - [Virtual Classrooms](#virtual-classrooms)
+    - [Classroom Analytics](#classroom-analytics)
+    - [Moderation and Safety](#moderation-and-safety)
+    - [Public Doubt Board](#public-doubt-board)
+    - [User Profiles](#user-profiles)
+  - [Architecture](#architecture)
+  - [Tech Stack](#tech-stack)
+  - [Screenshots](#screenshots)
+  - [Demo Access](#demo-access)
+  - [Getting Started](#getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+    - [Environment Variables](#environment-variables)
+  - [Project Structure](#project-structure)
+  - [Contributing](#contributing)
+    - [Quick Start for Contributors](#quick-start-for-contributors)
+    - [Commit Message Format](#commit-message-format)
+    - [Code Style](#code-style)
+  - [Issue Labels and Difficulty Levels](#issue-labels-and-difficulty-levels)
+    - [Difficulty Levels (GSSoC)](#difficulty-levels-gssoc)
+    - [Category Labels](#category-labels)
+  - [Roadmap](#roadmap)
+    - [Near-Term (v1.1)](#near-term-v11)
+    - [Mid-Term (v1.2)](#mid-term-v12)
+    - [Long-Term (v2.0)](#long-term-v20)
+  - [Code of Conduct](#code-of-conduct)
+  - [License](#license)
+  - [Acknowledgments](#acknowledgments)
 
 ---
 
@@ -140,10 +159,13 @@ Joins/Creates a Classroom (via invite code)
 
 > Screenshots are located in the `screenshots/` directory and will be updated as the UI evolves.
 
-![Landing Page](screenshots/landing.png)
-![AI Solver](screenshots/ai-solver.png)
-![Classroom View](screenshots/classroom.png)
-![Analytics Dashboard](screenshots/analytics.png)
+[![Landing Page](https://github.com/knoxiboy/DoubtDesk/raw/main/screenshots/landing.png)](https://github.com/knoxiboy/DoubtDesk/blob/main/screenshots/landing.png)
+
+[![AI Solver](https://github.com/knoxiboy/DoubtDesk/raw/main/screenshots/ai-solver.png)](https://github.com/knoxiboy/DoubtDesk/blob/main/screenshots/ai-solver.png)
+
+[![Classroom View](https://github.com/knoxiboy/DoubtDesk/raw/main/screenshots/classroom.png)](https://github.com/knoxiboy/DoubtDesk/blob/main/screenshots/classroom.png)
+
+[![Analytics Dashboard](https://github.com/knoxiboy/DoubtDesk/raw/main/screenshots/analytics.png)](https://github.com/knoxiboy/DoubtDesk/blob/main/screenshots/analytics.png)
 
 ---
 

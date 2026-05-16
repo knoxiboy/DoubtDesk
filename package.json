@@ -67,6 +67,7 @@
     "react-dom": "18.3.1",
     "react-dropzone": "14.3.5",
     "react-hook-form": "^7.55.0",
+    "react-hotkeys-hook": "^5.3.2",
     "react-intersection-observer": "^10.0.3",
     "react-katex": "^3.1.0",
     "react-markdown": "9.0.1",

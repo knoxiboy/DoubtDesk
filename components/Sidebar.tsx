@@ -18,12 +18,14 @@ import {
     Code,
     MoreHorizontal,
     Zap,
-    School
+    School,
+    Bookmark
 } from 'lucide-react'
 
 const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
     { name: 'Virtual Campus', icon: School, href: '/rooms' },
+    { name: 'Bookmarks', icon: Bookmark, href: '/bookmarks' },
 ]
 
 interface SidebarProps {
@@ -67,6 +69,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                         <button
                             onClick={onClose}
                             className="lg:hidden p-2 text-slate-400 hover:bg-white/5 rounded-lg"
+                            aria-label="Close sidebar"
                         >
                             <X className="w-6 h-6" />
                         </button>
