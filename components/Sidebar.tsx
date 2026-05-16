@@ -18,12 +18,14 @@ import {
     Code,
     MoreHorizontal,
     Zap,
-    School
+    School,
+    Bookmark
 } from 'lucide-react'
 
 const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
     { name: 'Virtual Campus', icon: School, href: '/rooms' },
+    { name: 'Bookmarks', icon: Bookmark, href: '/bookmarks' },
 ]
 
 interface SidebarProps {
@@ -60,13 +62,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_15px_rgba(37,99,235,0.2)]">
                                 D
                             </div>
-                            <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 tracking-tight">
+                            <h1 className="text-xl font-bold text-blue-400 hover:text-blue-300 tracking-tight transition-colors">
                                 DoubtDesk
                             </h1>
                         </Link>
                         <button
                             onClick={onClose}
                             className="lg:hidden p-2 text-slate-400 hover:bg-white/5 rounded-lg"
+                            aria-label="Close sidebar"
                         >
                             <X className="w-6 h-6" />
                         </button>
