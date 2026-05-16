@@ -26,32 +26,17 @@ export default function PublicRoomsPage() {
         if (filter !== "All") {
             const subjectFilter = filter === "Others" ? appliedCustomFilter : filter;
             if (subjectFilter) params.append("subject", subjectFilter);
-    const fetchDoubts = async () => {
-        setLoading(true);
-        try {
-            const userName = localStorage.getItem("anonymous_user");
-            const params = new URLSearchParams();
-
-            if (filter !== "All") {
-                const subjectFilter = filter === "Others" ? customFilter : filter;
-                if (subjectFilter) params.append("subject", subjectFilter);
-            }
-            if (userName) params.append("userName", userName);
-            if (tagFilter.trim()) params.append("tag", tagFilter.trim());
-
-            const res = await fetch(`/api/doubts?${params.toString()}`);
-            const data = await res.json();
-            setDoubts(data);
-        } catch (error) {
-            console.error("Failed to fetch doubts:", error);
-        } finally {
-            setLoading(false);
         }
+
         if (userName) params.append("userName", userName);
         params.append("page", (pageIndex + 1).toString());
         params.append("limit", "20");
         
         return `/api/doubts?${params.toString()}`;
+    };
+
+    const fetchDoubts = async () => {
+        mutate(); // Trigger SWR re-validation
     };
 
     const { data, isLoading, size, setSize, mutate } = useSWRInfinite(getKey, fetcher, {

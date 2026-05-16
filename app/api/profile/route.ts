@@ -5,7 +5,7 @@ import { doubtsTable, repliesTable, membershipsTable, classroomsTable, usersTabl
 import { auth, currentUser } from "@clerk/nextjs/server";
 import type { ProfileClassroom } from "@/types/profile";
 
-export async function GET(req: NextRequest) {
+export async function GET(req: Request) {
     try {
         const { userId } = await auth();
         if (!userId) {
@@ -20,24 +20,14 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "No email found" }, { status: 400 });
         }
 
-        // Get user details from DB
-        const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+        const [dbUserResults, doubts, replies, memberships] = await Promise.all([
+            db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1),
+            db.select().from(doubtsTable).where(eq(doubtsTable.userEmail, email)),
+            db.select().from(repliesTable).where(or(eq(repliesTable.userEmail, email), eq(repliesTable.userName, name))),
+            db.select().from(membershipsTable).where(eq(membershipsTable.userEmail, email))
+        ]);
 
-        // Get user's doubts (email is a stable identifier)
-        const doubts = await db.select().from(doubtsTable).where(eq(doubtsTable.userEmail, email));
-
-        const replies = await db
-            .select()
-            .from(repliesTable)
-            .where(
-                or(
-                    eq(repliesTable.userEmail, email),
-                    eq(repliesTable.userName, name)
-                )
-            );
-
-        // Get user's classroom memberships
-        const memberships = await db.select().from(membershipsTable).where(eq(membershipsTable.userEmail, email));
+        const dbUser = dbUserResults[0];
 
         const classroomIds = memberships.map((m) => m.classroomId);
         let classrooms: ProfileClassroom[] = [];
@@ -49,19 +39,28 @@ export async function GET(req: NextRequest) {
                 .where(inArray(classroomsTable.id, classroomIds));
         }
 
-        // Calculate stats
         const totalDoubts = doubts.length;
         const totalReplies = replies.length;
         const helpfulVotes = doubts.reduce((acc, doubt) => acc + (doubt.likes || 0), 0);
 
+        const rawJoinDate = dbUser?.createdAt || (clerkUser?.createdAt ? new Date(clerkUser.createdAt) : new Date());
+        const joinDate = rawJoinDate instanceof Date ? rawJoinDate.toISOString() : new Date(rawJoinDate).toISOString();
+
+        const userData = {
+            id: dbUser?.id || 0,
+            name: name,
+            email: email,
+            university: dbUser?.university || undefined,
+            year: dbUser?.year || undefined,
+            collegeEmail: dbUser?.collegeEmail || undefined,
+            role: dbUser?.role || undefined,
+            onboarded: dbUser?.onboarded || false,
+            imageUrl: clerkUser?.imageUrl || undefined,
+            joinDate: joinDate,
+        };
+
         return NextResponse.json({
-            user: {
-                ...dbUser,
-                name,
-                email,
-                imageUrl: clerkUser?.imageUrl,
-                joinDate: dbUser?.createdAt || clerkUser?.createdAt || new Date(),
-            },
+            user: userData,
             stats: {
                 totalDoubts,
                 totalReplies,
@@ -74,11 +73,10 @@ export async function GET(req: NextRequest) {
                 classrooms,
             },
         });
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Server error";
-        console.error("Profile fetch error:", error);
+    } catch (error: any) {
+        console.error("Profile API Error:", error);
         return NextResponse.json(
-            { error: message },
+            { error: error?.message || "Internal Server Error" },
             { status: 500 }
         );
     }

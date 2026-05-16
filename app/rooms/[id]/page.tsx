@@ -71,7 +71,15 @@ export default function ClassroomPage() {
     const getKey = (pageIndex: number, previousPageData: any[]) => {
         if (previousPageData && !previousPageData.length) return null; // reached the end
         if (activeTab === 'insights') return null;
-        return `/api/doubts?classroomId=${id}&userName=${userName}&type=${type}&page=${pageIndex + 1}&limit=20`;
+        const params = new URLSearchParams({
+            classroomId: String(id),
+            userName: userName || "",
+            type: String(type),
+            page: String(pageIndex + 1),
+            limit: "20"
+        });
+        if (tagFilter.trim()) params.append("tag", tagFilter.trim());
+        return `/api/doubts?${params.toString()}`;
     };
 
     const { data, error, isLoading: doubtsLoading, size, setSize, mutate } = useSWRInfinite(getKey, fetcher, {
@@ -90,7 +98,6 @@ export default function ClassroomPage() {
         }
     }, [inView, isReachingEnd, isLoadingMore]);
     const [tagFilter, setTagFilter] = useState("");
-    const [tabCache, setTabCache] = useState<Record<string, any>>({});
 
     useHotkeys("n", (e) => {
         e.preventDefault();
@@ -133,46 +140,12 @@ export default function ClassroomPage() {
     };
 
     const fetchScopedDoubts = async (type: string = 'community') => {
-        setDoubtsLoading(true);
-        try {
-            const userName = localStorage.getItem("anonymous_user");
-            const params = new URLSearchParams({
-                classroomId: id?.toString() || "",
-                userName: userName || "",
-                type,
-            });
-            if (tagFilter.trim()) params.append("tag", tagFilter.trim());
-
-            const res = await fetch(`/api/doubts?${params.toString()}`);
-            const data = await res.json();
-            if (res.ok && Array.isArray(data)) {
-                setDoubts(data);
-                if (!tagFilter.trim()) {
-                    setTabCache(prev => ({ ...prev, [activeTab]: data }));
-                }
-            } else {
-                console.error("Invalid doubts data received:", data);
-                setDoubts([]);
-                if (data?.error) toast.error(data.error);
-            }
-        } catch (err) {
-            toast.error("Failed to load doubts");
-        } finally {
-            setDoubtsLoading(false);
-        }
+        mutate();
     };
 
     useEffect(() => {
-        // Don't refetch if we have a cache AND it's not Insights (insights are dynamic/real-time)
-        if (activeTab === "insights") return;
-
-        if (!tagFilter.trim() && tabCache[activeTab]) {
-            setDoubts(tabCache[activeTab]);
-            return;
-        }
-
-        const type = activeTab === 'teacher-doubts' ? 'teacher' : activeTab === 'community' ? 'community' : 'ai';
-        fetchScopedDoubts(type);
+        // SWR will handle refetching automatically when the key (which includes activeTab and tagFilter) changes.
+        // We can still call mutate() if we want to force a refresh.
     }, [activeTab, tagFilter]);
 
     const copyCode = () => {
