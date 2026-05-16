@@ -1,5 +1,5 @@
 import { db } from "@/configs/db";
-import { doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, usersTable } from "@/configs/schema";
+import { doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, usersTable, doubtTagsTable, tagsTable } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
 import { and, eq, desc, isNull, or, not, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -13,6 +13,7 @@ export async function GET(req: Request) {
     const classroomIdStr = searchParams.get("classroomId");
     const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
     const type = searchParams.get("type") || 'community';
+    const tag = searchParams.get("tag");
     const isSolved = searchParams.get("isSolved");
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = parseInt(searchParams.get("offset") || "0");
@@ -24,7 +25,6 @@ export async function GET(req: Request) {
 
         // Security: If classroomId is provided, check membership
         if (classroomId && email) {
-            console.log(`Security Check: Classroom ${classroomId}, User ${email}`);
             const [membership] = await db.select().from(membershipsTable).where(
                 and(
                     eq(membershipsTable.userEmail, email),
@@ -32,14 +32,10 @@ export async function GET(req: Request) {
                 )
             );
             if (!membership) {
-                console.warn(`Denied access to classroom ${classroomId} for user ${email}`);
                 return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
             }
-        } else if (classroomId && !email) {
-            console.warn(`Anonymous user attempting to access classroom ${classroomId}`);
         }
 
-        let query = db.select().from(doubtsTable);
         let conditions = [];
 
         // Base Classroom scoping
@@ -77,9 +73,29 @@ export async function GET(req: Request) {
             }
         }
 
-        if (isSolved) {
+        if (isSolved && isSolved !== "All") {
             const status = isSolved === 'pending' ? 'unsolved' : 'solved';
             conditions.push(eq(doubtsTable.isSolved, status));
+        }
+
+        // TAG FILTERING (Restored)
+        if (tag && tag !== "All") {
+            const normalizedTag = tag.trim().replace(/\s+/g, " ").toLowerCase();
+            const taggedDoubts = await db.select({ doubtId: doubtTagsTable.doubtId })
+                .from(doubtTagsTable)
+                .innerJoin(tagsTable, eq(doubtTagsTable.tagId, tagsTable.id))
+                .where(and(
+                    eq(tagsTable.normalizedName, normalizedTag),
+                    classroomId ? eq(tagsTable.classroomId, classroomId) : isNull(tagsTable.classroomId)
+                ));
+            
+            const taggedDoubtIds = taggedDoubts.map(row => row.doubtId);
+            if (taggedDoubtIds.length > 0) {
+                conditions.push(inArray(doubtsTable.id, taggedDoubtIds));
+            } else {
+                // If tag is provided but no doubts found, ensure empty result
+                conditions.push(eq(doubtsTable.id, -1));
+            }
         }
 
         // Count total for pagination metadata
@@ -87,7 +103,7 @@ export async function GET(req: Request) {
             .from(doubtsTable)
             .where(and(...conditions));
 
-        let doubts = await query
+        let doubts = await db.select().from(doubtsTable)
             .where(and(...conditions))
             .orderBy(desc(doubtsTable.createdAt))
             .limit(limit)
@@ -99,28 +115,50 @@ export async function GET(req: Request) {
                 .where(eq(likesTable.userName, userName));
 
             const likedIds = new Set(userLikes.map(l => l.doubtId));
-
             doubts = doubts.map(doubt => ({
                 ...doubt,
                 hasLiked: likedIds.has(doubt.id)
             }));
         }
 
-        // Fetch reply counts
-        const replyCounts = await db.select({
-            doubtId: repliesTable.doubtId,
-            count: sql<number>`count(*)`.mapWith(Number)
-        })
-        .from(repliesTable)
-        .where(sql`${repliesTable.doubtId} IN (${sql.join(doubts.length > 0 ? doubts.map(d => d.id) : [0], sql`, `)})`)
-        .groupBy(repliesTable.doubtId);
+        // Fetch reply counts and tags for the doubts
+        if (doubts.length > 0) {
+            const doubtIds = doubts.map(d => d.id);
+            
+            // Fetch reply counts
+            const replyCounts = await db.select({
+                doubtId: repliesTable.doubtId,
+                count: sql<number>`count(*)`.mapWith(Number)
+            })
+            .from(repliesTable)
+            .where(inArray(repliesTable.doubtId, doubtIds))
+            .groupBy(repliesTable.doubtId);
 
-        const countsMap = Object.fromEntries(replyCounts.map(r => [r.doubtId, r.count]));
+            const countsMap = Object.fromEntries(replyCounts.map(r => [r.doubtId, r.count]));
 
-        doubts = doubts.map(doubt => ({
-            ...doubt,
-            replyCount: countsMap[doubt.id] || 0
-        }));
+            // Fetch tags for these doubts
+            const tagRows = await db.select({
+                doubtId: doubtTagsTable.doubtId,
+                id: tagsTable.id,
+                name: tagsTable.name,
+                normalizedName: tagsTable.normalizedName,
+            })
+            .from(doubtTagsTable)
+            .innerJoin(tagsTable, eq(doubtTagsTable.tagId, tagsTable.id))
+            .where(inArray(doubtTagsTable.doubtId, doubtIds));
+
+            const tagsByDoubt = tagRows.reduce<Record<number, any[]>>((acc, row) => {
+                acc[row.doubtId] = acc[row.doubtId] || [];
+                acc[row.doubtId].push({ id: row.id, name: row.name, normalizedName: row.normalizedName });
+                return acc;
+            }, {});
+
+            doubts = doubts.map(doubt => ({
+                ...doubt,
+                replyCount: countsMap[doubt.id] || 0,
+                tags: tagsByDoubt[doubt.id] || []
+            }));
+        }
 
         return NextResponse.json({
             doubts,

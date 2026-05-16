@@ -31,11 +31,12 @@ import {
     Medal
 } from "lucide-react";
 import AskDoubt from "@/components/AskDoubt";
-import Dashboard from "@/app/dashboard/page";
+import Dashboard from "@/app/dashboard/page"; 
 import AskAIView from "../../../components/AskAIView"; 
-import { useSWRConfig } from "swr";
-import { toast } from "sonner";
 import InfiniteDoubtFeed from "@/components/InfiniteDoubtFeed";
+import { toast } from "sonner";
+import { useSWRConfig } from "swr";
+import { useHotkeys } from "react-hotkeys-hook";
 
 interface Classroom {
     id: number;
@@ -44,7 +45,7 @@ interface Classroom {
     year: string;
     teacherEmail: string;
     inviteCode: string;
-    role: string;
+    role: "teacher" | "student";
 }
 
 export default function ClassroomPage() {
@@ -55,12 +56,20 @@ export default function ClassroomPage() {
     
     const [classroom, setClassroom] = useState<Classroom | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState("ask-ai");
+    const [activeTab, setActiveTab] = useState("community");
     const [activeAIDoubt, setActiveAIDoubt] = useState<any>(null);
     const [isAskModalOpen, setIsAskModalOpen] = useState(false);
     const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [doubtFilter, setDoubtFilter] = useState<'pending' | 'solved'>('pending');
+    const [doubtFilter, setDoubtFilter] = useState<'pending' | 'solved' | 'All'>('All');
+    const [tagFilter, setTagFilter] = useState("");
+
+    useHotkeys("n", (e) => {
+        e.preventDefault();
+        setIsAskModalOpen(true);
+    }, {
+        enableOnFormTags: false,
+    });
 
     useEffect(() => {
         initialFetch();
@@ -208,8 +217,9 @@ export default function ClassroomPage() {
                                 onViewAISolution={(d) => {
                                     setActiveAIDoubt(d);
                                     setActiveTab("ask-ai");
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
                                 }}
-                                emptyMessage="No resolved AI queries in this classroom yet."
+                                emptyMessage="No AI doubts history yet. Start by asking a question above."
                             />
                         </div>
                     </div>
@@ -221,55 +231,47 @@ export default function ClassroomPage() {
                             <h2 className="text-2xl font-black uppercase italic tracking-tight px-4">Classroom <span className="text-blue-500">Board</span></h2>
                             
                             <div className="flex items-center gap-2 bg-slate-950/50 p-1.5 rounded-2xl border border-white/5">
-                                <button 
-                                    onClick={() => setDoubtFilter('pending')}
-                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                                        doubtFilter === 'pending' 
-                                        ? "bg-red-500/10 text-red-500 border border-red-500/20" 
-                                        : "text-slate-500 hover:text-white"
-                                    }`}
-                                >
-                                    Pending 
-                                </button>
-                                <button 
-                                    onClick={() => setDoubtFilter('solved')}
-                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                                        doubtFilter === 'solved' 
-                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
-                                        : "text-slate-500 hover:text-white"
-                                    }`}
-                                >
-                                    Resolved
-                                </button>
+                                {['All', 'pending', 'solved'].map((f) => (
+                                    <button 
+                                        key={f}
+                                        onClick={() => setDoubtFilter(f as any)}
+                                        className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                                            doubtFilter === f 
+                                            ? (f === 'pending' ? "bg-red-500/10 text-red-500 border border-red-500/20" : f === 'solved' ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-blue-600 border-blue-500 text-white")
+                                            : "text-slate-500 hover:text-white"
+                                        }`}
+                                    >
+                                        {f === 'All' ? 'All Doubts' : f.charAt(0).toUpperCase() + f.slice(1)}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    value={tagFilter}
+                                    onChange={(e) => setTagFilter(e.target.value)}
+                                    placeholder="Filter tag"
+                                    className="w-32 bg-slate-950/50 border border-white/10 rounded-xl px-3 py-2.5 text-[10px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50"
+                                />
                             </div>
 
                             <button 
                                 onClick={() => setIsAskModalOpen(true)}
                                 className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center gap-2 shrink-0"
                             >
-                                <Plus className="w-4 h-4" /> New Post
+                                <Plus className="w-4 h-4" /> Ask Community
                             </button>
                         </div>
 
-                        <div className="space-y-8 animate-in fade-in duration-500">
-                            <div className="flex items-center gap-4">
-                                <div className={`h-[1px] flex-1 bg-gradient-to-r from-transparent via-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/20 to-transparent`}></div>
-                                <h3 className={`text-[10px] font-black uppercase tracking-[0.4em] text-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/60 bg-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/5 px-4 py-1.5 rounded-full border border-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/10`}>
-                                    {doubtFilter === 'pending' ? 'Unsolved Queries' : 'Resolved & Validated'}
-                                </h3>
-                                <div className={`h-[1px] flex-1 bg-gradient-to-r from-transparent via-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/20 to-transparent`}></div>
-                            </div>
-                            
-                            <InfiniteDoubtFeed 
-                                classroomId={Number(id)}
-                                type="community"
-                                isSolved={doubtFilter}
-                                role={classroom?.role}
-                                emptyMessage={doubtFilter === 'pending' ? "No pending queries in this category." : "No resolved queries yet."}
-                                emptyAction={doubtFilter === 'pending' ? () => setIsAskModalOpen(true) : undefined}
-                                emptyActionLabel="Be the first to ask"
-                            />
-                        </div>
+                        <InfiniteDoubtFeed 
+                            classroomId={Number(id)}
+                            type="community"
+                            isSolved={doubtFilter === 'All' ? undefined : doubtFilter}
+                            tag={tagFilter}
+                            role={classroom?.role}
+                            emptyMessage={`No ${doubtFilter !== 'All' ? doubtFilter : ''} doubts found. Be the first to ask!`}
+                        />
                     </div>
                 )}
 
@@ -277,30 +279,24 @@ export default function ClassroomPage() {
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-12">
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-6 bg-white/[0.02] border border-white/5 p-4 rounded-[2rem]">
                             <h2 className="text-2xl font-black uppercase italic tracking-tight px-4">
-                                {classroom?.role === 'teacher' ? <><span className="text-purple-500">Students</span> Doubts</> : <>Direct <span className="text-purple-500">Teacher Doubts</span></>}
+                                {classroom?.role === 'teacher' ? 'Your ' : 'Teacher '}
+                                <span className="text-purple-500">Noticeboard</span>
                             </h2>
 
                             <div className="flex items-center gap-2 bg-slate-950/50 p-1.5 rounded-2xl border border-white/5">
-                                <button 
-                                    onClick={() => setDoubtFilter('pending')}
-                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                                        doubtFilter === 'pending' 
-                                        ? "bg-red-500/10 text-red-500 border border-red-500/20" 
-                                        : "text-slate-500 hover:text-white"
-                                    }`}
-                                >
-                                    Pending 
-                                </button>
-                                <button 
-                                    onClick={() => setDoubtFilter('solved')}
-                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                                        doubtFilter === 'solved' 
-                                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
-                                        : "text-slate-500 hover:text-white"
-                                    }`}
-                                >
-                                    Resolved
-                                </button>
+                                {['All', 'pending', 'solved'].map((f) => (
+                                    <button 
+                                        key={f}
+                                        onClick={() => setDoubtFilter(f as any)}
+                                        className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                                            doubtFilter === f 
+                                            ? (f === 'pending' ? "bg-red-500/10 text-red-500 border border-red-500/20" : f === 'solved' ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-purple-600 border-purple-500 text-white")
+                                            : "text-slate-500 hover:text-white"
+                                        }`}
+                                    >
+                                        {f === 'All' ? 'All Notice' : f.charAt(0).toUpperCase() + f.slice(1)}
+                                    </button>
+                                ))}
                             </div>
 
                             {classroom?.role !== 'teacher' && (
@@ -313,25 +309,15 @@ export default function ClassroomPage() {
                             )}
                         </div>
 
-                        <div className="space-y-8 animate-in fade-in duration-500">
-                            <div className="flex items-center gap-4">
-                                <div className={`h-[1px] flex-1 bg-gradient-to-r from-transparent via-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/20 to-transparent`}></div>
-                                <h3 className={`text-[10px] font-black uppercase tracking-[0.4em] text-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/60 bg-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/5 px-4 py-1.5 rounded-full border border-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/10`}>
-                                    {doubtFilter === 'pending' ? 'Pending Doubts' : 'Teacher Resolved'}
-                                </h3>
-                                <div className={`h-[1px] flex-1 bg-gradient-to-r from-transparent via-${doubtFilter === 'pending' ? 'red' : 'emerald'}-500/20 to-transparent`}></div>
-                            </div>
-                            
-                            <InfiniteDoubtFeed 
-                                classroomId={Number(id)}
-                                type="teacher"
-                                isSolved={doubtFilter}
-                                role={classroom?.role}
-                                emptyMessage={classroom?.role === 'teacher' ? "No doubts from students yet." : "No teacher doubts yet."}
-                                emptyAction={classroom?.role !== 'teacher' ? () => setIsAskModalOpen(true) : undefined}
-                                emptyActionLabel="Send the first query"
-                            />
-                        </div>
+                        <InfiniteDoubtFeed 
+                            classroomId={Number(id)}
+                            type="teacher"
+                            isSolved={doubtFilter === 'All' ? undefined : doubtFilter}
+                            role={classroom?.role}
+                            emptyMessage={classroom?.role === 'teacher' ? "No doubts from students yet." : "No teacher doubts yet."}
+                            emptyAction={classroom?.role !== 'teacher' ? () => setIsAskModalOpen(true) : undefined}
+                            emptyActionLabel="Send the first query"
+                        />
                     </div>
                 )}
 

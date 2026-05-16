@@ -10,6 +10,7 @@ interface InfiniteDoubtFeedProps {
     classroomId?: number;
     subject?: string;
     type?: string;
+    tag?: string;
     isSolved?: string;
     role?: string;
     onViewAISolution?: (doubt: any) => void;
@@ -24,6 +25,7 @@ export default function InfiniteDoubtFeed({
     classroomId,
     subject,
     type = 'community',
+    tag,
     isSolved,
     role,
     onViewAISolution,
@@ -40,6 +42,7 @@ export default function InfiniteDoubtFeed({
         if (classroomId) params.append("classroomId", classroomId.toString());
         if (subject && subject !== "All") params.append("subject", subject);
         if (type) params.append("type", type);
+        if (tag && tag !== "All") params.append("tag", tag);
         if (isSolved) params.append("isSolved", isSolved);
         if (userName) params.append("userName", userName);
         
