@@ -1,9 +1,9 @@
 import { db } from "@/configs/db";
-import { doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, usersTable, doubtTagsTable, tagsTable } from "@/configs/schema";
+import { bookmarksTable, doubtTagsTable, doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, tagsTable, usersTable } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
-import { and, eq, desc, isNull, or, not, sql } from "drizzle-orm";
+import { and, eq, desc, inArray, isNull, or, not, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 
 export async function GET(req: Request) {
@@ -78,7 +78,7 @@ export async function GET(req: Request) {
             conditions.push(eq(doubtsTable.isSolved, status));
         }
 
-        // TAG FILTERING (Restored)
+        // TAG FILTERING
         if (tag && tag !== "All") {
             const normalizedTag = tag.trim().replace(/\s+/g, " ").toLowerCase();
             const taggedDoubts = await db.select({ doubtId: doubtTagsTable.doubtId })
@@ -93,7 +93,6 @@ export async function GET(req: Request) {
             if (taggedDoubtIds.length > 0) {
                 conditions.push(inArray(doubtsTable.id, taggedDoubtIds));
             } else {
-                // If tag is provided but no doubts found, ensure empty result
                 conditions.push(eq(doubtsTable.id, -1));
             }
         }
@@ -105,27 +104,32 @@ export async function GET(req: Request) {
 
         let doubts = await db.select().from(doubtsTable)
             .where(and(...conditions))
-            .orderBy(desc(doubtsTable.createdAt))
+            .orderBy(desc(doubtsTable.isPinned), desc(doubtsTable.createdAt))
             .limit(limit)
             .offset(offset);
 
-        if (userName && doubts.length > 0) {
-            const userLikes = await db.select({ doubtId: likesTable.doubtId })
-                .from(likesTable)
-                .where(eq(likesTable.userName, userName));
-
-            const likedIds = new Set(userLikes.map(l => l.doubtId));
-            doubts = doubts.map(doubt => ({
-                ...doubt,
-                hasLiked: likedIds.has(doubt.id)
-            }));
-        }
-
-        // Fetch reply counts and tags for the doubts
         if (doubts.length > 0) {
             const doubtIds = doubts.map(d => d.id);
+
+            // User Specific Data: Likes
+            if (userName) {
+                const userLikes = await db.select({ doubtId: likesTable.doubtId })
+                    .from(likesTable)
+                    .where(eq(likesTable.userName, userName));
+                const likedIds = new Set(userLikes.map(l => l.doubtId));
+                doubts = doubts.map(d => ({ ...d, hasLiked: likedIds.has(d.id) }));
+            }
+
+            // User Specific Data: Bookmarks
+            if (email) {
+                const userBookmarks = await db.select({ doubtId: bookmarksTable.doubtId })
+                    .from(bookmarksTable)
+                    .where(eq(bookmarksTable.userEmail, email));
+                const bookmarkedIds = new Set(userBookmarks.map(b => b.doubtId));
+                doubts = doubts.map(d => ({ ...d, hasBookmarked: bookmarkedIds.has(d.id) }));
+            }
             
-            // Fetch reply counts
+            // Reply counts
             const replyCounts = await db.select({
                 doubtId: repliesTable.doubtId,
                 count: sql<number>`count(*)`.mapWith(Number)
@@ -133,10 +137,9 @@ export async function GET(req: Request) {
             .from(repliesTable)
             .where(inArray(repliesTable.doubtId, doubtIds))
             .groupBy(repliesTable.doubtId);
-
             const countsMap = Object.fromEntries(replyCounts.map(r => [r.doubtId, r.count]));
 
-            // Fetch tags for these doubts
+            // Tags
             const tagRows = await db.select({
                 doubtId: doubtTagsTable.doubtId,
                 id: tagsTable.id,
@@ -192,7 +195,8 @@ export async function POST(req: Request) {
             }, { status: 403 });
         }
 
-        const { userName, subject, content, imageUrl, classroomId, type = 'community' } = await req.json();
+        const { userName, subject, content, imageUrl, classroomId, type = 'community', tags = [] } = await req.json();
+        const parsedClassroomId = classroomId ? parseInt(classroomId.toString()) : null;
 
         if (!userName || !subject || (!content?.trim() && !imageUrl)) {
             return NextResponse.json({ error: "Missing required fields (provide text or image)" }, { status: 400 });
@@ -210,18 +214,47 @@ export async function POST(req: Request) {
         // 2. Auto-detect sub-topic using AI
         const subTopic = await categorizeDoubt(content || "", subject, imageUrl);
 
-        const newDoubt = await db.insert(doubtsTable).values({
+        const [newDoubt] = await db.insert(doubtsTable).values({
             userName,
             userEmail: email,
             subject,
             subTopic,
             content,
             imageUrl,
-            classroomId: classroomId ? parseInt(classroomId.toString()) : null,
+            classroomId: parsedClassroomId,
             type
         }).returning();
 
-        return NextResponse.json(newDoubt[0]);
+        const normalizedTags: string[] = Array.from(new Set(
+            (Array.isArray(tags) ? tags : [])
+                .map((tag: string) => tag.trim().replace(/\s+/g, " ").toLowerCase())
+                .filter(Boolean)
+        )).slice(0, 8);
+
+        const savedTags: any[] = [];
+        for (const normalizedName of normalizedTags) {
+            const [existingTag] = await db.select().from(tagsTable).where(and(
+                eq(tagsTable.normalizedName, normalizedName),
+                parsedClassroomId ? eq(tagsTable.classroomId, parsedClassroomId) : isNull(tagsTable.classroomId)
+            )).limit(1);
+
+            const [tagRecord] = existingTag
+                ? [existingTag]
+                : await db.insert(tagsTable).values({
+                    name: normalizedName.replace(/\b\w/g, (char) => char.toUpperCase()),
+                    normalizedName,
+                    classroomId: parsedClassroomId,
+                    createdByEmail: email,
+                }).returning();
+
+            savedTags.push(tagRecord);
+            await db.insert(doubtTagsTable).values({
+                doubtId: newDoubt.id,
+                tagId: tagRecord.id,
+            }).onConflictDoNothing();
+        }
+
+        return NextResponse.json({ ...newDoubt, tags: savedTags });
     } catch (error: any) {
         console.error("Error saving doubt:", error);
         return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 });

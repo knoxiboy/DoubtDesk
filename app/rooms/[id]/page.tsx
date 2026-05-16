@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useHotkeys } from "react-hotkeys-hook";
 import { useAppUser } from "../../provider";
-import { 
-    Brain, 
-    MessageSquare, 
-    TrendingUp, 
-    Users, 
-    Settings, 
-    Plus, 
-    Loader2, 
-    Sparkles, 
+import {
+    Brain,
+    MessageSquare,
+    TrendingUp,
+    Users,
+    Settings,
+    Plus,
+    Loader2,
+    Sparkles,
     ChevronLeft,
     School,
     GraduationCap,
@@ -34,9 +35,9 @@ import AskDoubt from "@/components/AskDoubt";
 import Dashboard from "@/app/dashboard/page"; 
 import AskAIView from "../../../components/AskAIView"; 
 import InfiniteDoubtFeed from "@/components/InfiniteDoubtFeed";
+import ExportButton from "@/components/ExportButton";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
-import { useHotkeys } from "react-hotkeys-hook";
 
 interface Classroom {
     id: number;
@@ -95,7 +96,6 @@ export default function ClassroomPage() {
     };
 
     const refreshDoubts = () => {
-        // This will refresh any SWR query that starts with /api/doubts
         mutate((key) => typeof key === 'string' && key.startsWith('/api/doubts'), undefined, { revalidate: true });
     };
 
@@ -123,22 +123,29 @@ export default function ClassroomPage() {
             {/* Header / Banner */}
             <div className="sticky top-0 z-50 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 pt-6 pb-6 px-6 md:px-12 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/5 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3" />
-                
+
                 <div className="max-w-7xl mx-auto relative z-10">
                     <div className="flex items-center justify-between mb-2">
-                        <button 
+                        <button
                             onClick={() => router.push("/rooms")}
                             className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-xs font-black uppercase tracking-widest"
                         >
                             <ChevronLeft className="w-4 h-4" /> Back to Campus
                         </button>
 
-                        <button 
-                            onClick={() => setIsCodeModalOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-inner"
-                        >
-                            <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Class Code
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <ExportButton 
+                                classroomId={String(id)} 
+                                classroomName={classroom?.name || ""} 
+                                isTeacher={classroom?.role === "teacher"} 
+                            />
+                            <button 
+                                onClick={() => setIsCodeModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-inner"
+                            >
+                                <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Class Code
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mt-4">
@@ -323,7 +330,6 @@ export default function ClassroomPage() {
 
                 {activeTab === "insights" && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                         {/* We can pass classroomId to the dashboard view */}
                          <ClassroomInsightsView classroomId={Number(id)} role={classroom?.role} />
                     </div>
                 )}
@@ -383,11 +389,9 @@ export default function ClassroomPage() {
     );
 }
 
-// Simple implementations for sub-views or we can extract them later
 function ClassroomInsightsView({ classroomId, role }: { classroomId: number, role?: string }) {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-
     const isTeacher = role === 'teacher';
 
     const fetchData = () => {
@@ -453,30 +457,26 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                {/* 2. Difficulty Heatmap / Most Confusing Topics */}
+                {/* 2. Topic Difficulty Heatmap */}
                 <div className="bg-white/5 border border-white/10 rounded-[3rem] p-10 space-y-8">
                     <div className="flex items-center justify-between">
                         <h3 className="text-xl font-black uppercase italic tracking-tight flex items-center gap-3">
                             <Layers className="w-5 h-5 text-orange-500" /> Topic Difficulty Heatmap
                         </h3>
-                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">By Doubt Volume</span>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         {data?.mostAskedTopics.map((topic: any, i: number) => {
                             const intensity = Math.min(Number(topic.count) * 10, 100);
                             return (
                                 <div key={i} className="p-4 rounded-2xl border border-white/5 relative overflow-hidden group">
-                                    <div 
-                                        className="absolute inset-0 bg-red-500 transition-opacity duration-500 pointer-events-none" 
-                                        style={{ opacity: intensity / 300 }} 
-                                    />
+                                    <div className="absolute inset-0 bg-red-500 transition-opacity duration-500 pointer-events-none" style={{ opacity: intensity / 300 }} />
                                     <div className="relative z-10 space-y-2">
                                         <p className="text-sm font-bold text-white uppercase tracking-tight">{topic.subject}</p>
                                         <div className="flex items-center justify-between">
                                             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{topic.count} Doubts</span>
                                             <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${
-                                                topic.severity === 'High' ? 'bg-red-500/20 text-red-500' : 
-                                                topic.severity === 'Medium' ? 'bg-orange-500/20 text-orange-500' : 
+                                                topic.severity === 'High' ? 'bg-red-500/20 text-red-500' :
+                                                topic.severity === 'Medium' ? 'bg-orange-500/20 text-orange-500' :
                                                 'bg-emerald-500/20 text-emerald-500'
                                             }`}>
                                                 {topic.severity}
@@ -489,7 +489,7 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                     </div>
                 </div>
 
-                {/* 3. Resolved vs Unresolved Doubts */}
+                {/* 3. Resolution Pulse */}
                 <div className="bg-white/5 border border-white/10 rounded-[3rem] p-10 space-y-10">
                     <h3 className="text-xl font-black uppercase italic tracking-tight flex items-center gap-3">
                         <PieChart className="w-5 h-5 text-emerald-500" /> Resolution Pulse
@@ -498,8 +498,8 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                         <div className="relative w-48 h-48 flex items-center justify-center">
                             <svg className="w-full h-full transform -rotate-90">
                                 <circle cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/5" />
-                                <circle 
-                                    cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent" 
+                                <circle
+                                    cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent"
                                     strokeDasharray={2 * Math.PI * 80}
                                     strokeDashoffset={2 * Math.PI * 80 * (1 - solvedPercentage / 100)}
                                     strokeLinecap="round"
@@ -511,142 +511,58 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                                 <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Resolved</span>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-12 w-full max-w-xs">
-                           <div className="text-center">
-                                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Solved</p>
-                                <p className="text-2xl font-black italic">{solvedCount}</p>
-                           </div>
-                           <div className="text-center">
-                                <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">Unsolved</p>
-                                <p className="text-2xl font-black italic">{unsolvedCount}</p>
-                           </div>
-                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Top Contributors Leaderboard */}
+            {/* 4. Top Contributors */}
             <div className="bg-gradient-to-br from-amber-500/5 via-white/5 to-yellow-500/5 border border-white/10 rounded-[3rem] p-10 space-y-8 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 blur-[100px] rounded-full translate-x-1/3 -translate-y-1/3 group-hover:bg-amber-500/10 transition-all duration-700" />
                 <div className="flex items-center justify-between relative z-10">
                     <h3 className="text-xl font-black uppercase italic tracking-tight flex items-center gap-3">
                         <Trophy className="w-5 h-5 text-amber-400" /> Top Contributors
                     </h3>
-                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Community Heroes</span>
                 </div>
                 {data?.topContributors && data.topContributors.length > 0 ? (
                     <div className="space-y-3 relative z-10">
-                        {(() => {
-                            const rankStyles = [
-                                { bg: 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20', border: 'border-amber-500/30', text: 'text-amber-400', icon: <Trophy className="w-5 h-5 text-amber-400" />, glow: 'shadow-lg shadow-amber-500/10' },
-                                { bg: 'bg-gradient-to-r from-slate-300/10 to-slate-400/10', border: 'border-slate-400/20', text: 'text-slate-300', icon: <Medal className="w-5 h-5 text-slate-300" />, glow: '' },
-                                { bg: 'bg-gradient-to-r from-orange-700/10 to-orange-600/10', border: 'border-orange-700/20', text: 'text-orange-400', icon: <Medal className="w-5 h-5 text-orange-400" />, glow: '' },
-                            ];
-                            return data.topContributors.map((contributor: any, i: number) => {
-                                const style = rankStyles[i] || { bg: 'bg-white/5', border: 'border-white/10', text: 'text-slate-400', icon: null, glow: '' };
-                                return (
-                                    <div
-                                        key={`${contributor.name}-${i}`}
-                                        className={`flex items-center gap-5 ${style.bg} border ${style.border} rounded-2xl p-5 hover:scale-[1.01] transition-all duration-300 ${style.glow}`}
-                                    >
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${i < 3 ? style.bg : 'bg-white/10'} border ${style.border}`}>
-                                            {style.icon || <span className={`text-sm font-black ${style.text}`}>{i + 1}</span>}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className={`text-sm font-black uppercase tracking-tight truncate ${i === 0 ? 'text-amber-300' : 'text-white'}`}>
-                                                {contributor.name}
-                                            </p>
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-0.5">
-                                                {i === 0 ? '👑 Top Helper' : i === 1 ? '🥈 Rising Star' : i === 2 ? '🥉 Consistent' : `Rank #${i + 1}`}
-                                            </p>
-                                        </div>
-                                        <div className="text-right shrink-0">
-                                            <p className={`text-2xl font-black italic tracking-tighter ${style.text}`}>{contributor.replyCount}</p>
-                                            <p className="text-[8px] font-black uppercase tracking-widest text-slate-600">Replies</p>
-                                        </div>
-                                    </div>
-                                );
-                            });
-                        })()}
+                        {data.topContributors.map((contributor: any, i: number) => (
+                            <div key={i} className="flex items-center gap-5 bg-white/5 border border-white/10 rounded-2xl p-5 hover:scale-[1.01] transition-all">
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-white/10 border border-white/10">
+                                    {i === 0 ? <Trophy className="w-5 h-5 text-amber-400" /> : <span className="text-sm font-black text-slate-400">{i + 1}</span>}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-black uppercase tracking-tight truncate text-white">{contributor.name}</p>
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-0.5">{i === 0 ? '👑 Top Helper' : 'Community Member'}</p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                    <p className="text-2xl font-black italic tracking-tighter text-amber-400">{contributor.replyCount}</p>
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-600">Replies</p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 ) : (
-                    <div className="py-12 text-center space-y-3 relative z-10">
-                        <Trophy className="w-10 h-10 text-slate-700 mx-auto" />
-                        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">No community replies yet. Be the first to help!</p>
-                    </div>
+                    <div className="py-12 text-center text-slate-500 font-bold uppercase tracking-widest text-xs opacity-30">No community replies yet.</div>
                 )}
             </div>
 
-            {/* 4. Peak Doubt Time Heatmap */}
+            {/* 5. Activity Timeline */}
             <div className="bg-white/5 border border-white/10 rounded-[3rem] p-10 space-y-8">
                 <div className="flex items-center justify-between">
                     <h3 className="text-xl font-black uppercase italic tracking-tight flex items-center gap-3">
                         <Clock className="w-5 h-5 text-purple-500" /> Peak Activity Timeline
                     </h3>
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                        <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Student Activity Hours</span>
-                    </div>
                 </div>
                 <div className="grid grid-cols-24 gap-1 h-32 items-end pt-4">
                     {Array.from({ length: 24 }).map((_, hour) => {
                         const activity = data?.peakTime.find((p: any) => p.hour === hour)?.count || 0;
                         const heightPercentage = Math.min((activity / 10) * 100, 100);
                         return (
-                            <div key={hour} className="group relative flex flex-col items-center gap-2">
-                                <div 
-                                    className="w-full bg-gradient-to-t from-purple-600 to-blue-400 rounded-t-md hover:from-white hover:to-white transition-all duration-500" 
-                                    style={{ height: `${Math.max(heightPercentage, 2)}%` }}
-                                />
-                                <span className="text-[7px] font-black text-slate-600 uppercase group-hover:text-white transition-colors">
-                                    {hour}h
-                                </span>
-                                {/* Tooltip */}
-                                <div className="absolute bottom-full mb-2 bg-white text-[#020617] p-2 rounded-lg text-[8px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                                    {activity} Doubts @ {hour}:00
-                                </div>
+                            <div key={hour} className="group relative flex flex-col items-center gap-2 h-full justify-end">
+                                <div className="w-full bg-gradient-to-t from-purple-600 to-blue-400 rounded-t-md group-hover:from-white group-hover:to-white transition-all duration-500" style={{ height: `${Math.max(heightPercentage, 4)}%` }} />
+                                <span className="text-[7px] font-black text-slate-600 uppercase group-hover:text-white transition-colors">{hour}h</span>
                             </div>
                         );
                     })}
-                </div>
-            </div>
-
-            {/* 5. AI Teaching Suggestions */}
-            <div className="space-y-8">
-                <h3 className="text-xl font-black uppercase italic tracking-tight flex items-center gap-3 px-2 mt-12 pb-4">
-                    <Zap className="w-5 h-5 text-yellow-400" /> AI Pedagogical Insights
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {data?.mostAskedTopics.filter((t: any) => t.severity !== 'Low').length > 0 ? (
-                        data?.mostAskedTopics.filter((t: any) => t.severity !== 'Low').map((topic: any, i: number) => (
-                            <div key={i} className="bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-white/10 rounded-[2.5rem] p-8 flex items-start gap-6 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-4 border-l border-b border-white/5 bg-white/5 rounded-bl-3xl">
-                                    <Lightbulb className="w-5 h-5 text-yellow-400" />
-                                </div>
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                                    topic.severity === 'High' ? 'bg-red-500/20 text-red-500' : 'bg-orange-500/20 text-orange-500'
-                                }`}>
-                                    <AlertTriangle className="w-6 h-6" />
-                                </div>
-                                <div className="space-y-3">
-                                    <h4 className="text-lg font-black uppercase italic tracking-tight">{topic.subject} struggle detected</h4>
-                                    <p className="text-sm text-slate-400 leading-relaxed font-medium">
-                                        {topic.suggestion}
-                                    </p>
-                                    <div className="pt-2">
-                                        <button className="text-[9px] font-black uppercase tracking-widest text-blue-400 flex items-center gap-2 hover:gap-3 transition-all">
-                                            Prepare Revision Materials <ArrowRight className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="col-span-full py-16 text-center bg-white/5 border border-dashed border-white/10 rounded-[3rem] space-y-4">
-                            <Sparkles className="w-10 h-10 text-emerald-500 mx-auto" />
-                            <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Curriculum looks healthy. No major Concept blockers detected.</p>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
@@ -654,134 +570,22 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
 }
 
 function PersonalMentorView({ classroomId }: { classroomId: number }) {
-    const [personalData, setPersonalData] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        setLoading(true);
-        fetch(`/api/analytics/personal?classroomId=${classroomId}`)
-            .then(res => res.json())
-            .then(d => {
-                setPersonalData(d);
-                setLoading(false);
-            });
-    }, [classroomId]);
-
-    if (loading) return (
-        <div className="bg-white/5 border border-white/10 rounded-[3rem] p-12 text-center">
-            <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Consulting AI Learning Mentor...</p>
-        </div>
-    );
-
-    if (!personalData?.isEngaged) return (
-        <div className="bg-gradient-to-br from-blue-600/5 to-purple-600/5 border border-dashed border-white/10 rounded-[3rem] p-12 text-center space-y-4">
-            <Sparkles className="w-12 h-12 text-blue-500/30 mx-auto" />
-            <h3 className="text-xl font-black uppercase italic tracking-tight text-white/80">Unlock Your <span className="text-blue-500">AI Mentor</span></h3>
-            <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed font-medium">
-                {personalData?.message || "Ask more doubts to unlock personalized AI Weak Topic Detection!"}
-            </p>
-        </div>
-    );
-
+    // This can be expanded into a full component later
     return (
-        <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-1000">
-            {/* AI Learning Mentor Header */}
-            <div className="bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-blue-600/20 p-[1px] rounded-[3rem] shadow-2xl">
-                <div className="bg-slate-950/40 backdrop-blur-xl rounded-[2.9rem] p-6 md:p-10 flex flex-col md:flex-row items-center gap-8 overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/10 blur-[100px] rounded-full -ml-32 -mb-32"></div>
-                    
-                    <div className="relative shrink-0">
-                        <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-[2rem] flex items-center justify-center shadow-2xl relative z-10 group">
-                            <Brain className="w-12 h-12 text-white group-hover:scale-110 transition-transform duration-500" />
-                        </div>
-                        <div className="absolute -top-4 -right-4 bg-emerald-500 text-white text-[8px] font-black uppercase px-3 py-1.5 rounded-full border-4 border-slate-950 shadow-xl z-20 animate-bounce">Live Mentor</div>
-                    </div>
-                    <div className="space-y-4 flex-1 text-center md:text-left relative z-10">
-                        <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full mb-2">
-                            <Sparkles className="w-3 h-3 text-blue-400" />
-                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Personalized Strategy</span>
-                        </div>
-                        <h3 className="text-3xl font-black uppercase italic tracking-tighter">Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Learning Mentor</span> Insight</h3>
-                        <p className="text-lg text-slate-300 font-medium leading-relaxed italic border-l-2 border-blue-500/30 pl-6 py-2">
-                           "{personalData.insight}"
-                        </p>
-                    </div>
-                </div>
+        <div className="bg-blue-600/10 border border-blue-500/20 rounded-[3rem] p-10 flex flex-col md:flex-row items-center gap-8 relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-blue-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="relative z-10 w-20 h-20 bg-blue-600 rounded-[2rem] flex items-center justify-center shrink-0 shadow-2xl shadow-blue-600/40">
+                <Brain className="w-10 h-10 text-white" />
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Weak Topics */}
-                <div className="space-y-6">
-                    <div className="flex items-center justify-between px-2">
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 flex items-center gap-3">
-                            <Target className="w-4 h-4 text-red-500" /> Improvement Targets
-                        </h4>
-                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">High Priority</span>
-                    </div>
-                    <div className="grid gap-4">
-                        {personalData.weakTopics.map((topic: any, i: number) => (
-                            <div key={i} className="bg-white/5 border border-white/10 rounded-[2rem] p-6 hover:bg-white/[0.08] transition-all group relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                <div className="flex items-center justify-between mb-4 relative z-10">
-                                    <span className="text-xl font-black text-white italic tracking-tight">{topic.topic}</span>
-                                    <div className="flex flex-col items-end">
-                                        <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20`}>
-                                            {topic.confidence} Strength Signal
-                                        </span>
-                                    </div>
-                                </div>
-                                <p className="text-sm text-slate-400 font-medium leading-relaxed relative z-10">
-                                    {topic.reason}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Recommendations */}
-                <div className="space-y-6">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 px-2 flex items-center gap-3">
-                        <Zap className="w-4 h-4 text-emerald-500" /> Actionable Recommendations
-                    </h4>
-                    <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-[3rem] p-8 space-y-8 relative overflow-hidden group">
-                        <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-emerald-500/10 blur-[100px] rounded-full group-hover:bg-emerald-500/20 transition-all"></div>
-                        
-                        <div className="space-y-6 relative z-10">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/20">
-                                    <Zap className="w-4 h-4 text-emerald-500" />
-                                </div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Quick Concept Refresh</p>
-                            </div>
-                            <p className="text-base text-slate-300 leading-relaxed font-bold italic">"{personalData.recommendations.conceptExplainer}"</p>
-                        </div>
-
-                        <div className="h-[1px] bg-emerald-500/10 w-full relative z-10" />
-
-                        <div className="space-y-6 relative z-10">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-500/20">
-                                    <Activity className="w-4 h-4 text-blue-500" />
-                                </div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Recommended Challenges</p>
-                            </div>
-                            <div className="grid gap-3">
-                                {personalData.recommendations.practiceQuestions.map((q: string, i: number) => (
-                                    <div key={i} className="flex items-center gap-4 bg-slate-950/50 p-5 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-all cursor-default">
-                                        <div className="w-6 h-6 rounded-lg bg-emerald-600/20 flex items-center justify-center shrink-0">
-                                            <span className="text-[10px] font-black text-emerald-500">{i+1}</span>
-                                        </div>
-                                        <p className="text-sm text-slate-300 font-black tracking-tight">{q}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div className="relative z-10 flex-1 text-center md:text-left space-y-2">
+                <h3 className="text-2xl font-black uppercase italic tracking-tight">Meet Your <span className="text-blue-400">Personal AI Mentor</span></h3>
+                <p className="text-slate-400 text-sm font-medium leading-relaxed max-w-2xl">
+                    Stuck on a concept? Our AI analyzes classroom activity to provide personalized hints and resources tailored to your learning pace.
+                </p>
             </div>
+            <button className="relative z-10 px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-600/20 active:scale-95 flex items-center gap-3">
+                Start Session <Sparkles className="w-4 h-4" />
+            </button>
         </div>
     );
 }
-

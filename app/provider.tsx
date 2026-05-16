@@ -28,6 +28,8 @@ const USER_ENDPOINT = "/api/user";
 import SessionTracker from "@/components/auth/SessionTracker";
 import { Toaster } from "sonner";
 import { useRouter, usePathname } from "next/navigation";
+import { KeyboardShortcutsProvider } from "@/components/KeyboardShortcutsProvider";
+import { CommandMenu } from "@/components/CommandMenu";
 
 export function Provider({ children }: { children: React.ReactNode }) {
     const [appUser, setAppUser] = useState<AppUser | null>(null);
@@ -74,9 +76,12 @@ export function Provider({ children }: { children: React.ReactNode }) {
 
     return (
         <UserContext.Provider value={{ appUser, setAppUser, loading, refresh }}>
-            <SessionTracker />
-            {children}
-            <Toaster theme="dark" closeButton />
+            <KeyboardShortcutsProvider>
+                <SessionTracker />
+                {children}
+                <CommandMenu />
+                <Toaster theme="dark" closeButton />
+            </KeyboardShortcutsProvider>
         </UserContext.Provider>
     );
 }
