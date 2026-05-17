@@ -57,6 +57,15 @@ const suggestTags = (text: string, subject: string) => {
  */
 export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSuccess, doubtToEdit, classroomId = null, type = 'community' }: AskDoubtProps) {
     const [content, setContent] = useState(doubtToEdit?.content || "");
+    const maxlength = 500;
+    const charCount = content.length;
+    let colorClass = "text-slate-400";
+
+if (charCount >= maxLength) {
+  colorClass = "text-red-500";
+} else if (charCount >= maxLength * 0.8) {
+  colorClass = "text-yellow-400";
+}
     const [subject, setSubject] = useState(doubtToEdit?.subject || defaultSubject);
     const [imageUrl, setImageUrl] = useState(doubtToEdit?.imageUrl || "");
     const [fileName, setFileName] = useState(
@@ -198,6 +207,10 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (charCount > maxLength) {
+            toast.error("Character limit exceeded (500)");
+            return;
+            }
         if ((!content.trim() && !imageUrl) || !subject.trim()) return;
 
         setIsSubmitting(true);
@@ -330,6 +343,9 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                 placeholder="Type your question here... (Markdown supported)"
                                 className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all resize-none"
                             />
+                   <p className={`text-xs text-right mt-1 ${colorClass}`}>
+                     {charCount} / {maxLength}
+                     </p>
                         )}
                     </div>
 
