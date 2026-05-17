@@ -155,9 +155,10 @@ export async function GET(req: Request) {
             solvedStats,
             peakTime,
             engagement: {
-                ...engagement[0],
-                totalReplies: totalReplies[0]?.count || 0
-            },
+    totalStudents: Number(engagement[0]?.totalStudents || 0),
+    totalDoubts: Number(engagement[0]?.totalDoubts || 0),
+    totalReplies: Number(totalReplies[0]?.count || 0)
+},
             weakTopics: weakTopics.filter(t => t.severity !== 'Low'),
             topContributors: topContributors.map(c => ({ name: c.name, replyCount: Number(c.replyCount) }))
         });
