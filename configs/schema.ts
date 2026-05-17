@@ -1,4 +1,4 @@
-import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique } from "drizzle-orm/pg-core";
 
 /**
  * Users table storing core user profiles.
@@ -17,6 +17,7 @@ export const usersTable = pgTable("users", {
     isBlocked: boolean().default(false).notNull(),
     blockedUntil: timestamp(),
     blockCount: integer().default(0).notNull(),
+    emailNotificationsEnabled: boolean().default(true).notNull(),
     createdAt: timestamp().defaultNow().notNull(),
 });
 
@@ -186,8 +187,6 @@ export const doubtsTable = pgTable("doubts", {
     isSolved: varchar({ length: 20 }).default("unsolved"), // unsolved, solved
     solvedReplyId: integer(),                       // ID of the specific reply that solved it
     type: varchar({ length: 20 }).default("community"),    // 'ai', 'community', 'teacher'
-    solvedReplyId: integer(), // ID of the specific reply that solved it
-    type: varchar({ length: 20 }).default("community"), // 'ai', 'community', 'teacher'
     isPinned: boolean().default(false),
     createdAt: timestamp().defaultNow().notNull(),
 }, (table) => {
@@ -238,12 +237,6 @@ export const doubtTagsTable = pgTable("doubt_tags", {
     uniqueDoubtTag: uniqueIndex("doubt_tag_unique_idx").on(table.doubtId, table.tagId),
 }));
 
-export const likesTable = pgTable("likes", {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userName: varchar({ length: 255 }).notNull(),
-    doubtId: integer().notNull(),
-    createdAt: timestamp().defaultNow().notNull(),
-});
 
 /**
  * Replies to doubts.
