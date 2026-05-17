@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, MoreVertical, Pencil, Trash2, PlusCircle, Eye, EyeOff, Bold, Italic, Code, List, ThumbsUp, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import MarkdownRenderer from "./MarkdownRenderer";
 
 interface Reply {
     id: number;
     doubtId: number;
     userName: string;
-    type: "comment" | "solution";
+    type: 'comment' | 'solution';
     content: string | null;
     imageUrl: string | null;
     upvotes: number;
@@ -24,13 +25,7 @@ interface DoubtRepliesModalProps {
     isTeacher?: boolean;
 }
 
-export default function DoubtRepliesModal({
-    doubt,
-    isOpen,
-    onClose,
-    onReplyChange,
-    isTeacher = false,
-}: DoubtRepliesModalProps) {
+export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChange, isTeacher = false }: DoubtRepliesModalProps) {
     const [replies, setReplies] = useState<Reply[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [chatText, setChatText] = useState("");
@@ -55,7 +50,9 @@ export default function DoubtRepliesModal({
     const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
     const [isFullscreenImageOpen, setIsFullscreenImageOpen] = useState(false);
     const [fullscreenImageUrl, setFullscreenImageUrl] = useState("");
-
+    const [isPreviewMode, setIsPreviewMode] = useState(false);
+    const [isEditPreviewMode, setIsEditPreviewMode] = useState(false);
+    const [isChatPreviewMode, setIsChatPreviewMode] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -96,9 +93,9 @@ export default function DoubtRepliesModal({
         }
     };
 
-    const handlePost = async (type: "comment" | "solution") => {
-        const content = type === "comment" ? chatText : solutionContent;
-        const imageUrl = type === "solution" ? solutionImage : null;
+    const handlePost = async (type: 'comment' | 'solution') => {
+        const content = type === 'comment' ? chatText : solutionContent;
+        const imageUrl = type === 'solution' ? solutionImage : null;
 
         if (!content.trim() && !imageUrl) return;
 
@@ -112,25 +109,21 @@ export default function DoubtRepliesModal({
                     userName,
                     type,
                     content,
-                    imageUrl,
-                }),
+                    imageUrl
+                })
             });
 
             if (res.ok) {
                 const updatedReply = await res.json();
 
-                if (editingId && type === "solution") {
-                    setReplies(
-                        replies.map((r) =>
-                            r.id === editingId ? updatedReply : r,
-                        ),
-                    );
+                if (editingId && type === 'solution') {
+                    setReplies(replies.map(r => r.id === editingId ? updatedReply : r));
                     setEditingId(null);
                 } else {
                     setReplies([...replies, updatedReply]);
                 }
 
-                if (type === "comment") setChatText("");
+                if (type === 'comment') setChatText("");
                 else {
                     setSolutionContent("");
                     setSolutionImage("");
@@ -139,33 +132,26 @@ export default function DoubtRepliesModal({
                     setEditingId(null);
                 }
                 if (onReplyChange) onReplyChange();
-                toast.success(
-                    editingId
-                        ? "Solution updated!"
-                        : type === "solution"
-                          ? "Solution posted!"
-                          : "Chat sent.",
-                );
+                toast.success(editingId ? "Solution updated!" : (type === 'solution' ? "Solution posted!" : "Reply submitted."), {
+                    id: editingId ? `reply-update-${editingId}` : `reply-create-${type}-${doubt.id}`,
+                });
             } else {
                 const data = await res.json();
-                toast.error(data.error || "Failed to post.");
+                toast.error(data.error || "Failed to submit reply.", { id: `reply-create-error-${type}-${doubt.id}` });
             }
         } catch (error) {
-            toast.error("An unexpected error occurred.");
+            toast.error("Network error while submitting reply.", { id: `reply-create-error-${type}-${doubt.id}` });
         } finally {
             setIsPosting(false);
         }
     };
 
     const handlePostOrUpdate = () => {
-        if (
-            editingId &&
-            replies.find((r) => r.id === editingId)?.type === "solution"
-        ) {
+        if (editingId && replies.find(r => r.id === editingId)?.type === 'solution') {
             // Update mode for solution
             updateSolution();
         } else {
-            handlePost("solution");
+            handlePost('solution');
         }
     };
 
@@ -178,27 +164,25 @@ export default function DoubtRepliesModal({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     content: solutionContent,
-                    imageUrl: solutionImage,
-                }),
+                    imageUrl: solutionImage
+                })
             });
 
             if (res.ok) {
                 const updated = await res.json();
-                setReplies(
-                    replies.map((r) => (r.id === editingId ? updated : r)),
-                );
+                setReplies(replies.map(r => r.id === editingId ? updated : r));
                 setEditingId(null);
                 setSolutionContent("");
                 setSolutionImage("");
                 setFileName("");
                 setShowSolutionForm(false);
-                toast.success("Solution updated!");
+                toast.success("Solution updated!", { id: `reply-update-${editingId}` });
             } else {
                 const data = await res.json();
-                toast.error(data.error || "Failed to update solution.");
+                toast.error(data.error || "Failed to update solution.", { id: `reply-update-error-${editingId}` });
             }
         } catch (error) {
-            toast.error("An unexpected error occurred.");
+            toast.error("Network error while updating solution.", { id: `reply-update-error-${editingId}` });
         } finally {
             setIsPosting(false);
         }
@@ -211,19 +195,20 @@ export default function DoubtRepliesModal({
             const res = await fetch(`/api/replies/action/${replyId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ content: editContent }),
+                body: JSON.stringify({ content: editContent })
             });
             if (res.ok) {
                 const updated = await res.json();
-                setReplies(
-                    replies.map((r) => (r.id === replyId ? updated : r)),
-                );
+                setReplies(replies.map(r => r.id === replyId ? updated : r));
                 setEditingId(null);
                 setEditContent("");
-                toast.success("Message updated");
+                toast.success("Reply updated", { id: `reply-update-${replyId}` });
+            } else {
+                const data = await res.json();
+                toast.error(data.error || "Failed to update reply.", { id: `reply-update-error-${replyId}` });
             }
         } catch (error) {
-            toast.error("Failed to update");
+            toast.error("Network error while updating reply.", { id: `reply-update-error-${replyId}` });
         } finally {
             setIsEditingReply(false);
         }
@@ -233,15 +218,18 @@ export default function DoubtRepliesModal({
         setIsDeletingReply(true);
         try {
             const res = await fetch(`/api/replies/action/${replyId}`, {
-                method: "DELETE",
+                method: "DELETE"
             });
             if (res.ok) {
-                setReplies(replies.filter((r) => r.id !== replyId));
+                setReplies(replies.filter(r => r.id !== replyId));
                 if (onReplyChange) onReplyChange();
-                toast.success("Message deleted");
+                toast.success("Reply deleted", { id: `reply-delete-${replyId}` });
+            } else {
+                const data = await res.json();
+                toast.error(data.error || "Failed to delete reply.", { id: `reply-delete-error-${replyId}` });
             }
         } catch (error) {
-            toast.error("Failed to delete");
+            toast.error("Network error while deleting reply.", { id: `reply-delete-error-${replyId}` });
         } finally {
             setIsDeletingReply(false);
             setMenuOpenId(null);
@@ -284,18 +272,50 @@ export default function DoubtRepliesModal({
             if (res.ok) {
                 if (onReplyChange) onReplyChange();
                 const isUnmarking = doubt.solvedReplyId === replyId;
-                toast.success(
-                    isUnmarking
-                        ? "Solution unmarked."
-                        : "Marked as Official Solution!",
-                );
+                toast.success(isUnmarking ? "Solution unmarked." : "Marked as official solution!", {
+                    id: `solution-mark-${doubt.id}`,
+                });
+            } else {
+                const data = await res.json();
+                toast.error(data.error || "Failed to update solution status.", { id: `solution-mark-error-${doubt.id}` });
             }
         } catch (error) {
-            toast.error("Action failed.");
+            toast.error("Network error while updating solution status.", { id: `solution-mark-error-${doubt.id}` });
         } finally {
             setIsSolving(false);
         }
     };
+
+    const insertMarkdown = (textareaRef: React.RefObject<HTMLTextAreaElement>, type: string, stateSetter: (val: string) => void) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const selectedText = text.substring(start, end);
+        let replacement = "";
+
+        switch (type) {
+            case "bold": replacement = `**${selectedText || "bold text"}**`; break;
+            case "italic": replacement = `*${selectedText || "italic text"}*`; break;
+            case "code": replacement = `\`\`\`\n${selectedText || "code"}\n\`\`\``; break;
+            case "list": replacement = `\n- ${selectedText || "list item"}`; break;
+        }
+
+        const newText = text.substring(0, start) + replacement + text.substring(end);
+        stateSetter(newText);
+        
+        // Focus back and set selection
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(start + replacement.length, start + replacement.length);
+        }, 0);
+    };
+
+    const solutionTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const chatInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -320,63 +340,48 @@ export default function DoubtRepliesModal({
         const isOfficial = doubt.solvedReplyId === reply.id;
 
         return (
-            <div
-                className={`flex flex-col group/msg relative w-full mb-6 ${isMe ? "items-end" : "items-start"}`}>
+            <div className={`flex flex-col group/msg relative w-full mb-6 ${isMe ? 'items-end' : 'items-start'}`}>
                 {/* Message Bubble */}
-                <div
-                    className={`relative max-w-[85%] sm:max-w-[75%] rounded-[2rem] p-6 ${
-                        reply.type === "solution"
-                            ? `${isOfficial ? "bg-emerald-500/10 border-2 border-emerald-500/40 ring-4 ring-emerald-500/5" : "bg-white/5 border border-white/10"}`
-                            : isMe
-                              ? "bg-blue-600/10 border border-blue-500/20"
-                              : "bg-white/5 border border-white/10"
-                    }`}>
+                <div className={`relative max-w-[85%] sm:max-w-[75%] rounded-[2rem] p-6 ${
+                    reply.type === 'solution'
+                    ? `${isOfficial ? 'bg-emerald-500/10 border-2 border-emerald-500/40 ring-4 ring-emerald-500/5' : 'bg-white/5 border border-white/10'}`
+                    : isMe ? 'bg-blue-600/10 border border-blue-500/20' : 'bg-white/5 border border-white/10'
+                }`}>
                     {/* Header */}
                     <div className="flex items-center justify-between gap-4 mb-3">
                         <div className="flex items-center gap-2">
-                            <span
-                                className={`text-[10px] font-black uppercase tracking-widest ${isMe ? "text-blue-400" : "text-slate-400"}`}>
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${isMe ? 'text-blue-400' : 'text-slate-400'}`}>
                                 {reply.userName} {isMe && "(YOU)"}
                             </span>
-                            {reply.type === "solution" && isOfficial && (
+                            {reply.type === 'solution' && isOfficial && (
                                 <div className="bg-emerald-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-full shadow-lg shadow-emerald-500/20 flex items-center gap-1">
-                                    <CheckCircle className="w-2.5 h-2.5" />{" "}
-                                    Official
+                                    <CheckCircle className="w-2.5 h-2.5" /> Official
                                 </div>
                             )}
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                            {(isDoubtOwner || isTeacher) &&
-                                reply.type === "solution" &&
-                                !editingId && (
-                                    <button
-                                        onClick={() =>
-                                            handleMarkAsSolution(reply.id)
-                                        }
-                                        disabled={isSolving}
-                                        className={`text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border transition-all ${
-                                            isOfficial
-                                                ? "bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500"
-                                                : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500"
-                                        } hover:text-white hover:scale-105 active:scale-95`}>
-                                        {isOfficial
-                                            ? "Unmark"
-                                            : "Mark Official"}
-                                    </button>
-                                )}
+                            {(isDoubtOwner || isTeacher) && reply.type === 'solution' && !editingId && (
+                                <button
+                                    onClick={() => handleMarkAsSolution(reply.id)}
+                                    disabled={isSolving}
+                                    className={`text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border transition-all ${
+                                        isOfficial
+                                        ? "bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500"
+                                        : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500"
+                                    } hover:text-white hover:scale-105 active:scale-95`}
+                                >
+                                    {isOfficial ? "Unmark" : "Mark Official"}
+                                </button>
+                            )}
 
                             {isMe && !editingId && (
                                 <div className="relative">
                                     <button
-                                        onClick={() =>
-                                            setMenuOpenId(
-                                                menuOpenId === reply.id
-                                                    ? null
-                                                    : reply.id,
-                                            )
-                                        }
-                                        className="p-1.5 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-all">
+                                        onClick={() => setMenuOpenId(menuOpenId === reply.id ? null : reply.id)}
+                                        className="p-1.5 hover:bg-white/10 rounded-xl text-slate-500 hover:text-white transition-all"
+                                        aria-label="More options"
+                                    >
                                         <MoreVertical className="w-3.5 h-3.5" />
                                     </button>
 
@@ -385,33 +390,21 @@ export default function DoubtRepliesModal({
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    if (
-                                                        reply.type ===
-                                                        "solution"
-                                                    ) {
-                                                        setSolutionContent(
-                                                            reply.content || "",
-                                                        );
-                                                        setSolutionImage(
-                                                            reply.imageUrl ||
-                                                                "",
-                                                        );
+                                                    if (reply.type === 'solution') {
+                                                        setSolutionContent(reply.content || "");
+                                                        setSolutionImage(reply.imageUrl || "");
                                                         setEditingId(reply.id);
-                                                        setShowSolutionForm(
-                                                            true,
-                                                        );
+                                                        setShowSolutionForm(true);
                                                         setMenuOpenId(null);
                                                     } else {
                                                         setEditingId(reply.id);
-                                                        setEditContent(
-                                                            reply.content || "",
-                                                        );
+                                                        setEditContent(reply.content || "");
                                                         setMenuOpenId(null);
                                                     }
                                                 }}
-                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase text-slate-300 hover:bg-blue-600 hover:text-white transition-all text-left">
-                                                <Pencil className="w-3 h-3" />{" "}
-                                                Edit
+                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase text-slate-300 hover:bg-blue-600 hover:text-white transition-all text-left"
+                                            >
+                                                <Pencil className="w-3 h-3" /> Edit
                                             </button>
                                             <button
                                                 onClick={(e) => {
@@ -432,36 +425,50 @@ export default function DoubtRepliesModal({
 
                     {/* Body */}
                     <div className="space-y-4">
-                        {editingId === reply.id && reply.type === "comment" ? (
+                        {editingId === reply.id && reply.type === 'comment' ? (
                             <div className="space-y-4 min-w-[240px] animate-in fade-in duration-200">
-                                <textarea
-                                    value={editContent}
-                                    onChange={(e) =>
-                                        setEditContent(e.target.value)
-                                    }
-                                    className="w-full bg-slate-950/50 border border-blue-500/20 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all h-28 resize-none"
-                                />
-                                <div className="flex gap-2 justify-end">
-                                    <button
-                                        onClick={() => setEditingId(null)}
-                                        className="px-4 py-2 text-[10px] font-black uppercase text-slate-500 hover:text-white">
-                                        Cancel
+                                <div className="flex items-center gap-2 mb-2">
+                                    <button onClick={() => insertMarkdown(editTextareaRef, "bold", setEditContent)} className="p-1.5 hover:bg-white/10 rounded text-slate-400"><Bold className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => insertMarkdown(editTextareaRef, "italic", setEditContent)} className="p-1.5 hover:bg-white/10 rounded text-slate-400"><Italic className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => insertMarkdown(editTextareaRef, "code", setEditContent)} className="p-1.5 hover:bg-white/10 rounded text-slate-400"><Code className="w-3.5 h-3.5" /></button>
+                                    <div className="w-px h-4 bg-white/10 mx-1" />
+                                    <button 
+                                        onClick={() => setIsEditPreviewMode(!isEditPreviewMode)} 
+                                        className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-black uppercase transition-all ${isEditPreviewMode ? 'bg-blue-500 text-white' : 'hover:bg-white/10 text-slate-400'}`}
+                                    >
+                                        {isEditPreviewMode ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                        {isEditPreviewMode ? "Edit" : "Preview"}
                                     </button>
+                                </div>
+                                {isEditPreviewMode ? (
+                                    <div className="w-full bg-slate-950/50 border border-blue-500/20 rounded-2xl p-4 min-h-[112px] text-sm text-white overflow-y-auto">
+                                        <MarkdownRenderer content={editContent || "*Nothing to preview*"} />
+                                    </div>
+                                ) : (
+                                    <textarea
+                                        ref={editTextareaRef}
+                                        value={editContent}
+                                        onChange={(e) => setEditContent(e.target.value)}
+                                        className="w-full bg-slate-950/50 border border-blue-500/20 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all h-28 resize-none"
+                                    />
+                                )}
+                                <div className="flex gap-2 justify-end">
+                                    <button onClick={() => setEditingId(null)} disabled={isEditingReply} className="px-4 py-2 text-[10px] font-black uppercase text-slate-500 hover:text-white disabled:opacity-50">Cancel</button>
                                     <button
-                                        onClick={() =>
-                                            handleEditReply(reply.id)
-                                        }
-                                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-900/40">
-                                        Save
+                                        onClick={() => handleEditReply(reply.id)}
+                                        disabled={isEditingReply || !editContent.trim()}
+                                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-blue-900/40 disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {isEditingReply ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Save
                                     </button>
                                 </div>
                             </div>
                         ) : (
                             <>
                                 {reply.content && (
-                                    <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap font-medium">
-                                        {reply.content}
-                                    </p>
+                                    <div className="text-sm text-slate-200 leading-relaxed font-medium">
+                                        <MarkdownRenderer content={reply.content} />
+                                    </div>
                                 )}
                                 {reply.imageUrl && (
                                     reply.imageUrl.startsWith("data:application/pdf") ? (
@@ -528,10 +535,7 @@ export default function DoubtRepliesModal({
 
                 {/* Footer: Time */}
                 <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mt-2 px-2">
-                    {new Date(reply.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                    })}
+                    {new Date(reply.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
             </div>
         );
@@ -550,82 +554,57 @@ export default function DoubtRepliesModal({
                         </div>
                         <div>
                             <h2 className="text-xl font-black text-white tracking-tight uppercase italic flex items-center gap-2">
-                                Doubt{" "}
-                                <span className="text-blue-500">
-                                    Discussion
-                                </span>
-                                {doubt.isSolved === "solved" && (
-                                    <CheckCircle className="w-4 h-4 text-emerald-500" />
-                                )}
+                                Doubt <span className="text-blue-500">Discussion</span>
+                                {doubt.isSolved === "solved" && <CheckCircle className="w-4 h-4 text-emerald-500" />}
                             </h2>
                             <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest mt-1">
                                 {doubt.subject} • {replies.length} Interactions
                             </p>
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-3 hover:bg-white/5 rounded-2xl text-slate-400 transition-colors">
+                    <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl text-slate-400 transition-colors" aria-label="Close modal">
                         <X className="w-6 h-6" />
                     </button>
                 </div>
 
                 {/* Tab Navigation - Hidden for 'Ask Teacher' Doubts */}
-                {doubt.type !== "teacher" && (
+                {doubt.type !== 'teacher' && (
                     <div className="px-8 border-b border-white/5 flex gap-8 h-14 bg-white/[0.01]">
                         <button
-                            onClick={() => setActiveTab("all")}
+                            onClick={() => setActiveTab('all')}
                             className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
-                                activeTab === "all"
-                                    ? "text-blue-500"
-                                    : "text-slate-500 hover:text-slate-300"
-                            }`}>
+                                activeTab === 'all' ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300'
+                            }`}
+                        >
                             All Chat
-                            <span
-                                className={`px-1.5 py-0.5 rounded-md text-[8px] bg-white/5 ${activeTab === "all" ? "text-blue-500 bg-blue-500/10" : "text-slate-600"}`}>
+                            <span className={`px-1.5 py-0.5 rounded-md text-[8px] bg-white/5 ${activeTab === 'all' ? 'text-blue-500 bg-blue-500/10' : 'text-slate-600'}`}>
                                 {replies.length}
                             </span>
-                            {activeTab === "all" && (
-                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 animate-in fade-in slide-in-from-bottom-1" />
-                            )}
+                            {activeTab === 'all' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 animate-in fade-in slide-in-from-bottom-1" />}
                         </button>
                         <button
-                            onClick={() => setActiveTab("chat")}
+                            onClick={() => setActiveTab('chat')}
                             className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
-                                activeTab === "chat"
-                                    ? "text-blue-500"
-                                    : "text-slate-500 hover:text-slate-300"
-                            }`}>
+                                activeTab === 'chat' ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300'
+                            }`}
+                        >
                             General Chat
-                            <span
-                                className={`px-1.5 py-0.5 rounded-md text-[8px] bg-white/5 ${activeTab === "chat" ? "text-blue-500 bg-blue-500/10" : "text-slate-600"}`}>
-                                {
-                                    replies.filter((r) => r.type === "comment")
-                                        .length
-                                }
+                            <span className={`px-1.5 py-0.5 rounded-md text-[8px] bg-white/5 ${activeTab === 'chat' ? 'text-blue-500 bg-blue-500/10' : 'text-slate-600'}`}>
+                                {replies.filter(r => r.type === 'comment').length}
                             </span>
-                            {activeTab === "chat" && (
-                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 animate-in fade-in slide-in-from-bottom-1" />
-                            )}
+                            {activeTab === 'chat' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 animate-in fade-in slide-in-from-bottom-1" />}
                         </button>
                         <button
-                            onClick={() => setActiveTab("solutions")}
+                            onClick={() => setActiveTab('solutions')}
                             className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${
-                                activeTab === "solutions"
-                                    ? "text-emerald-500"
-                                    : "text-slate-500 hover:text-slate-300"
-                            }`}>
+                                activeTab === 'solutions' ? 'text-emerald-500' : 'text-slate-500 hover:text-slate-300'
+                            }`}
+                        >
                             All Solutions
-                            <span
-                                className={`px-1.5 py-0.5 rounded-md text-[8px] bg-white/5 ${activeTab === "solutions" ? "text-emerald-500 bg-emerald-500/10" : "text-slate-600"}`}>
-                                {
-                                    replies.filter((r) => r.type === "solution")
-                                        .length
-                                }
+                            <span className={`px-1.5 py-0.5 rounded-md text-[8px] bg-white/5 ${activeTab === 'solutions' ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-600'}`}>
+                                {replies.filter(r => r.type === 'solution').length}
                             </span>
-                            {activeTab === "solutions" && (
-                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 animate-in fade-in slide-in-from-bottom-1" />
-                            )}
+                            {activeTab === 'solutions' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 animate-in fade-in slide-in-from-bottom-1" />}
                         </button>
                     </div>
                 )}
@@ -635,21 +614,15 @@ export default function DoubtRepliesModal({
                     {isLoading ? (
                         <div className="h-full flex flex-col items-center justify-center gap-4">
                             <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                Loading Thread...
-                            </p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Loading Thread...</p>
                         </div>
                     ) : replies.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
                             <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-4">
                                 <MessageSquare className="w-10 h-10 text-slate-500" />
                             </div>
-                            <p className="text-sm font-bold text-slate-400">
-                                No interactions yet.
-                            </p>
-                            <p className="text-[10px] uppercase font-black tracking-widest text-slate-600 mt-2">
-                                Be the first to help out!
-                            </p>
+                            <p className="text-sm font-bold text-slate-400">No interactions yet.</p>
+                            <p className="text-[10px] uppercase font-black tracking-widest text-slate-600 mt-2">Be the first to help out!</p>
                         </div>
                     ) : (
                         <div className="space-y-6">
@@ -664,9 +637,7 @@ export default function DoubtRepliesModal({
                                     return (
                                         <div className="h-40 flex flex-col items-center justify-center text-center opacity-40">
                                             <p className="text-sm font-bold text-slate-400">
-                                                {activeTab === "chat"
-                                                    ? "No general chat messages yet."
-                                                    : "No solutions posted yet."}
+                                                {activeTab === 'chat' ? "No general chat messages yet." : "No solutions posted yet."}
                                             </p>
                                         </div>
                                     );
@@ -686,32 +657,15 @@ export default function DoubtRepliesModal({
 
                                         // WhatsApp style: Today, Yesterday, or Date
                                         const now = new Date();
-                                        const today = now.toLocaleDateString(
-                                            [],
-                                            {
-                                                day: "numeric",
-                                                month: "long",
-                                                year: "numeric",
-                                            },
-                                        );
-                                        const yesterday = new Date(
-                                            now.setDate(now.getDate() - 1),
-                                        ).toLocaleDateString([], {
-                                            day: "numeric",
-                                            month: "long",
-                                            year: "numeric",
-                                        });
+                                        const today = now.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
+                                        const yesterday = new Date(now.setDate(now.getDate() - 1)).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
 
                                         let displayDate = replyDate;
-                                        if (replyDate === today)
-                                            displayDate = "Today";
-                                        else if (replyDate === yesterday)
-                                            displayDate = "Yesterday";
+                                        if (replyDate === today) displayDate = "Today";
+                                        else if (replyDate === yesterday) displayDate = "Yesterday";
 
                                         dateSeparator = (
-                                            <div
-                                                key={`date-${reply.id}`}
-                                                className="flex justify-center mt-2 mb-1">
+                                            <div key={`date-${reply.id}`} className="flex justify-center mt-2 mb-1">
                                                 <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full">
                                                     <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
                                                         {displayDate}
@@ -722,9 +676,7 @@ export default function DoubtRepliesModal({
                                     }
 
                                     return (
-                                        <div
-                                            key={reply.id}
-                                            className="space-y-2">
+                                        <div key={reply.id} className="space-y-2">
                                             {dateSeparator}
                                             <ReplyBubble reply={reply} />
                                         </div>
@@ -737,63 +689,76 @@ export default function DoubtRepliesModal({
                 </div>
 
                 {/* Hybrid Input Area */}
-                {(doubt.type !== "teacher" || isTeacher || isDoubtOwner) && (
+                {(doubt.type !== 'teacher' || isTeacher || isDoubtOwner) && (
                     <div className="p-8 bg-white/[0.02] border-t border-white/5 solution-form-area">
-                        {showSolutionForm ? (
-                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 bg-white/[0.03] p-8 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-y-auto max-h-[60vh] group/form custom-scrollbar">
-                                {/* Decorative Background Blur */}
-                                <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
+                    {showSolutionForm ? (
+                        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 bg-white/[0.03] p-8 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-y-auto max-h-[60vh] group/form custom-scrollbar">
+                            {/* Decorative Background Blur */}
+                            <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
 
-                                <div className="flex items-center justify-between relative z-10">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/20 flex items-center justify-center">
-                                            <PlusCircle className="w-6 h-6 text-emerald-500" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-xl font-black text-white uppercase tracking-tighter italic">
-                                                {editingId ? "Update" : "Post"}{" "}
-                                                <span className="text-emerald-500">
-                                                    Solution
-                                                </span>
-                                            </h3>
-                                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
-                                                {editingId
-                                                    ? "Refining your contribution"
-                                                    : `Solving • ${doubt.subject}`}
-                                            </p>
-                                        </div>
+                            <div className="flex items-center justify-between relative z-10">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/20 flex items-center justify-center">
+                                        <PlusCircle className="w-6 h-6 text-emerald-500" />
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            setShowSolutionForm(false);
-                                            setEditingId(null);
-                                            setSolutionContent("");
-                                            setSolutionImage("");
-                                            setFileName("");
-                                        }}
-                                        className="p-3 hover:bg-white/5 rounded-2xl text-slate-500 hover:text-white transition-all hover:rotate-90">
-                                        <X className="w-6 h-6" />
-                                    </button>
+                                    <div>
+                                        <h3 className="text-xl font-black text-white uppercase tracking-tighter italic">
+                                            {editingId ? "Update" : "Post"} <span className="text-emerald-500">Solution</span>
+                                        </h3>
+                                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
+                                            {editingId ? "Refining your contribution" : `Solving • ${doubt.subject}`}
+                                        </p>
+                                    </div>
                                 </div>
+                                <button
+                                    onClick={() => {
+                                        setShowSolutionForm(false);
+                                        setEditingId(null);
+                                        setSolutionContent("");
+                                        setSolutionImage("");
+                                        setFileName("");
+                                    }}
+                                    className="p-3 hover:bg-white/5 rounded-2xl text-slate-500 hover:text-white transition-all hover:rotate-90"
+                                    aria-label="Close form"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+                            <div className="flex items-center gap-2 mb-2">
+                                <button onClick={() => insertMarkdown(solutionTextareaRef, "bold", setSolutionContent)} className="p-2 hover:bg-white/10 rounded-xl text-slate-400"><Bold className="w-4 h-4" /></button>
+                                <button onClick={() => insertMarkdown(solutionTextareaRef, "italic", setSolutionContent)} className="p-2 hover:bg-white/10 rounded-xl text-slate-400"><Italic className="w-4 h-4" /></button>
+                                <button onClick={() => insertMarkdown(solutionTextareaRef, "code", setSolutionContent)} className="p-2 hover:bg-white/10 rounded-xl text-slate-400"><Code className="w-4 h-4" /></button>
+                                <button onClick={() => insertMarkdown(solutionTextareaRef, "list", setSolutionContent)} className="p-2 hover:bg-white/10 rounded-xl text-slate-400"><List className="w-4 h-4" /></button>
+                                <div className="w-px h-6 bg-white/10 mx-2" />
+                                <button 
+                                    onClick={() => setIsPreviewMode(!isPreviewMode)} 
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isPreviewMode ? 'bg-emerald-500 text-white' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
+                                >
+                                    {isPreviewMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    {isPreviewMode ? "Editing" : "Preview Mode"}
+                                </button>
+                            </div>
 
+                            {isPreviewMode ? (
+                                <div className="w-full h-40 bg-slate-950/50 border border-white/10 rounded-[1.5rem] p-5 text-white text-sm overflow-y-auto">
+                                    <MarkdownRenderer content={solutionContent || "*Nothing to preview*"} />
+                                </div>
+                            ) : (
                                 <textarea
+                                    ref={solutionTextareaRef}
                                     value={solutionContent}
-                                    onChange={(e) =>
-                                        setSolutionContent(e.target.value)
-                                    }
+                                    onChange={(e) => setSolutionContent(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                                            e.preventDefault();
+                                            handlePostOrUpdate();
+                                        }
+                                    }}
                                     placeholder="Explain your solution clearly and step-by-step..."
                                     className="w-full h-40 bg-slate-950/50 border border-white/10 rounded-[1.5rem] p-5 text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none font-medium leading-relaxed placeholder:text-slate-600 shadow-inner"
                                 />
+                            )}
 
-<<<<<<< HEAD
-                                {solutionImage && (
-                                    <div className="relative group/preview animate-in zoom-in-95 duration-300 w-full sm:w-fit">
-                                        <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-slate-950 shadow-2xl group/img">
-                                            <img
-                                                src={solutionImage}
-                                                className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500"
-                                            />
-=======
                             {solutionImage && (
                                 <div className="relative group/preview animate-in zoom-in-95 duration-300 w-full sm:w-fit">
                                     {solutionImage.startsWith("data:application/pdf") ? (
@@ -819,17 +784,11 @@ export default function DoubtRepliesModal({
                                     ) : (
                                         <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-slate-950 shadow-2xl group/img">
                                             <img src={solutionImage} className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500" />
->>>>>>> upstream/main
 
                                             {/* Image Overlay */}
                                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent flex flex-col justify-end p-3 translate-y-2 group-hover/img:translate-y-0 transition-transform">
                                                 <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400 truncate max-w-full">
-<<<<<<< HEAD
-                                                    {fileName ||
-                                                        "Live Attachment"}
-=======
                                                     {fileName || "Live Attachment"}
->>>>>>> upstream/main
                                                 </span>
                                             </div>
 
@@ -837,82 +796,22 @@ export default function DoubtRepliesModal({
                                             <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover/img:opacity-100 flex items-center justify-center gap-3 transition-all duration-300">
                                                 <button
                                                     type="button"
-<<<<<<< HEAD
-                                                    onClick={() => {
-                                                        setFullscreenImageUrl(
-                                                            solutionImage,
-                                                        );
-                                                        setIsFullscreenImageOpen(
-                                                            true,
-                                                        );
-                                                    }}
-                                                    className="w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100">
-=======
                                                     onClick={() => { setFullscreenImageUrl(solutionImage); setIsFullscreenImageOpen(true); }}
                                                     className="w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100"
                                                     aria-label="Zoom image"
                                                 >
->>>>>>> upstream/main
                                                     <ZoomIn className="w-5 h-5" />
                                                 </button>
                                                 <button
                                                     type="button"
-<<<<<<< HEAD
-                                                    onClick={() => {
-                                                        setSolutionImage("");
-                                                        setFileName("");
-                                                    }}
-                                                    className="w-10 h-10 bg-red-500/20 hover:bg-red-500 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100 border border-red-500/20 hover:border-transparent">
-=======
                                                     onClick={() => { setSolutionImage(""); setFileName(""); }}
                                                     className="w-10 h-10 bg-red-500/20 hover:bg-red-500 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100 border border-red-500/20 hover:border-transparent"
                                                     aria-label="Delete image"
                                                 >
->>>>>>> upstream/main
                                                     <Trash2 className="w-5 h-5" />
                                                 </button>
                                             </div>
                                         </div>
-<<<<<<< HEAD
-                                    </div>
-                                )}
-
-                                <div className="flex flex-col sm:flex-row gap-4 relative z-10">
-                                    <div className="flex-1 relative group overflow-hidden rounded-2xl">
-                                        <input
-                                            type="file"
-                                            onChange={handleFileChange}
-                                            accept="image/*"
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                        />
-                                        <div className="w-full h-full min-h-[60px] px-6 border-2 border-dashed border-white/5 bg-white/[0.02] flex items-center justify-center gap-3 group-hover:bg-emerald-500/5 group-hover:border-emerald-500/30 transition-all duration-300">
-                                            <div className="p-2 rounded-lg bg-white/5 group-hover:bg-emerald-500/20 transition-colors">
-                                                <Upload className="w-4 h-4 text-emerald-500" />
-                                            </div>
-                                            <span className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] group-hover:text-emerald-400 transition-colors">
-                                                {solutionImage
-                                                    ? "Change Image"
-                                                    : "Attach Artifact"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={handlePostOrUpdate}
-                                        disabled={
-                                            isPosting ||
-                                            (!solutionContent.trim() &&
-                                                !solutionImage)
-                                        }
-                                        className="px-10 py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] transition-all shadow-xl shadow-emerald-500/20 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-3 active:scale-95 group/submit">
-                                        {isPosting ? (
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                        ) : (
-                                            <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                                        )}
-                                        {editingId
-                                            ? "Finalize Update"
-                                            : "Post Solution"}
-=======
                                     )}
                                 </div>
                             )}
@@ -1002,50 +901,9 @@ export default function DoubtRepliesModal({
                                         className="text-[10px] font-black uppercase text-blue-500 hover:text-blue-400 self-start px-2"
                                     >
                                         Back to Edit
->>>>>>> upstream/main
                                     </button>
-                                </div>
+                                )}
                             </div>
-                        ) : (
-                            <div className="flex items-center gap-4">
-                                {doubt.isSolved !== "solved" &&
-                                    (doubt.type !== "teacher" || isTeacher) && (
-                                        <button
-                                            onClick={() =>
-                                                setShowSolutionForm(true)
-                                            }
-                                            className="px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all group flex items-center gap-2 active:scale-95 shrink-0 shadow-lg shadow-emerald-600/20">
-                                            <PlusCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">
-                                                Post Solution
-                                            </span>
-                                        </button>
-                                    )}
-                                <div className="flex-1 relative">
-                                    <input
-                                        type="text"
-                                        value={chatText}
-                                        onChange={(e) =>
-                                            setChatText(e.target.value)
-                                        }
-                                        onKeyPress={(e) =>
-                                            e.key === "Enter" &&
-                                            handlePost("comment")
-                                        }
-                                        placeholder="Ask for clarification or chat with peers..."
-                                        className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 flex-1 pl-6 pr-14 text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all font-medium"
-                                    />
-                                    <button
-                                        onClick={() => handlePost("comment")}
-                                        disabled={isPosting || !chatText.trim()}
-                                        className="absolute right-2 top-2 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all disabled:opacity-50">
-                                        {isPosting ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            <Send className="w-4 h-4" />
-                                        )}
-                                    </button>
-                                </div>
                             </div>
                         )}
                     </div>
@@ -1056,16 +914,17 @@ export default function DoubtRepliesModal({
             {isFullscreenImageOpen && (
                 <div
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-300"
-                    onClick={() => setIsFullscreenImageOpen(false)}>
+                    onClick={() => setIsFullscreenImageOpen(false)}
+                >
                     <button
                         onClick={() => setIsFullscreenImageOpen(false)}
-                        className="absolute top-8 right-8 p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all hover:rotate-90 z-[210]">
+                        className="absolute top-8 right-8 p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all hover:rotate-90 z-[210]"
+                        aria-label="Close fullscreen view"
+                    >
                         <X className="w-8 h-8" />
                     </button>
 
-                    <div
-                        className="relative w-full h-full p-12 flex items-center justify-center"
-                        onClick={(e) => e.stopPropagation()}>
+                    <div className="relative w-full h-full p-12 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                         <div className="relative max-w-full max-h-full">
                             <img
                                 src={fullscreenImageUrl}
@@ -1074,9 +933,7 @@ export default function DoubtRepliesModal({
                             />
                             <div className="absolute -bottom-12 left-0 right-0 flex justify-center">
                                 <div className="px-6 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full backdrop-blur-md">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400">
-                                        High Res Solution Preview
-                                    </span>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400">High Res Solution Preview</span>
                                 </div>
                             </div>
                         </div>

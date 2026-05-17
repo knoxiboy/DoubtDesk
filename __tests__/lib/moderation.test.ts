@@ -1,5 +1,13 @@
 import { moderateContent } from '@/lib/moderation';
 
+jest.mock('@/configs/db', () => ({
+    db: {
+        select: jest.fn(),
+        update: jest.fn(),
+        insert: jest.fn(),
+    },
+}));
+
 // Mock groq-sdk
 jest.mock('groq-sdk', () => {
     return {

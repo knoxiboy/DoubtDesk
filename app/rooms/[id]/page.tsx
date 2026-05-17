@@ -150,10 +150,14 @@ export default function ClassroomPage() {
 
     const copyCode = () => {
         if (classroom?.inviteCode) {
-            navigator.clipboard.writeText(classroom.inviteCode);
-            setCopied(true);
-            toast.success("Invite code copied!");
-            setTimeout(() => setCopied(false), 2000);
+            try {
+                await navigator.clipboard.writeText(classroom.inviteCode);
+                setCopied(true);
+                toast.success("Invite code copied!", { id: `copy-invite-${classroom.inviteCode}` });
+                setTimeout(() => setCopied(false), 2000);
+            } catch (err) {
+                toast.error("Failed to copy invite code", { id: `copy-invite-error-${classroom.inviteCode}` });
+            }
         }
     };
 
@@ -170,46 +174,46 @@ export default function ClassroomPage() {
     return (
         <div className="min-h-screen bg-[#020617] text-white">
             {/* Header / Banner */}
-            <div className="sticky top-0 z-50 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 pt-6 pb-6 px-6 md:px-12 relative overflow-hidden">
+            <div className="sticky top-0 z-50 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 pt-4 sm:pt-6 pb-4 sm:pb-6 px-4 sm:px-6 md:px-12 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/5 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3" />
 
                 <div className="max-w-7xl mx-auto relative z-10">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                         <button
                             onClick={() => router.push("/rooms")}
-                            className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-xs font-black uppercase tracking-widest"
+                            className="flex items-center gap-2 text-slate-500 hover:text-white transition-colors text-xs font-black uppercase tracking-widest w-fit shrink-0"
                         >
                             <ChevronLeft className="w-4 h-4" /> Back to Campus
                         </button>
 
-                        <div className="flex items-center gap-2">
-                            <ExportButton
-                                classroomId={String(id)}
-                                classroomName={classroom?.name || ""}
-                                isTeacher={classroom?.role === "teacher"}
+                        <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
+                            <ExportButton 
+                                classroomId={String(id)} 
+                                classroomName={classroom?.name || ""} 
+                                isTeacher={classroom?.role === "teacher"} 
                             />
                             <button
                                 onClick={() => setIsCodeModalOpen(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-inner"
+                                className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/10 hover:text-white transition-all shadow-inner shrink-0"
                             >
                                 <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Class Code
                             </button>
                         </div>
                     </div>
 
-                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mt-4">
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-3xl font-black italic">
+                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mt-4 min-w-0">
+                        <div className="space-y-4 min-w-0">
+                            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl font-black italic shrink-0">
                                     {classroom.name.charAt(0)}
                                 </div>
-                                <div>
-                                    <h1 className="text-5xl font-black uppercase italic tracking-tighter">
+                                <div className="min-w-0 flex-1">
+                                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase italic tracking-tighter truncate sm:overflow-visible sm:whitespace-normal">
                                         {classroom.name}
                                     </h1>
-                                    <div className="flex items-center gap-4 text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2">
-                                        <span className="flex items-center gap-1.5"><School className="w-3.5 h-3.5" /> {classroom.university}</span>
-                                        <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> {classroom.year}</span>
+                                    <div className="flex items-center gap-2 sm:gap-4 flex-wrap text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2">
+                                        <span className="flex items-center gap-1.5"><School className="w-3.5 h-3.5 shrink-0" /> {classroom.university}</span>
+                                        <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 shrink-0" /> {classroom.year}</span>
                                         <span className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-md border border-white/10">{classroom.role}</span>
                                     </div>
                                 </div>
@@ -217,7 +221,7 @@ export default function ClassroomPage() {
                         </div>
 
                         {/* Navigation Tabs */}
-                        <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-hide">
+                        <div className="flex items-center gap-3 overflow-x-auto whitespace-nowrap scroll-smooth pb-2 scrollbar-hide w-full xl:w-auto max-w-full">
                             {[
                                 { id: "ask-ai", label: "Ask AI", icon: Brain },
                                 { id: "community", label: "Community", icon: MessageSquare },
@@ -227,13 +231,13 @@ export default function ClassroomPage() {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${
-                                        activeTab === tab.id
-                                        ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20"
+                                    className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 whitespace-nowrap ${
+                                        activeTab === tab.id 
+                                        ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" 
                                         : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white"
                                     }`}
                                 >
-                                    <tab.icon className="w-4 h-4" /> {tab.label}
+                                    <tab.icon className="w-4 h-4 shrink-0" /> {tab.label}
                                 </button>
                             ))}
                         </div>

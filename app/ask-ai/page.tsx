@@ -232,10 +232,10 @@ export default function AskAIPage() {
     };
 
     return (
-        <div className="flex h-screen bg-[#020617] text-white overflow-hidden">
+        <div className="flex min-h-screen bg-[#020617] text-white min-w-0">
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-            <main className="flex-1 flex flex-col overflow-y-auto">
+            <main className="flex-1 flex flex-col min-w-0">
                 {/* Mobile Header */}
                 <header className="flex lg:hidden items-center gap-3 px-4 py-3 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-20">
                     <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-white/5 rounded-lg" aria-label="Open sidebar">
@@ -430,7 +430,7 @@ export default function AskAIPage() {
 
                     {/* ── Answer Sections & Chat ── */}
                     {messages.length > 0 && (
-                        <div className="space-y-6 pb-24">
+                        <div className="space-y-6 pb-16">
                             {messages.map((msg, msgIdx) => {
                                 if (msg.role === 'user' && msgIdx > 0) {
                                     // Render follow-up user message
