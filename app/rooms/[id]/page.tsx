@@ -148,7 +148,7 @@ export default function ClassroomPage() {
         // We can still call mutate() if we want to force a refresh.
     }, [activeTab, tagFilter]);
 
-    const copyCode = () => {
+    const copyCode = async () => {
         if (classroom?.inviteCode) {
             try {
                 await navigator.clipboard.writeText(classroom.inviteCode);

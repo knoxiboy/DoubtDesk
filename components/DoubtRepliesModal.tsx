@@ -796,10 +796,15 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                             <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover/img:opacity-100 flex items-center justify-center gap-3 transition-all duration-300">
                                                 <button
                                                     type="button"
-                                                    onClick={() => { setFullscreenImageUrl(solutionImage); setIsFullscreenImageOpen(true); }}
-                                                    className="w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100"
-                                                    aria-label="Zoom image"
-                                                >
+                                                    onClick={() => {
+                                                        setFullscreenImageUrl(
+                                                            solutionImage,
+                                                        );
+                                                        setIsFullscreenImageOpen(
+                                                            true,
+                                                        );
+                                                    }}
+                                                    className="w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100">
                                                     <ZoomIn className="w-5 h-5" />
                                                 </button>
                                                 <button
