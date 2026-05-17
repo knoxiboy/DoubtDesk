@@ -324,7 +324,6 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                         onSuccess={() => {
                             setIsEditModalOpen(false);
                             if (onUpdate) onUpdate();
-                            toast.success("Doubt updated successfully!");
                         }}
                     />
                 )}

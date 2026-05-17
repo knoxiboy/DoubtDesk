@@ -14,6 +14,12 @@ global.MessagePort = MessagePort as any;
 global.Blob = Blob as any;
 global.FormData = FormData as any;
 
+if (!String.prototype.toWellFormed) {
+    String.prototype.toWellFormed = function () {
+        return this.toString();
+    };
+}
+
 const { Request, Response, Headers, fetch } = require('undici');
 
 Object.defineProperties(globalThis, {

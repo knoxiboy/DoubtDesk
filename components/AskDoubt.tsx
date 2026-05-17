@@ -188,13 +188,19 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
 
             if (res.ok) {
                 onSuccess();
-                toast.success(doubtToEdit ? "Doubt updated successfully!" : "Doubt posted successfully!");
+                toast.success(doubtToEdit ? "Doubt updated successfully!" : "Doubt posted successfully!", {
+                    id: doubtToEdit ? `doubt-update-${doubtToEdit.id}` : "doubt-create",
+                });
             } else {
-                toast.error(data.error || "Failed to post doubt.");
+                toast.error(data.error || "Failed to post doubt.", {
+                    id: doubtToEdit ? `doubt-update-error-${doubtToEdit.id}` : "doubt-create-error",
+                });
             }
         } catch (error) {
             console.error("Submission failed:", error);
-            toast.error("An unexpected error occurred.");
+            toast.error("An unexpected error occurred.", {
+                id: doubtToEdit ? `doubt-update-error-${doubtToEdit.id}` : "doubt-create-error",
+            });
         } finally {
             setIsSubmitting(false);
         }

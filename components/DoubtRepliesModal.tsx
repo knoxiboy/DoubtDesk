@@ -139,19 +139,15 @@ export default function DoubtRepliesModal({
                     setEditingId(null);
                 }
                 if (onReplyChange) onReplyChange();
-                toast.success(
-                    editingId
-                        ? "Solution updated!"
-                        : type === "solution"
-                          ? "Solution posted!"
-                          : "Chat sent.",
-                );
+                toast.success(editingId ? "Solution updated!" : (type === 'solution' ? "Solution posted!" : "Reply submitted."), {
+                    id: editingId ? `reply-update-${editingId}` : `reply-create-${type}-${doubt.id}`,
+                });
             } else {
                 const data = await res.json();
-                toast.error(data.error || "Failed to post.");
+                toast.error(data.error || "Failed to submit reply.", { id: `reply-create-error-${type}-${doubt.id}` });
             }
         } catch (error) {
-            toast.error("An unexpected error occurred.");
+            toast.error("Network error while submitting reply.", { id: `reply-create-error-${type}-${doubt.id}` });
         } finally {
             setIsPosting(false);
         }
@@ -192,13 +188,13 @@ export default function DoubtRepliesModal({
                 setSolutionImage("");
                 setFileName("");
                 setShowSolutionForm(false);
-                toast.success("Solution updated!");
+                toast.success("Solution updated!", { id: `reply-update-${editingId}` });
             } else {
                 const data = await res.json();
-                toast.error(data.error || "Failed to update solution.");
+                toast.error(data.error || "Failed to update solution.", { id: `reply-update-error-${editingId}` });
             }
         } catch (error) {
-            toast.error("An unexpected error occurred.");
+            toast.error("Network error while updating solution.", { id: `reply-update-error-${editingId}` });
         } finally {
             setIsPosting(false);
         }
@@ -220,10 +216,13 @@ export default function DoubtRepliesModal({
                 );
                 setEditingId(null);
                 setEditContent("");
-                toast.success("Message updated");
+                toast.success("Reply updated", { id: `reply-update-${replyId}` });
+            } else {
+                const data = await res.json();
+                toast.error(data.error || "Failed to update reply.", { id: `reply-update-error-${replyId}` });
             }
         } catch (error) {
-            toast.error("Failed to update");
+            toast.error("Network error while updating reply.", { id: `reply-update-error-${replyId}` });
         } finally {
             setIsEditingReply(false);
         }
@@ -238,10 +237,13 @@ export default function DoubtRepliesModal({
             if (res.ok) {
                 setReplies(replies.filter((r) => r.id !== replyId));
                 if (onReplyChange) onReplyChange();
-                toast.success("Message deleted");
+                toast.success("Reply deleted", { id: `reply-delete-${replyId}` });
+            } else {
+                const data = await res.json();
+                toast.error(data.error || "Failed to delete reply.", { id: `reply-delete-error-${replyId}` });
             }
         } catch (error) {
-            toast.error("Failed to delete");
+            toast.error("Network error while deleting reply.", { id: `reply-delete-error-${replyId}` });
         } finally {
             setIsDeletingReply(false);
             setMenuOpenId(null);
@@ -284,14 +286,15 @@ export default function DoubtRepliesModal({
             if (res.ok) {
                 if (onReplyChange) onReplyChange();
                 const isUnmarking = doubt.solvedReplyId === replyId;
-                toast.success(
-                    isUnmarking
-                        ? "Solution unmarked."
-                        : "Marked as Official Solution!",
-                );
+                toast.success(isUnmarking ? "Solution unmarked." : "Marked as official solution!", {
+                    id: `solution-mark-${doubt.id}`,
+                });
+            } else {
+                const data = await res.json();
+                toast.error(data.error || "Failed to update solution status.", { id: `solution-mark-error-${doubt.id}` });
             }
         } catch (error) {
-            toast.error("Action failed.");
+            toast.error("Network error while updating solution status.", { id: `solution-mark-error-${doubt.id}` });
         } finally {
             setIsSolving(false);
         }
@@ -785,15 +788,6 @@ export default function DoubtRepliesModal({
                                     className="w-full h-40 bg-slate-950/50 border border-white/10 rounded-[1.5rem] p-5 text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none font-medium leading-relaxed placeholder:text-slate-600 shadow-inner"
                                 />
 
-<<<<<<< HEAD
-                                {solutionImage && (
-                                    <div className="relative group/preview animate-in zoom-in-95 duration-300 w-full sm:w-fit">
-                                        <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-slate-950 shadow-2xl group/img">
-                                            <img
-                                                src={solutionImage}
-                                                className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500"
-                                            />
-=======
                             {solutionImage && (
                                 <div className="relative group/preview animate-in zoom-in-95 duration-300 w-full sm:w-fit">
                                     {solutionImage.startsWith("data:application/pdf") ? (
@@ -819,17 +813,11 @@ export default function DoubtRepliesModal({
                                     ) : (
                                         <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-slate-950 shadow-2xl group/img">
                                             <img src={solutionImage} className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500" />
->>>>>>> upstream/main
 
                                             {/* Image Overlay */}
                                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent flex flex-col justify-end p-3 translate-y-2 group-hover/img:translate-y-0 transition-transform">
                                                 <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400 truncate max-w-full">
-<<<<<<< HEAD
-                                                    {fileName ||
-                                                        "Live Attachment"}
-=======
                                                     {fileName || "Live Attachment"}
->>>>>>> upstream/main
                                                 </span>
                                             </div>
 
@@ -837,7 +825,6 @@ export default function DoubtRepliesModal({
                                             <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover/img:opacity-100 flex items-center justify-center gap-3 transition-all duration-300">
                                                 <button
                                                     type="button"
-<<<<<<< HEAD
                                                     onClick={() => {
                                                         setFullscreenImageUrl(
                                                             solutionImage,
@@ -847,72 +834,19 @@ export default function DoubtRepliesModal({
                                                         );
                                                     }}
                                                     className="w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100">
-=======
-                                                    onClick={() => { setFullscreenImageUrl(solutionImage); setIsFullscreenImageOpen(true); }}
-                                                    className="w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100"
-                                                    aria-label="Zoom image"
-                                                >
->>>>>>> upstream/main
                                                     <ZoomIn className="w-5 h-5" />
                                                 </button>
                                                 <button
                                                     type="button"
-<<<<<<< HEAD
                                                     onClick={() => {
                                                         setSolutionImage("");
                                                         setFileName("");
                                                     }}
                                                     className="w-10 h-10 bg-red-500/20 hover:bg-red-500 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100 border border-red-500/20 hover:border-transparent">
-=======
-                                                    onClick={() => { setSolutionImage(""); setFileName(""); }}
-                                                    className="w-10 h-10 bg-red-500/20 hover:bg-red-500 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100 border border-red-500/20 hover:border-transparent"
-                                                    aria-label="Delete image"
-                                                >
->>>>>>> upstream/main
                                                     <Trash2 className="w-5 h-5" />
                                                 </button>
                                             </div>
                                         </div>
-<<<<<<< HEAD
-                                    </div>
-                                )}
-
-                                <div className="flex flex-col sm:flex-row gap-4 relative z-10">
-                                    <div className="flex-1 relative group overflow-hidden rounded-2xl">
-                                        <input
-                                            type="file"
-                                            onChange={handleFileChange}
-                                            accept="image/*"
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                        />
-                                        <div className="w-full h-full min-h-[60px] px-6 border-2 border-dashed border-white/5 bg-white/[0.02] flex items-center justify-center gap-3 group-hover:bg-emerald-500/5 group-hover:border-emerald-500/30 transition-all duration-300">
-                                            <div className="p-2 rounded-lg bg-white/5 group-hover:bg-emerald-500/20 transition-colors">
-                                                <Upload className="w-4 h-4 text-emerald-500" />
-                                            </div>
-                                            <span className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] group-hover:text-emerald-400 transition-colors">
-                                                {solutionImage
-                                                    ? "Change Image"
-                                                    : "Attach Artifact"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={handlePostOrUpdate}
-                                        disabled={
-                                            isPosting ||
-                                            (!solutionContent.trim() &&
-                                                !solutionImage)
-                                        }
-                                        className="px-10 py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] transition-all shadow-xl shadow-emerald-500/20 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-3 active:scale-95 group/submit">
-                                        {isPosting ? (
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                        ) : (
-                                            <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                                        )}
-                                        {editingId
-                                            ? "Finalize Update"
-                                            : "Post Solution"}
-=======
                                     )}
                                 </div>
                             )}
@@ -1002,7 +936,6 @@ export default function DoubtRepliesModal({
                                         className="text-[10px] font-black uppercase text-blue-500 hover:text-blue-400 self-start px-2"
                                     >
                                         Back to Edit
->>>>>>> upstream/main
                                     </button>
                                 </div>
                             </div>
