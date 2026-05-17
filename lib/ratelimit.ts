@@ -7,6 +7,7 @@ import { Redis } from "@upstash/redis";
 
 let aiLimiter: any;
 let generalLimiter: any;
+let emailNotificationLimiter: any;
 
 const isRedisConfigured = 
   process.env.UPSTASH_REDIS_REST_URL && 
@@ -29,6 +30,14 @@ if (isRedisConfigured) {
     limiter: Ratelimit.slidingWindow(30, "1 m"),
     analytics: true,
     prefix: "ratelimit:general",
+  });
+
+  // Email Notification: Max 1 email per doubt every 5 minutes
+  emailNotificationLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(1, "5 m"),
+    analytics: true,
+    prefix: "ratelimit:email_notify",
   });
 } else {
   // Simple in-memory fallback for local development
@@ -59,6 +68,7 @@ if (isRedisConfigured) {
 
   aiLimiter = createMockLimiter(10, 60 * 1000);
   generalLimiter = createMockLimiter(30, 60 * 1000);
+  emailNotificationLimiter = createMockLimiter(1, 5 * 60 * 1000); // 1 per 5 mins
 }
 
-export { aiLimiter, generalLimiter };
+export { aiLimiter, generalLimiter, emailNotificationLimiter };
