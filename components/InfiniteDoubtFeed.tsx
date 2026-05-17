@@ -56,9 +56,9 @@ export default function InfiniteDoubtFeed({
         revalidateFirstPage: false
     });
 
-    const doubts = data ? data.flatMap((page) => page.doubts) : [];
-    const isEmpty = data?.[0]?.doubts.length === 0;
-    const isReachingEnd = isEmpty || (data && !data[data.length - 1]?.pagination.hasMore);
+    const doubts = data ? data.flatMap((page) => page?.doubts || []) : [];
+    const isEmpty = data?.[0]?.doubts?.length === 0;
+    const isReachingEnd = isEmpty || (data && !data[data.length - 1]?.pagination?.hasMore);
     const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
 
     if (isLoading && doubts.length === 0) {

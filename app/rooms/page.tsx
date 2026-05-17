@@ -11,13 +11,8 @@ import {
     GraduationCap, 
     Loader2, 
     Sparkles, 
-    Search, 
-    Box, 
-    ShieldCheck, 
     Calendar,
     ChevronRight,
-    Copy,
-    Check,
     Home
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -63,7 +58,6 @@ export default function RoomsPage() {
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
-    const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
     const [createData, setCreateData] = useState({ name: "", year: "1st Year" });
     const [joinCode, setJoinCode] = useState("");
@@ -108,14 +102,15 @@ export default function RoomsPage() {
             });
             const data = await res.json();
             if (res.ok) {
-                toast.success("Classroom created successfully!");
+                toast.success("Classroom created successfully!", { id: "classroom-created" });
                 setIsCreateModalOpen(false);
+                setCreateData({ name: "", year: "1st Year" });
                 fetchRooms();
             } else {
-                toast.error(data.error || "Failed to create room");
+                toast.error(data.error || "Failed to create room", { id: "classroom-create-error" });
             }
         } catch (err) {
-            toast.error("An error occurred");
+            toast.error("Network error while creating classroom", { id: "classroom-create-error" });
         } finally {
             setIsActionLoading(false);
         }
@@ -135,24 +130,18 @@ export default function RoomsPage() {
             });
             const data = await res.json();
             if (res.ok) {
-                toast.success(`Joined ${data.classroom.name}!`);
+                toast.success(`Joined ${data.classroom.name}!`, { id: "classroom-joined" });
                 setIsJoinModalOpen(false);
+                setJoinCode("");
                 fetchRooms();
             } else {
-                toast.error(data.error || "Failed to join room");
+                toast.error(data.error || "Failed to join room", { id: "classroom-join-error" });
             }
         } catch (err) {
-            toast.error("An error occurred");
+            toast.error("Network error while joining classroom", { id: "classroom-join-error" });
         } finally {
             setIsActionLoading(false);
         }
-    };
-
-    const copyInviteCode = (code: string) => {
-        navigator.clipboard.writeText(code);
-        setCopiedCode(code);
-        toast.success("Code copied to clipboard!");
-        setTimeout(() => setCopiedCode(null), 2000);
     };
 
     return (
@@ -170,7 +159,7 @@ export default function RoomsPage() {
                                     <Home className="w-3.5 h-3.5" /> Home
                                 </Link>
                             </div>
-                            <h1 className="text-6xl font-black tracking-tighter uppercase italic">
+                            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter uppercase italic break-words">
                                 Virtual <span className="text-blue-500">Classrooms</span>
                             </h1>
                         </div>

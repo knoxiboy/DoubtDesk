@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const inter = Inter({ subsets: ["latin"] });
 const staatliches = Staatliches({ subsets: ["latin"], weight: "400" });
@@ -30,53 +31,54 @@ export default function Home() {
   };
 
   return (
-    <div className={`${inter.className} min-h-screen bg-[#020617] text-slate-200 flex flex-col selection:bg-[#5E8CFF]/30`}>
+    <div className={`${inter.className} min-h-screen bg-background text-foreground flex flex-col selection:bg-[#5E8CFF]/30 transition-colors duration-300`}>
       {/* Navbar */}
-      <header className="fixed inset-x-0 top-0 z-50 bg-[#040B1A]/88 supports-[backdrop-filter]:bg-[#040B1A]/72 backdrop-blur-xl relative overflow-visible">
-        <div className="absolute inset-x-0 bottom-0 h-px bg-[#8BB8FF]/40 shadow-[0_0_10px_rgba(139,184,255,0.18)]" />
-        <div className="max-w-7xl mx-auto h-20 flex items-center justify-between px-[clamp(24px,5vw,64px)]">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-            <div className="w-10 h-10 bg-[#5E8CFF] rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_20px_rgba(94,140,255,0.25)] ring-1 ring-[#AABFFF]/35">
+      <header className="fixed inset-x-0 top-0 z-50 bg-background/88 supports-[backdrop-filter]:bg-background/72 backdrop-blur-xl relative overflow-visible transition-colors duration-300">
+        <div className="absolute inset-x-0 bottom-0 h-px bg-border shadow-[0_0_10px_rgba(139,184,255,0.18)]" />
+        <div className="max-w-7xl mx-auto h-16 sm:h-20 flex items-center justify-between px-4 sm:px-6 md:px-[clamp(24px,5vw,64px)]">
+         <Link href="/" className="flex items-center gap-1 sm:gap-2 hover:opacity-90 transition-opacity shrink-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-[#5E8CFF] rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_20px_rgba(94,140,255,0.25)] ring-1 ring-[#AABFFF]/35">
               D
             </div>
-            <h1 className="text-2xl font-bold text-white transition-colors drop-shadow-[0_0_10px_rgba(170,191,255,0.15)]">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground transition-colors drop-shadow-[0_0_10px_rgba(170,191,255,0.15)]">
               DoubtDesk
             </h1>
           </Link>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <ThemeToggle />
             <SignedOut>
               <div className="flex items-center gap-3">
-              <SignInButton mode="modal" forceRedirectUrl="/rooms">
-                <button className="group relative overflow-hidden px-6 py-3 rounded-2xl border border-white/10 bg-white/[0.04]
-                        backdrop-blur-md text-white font-semibold tracking-wide transition-all duration-300 hover:bg-white/[0.08] hover:border-white/20 hover:shadow-[0_0_24px_rgba(255,255,255,0.08)] hover:-translate-y-0.5
-                        active:scale-[0.98]">
-                    {/* Glow Effect */}
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-white/0 via-white/10 to-white/0 blur-xl" />
+                <SignInButton mode="modal" forceRedirectUrl="/rooms">
+                  <button className="group relative overflow-hidden px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl border border-white/10 bg-white/[0.04]
+                          backdrop-blur-md text-white font-semibold text-sm tracking-wide transition-all duration-300 hover:bg-white/[0.08] hover:border-white/20 hover:shadow-[0_0_24px_rgba(255,255,255,0.08)] hover:-translate-y-0.5
+                          active:scale-[0.98]">
+                      {/* Glow Effect */}
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-white/0 via-white/10 to-white/0 blur-xl" />
+
+                      <span className="relative z-10 flex items-center gap-2">
+                        Sign In
+                      </span>
+                  </button>
+                </SignInButton>
+
+                <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
+                  <button className="group relative overflow-hidden px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#5E8CFF] to-[#7AA2FF] text-white
+                          text-sm font-semibold tracking-wide transition-all duration-300 shadow-[0_0_18px_rgba(94,140,255,0.30)] hover:shadow-[0_0_30px_rgba(94,140,255,0.50)]
+                          hover:scale-[1.03] hover:-translate-y-0.5 active:scale-[0.98]">
+                    <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full
+                          transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/25 to-transparent skew-x-12"/>
+                    <div className="absolute inset-0 bg-[#8BB8FF]/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                     <span className="relative z-10 flex items-center gap-2">
-                      Sign In
+                      Join DoubtDesk
+                      <span className="transition-transform duration-300 group-hover:translate-x-1">
+                        →
+                      </span>
                     </span>
-                </button>
-              </SignInButton>
-
-              <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
-                <button className="group relative overflow-hidden px-6 py-3 rounded-2xl bg-gradient-to-r from-[#5E8CFF] to-[#7AA2FF] text-white
-                        font-semibold tracking-wide transition-all duration-300 shadow-[0_0_18px_rgba(94,140,255,0.30)] hover:shadow-[0_0_30px_rgba(94,140,255,0.50)]
-                        hover:scale-[1.03] hover:-translate-y-0.5 active:scale-[0.98]">
-                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full
-                        transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/25 to-transparent skew-x-12"/>
-                  <div className="absolute inset-0 bg-[#8BB8FF]/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-               <span className="relative z-10 flex items-center gap-2">
-                   Join DoubtDesk
-                 <span className="transition-transform duration-300 group-hover:translate-x-1">
-                    →
-                 </span>
-                </span>
-               </button>
-             </SignUpButton>
-             </div>
+                  </button>
+                </SignUpButton>
+              </div>
             </SignedOut>
             <SignedIn>
               <div className="flex items-center gap-4">

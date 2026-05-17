@@ -132,13 +132,15 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     setEditingId(null);
                 }
                 if (onReplyChange) onReplyChange();
-                toast.success(editingId ? "Solution updated!" : (type === 'solution' ? "Solution posted!" : "Chat sent."));
+                toast.success(editingId ? "Solution updated!" : (type === 'solution' ? "Solution posted!" : "Reply submitted."), {
+                    id: editingId ? `reply-update-${editingId}` : `reply-create-${type}-${doubt.id}`,
+                });
             } else {
                 const data = await res.json();
-                toast.error(data.error || "Failed to post.");
+                toast.error(data.error || "Failed to submit reply.", { id: `reply-create-error-${type}-${doubt.id}` });
             }
         } catch (error) {
-            toast.error("An unexpected error occurred.");
+            toast.error("Network error while submitting reply.", { id: `reply-create-error-${type}-${doubt.id}` });
         } finally {
             setIsPosting(false);
         }
@@ -174,13 +176,13 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 setSolutionImage("");
                 setFileName("");
                 setShowSolutionForm(false);
-                toast.success("Solution updated!");
+                toast.success("Solution updated!", { id: `reply-update-${editingId}` });
             } else {
                 const data = await res.json();
-                toast.error(data.error || "Failed to update solution.");
+                toast.error(data.error || "Failed to update solution.", { id: `reply-update-error-${editingId}` });
             }
         } catch (error) {
-            toast.error("An unexpected error occurred.");
+            toast.error("Network error while updating solution.", { id: `reply-update-error-${editingId}` });
         } finally {
             setIsPosting(false);
         }
@@ -200,10 +202,13 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 setReplies(replies.map(r => r.id === replyId ? updated : r));
                 setEditingId(null);
                 setEditContent("");
-                toast.success("Message updated");
+                toast.success("Reply updated", { id: `reply-update-${replyId}` });
+            } else {
+                const data = await res.json();
+                toast.error(data.error || "Failed to update reply.", { id: `reply-update-error-${replyId}` });
             }
         } catch (error) {
-            toast.error("Failed to update");
+            toast.error("Network error while updating reply.", { id: `reply-update-error-${replyId}` });
         } finally {
             setIsEditingReply(false);
         }
@@ -218,10 +223,13 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             if (res.ok) {
                 setReplies(replies.filter(r => r.id !== replyId));
                 if (onReplyChange) onReplyChange();
-                toast.success("Message deleted");
+                toast.success("Reply deleted", { id: `reply-delete-${replyId}` });
+            } else {
+                const data = await res.json();
+                toast.error(data.error || "Failed to delete reply.", { id: `reply-delete-error-${replyId}` });
             }
         } catch (error) {
-            toast.error("Failed to delete");
+            toast.error("Network error while deleting reply.", { id: `reply-delete-error-${replyId}` });
         } finally {
             setIsDeletingReply(false);
             setMenuOpenId(null);
@@ -264,10 +272,15 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             if (res.ok) {
                 if (onReplyChange) onReplyChange();
                 const isUnmarking = doubt.solvedReplyId === replyId;
-                toast.success(isUnmarking ? "Solution unmarked." : "Marked as Official Solution!");
+                toast.success(isUnmarking ? "Solution unmarked." : "Marked as official solution!", {
+                    id: `solution-mark-${doubt.id}`,
+                });
+            } else {
+                const data = await res.json();
+                toast.error(data.error || "Failed to update solution status.", { id: `solution-mark-error-${doubt.id}` });
             }
         } catch (error) {
-            toast.error("Action failed.");
+            toast.error("Network error while updating solution status.", { id: `solution-mark-error-${doubt.id}` });
         } finally {
             setIsSolving(false);
         }

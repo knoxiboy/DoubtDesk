@@ -71,3 +71,39 @@ export async function GET(req: NextRequest) {
         );
     }
 }
+
+export async function POST(req: NextRequest) {
+    try {
+        const { userId } = await auth();
+        if (!userId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const clerkUser = await currentUser();
+        const email = clerkUser?.primaryEmailAddress?.emailAddress;
+
+        if (!email) {
+            return NextResponse.json({ error: "No email found" }, { status: 400 });
+        }
+
+        const { emailNotificationsEnabled } = await req.json();
+
+        if (typeof emailNotificationsEnabled !== "boolean") {
+            return NextResponse.json({ error: "Invalid preference value" }, { status: 400 });
+        }
+
+        // Update the user preference in DB
+        const updated = await db.update(usersTable)
+            .set({ emailNotificationsEnabled })
+            .where(eq(usersTable.email, email))
+            .returning();
+
+        return NextResponse.json({ success: true, user: updated[0] });
+    } catch (error: any) {
+        console.error("Profile preference update error:", error);
+        return NextResponse.json(
+            { error: error?.message || "Server error" },
+            { status: 500 }
+        );
+    }
+}

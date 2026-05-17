@@ -29,6 +29,7 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    color-scheme: light;
   }
 
   .dark {
@@ -56,6 +57,7 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    color-scheme: dark;
   }
 }
 
@@ -64,15 +66,69 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
   }
 }
 
 html,
 body {
-  background-color: #020617;
+  background-color: hsl(var(--background));
   font-family: Arial, Helvetica, sans-serif;
   min-height: 100%;
+}
+
+:where(html, body, main, header, aside, section, div, button, a, input, textarea) {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, box-shadow;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+html.light [class~="bg-[#020617]"],
+html.light [class~="bg-slate-950"],
+html.light [class~="bg-slate-950/80"],
+html.light [class~="bg-[#040B1A]/88"],
+html.light [class~="supports-[backdrop-filter]:bg-[#040B1A]/72"] {
+  background-color: hsl(var(--background));
+}
+
+html.light [class~="bg-slate-900"],
+html.light [class~="bg-slate-900/40"],
+html.light [class~="bg-slate-900/50"],
+html.light [class~="bg-slate-900/60"],
+html.light [class~="bg-slate-800/80"],
+html.light [class~="bg-white/5"],
+html.light [class~="bg-white/[0.08]"],
+html.light [class~="bg-white/10"] {
+  background-color: hsl(var(--card));
+}
+
+html.light [class~="border-white/5"],
+html.light [class~="border-white/8"],
+html.light [class~="border-white/10"],
+html.light [class~="border-white/20"] {
+  border-color: hsl(var(--border));
+}
+
+html.light [class~="text-white"],
+html.light [class~="text-slate-100"],
+html.light [class~="text-slate-200"],
+html.light [class~="text-slate-300"] {
+  color: hsl(var(--foreground));
+}
+
+html.light [class~="text-slate-400"],
+html.light [class~="text-slate-500"],
+html.light [class~="text-slate-600"] {
+  color: hsl(var(--muted-foreground));
+}
+
+html.light [class~="bg-blue-600"][class~="text-white"],
+html.light [class~="bg-cyan-600"][class~="text-white"],
+html.light [class~="bg-red-600"][class~="text-white"],
+html.light [class~="bg-[#5E8CFF]"][class~="text-white"],
+html.light [class~="from-blue-600"][class~="text-white"],
+html.light [class~="from-cyan-600"][class~="text-white"] {
+  color: #fff;
 }
 
 /* Custom Scrollbar Styling */
@@ -81,26 +137,23 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #020617;
-  /* slate-950 */
+  background: hsl(var(--background));
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  /* slate-800 */
+  background: hsl(var(--muted-foreground) / 0.35);
   border-radius: 5px;
-  border: 2px solid #020617;
+  border: 2px solid hsl(var(--background));
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
-  /* slate-700 */
+  background: hsl(var(--muted-foreground) / 0.55);
 }
 
 /* For Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #1e293b #020617;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.45) hsl(var(--background));
 }
 /* Markdown Renderer Styles */
 .markdown-renderer p:last-child {

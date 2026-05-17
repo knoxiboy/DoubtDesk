@@ -1,4 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
+import { aiLimiter, generalLimiter } from '@/lib/ratelimit';
 
 const isProtectedRoute = createRouteMatcher(['/dashboard(.*)']);
 
@@ -10,11 +12,41 @@ export default clerkMiddleware(async (auth, req) => {
         return;
     }
 
-    // Basic Map-based rate limit for API routes
-    if (req.nextUrl.pathname.startsWith('/api')) {
+    // Rate limiting for public-facing API routes
+    if (req.nextUrl.pathname.startsWith('/api') && !req.nextUrl.pathname.startsWith('/api/inngest')) {
         const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
-        // In Edge runtime, this map persists per-isolate
-        // Note: For a production app at scale, replace this with Upstash Redis or similar
+        
+        // Choose limiter based on path
+        const isAiRoute = req.nextUrl.pathname.includes('/solve') || req.nextUrl.pathname.includes('/ask-ai');
+        const limiter = isAiRoute ? aiLimiter : generalLimiter;
+
+        try {
+            const { success, limit, remaining, reset } = await limiter.limit(ip);
+
+            if (!success) {
+                return new NextResponse(
+                    JSON.stringify({
+                        error: "Too many requests. Please try again later.",
+                        message: isAiRoute 
+                            ? "AI Solver is currently rate limited to protect resources." 
+                            : "You've reached the rate limit for this action."
+                    }),
+                    {
+                        status: 429,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-RateLimit-Limit': limit.toString(),
+                            'X-RateLimit-Remaining': remaining.toString(),
+                            'X-RateLimit-Reset': reset.toString(),
+                            'Retry-After': Math.ceil((reset - Date.now()) / 1000).toString(),
+                        }
+                    }
+                );
+            }
+        } catch (error) {
+            console.error("Rate limiting error:", error);
+            // Fallback: allow request if rate limiter fails
+        }
     }
 
     if (isProtectedRoute(req)) {
