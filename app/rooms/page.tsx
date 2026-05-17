@@ -11,13 +11,8 @@ import {
     GraduationCap, 
     Loader2, 
     Sparkles, 
-    Search, 
-    Box, 
-    ShieldCheck, 
     Calendar,
     ChevronRight,
-    Copy,
-    Check,
     Home
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -63,11 +58,19 @@ export default function RoomsPage() {
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
-    const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
     const [createData, setCreateData] = useState({ name: "", year: "1st Year" });
     const [joinCode, setJoinCode] = useState("");
     const [isActionLoading, setIsActionLoading] = useState(false);
+
+    const [joinCodeError, setJoinCodeError] = useState("");
+
+    function validateJoinCode(code: string) {
+    if (!code) return "Invitation code is required.";
+    if (code.length < 6 || code.length > 8) return "Code must be 6–8 characters.";
+    if (!/^[a-zA-Z0-9]+$/.test(code)) return "Only letters and numbers allowed.";
+    return "";
+    }
 
     useEffect(() => {
         fetchRooms();
@@ -99,14 +102,15 @@ export default function RoomsPage() {
             });
             const data = await res.json();
             if (res.ok) {
-                toast.success("Classroom created successfully!");
+                toast.success("Classroom created successfully!", { id: "classroom-created" });
                 setIsCreateModalOpen(false);
+                setCreateData({ name: "", year: "1st Year" });
                 fetchRooms();
             } else {
-                toast.error(data.error || "Failed to create room");
+                toast.error(data.error || "Failed to create room", { id: "classroom-create-error" });
             }
         } catch (err) {
-            toast.error("An error occurred");
+            toast.error("Network error while creating classroom", { id: "classroom-create-error" });
         } finally {
             setIsActionLoading(false);
         }
@@ -115,6 +119,9 @@ export default function RoomsPage() {
     const handleJoinRoom = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsActionLoading(true);
+        const error = validateJoinCode(joinCode);
+        setJoinCodeError(error);
+        if (error) return; // don’t submit if code is invalid
         try {
             const res = await fetch("/api/rooms/join", {
                 method: "POST",
@@ -123,24 +130,18 @@ export default function RoomsPage() {
             });
             const data = await res.json();
             if (res.ok) {
-                toast.success(`Joined ${data.classroom.name}!`);
+                toast.success(`Joined ${data.classroom.name}!`, { id: "classroom-joined" });
                 setIsJoinModalOpen(false);
+                setJoinCode("");
                 fetchRooms();
             } else {
-                toast.error(data.error || "Failed to join room");
+                toast.error(data.error || "Failed to join room", { id: "classroom-join-error" });
             }
         } catch (err) {
-            toast.error("An error occurred");
+            toast.error("Network error while joining classroom", { id: "classroom-join-error" });
         } finally {
             setIsActionLoading(false);
         }
-    };
-
-    const copyInviteCode = (code: string) => {
-        navigator.clipboard.writeText(code);
-        setCopiedCode(code);
-        toast.success("Code copied to clipboard!");
-        setTimeout(() => setCopiedCode(null), 2000);
     };
 
     return (
@@ -158,7 +159,7 @@ export default function RoomsPage() {
                                     <Home className="w-3.5 h-3.5" /> Home
                                 </Link>
                             </div>
-                            <h1 className="text-6xl font-black tracking-tighter uppercase italic">
+                            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter uppercase italic break-words">
                                 Virtual <span className="text-blue-500">Classrooms</span>
                             </h1>
                         </div>
@@ -318,10 +319,20 @@ export default function RoomsPage() {
                                     required 
                                     maxLength={8}
                                     value={joinCode}
-                                    onChange={(e) => setJoinCode(e.target.value)}
+                                    onChange={
+                                        (e) => {
+                                            setJoinCode(e.target.value);
+                                            setJoinCodeError(validateJoinCode(e.target.value));
+                                        }
+                                    }
                                     placeholder="XXXXXX"
                                     className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-black text-center text-3xl tracking-[0.5em] uppercase placeholder:text-slate-700" 
                                 />
+                                {joinCodeError && (
+                                    <span className="text-red-500 text-xs font-medium block px-1 pt-1">
+                                        {joinCodeError}
+                                    </span>
+                                )}
                             </div>
 
                             <div className="flex gap-4 pt-4">
@@ -334,7 +345,7 @@ export default function RoomsPage() {
                                 </button>
                                 <button 
                                     type="submit"
-                                    disabled={isActionLoading}
+                                    disabled={!!joinCodeError || !joinCode || isActionLoading}
                                     className="flex-[2] py-5 bg-blue-600 rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2"
                                 >
                                     {isActionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Access Circle"}

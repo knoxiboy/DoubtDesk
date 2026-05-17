@@ -12,6 +12,8 @@ export default function Footer() {
             links: [
                 { label: "Dashboard", href: "/dashboard" },
                 { label: "Virtual Campus", href: "/rooms" },
+                { label: "Privacy Policy", href: "/privacy-policy" },
+                { label: "Terms of Service", href: "/terms-of-service" },
             ],
         },
     ]
@@ -42,8 +44,10 @@ export default function Footer() {
             <div className="absolute inset-0 bg-linear-to-r from-blue-600/5 via-transparent to-purple-600/5 pointer-events-none" />
             <div className="absolute top-0 left-1/4 w-72 h-72 bg-blue-500/10 blur-3xl rounded-full pointer-events-none" />
             <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-purple-500/10 blur-3xl rounded-full pointer-events-none" />
+
             <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-12 pb-12 border-b border-white/5">
+
                     <div className="max-w-md">
                         <Link href="/" className="inline-flex items-center gap-3 mb-5 group">
                             <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_15px_rgba(37,99,235,0.2)]">
@@ -83,6 +87,7 @@ export default function Footer() {
                         ))}
                     </div>
                 </div>
+
                 <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
                         {socialLinks.map((social) => (
@@ -106,7 +111,6 @@ export default function Footer() {
                     </div>
                 </div>
 
-                {/* Subtle Top Border Gradient */}
                 <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-blue-500/20 to-transparent" />
             </div>
 

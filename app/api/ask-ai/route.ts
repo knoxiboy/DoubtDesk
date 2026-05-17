@@ -31,6 +31,21 @@ const TEXT_MODELS = [
     "llama-3.1-70b-versatile"
 ];
 
+const IMAGE_QUALITY_ERROR = "We couldn't read your image clearly. Please upload a clearer photo or type your doubt instead.";
+const UNCLEAR_IMAGE_PATTERNS = [
+    /cannot\s+(read|see|determine|identify)/i,
+    /can't\s+(read|see|determine|identify)/i,
+    /image\s+(is\s+)?(unclear|blurry|blurred|unreadable|not clear)/i,
+    /text\s+(is\s+)?(unclear|blurry|blurred|unreadable|not legible)/i,
+    /please\s+(upload|provide).*(clearer|higher[-\s]?quality)/i,
+];
+
+function isUnclearVisionReply(reply: string) {
+    const normalizedReply = reply.replace(/^SUBJECT:\s*.+\n?/im, '').trim();
+
+    return normalizedReply.length < 50 || UNCLEAR_IMAGE_PATTERNS.some((pattern) => pattern.test(normalizedReply));
+}
+
 /**
  * Executes a chat completion request with an automatic retry/fallback mechanism.
  * @param messages Array of chat messages
@@ -202,6 +217,13 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
 
         const { completion, modelUsed } = await callGroqWithFallback(messages, isVisionRequest);
         let reply = completion.choices[0]?.message?.content || "Sorry, I couldn't generate a response.";
+
+        if (isVisionRequest && isUnclearVisionReply(reply)) {
+            return NextResponse.json(
+                { error: IMAGE_QUALITY_ERROR, code: "IMAGE_QUALITY_LOW" },
+                { status: 422 }
+            );
+        }
 
         // Extract and strip the SUBJECT line (only for initial doubt)
         let subject: string = 'Other';

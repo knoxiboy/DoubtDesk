@@ -1,0 +1,64 @@
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
+
+// Create a singleton instance of the rate limiter
+// For local development or when Redis is not configured, we'll use a mock limiter
+// that doesn't actually block requests but provides the same interface.
+
+let aiLimiter: any;
+let generalLimiter: any;
+
+const isRedisConfigured = 
+  process.env.UPSTASH_REDIS_REST_URL && 
+  process.env.UPSTASH_REDIS_REST_TOKEN;
+
+if (isRedisConfigured) {
+  const redis = Redis.fromEnv();
+
+  // AI Solver: Stricter limit (10 req/min)
+  aiLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, "1 m"),
+    analytics: true,
+    prefix: "ratelimit:ai",
+  });
+
+  // General API (Doubts, Replies): 30 req/min
+  generalLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(30, "1 m"),
+    analytics: true,
+    prefix: "ratelimit:general",
+  });
+} else {
+  // Simple in-memory fallback for local development
+  // Note: This won't be perfectly accurate in distributed environments but works for local testing
+  const memoryMap = new Map<string, { count: number; reset: number }>();
+
+  const createMockLimiter = (limit: number, windowMs: number) => ({
+    limit: async (identifier: string) => {
+      const now = Date.now();
+      const record = memoryMap.get(identifier) || { count: 0, reset: now + windowMs };
+
+      if (now > record.reset) {
+        record.count = 0;
+        record.reset = now + windowMs;
+      }
+
+      record.count++;
+      memoryMap.set(identifier, record);
+
+      return {
+        success: record.count <= limit,
+        limit,
+        remaining: Math.max(0, limit - record.count),
+        reset: record.reset,
+      };
+    },
+  });
+
+  aiLimiter = createMockLimiter(10, 60 * 1000);
+  generalLimiter = createMockLimiter(30, 60 * 1000);
+}
+
+export { aiLimiter, generalLimiter };
