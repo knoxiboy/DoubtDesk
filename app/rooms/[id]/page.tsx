@@ -114,7 +114,7 @@ export default function ClassroomPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-[#020617] flex items-center justify-center">
+            <div className="h-[calc(100vh-80px)] flex items-center justify-center">
                 <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
             </div>
         );
@@ -123,7 +123,7 @@ export default function ClassroomPage() {
     if (!classroom) return null;
 
     return (
-        <div className="min-h-screen bg-[#020617] text-white">
+        <div className="relative overflow-hidden">
             {/* Header / Banner */}
             <div className="sticky top-0 z-50 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 pt-4 sm:pt-6 pb-4 sm:pb-6 px-4 sm:px-6 md:px-12 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/5 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3" />

@@ -145,7 +145,7 @@ export default function RoomsPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#020617] text-white p-4 md:p-8 relative overflow-hidden">
+        <div className="p-4 md:p-8 relative overflow-hidden">
             {/* Background Orbs */}
             <div className="absolute top-0 left-0 w-[800px] h-[800px] bg-blue-600/5 blur-[150px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
             
