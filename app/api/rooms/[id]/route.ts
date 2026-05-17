@@ -4,6 +4,7 @@ import { classroomsTable, membershipsTable } from '@/configs/schema';
 import { eq, and } from 'drizzle-orm';
 import { currentUser } from '@clerk/nextjs/server';
 import { checkUserBlock } from '@/lib/auth-utils';
+import { buildErrorResponse } from '@/lib/error-handler';
 
 export async function GET(
     req: Request,
@@ -27,7 +28,7 @@ export async function GET(
             return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });
         }
 
-        // Optimized query: Fetch classroom and membership in a single join
+        // Optimised query: Fetch classroom and membership in a single join
         const [roomData] = await db
             .select({
                 id: classroomsTable.id,
@@ -36,13 +37,13 @@ export async function GET(
                 year: classroomsTable.year,
                 teacherEmail: classroomsTable.teacherEmail,
                 inviteCode: classroomsTable.inviteCode,
-                role: membershipsTable.role
+                role: membershipsTable.role,
             })
             .from(classroomsTable)
-            .innerJoin(membershipsTable, and(
-                eq(membershipsTable.classroomId, classroomsTable.id),
-                eq(membershipsTable.userEmail, email)
-            ))
+            .innerJoin(
+                membershipsTable,
+                and(eq(membershipsTable.classroomId, classroomsTable.id), eq(membershipsTable.userEmail, email))
+            )
             .where(eq(classroomsTable.id, roomId));
 
         if (!roomData) {
@@ -50,9 +51,8 @@ export async function GET(
         }
 
         return NextResponse.json(roomData);
-
-    } catch (error: any) {
-        console.error("Error fetching room details:", error);
-        return NextResponse.json({ error: error?.message }, { status: 500 });
+    } catch (error) {
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }

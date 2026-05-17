@@ -5,41 +5,35 @@ import { and, eq, desc, isNull, or, not, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
+import { buildErrorResponse } from "@/lib/error-handler";
 
 export async function GET(req: Request) {
-    const { searchParams } = new URL(req.url);
-    const subject = searchParams.get("subject");
-    const userName = searchParams.get("userName");
-    const classroomIdStr = searchParams.get("classroomId");
-    const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
-    const type = searchParams.get("type") || 'community';
-
     try {
         const user = await currentUser();
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         const email = user.primaryEmailAddress?.emailAddress;
 
+        const { searchParams } = new URL(req.url);
+        const subject = searchParams.get("subject");
+        const userName = searchParams.get("userName");
+        const classroomIdStr = searchParams.get("classroomId");
+        const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
+        const type = searchParams.get("type") || 'community';
+
         // Security: If classroomId is provided, check membership
         if (classroomId && email) {
-            console.log(`Security Check: Classroom ${classroomId}, User ${email}`);
             const [membership] = await db.select().from(membershipsTable).where(
-                and(
-                    eq(membershipsTable.userEmail, email),
-                    eq(membershipsTable.classroomId, classroomId)
-                )
+                and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, classroomId))
             );
             if (!membership) {
-                console.warn(`Denied access to classroom ${classroomId} for user ${email}`);
                 return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
             }
         } else if (classroomId && !email) {
-            console.warn(`Anonymous user attempting to access classroom ${classroomId}`);
-            // For hackathon simplicity, we might allow it if they have the link, 
-            // but usually this should be blocked.
+            // For hackathon simplicity, allow if they have the link
         }
 
         let query = db.select().from(doubtsTable);
-        let conditions = [];
+        const conditions: any[] = [];
 
         // Base Classroom scoping
         if (classroomId) {
@@ -49,31 +43,23 @@ export async function GET(req: Request) {
         }
 
         // Fetch classroom role info
-        const [room] = classroomId ? await db.select().from(classroomsTable).where(eq(classroomsTable.id, classroomId)) : [null];
+        const [room] = classroomId
+            ? await db.select().from(classroomsTable).where(eq(classroomsTable.id, classroomId))
+            : [null];
         const isTeacher = room && email && room.teacherEmail === email;
 
-        // GLOBAL VISIBILITY FILTER
-        // If not the teacher, you can only see 'teacher' doubts if you are the owner
         if (!isTeacher && email) {
-            conditions.push(
-                or(
-                    not(eq(doubtsTable.type, 'teacher')),
-                    eq(doubtsTable.userEmail, email)
-                )
-            );
+            conditions.push(or(not(eq(doubtsTable.type, 'teacher')), eq(doubtsTable.userEmail, email)));
         } else if (!isTeacher && !email) {
-            // Extreme fallback: if no email, only show non-teacher doubts
             conditions.push(not(eq(doubtsTable.type, 'teacher')));
         }
 
-        // Filters
         if (subject && subject !== "All") {
             conditions.push(eq(doubtsTable.subject, subject));
         }
 
         if (type && type !== "All") {
             conditions.push(eq(doubtsTable.type, type));
-            // Security/Privacy: AI history is personal
             if (type === 'ai' && email) {
                 conditions.push(eq(doubtsTable.userEmail, email));
             }
@@ -85,34 +71,30 @@ export async function GET(req: Request) {
             const userLikes = await db.select({ doubtId: likesTable.doubtId })
                 .from(likesTable)
                 .where(eq(likesTable.userName, userName));
-
             const likedIds = new Set(userLikes.map(l => l.doubtId));
-
-            doubts = doubts.map(doubt => ({
-                ...doubt,
-                hasLiked: likedIds.has(doubt.id)
-            }));
+            doubts = doubts.map((doubt: any) => ({ ...doubt, hasLiked: likedIds.has(doubt.id) }));
         }
 
-        // Fetch reply counts using an aggregate query
         const replyCounts = await db.select({
             doubtId: repliesTable.doubtId,
-            count: sql<number>`count(*)`.mapWith(Number)
+            count: sql<number>`count(*)`.mapWith(Number),
         })
-        .from(repliesTable)
-        .groupBy(repliesTable.doubtId);
+            .from(repliesTable)
+            .groupBy(repliesTable.doubtId);
 
-        const countsMap = Object.fromEntries(replyCounts.map(r => [r.doubtId, r.count]));
+        const countsMap: Record<string, number> = Object.fromEntries(
+            replyCounts.map((r: any) => [r.doubtId, r.count])
+        );
 
-        doubts = doubts.map(doubt => ({
+        doubts = (doubts as any[]).map((doubt: any) => ({
             ...doubt,
-            replyCount: countsMap[doubt.id] || 0
+            replyCount: countsMap[doubt.id] || 0,
         }));
 
         return NextResponse.json(doubts);
     } catch (error) {
-        console.error("Error fetching doubts:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }
 
@@ -120,7 +102,7 @@ export async function POST(req: Request) {
     try {
         const user = await currentUser();
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        
+
         const email = user.primaryEmailAddress?.emailAddress;
         if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
@@ -128,9 +110,10 @@ export async function POST(req: Request) {
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
         if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
             const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            return NextResponse.json({ 
-                error: `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.` 
-            }, { status: 403 });
+            const { status, body } = buildErrorResponse(
+                new Error(`Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`)
+            );
+            return NextResponse.json(body, { status });
         }
 
         const { userName, subject, content, imageUrl, classroomId, type = 'community' } = await req.json();
@@ -159,12 +142,12 @@ export async function POST(req: Request) {
             content,
             imageUrl,
             classroomId: classroomId ? parseInt(classroomId.toString()) : null,
-            type
+            type,
         }).returning();
 
         return NextResponse.json(newDoubt[0]);
-    } catch (error: any) {
-        console.error("Error saving doubt:", error);
-        return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 });
+    } catch (error) {
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }

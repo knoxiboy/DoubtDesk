@@ -1,4 +1,14 @@
-import { integer, pgTable, varchar, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import {
+    integer,
+    pgTable,
+    varchar,
+    text,
+    timestamp,
+    boolean,
+    index,
+    unique,
+    foreignKey,
+} from "drizzle-orm/pg-core";
 
 /**
  * Users table storing core user profiles.
@@ -35,6 +45,12 @@ export const classroomsTable = pgTable("classrooms", {
 
 /**
  * Junction table for Many-to-Many relationship between Users and Classrooms.
+ *
+ * Foreign keys:
+ *   - memberships.userEmail   → users.email      (CASCADE: remove membership when user is deleted)
+ *   - memberships.classroomId → classrooms.id    (CASCADE: remove membership when classroom is deleted)
+ *
+ * Unique: a user can only have one membership per classroom.
  */
 export const membershipsTable = pgTable("memberships", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -46,12 +62,26 @@ export const membershipsTable = pgTable("memberships", {
     return {
         userEmailIndex: index("userEmail_idx").on(table.userEmail),
         classroomIdIndex: index("classroomId_idx").on(table.classroomId),
+        /** Remove membership records when the referenced user is deleted. */
+        userEmailFk: foreignKey({
+            columns: [table.userEmail],
+            foreignColumns: [usersTable.email],
+        }).onDelete("cascade"),
+        /** Remove membership records when the referenced classroom is deleted. */
+        classroomIdFk: foreignKey({
+            columns: [table.classroomId],
+            foreignColumns: [classroomsTable.id],
+        }).onDelete("cascade"),
+        /** A user can only have one membership per classroom. */
+        membershipUnique: unique("memberships_userEmail_classroomId_unique").on(table.userEmail, table.classroomId),
     };
 });
 
 /**
  * Chat history for persistent AI Tutor sessions.
  * Allows students to continue conversations with the AI.
+ *
+ * Foreign key: userEmail → users.email (CASCADE DELETE).
  */
 export const chatHistoryTable = pgTable("chat_history", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -61,7 +91,14 @@ export const chatHistoryTable = pgTable("chat_history", {
     role: varchar({ length: 20 }).notNull(),
     content: text().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-});
+}, (table) => ({
+    chatIdIndex: index("chatHistory_chatId_idx").on(table.chatId),
+    /** Remove chat history when the referenced user is deleted. */
+    userIdFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+}));
 
 export const roadmapsTable = pgTable("roadmaps", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -69,7 +106,13 @@ export const roadmapsTable = pgTable("roadmaps", {
     targetField: varchar({ length: 255 }).notNull(),
     roadmapData: text().notNull(), // Store JSON as string
     createdAt: timestamp().defaultNow().notNull(),
-});
+}, (table) => ({
+    /** Remove roadmaps when the referenced user is deleted. */
+    userIdFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+}));
 
 export const coverLettersTable = pgTable("cover_letters", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -78,7 +121,13 @@ export const coverLettersTable = pgTable("cover_letters", {
     userDetails: text().notNull(),
     coverLetter: text().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-});
+}, (table) => ({
+    /** Remove cover letters when the referenced user is deleted. */
+    userIdFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+}));
 
 export const resumeAnalysisTable = pgTable("resume_analysis", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -88,7 +137,13 @@ export const resumeAnalysisTable = pgTable("resume_analysis", {
     analysisData: text().notNull(), // Store JSON string
     resumeName: varchar({ length: 255 }), // Name of the uploaded file
     createdAt: timestamp().defaultNow().notNull(),
-});
+}, (table) => ({
+    /** Remove resume analyses when the referenced user is deleted. */
+    userIdFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+}));
 
 export const sharedChatsTable = pgTable("shared_chats", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -103,45 +158,68 @@ export const resumesTable = pgTable("resumes", {
     resumeData: text().notNull(), // Store full JSON data
     createdAt: timestamp().defaultNow().notNull(),
     updatedAt: timestamp().defaultNow().notNull(),
-});
+}, (table) => ({
+    /** Remove resumes when the referenced user is deleted. */
+    userIdFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+    /** A user cannot upload two resumes with the same filename. */
+    userEmailResumeNameUnique: unique("resumes_userEmail_resumeName_unique").on(table.userEmail, table.resumeName),
+}));
 
 /**
  * Core Doubts table.
- * Stores questions asked by students, their categorization, and resolution status.
+ * Stores questions asked by students, their categorisation, and resolution status.
  * Can be public or linked to a specific classroom.
+ *
+ * Foreign keys (declared inline to avoid a circular type-cycle between `doubtsTable`
+ * and `repliesTable` in strict-TS):
+ *   - userEmail   → users.email     (SET NULL: anonymise author if their account is deleted)
+ *   - classroomId → classrooms.id   (SET NULL: keep the doubt public when its classroom is deleted)
+ *
+ * Note: `solvedReplyId` → `replies.id` (SET NULL) is intentionally omitted from the
+ * inline call-back because `repliesTable` is defined later in this same file.
+ * TypeScript forbids a strict-mode `const` from being referenced in its own initializer.
+ * This FK can be added safely in a future migration without touching application code.
  */
 export const doubtsTable = pgTable("doubts", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     userName: varchar({ length: 255 }).notNull(), // Randomly generated Student_XXX
-    userEmail: varchar({ length: 255 }), // Secure owner identification
-    classroomId: integer(), // Null for public, or ID for classroom-specific
-    subject: varchar({ length: 100 }).notNull(), // Math, Physics, Programming, Others
-    subTopic: varchar({ length: 255 }), // Granular topic detected by AI
+    userEmail: varchar({ length: 255 }),           // Secure owner identification
+    classroomId: integer(),                         // Null for public, or ID for classroom-specific
+    subject: varchar({ length: 100 }).notNull(),    // Math, Physics, Programming, Others
+    subTopic: varchar({ length: 255 }),             // Granular topic detected by AI
     content: text(),
     imageUrl: text(),
     likes: integer().default(0),
     isSolved: varchar({ length: 20 }).default("unsolved"), // unsolved, solved
-    solvedReplyId: integer(), // ID of the specific reply that solved it
-    type: varchar({ length: 20 }).default("community"), // 'ai', 'community', 'teacher'
+    solvedReplyId: integer(),                       // ID of the specific reply that solved it
+    type: varchar({ length: 20 }).default("community"),    // 'ai', 'community', 'teacher'
     createdAt: timestamp().defaultNow().notNull(),
 }, (table) => {
     return {
         classroomIdIndex: index("doubt_classroomId_idx").on(table.classroomId),
         typeIndex: index("type_idx").on(table.type),
         subjectIndex: index("subject_idx").on(table.subject),
+        /** Anonymise the doubt author if their account is deleted. */
+        userEmailFk: foreignKey({
+            columns: [table.userEmail],
+            foreignColumns: [usersTable.email],
+        }).onDelete("set null"),
+        /** Keep the doubt public when its classroom is deleted. */
+        classroomIdFk: foreignKey({
+            columns: [table.classroomId],
+            foreignColumns: [classroomsTable.id],
+        }).onDelete("set null"),
     };
-});
-
-export const likesTable = pgTable("likes", {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userName: varchar({ length: 255 }).notNull(),
-    doubtId: integer().notNull(),
-    createdAt: timestamp().defaultNow().notNull(),
 });
 
 /**
  * Replies to doubts.
  * Can be community comments or verified AI/Teacher solutions.
+ *
+ * Foreign key: doubtId → doubts.id (CASCADE DELETE).
  */
 export const repliesTable = pgTable("replies", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -154,6 +232,26 @@ export const repliesTable = pgTable("replies", {
     createdAt: timestamp().defaultNow().notNull(),
 }, (table) => ({
     doubtIdIndex: index("doubtId_idx").on(table.doubtId),
+    /** Remove replies when the referenced doubt is deleted. */
+    doubtIdFk: foreignKey({
+        columns: [table.doubtId],
+        foreignColumns: [doubtsTable.id],
+    }).onDelete("cascade"),
+}));
+
+export const likesTable = pgTable("likes", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userName: varchar({ length: 255 }).notNull(),
+    doubtId: integer().notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    /** Remove like records when the referenced doubt is deleted. */
+    doubtIdFk: foreignKey({
+        columns: [table.doubtId],
+        foreignColumns: [doubtsTable.id],
+    }).onDelete("cascade"),
+    /** A user may only like a given doubt once. */
+    userNameDoubtUnique: unique("likes_userName_doubtId_unique").on(table.userName, table.doubtId),
 }));
 
 export const replyLikesTable = pgTable("reply_likes", {
@@ -161,7 +259,15 @@ export const replyLikesTable = pgTable("reply_likes", {
     userName: varchar({ length: 255 }).notNull(),
     replyId: integer().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-});
+}, (table) => ({
+    /** Remove reply-like records when the referenced reply is deleted. */
+    replyIdFk: foreignKey({
+        columns: [table.replyId],
+        foreignColumns: [repliesTable.id],
+    }).onDelete("cascade"),
+    /** A user may only upvote a given reply once. */
+    userNameReplyUnique: unique("reply_likes_userName_replyId_unique").on(table.userName, table.replyId),
+}));
 
 /**
  * Audit log for AI moderation actions.
@@ -174,4 +280,10 @@ export const moderationLogsTable = pgTable("moderation_logs", {
     violationType: varchar({ length: 50 }).notNull(), // 'abusive', 'off-topic', etc.
     contentSnippet: text(),
     createdAt: timestamp().defaultNow().notNull(),
-});
+}, (table) => ({
+    /** Remove moderation records when the referenced user is deleted. */
+    userIdFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+}));
