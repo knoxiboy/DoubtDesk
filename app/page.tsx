@@ -46,16 +46,37 @@ export default function Home() {
 
           <div className="flex items-center gap-4">
             <SignedOut>
+              <div className="flex items-center gap-3">
               <SignInButton mode="modal" forceRedirectUrl="/rooms">
-                <button className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-sm font-semibold border border-white/10 transition-all hover:shadow-[0_0_16px_rgba(255,255,255,0.08)]">
-                  Sign In
+                <button className="group relative overflow-hidden px-6 py-3 rounded-2xl border border-white/10 bg-white/[0.04]
+                        backdrop-blur-md text-white font-semibold tracking-wide transition-all duration-300 hover:bg-white/[0.08] hover:border-white/20 hover:shadow-[0_0_24px_rgba(255,255,255,0.08)] hover:-translate-y-0.5
+                        active:scale-[0.98]">
+                    {/* Glow Effect */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-white/0 via-white/10 to-white/0 blur-xl" />
+
+                    <span className="relative z-10 flex items-center gap-2">
+                      Sign In
+                    </span>
                 </button>
               </SignInButton>
+
               <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
-                <button className="px-5 py-2.5 bg-[#5E8CFF] hover:bg-[#8BB8FF] text-white rounded-xl text-sm font-semibold shadow-[0_0_14px_rgba(94,140,255,0.28)] transition-all">
-                  Join DoubtDesk
-                </button>
-              </SignUpButton>
+                <button className="group relative overflow-hidden px-6 py-3 rounded-2xl bg-gradient-to-r from-[#5E8CFF] to-[#7AA2FF] text-white
+                        font-semibold tracking-wide transition-all duration-300 shadow-[0_0_18px_rgba(94,140,255,0.30)] hover:shadow-[0_0_30px_rgba(94,140,255,0.50)]
+                        hover:scale-[1.03] hover:-translate-y-0.5 active:scale-[0.98]">
+                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full
+                        transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/25 to-transparent skew-x-12"/>
+                  <div className="absolute inset-0 bg-[#8BB8FF]/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+               <span className="relative z-10 flex items-center gap-2">
+                   Join DoubtDesk
+                 <span className="transition-transform duration-300 group-hover:translate-x-1">
+                    →
+                 </span>
+                </span>
+               </button>
+             </SignUpButton>
+             </div>
             </SignedOut>
             <SignedIn>
               <div className="flex items-center gap-4">
@@ -140,8 +161,7 @@ export default function Home() {
                 <SignedIn>
                   <Link href="/rooms" className="w-full sm:w-auto">
                     <button className="group px-10 py-5 bg-[#5E8CFF] text-white rounded-2xl text-lg font-bold hover:bg-[#8BB8FF] hover:shadow-[0_0_24px_rgba(94,140,255,0.35)] transition-all w-full flex items-center justify-center gap-2">
-                      <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>Open</span>
-                      <span>Classroom</span>
+                      <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>Open Classroom</span>
                       <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </button>
                   </Link>
@@ -149,8 +169,7 @@ export default function Home() {
                 <SignedOut>
                   <SignUpButton mode="modal" forceRedirectUrl="/rooms">
                     <button className="group px-10 py-5 bg-white text-slate-950 rounded-2xl text-lg font-bold hover:bg-slate-200 transition-all w-full sm:w-auto flex items-center justify-center gap-2">
-                      <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>Open</span>
-                      <span>Classroom</span>
+                      <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>Open Classroom</span>
                       <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </button>
                   </SignUpButton>
