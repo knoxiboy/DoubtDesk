@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 import { usersTable } from "@/configs/schema";
+import { inngest } from "@/inngest/client";
 
 export async function GET(req: Request) {
     try {
@@ -119,6 +120,58 @@ export async function POST(req: Request) {
             content: content || null,
             imageUrl: imageUrl || null
         }).returning();
+
+        // Trigger background email notification via Inngest
+        try {
+            await inngest.send({
+                name: "reply.created",
+                data: {
+                    doubtId: parseInt(doubtId),
+                    replyId: newReply[0].id,
+                    replierName: userName,
+                    replierEmail: email || "",
+                    replyContent: content || ""
+                }
+            });
+        } catch (inngestErr) {
+            console.error("Failed to trigger Inngest event for reply (safely caught):", inngestErr);
+        }
+
+        // 🚀 ZERO-SETUP DEV FALLBACK:
+        // If running in local development, run the email simulation logger synchronously 
+        // to give immediate feedback on the console.
+        if (process.env.NODE_ENV === "development") {
+            try {
+                const [d] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, parseInt(doubtId))).limit(1);
+                if (d && d.userEmail && d.userEmail !== email) {
+                    const [u] = await db.select().from(usersTable).where(eq(usersTable.email, d.userEmail)).limit(1);
+                    const notificationsEnabled = u ? u.emailNotificationsEnabled : true;
+                    
+                    if (notificationsEnabled) {
+                        const { emailNotificationLimiter } = await import("@/lib/ratelimit");
+                        const rateLimitKey = `email_notify:${doubtId}`;
+                        const limitResult = await emailNotificationLimiter.limit(rateLimitKey);
+                        
+                        if (limitResult.success) {
+                            const { sendReplyNotificationEmail } = await import("@/lib/email");
+                            // Run non-blocking in background
+                            sendReplyNotificationEmail({
+                                toEmail: d.userEmail,
+                                doubtId: d.id,
+                                doubtSubject: d.subject,
+                                doubtContent: d.content || "",
+                                replierName: userName,
+                                replyContent: content || ""
+                            }).catch(err => console.error("Immediate dev mailer failed:", err));
+                        } else {
+                            console.log(`[RATE LIMIT EXCEEDED] Immediate dev notification skipped for doubt ${doubtId} to prevent spam.`);
+                        }
+                    }
+                }
+            } catch (fallbackErr) {
+                console.error("Zero-setup developer email fallback failed:", fallbackErr);
+            }
+        }
 
         return NextResponse.json(newReply[0]);
     } catch (error: any) {
