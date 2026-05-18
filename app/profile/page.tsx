@@ -6,9 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, MessageSquare, BookOpen, Users, ThumbsUp, ArrowLeft, RefreshCw, AlertTriangle } from "lucide-react";
+import { CalendarDays, MessageSquare, BookOpen, Users, ThumbsUp, ArrowLeft, RefreshCw, AlertTriangle, Mail, Loader2, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import type { ProfileData, ProfileDoubt, ProfileReply, ProfileClassroom } from "@/types/profile";
 
 
@@ -103,9 +104,9 @@ export default function ProfilePage() {
             .then((data: ProfileData) => {
                 if (data.user) {
                     setProfileData(data);
+                    setEmailNotificationsEnabled(data.user.emailNotificationsEnabled ?? true);
                 } else {
                     setError("Profile data is unavailable. Please try again.");
-                    setEmailNotificationsEnabled(data.user.emailNotificationsEnabled ?? true);
                 }
                 setLoading(false);
             })

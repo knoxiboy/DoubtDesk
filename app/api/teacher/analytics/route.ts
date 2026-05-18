@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, classroomsTable, usersTable } from "@/configs/schema";

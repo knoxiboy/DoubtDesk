@@ -57,6 +57,7 @@ export interface ProfileUser {
     onboarded: boolean | null;
     imageUrl: string;
     joinDate: string;
+    emailNotificationsEnabled?: boolean;
     createdAt: string;
 }
 

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { db } from "@/configs/db";
 import { doubtsTable, bookmarksTable, likesTable, repliesTable } from "@/configs/schema";
 import { and, eq, desc, sql, inArray } from "drizzle-orm";

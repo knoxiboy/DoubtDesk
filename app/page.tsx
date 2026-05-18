@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { SignInButton, SignUpButton, SignedIn, SignedOut, useClerk, UserButton } from "@clerk/nextjs";
-import { Sparkles, FileText, Map, MessageCircle, FileEdit, ArrowRight, Mail, Linkedin, Github } from "lucide-react";
+import { Sparkles, FileText, Map, MessageCircle, FileEdit, ArrowRight, Mail, Linkedin, Github, LayoutGrid, Clipboard, Activity, Users } from "lucide-react";
 import Link from "next/link";
 import {
   AlertDialog,
@@ -15,6 +15,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import ShapeGrid from "@/components/ShapeGrid";
+import { Inter, Staatliches } from "next/font/google";
+
+const inter = Inter({ subsets: ["latin"] });
+const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 
 export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
