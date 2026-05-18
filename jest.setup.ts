@@ -2,7 +2,7 @@ import '@testing-library/jest-dom';
 import { TextEncoder, TextDecoder } from 'util';
 import { ReadableStream, TransformStream, WritableStream } from 'stream/web';
 import { MessageChannel, MessagePort } from 'worker_threads';
-import { Blob, FormData } from 'buffer';
+import { Blob } from 'buffer';
 
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder as any;
@@ -12,7 +12,7 @@ global.WritableStream = WritableStream as any;
 global.MessageChannel = MessageChannel as any;
 global.MessagePort = MessagePort as any;
 global.Blob = Blob as any;
-global.FormData = FormData as any;
+global.FormData = require('undici').FormData;
 
 if (!String.prototype.toWellFormed) {
     String.prototype.toWellFormed = function () {

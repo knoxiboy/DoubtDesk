@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { doubtsTable, repliesTable, membershipsTable } from '@/configs/schema';
-import { desc, sql, and, isNull, eq, count, countDistinct, ne } from 'drizzle-orm';
+import { desc, sql, and, isNull, eq, count, countDistinct, ne, inArray } from 'drizzle-orm';
 import { currentUser } from '@clerk/nextjs/server';
 import { checkUserBlock } from '@/lib/auth-utils';
 
@@ -21,20 +21,43 @@ export async function GET(req: Request) {
     const classroomIdStr = searchParams.get("classroomId");
     const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
 
-    if (!classroomId) {
-        return NextResponse.json({ error: "Classroom ID required" }, { status: 400 });
-    }
+    let classroomFilter;
 
-    // Verify the user is a member of this classroom
-    const [membership] = await db.select().from(membershipsTable).where(
-        and(
-            eq(membershipsTable.userEmail, email),
-            eq(membershipsTable.classroomId, classroomId)
-        )
-    );
+    if (classroomId) {
+        // Verify the user is a member of this classroom
+        const [membership] = await db.select().from(membershipsTable).where(
+            and(
+                eq(membershipsTable.userEmail, email),
+                eq(membershipsTable.classroomId, classroomId)
+            )
+        );
 
-    if (!membership) {
-        return NextResponse.json({ error: 'Access denied: not a member of this classroom' }, { status: 403 });
+        if (!membership) {
+            return NextResponse.json({ error: 'Access denied: not a member of this classroom' }, { status: 403 });
+        }
+
+        classroomFilter = eq(doubtsTable.classroomId, classroomId);
+    } else {
+        // Get all classrooms user is a member of
+        const userMemberships = await db.select({ classroomId: membershipsTable.classroomId })
+            .from(membershipsTable)
+            .where(eq(membershipsTable.userEmail, email));
+
+        const userClassroomIds = userMemberships.map(m => m.classroomId);
+
+        if (userClassroomIds.length === 0) {
+            return NextResponse.json({
+                trendingDoubts: [],
+                mostAskedTopics: [],
+                solvedStats: [],
+                peakTime: [],
+                engagement: { totalStudents: 0, totalDoubts: 0, totalReplies: 0 },
+                weakTopics: [],
+                topContributors: []
+            });
+        }
+
+        classroomFilter = inArray(doubtsTable.classroomId, userClassroomIds);
     }
 
     try {
@@ -46,7 +69,7 @@ export async function GET(req: Request) {
             createdAt: doubtsTable.createdAt
         })
             .from(doubtsTable)
-            .where(eq(doubtsTable.classroomId, classroomId))
+            .where(classroomFilter)
             .orderBy(desc(doubtsTable.createdAt))
             .limit(5);
 
@@ -56,7 +79,7 @@ export async function GET(req: Request) {
             count: count(doubtsTable.id)
         })
             .from(doubtsTable)
-            .where(eq(doubtsTable.classroomId, classroomId))
+            .where(classroomFilter)
             .groupBy(doubtsTable.subject)
             .orderBy(desc(count(doubtsTable.id)))
             .limit(10);
@@ -67,7 +90,7 @@ export async function GET(req: Request) {
             count: count(doubtsTable.id)
         })
             .from(doubtsTable)
-            .where(eq(doubtsTable.classroomId, classroomId))
+            .where(classroomFilter)
             .groupBy(doubtsTable.isSolved);
 
         // 4. Peak Doubt Time (Hourly)
@@ -77,7 +100,7 @@ export async function GET(req: Request) {
             count: count(doubtsTable.id)
         })
             .from(doubtsTable)
-            .where(eq(doubtsTable.classroomId, classroomId))
+            .where(classroomFilter)
             .groupBy(sql`extract(hour from ${doubtsTable.createdAt})`)
             .orderBy(sql`extract(hour from ${doubtsTable.createdAt})`);
 
@@ -87,14 +110,14 @@ export async function GET(req: Request) {
             totalDoubts: count(doubtsTable.id)
         })
             .from(doubtsTable)
-            .where(eq(doubtsTable.classroomId, classroomId));
+            .where(classroomFilter);
             
         const totalReplies = await db.select({
             count: count(repliesTable.id)
         })
             .from(repliesTable)
             .innerJoin(doubtsTable, eq(repliesTable.doubtId, doubtsTable.id))
-            .where(eq(doubtsTable.classroomId, classroomId));
+            .where(classroomFilter);
 
         // 6. Top Contributors (students who reply the most)
         const topContributors = await db.select({
@@ -104,7 +127,7 @@ export async function GET(req: Request) {
             .from(repliesTable)
             .innerJoin(doubtsTable, eq(repliesTable.doubtId, doubtsTable.id))
             .where(and(
-                eq(doubtsTable.classroomId, classroomId),
+                classroomFilter,
                 ne(repliesTable.userName, 'DoubtDesk AI')
             ))
             .groupBy(repliesTable.userName)
