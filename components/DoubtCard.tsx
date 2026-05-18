@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark } from "lucide-react";
 import AskDoubt from "./AskDoubt";
 import DoubtRepliesModal from "./DoubtRepliesModal";
-import MarkdownRenderer from "./MarkdownRenderer";
 import { toast } from "sonner";
 
 interface DoubtCardProps {
@@ -194,9 +193,9 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                 {/* Content */}
                 <div className="flex-1 space-y-6">
                     {doubt.content && (
-                        <div className="text-slate-300 text-sm leading-relaxed mb-6 font-medium line-clamp-4 overflow-hidden">
-                            <MarkdownRenderer content={doubt.content} />
-                        </div>
+                        <p className="text-slate-300 text-sm leading-relaxed mb-6 font-medium line-clamp-4">
+                            {doubt.content}
+                        </p>
                     )}
 
                     {doubt.tags?.length > 0 && (

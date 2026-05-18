@@ -112,6 +112,7 @@ export async function POST(req: Request) {
         const newReply = await db.insert(repliesTable).values({
             doubtId: parseInt(doubtId),
             userName,
+            userEmail: email,
             type,
             content: content || null,
             imageUrl: imageUrl || null,
