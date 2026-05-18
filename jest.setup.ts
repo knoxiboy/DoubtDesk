@@ -2,7 +2,7 @@ import '@testing-library/jest-dom';
 import { TextEncoder, TextDecoder } from 'util';
 import { ReadableStream, TransformStream, WritableStream } from 'stream/web';
 import { MessageChannel, MessagePort } from 'worker_threads';
-import { Blob, FormData } from 'buffer';
+import { Blob } from 'buffer';
 
 global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder as any;
