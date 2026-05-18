@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AIGON Enterprise – Intelligent Automation Platform</title>
+    <meta name="description" content="AIGON Enterprise delivers AI-powered automation solutions for modern businesses. Discover features, how it works, and customer testimonials." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-...sha384-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+        body{font-family:'Inter',sans-serif;font-weight:400;color:#111827;background:#FFFFFF;line-height:1.6;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+        img{max-width:100%;height:auto;display:block}
+        a{color:#4F46E5;text-decoration:none;transition:all 0.3s ease}
+        a:hover{color:#4338CA}
+        .container{max-width:1200px;margin:0 auto;padding:0 1rem}
+        .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+        .section{padding:4rem 1rem}
+        .section__title{font-size:2rem;font-weight:700;text-align:center;margin-bottom:0.75rem;color:#111827}
+        .section__subtitle{font-size:1rem;text-align:center;color:#6B7280;max-width:600px;margin:0 auto 3rem auto}
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:0.5rem;padding:0.75rem 1.75rem;font-size:1rem;font-weight:600;border-radius:0.5rem;border:none;cursor:pointer;transition:all 0.3s ease;text-align:center}
+        .btn--primary{background:#4F46E5;color:#FFFFFF}
+        .btn--primary:hover{background:#4338CA;color:#FFFFFF;box-shadow:0 4px 6px rgba(0,0,0,0.1),0 2px 4px rgba(0,0,0,0.06);transform:translateY(-1px)}
+        .btn--secondary{background:#06B6D4;color:#FFFFFF}
+        .btn--secondary:hover{background:#059669;color:#FFFFFF;box-shadow:0 4px 6px rgba(0,0,0,0.1),0 2px 4px rgba(0,0,0,0.06);transform:translateY(-1px)}
+        .btn--outline{background:transparent;color:#4F46E5;border:2px solid #4F46E5}
+        .btn--outline:hover{background:#4F46E5;color:#FFFFFF}
+        .card{background:#F9FAFB;border-radius:0.5rem;padding:2rem 1.5rem;box-shadow:0 1px 3px rgba(0,0,0,0.1),0 1px 2px rgba(0,0,0,0.06);transition:all 0.3s ease}
+        .card:hover{box-shadow:0 4px 6px rgba(0,0,0,0.1),0 2px 4px rgba(0,0,0,0.06);transform:translateY(-4px)}
+        .grid{display:grid;gap:1.5rem}
+        .grid--3{grid-template-columns:repeat(1,1fr)}
+        .grid--2{grid-template-columns:repeat(1,1fr)}
+        .text-center{text-align:center}
+        .icon-circle{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;background:rgba(79,70,229,0.1);color:#4F46E5;font-size:1.5rem;margin-bottom:1rem}
+        .icon-circle--secondary{background:rgba(6,182,212,0.1);color:#06B6D4}
+        .icon-circle--accent{background:rgba(245,158,11,0.1);color:#F59E0B}
+        .icon-circle--success{background:rgba(16,185,129,0.1);color:#10B981}
+
+        .hero{background:linear-gradient(135deg,#F9FAFB 0%,#EEF2FF 100%);padding:5rem 1rem;text-align:center;position:relative;overflow:hidden}
+        .hero__content{max-width:800px;margin:0 auto;position:relative;z-index:1}
+        .hero__title{font-size:2.5rem;font-weight:800;line-height:1.2;margin-bottom:1.25rem;color:#111827}
+        .hero__title span{color:#4F46E5}
+        .hero__text{font-size:1.125rem;color:#6B7280;max-width:600px;margin:0 auto 2rem auto}
+        .hero__actions{display:flex;flex-wrap:wrap;gap:1rem;justify-content:center}
+        .hero__badge{display:inline-block;background:rgba(79,70,229,0.1);color:#4F46E5;padding:0.35rem 1rem;border-radius:2rem;font-size:0.875rem;font-weight:600;margin-bottom:1.5rem}
+        .hero::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:60px;background:linear-gradient(to top right,transparent 49%,#FFFFFF 50%)}
+
+        .features .grid--3{grid-template-columns:repeat(1,1fr)}
+        .feature-card{text-align:center;padding:2.5rem 1.5rem}
+        .feature-card__title{font-size:1.25rem;font-weight:700;margin-bottom:0.75rem;color:#111827}
+        .feature-card__text{font-size:0.9375rem;color:#6B7280;line-height:1.7}
+
+        .how-it-works{background:#F9FAFB}
+        .steps{display:flex;flex-direction:column;gap:2rem;max-width:900px;margin:0 auto}
+        .step{display:flex;flex-direction:column;gap:1rem;align-items:flex-start;text-align:left}
+        .step__number{flex-shrink:0;width:48px;height:48px;border-radius:50%;background:#4F46E5;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.25rem}
+        .step__content{flex:1}
+        .step__title{font-size:1.25rem;font-weight:700;margin-bottom:0.5rem;color:#111827}
+        .step__text{font-size:0.9375rem;color:#6B7280;line-height:1.7}
+        .step__connector{display:none}
+
+        .testimonials{background:#FFFFFF}
+        .testimonials .grid--2{grid-template-columns:repeat(1,1fr)}
+        .testimonial-card{text-align:left;padding:2rem 1.75rem;position:relative}
+        .testimonial-card::before{content:'\201C';font-size:4rem;color:#4F46E5;opacity:0.15;position:absolute;top:0.5rem;left:1.25rem;line-height:1;font-family:Georgia,serif}
+        .testimonial-card__text{font-size:0.9375rem;color:#374151;line-height:1.8;margin-bottom:1.5rem;font-style:italic}
+        .testimonial-card__author{display:flex;align-items:center;gap:0.75rem}
+        .testimonial-card__avatar{width:44px;height:44px;border-radius:50%;background:#E5E7EB;display:flex;align-items:center;justify-content:center;font-weight:700;color:#4F46E5;font-size:1rem;overflow:hidden}
+        .testimonial-card__avatar img{width:100%;height:100%;object-fit:cover}
+        .testimonial-card__name{font-weight:600;font-size:0.9375rem;color:#111827}
+        .testimonial-card__role{font-size:0.8125rem;color:#6B7280}
+        .testimonial-card__stars{color:#F59E0B;font-size:0.875rem;margin-bottom:0.75rem;letter-spacing:0.1em}
+
+        .footer{background:#111827;color:#D1D5DB;padding:3rem 1rem;text-align:center}
+        .footer__inner{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:1.5rem;align-items:center}
+        .footer__logo{font-size:1.25rem;font-weight:700;color:#FFFFFF}
+        .footer__links{display:flex;flex-wrap:wrap;gap:1.5rem;justify-content:center}
+        .footer__links a{color:#9CA3AF;font-size:0.875rem;transition:color 0.3s ease}
+        .footer__links a:hover{color:#FFFFFF}
+        .footer__social{display:flex;gap:1rem}
+        .footer__social a{color:#9CA3AF;font-size:1.125rem;transition:color 0.3s ease}
+        .footer__social a:hover{color:#FFFFFF}
+        .footer__copy{font-size:0.8125rem;color:#6B7280}
+
+        @media (min-width:641px){
+            .hero{padding:6rem 1rem}
+            .hero__title{font-size:3rem}
+            .steps{gap:2.5rem}
+            .step{flex-direction:row;align-items:flex-start;gap:1.5rem}
+            .step__connector{display:block;width:2px;height:24px;background:#E5E7EB;margin-left:24px}
+        }
+        @media (min-width:1025px){
+            .hero__title{font-size:3.5rem}
+            .features .grid--3{grid-template-columns:repeat(3,1fr)}
+            .testimonials .grid--2{grid-template-columns:repeat(2,1fr)}
+            .section{padding:5rem 1rem}
+            .hero{padding:7rem 1rem}
+        }
+        @media (min-width:768px){
+            .how-it-works .steps .step:last-child .step__connector{display:none}
+        }
+
+        .toast{position:fixed;bottom:24px;right:24px;background:#111827;color:#FFFFFF;padding:0.875rem 1.5rem;border-radius:0.5rem;font-size:0.875rem;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;opacity:0;transform:translateY(12px);transition:all 0.4s ease;pointer-events:none}
+        .toast--visible{opacity:1;transform:translateY(0);pointer-events:auto}
+        .toast__icon{margin-right:0.5rem}
+    </style>
+</head>
+<body>
+
+    <header class="hero" role="banner">
+        <div class="hero__content">
+            <span class="hero__badge"><i class="fas fa-bolt" aria-hidden="true" style="margin-right:0.4rem;"></i>Now in Early Access</span>
+            <h1 class="hero__title">Intelligent Automation for <span>Modern Enterprises</span></h1>
+            <p class="hero__text">AIGON Enterprise harnesses AI to streamline workflows, reduce operational costs, and accelerate decision-making across your organization.</p>
+            <div class="hero__actions">
+                <a href="#features" class="btn btn--primary"><i class="fas fa-rocket" aria-hidden="true"></i> Explore Features</a>
+                <a href="#how-it-works" class="btn btn--outline"><i class="fas fa-play-circle" aria-hidden="true"></i> See How It Works</a>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-content">
+        <section id="features" class="section features" aria-labelledby="features-title">
+            <div class="container">
+                <h2 id="features-title" class="section__title">Everything You Need to Scale</h2>
+                <p class="section__subtitle">A unified platform designed to automate, analyze, and amplify your business operations with enterprise-grade AI.</p>
+                <div class="grid grid--3">
+                    <article class="card feature-card">
+                        <div class="icon-circle" aria-hidden="true"><i class="fas fa-brain"></i></div>
+                        <h3 class="feature-card__title">AI-Powered Workflows</h3>
+                        <p class="feature-card__text">Deploy intelligent agents that learn from your processes and autonomously execute complex tasks across departments.</p>
+                    </article>
+                    <article class="card feature-card">
+                        <div class="icon-circle icon-circle--secondary" aria-hidden="true"><i class="fas fa-shield-alt"></i></div>
+                        <h3 class="feature-card__title">Enterprise Security</h3>
+                        <p class="feature-card__text">SOC 2 compliant infrastructure with end-to-end encryption, role-based access control, and audit trails built into every layer.</p>
+                    </article>
+                    <article class="card feature-card">
+                        <div class="icon-circle icon-circle--accent" aria-hidden="true"><i class="fas fa-chart-line"></i></div>
+                        <h3 class="feature-card__title">Real-Time Analytics</h3>
+                        <p class="feature-card__text">Live dashboards and custom reports that give you visibility into every automated process with actionable insights.</p>
+                    </article>
+                    <article class="card feature-card">
+                        <div class="icon-circle icon-circle--success" aria-hidden="true"><i class="fas fa-puzzle-piece"></i></div>
+                        <h3 class="feature-card__title">Seamless Integrations</h3>
+                        <p class="feature-card__text">Connect with 200+ tools including Salesforce, Slack, Jira, and custom APIs without writing a single line of code.</p>
+                    </article>
+                    <article class="card feature-card">
+                        <div class="icon-circle" aria-hidden="true"><i class="fas fa-users-gear"></i></div>
+                        <h3 class="feature-card__title">Collaborative Agents</h3>
+                        <p class="feature-card__text">Teams of AI agents that coordinate with each other and your human workforce to deliver results faster than ever.</p>
+                    </article>
+                    <article class="card feature-card">
+                        <div class="icon-circle icon-circle--secondary" aria-hidden="true"><i class="fas fa-cloud-upload-alt"></i></div>
+                        <h3 class="feature-card__title">Hybrid Deployment</h3>
+                        <p class="feature-card__text">Run on cloud, on-premises, or in a hybrid configuration. Full control over data residency and compliance requirements.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section id="how-it-works" class="section how-it-works" aria-labelledby="how-title">
+            <div class="container">
+                <h2 id="how-title" class="section__title">How It Works</h2>
+                <p class="section__subtitle">Get from zero to automation in four straightforward steps. No PhD in data science required.</p>
+                <div class="steps">
+                    <div class="step">
+                        <div class="step__number" aria-hidden="true">1</div>
+                        <div class="step__content">
+                            <h3 class="step__title">Connect Your Ecosystem</h3>
+                            <p class="step__text">Link your existing tools, databases, and APIs through our secure connectors. AIGON auto-discovers your workflows and data models.</p>
+                        </div>
+                        <div class="step__connector" aria-hidden="true"></div>
+                    </div>
+                    <div class="step">
+                        <div class="step__number" aria-hidden="true">2</div>
+                        <div class="step__content">
+                            <h3 class="step__title">Define Your Objectives</h3>
+                            <p class="step__text">Describe your goals in natural language or use our visual builder. The platform translates intent into executable automation blueprints.</p>
+                        </div>
+                        <div class="step__connector" aria-hidden="true"></div>
+                    </div>
+                    <div class="step">
+                        <div class="step__number" aria-hidden="true">3</div>
+                        <div class="step__content">
+                            <h3 class="step__title">Train &amp; Validate</h3>
+                            <p class="step__text">Our AI simulates thousands of scenarios to validate reliability. You review edge cases, adjust guardrails, and approve with one click.</p>
+                        </div>
+                        <div class="step__connector" aria-hidden="true"></div>
+                    </div>
+                    <div class="step">
+                        <div class="step__number" aria-hidden="true">4</div>
+                        <div class="step__content">
+                            <h3 class="step__title">Deploy &amp; Optimize</h3>
+                            <p class="step__text">Go live in minutes. Monitor performance, receive optimization suggestions, and let the system continuously improve over time.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="testimonials" class="section testimonials" aria-labelledby="testimonials-title">
+            <div class="container">
+                <h2 id="testimonials-title" class="section__title">Trusted by Industry Leaders</h2>
+                <p class="section__subtitle">Hear from engineering and operations leaders who transformed their organizations with AIGON.</p>
+                <div class="grid grid--2">
+                    <blockquote class="card testimonial-card">
+                        <div class="testimonial-card__stars" aria-label="5 out of 5 stars">
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                        </div>
+                        <p class="testimonial-card__text">AIGON reduced our incident response time by 73%. The platform's ability to correlate signals across monitoring tools and auto-remediate common issues is game-changing for our SRE team.</p>
+                        <footer class="testimonial-card__author">
+                            <div class="testimonial-card__avatar" aria-hidden="true" style="background:#EEF2FF;color:#4F46E5;">MK</div>
+                            <div>
+                                <cite class="testimonial-card__name">Maria K.</cite>
+                                <span class="testimonial-card__role">VP of Infrastructure, Finova Inc.</span>
+                            </div>
+                        </footer>
+                    </blockquote>
+                    <blockquote class="card testimonial-card">
+                        <div class="testimonial-card__stars" aria-label="5 out of 5 stars">
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                        </div>
+                        <p class="testimonial-card__text">We deployed AIGON across our supply chain operations and saw a 40% reduction in manual data entry errors. The ROI was evident within the first month. Highly recommend for any logistics-heavy organization.</p>
+                        <footer class="testimonial-card__author">
+                            <div class="testimonial-card__avatar" aria-hidden="true" style="background:#ECFDF5;color:#10B981;">JR</div>
+                            <div>
+                                <cite class="testimonial-card__name">James R.</cite>
+                                <span class="testimonial-card__role">Director of Operations, LogiCore</span>
+                            </div>
+                        </footer>
+                    </blockquote>
+                    <blockquote class="card testimonial-card">
+                        <div class="testimonial-card__stars" aria-label="5 out of 5 stars">
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                        </div>
+                        <p class="testimonial-card__text">The compliance automation module saved us hundreds of hours preparing for SOC 2 and ISO 27001 audits. AIGON maps controls to evidence automatically. It's like having a dedicated compliance engineer.</p>
+                        <footer class="testimonial-card__author">
+                            <div class="testimonial-card__avatar" aria-hidden="true" style="background:#FEF3C7;color:#F59E0B;">AL</div>
+                            <div>
+                                <cite class="testimonial-card__name">Aisha L.</cite>
+                                <span class="testimonial-card__role">Chief Information Security Officer, Dataguard</span>
+                            </div>
+                        </footer>
+                    </blockquote>
+                    <blockquote class="card testimonial-card">
+                        <div class="testimonial-card__stars" aria-label="5 out of 5 stars">
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                            <i class="fas fa-star" aria-hidden="true"></i>
+                        </div>
+                        <p class="testimonial-card__text">Our customer support team handles 3x more tickets since implementing AIGON's intelligent triage and response agents. Customer satisfaction scores are at an all-time high.</p>
+                        <footer class="testimonial-card__author">
+                            <div class="testimonial-card__avatar" aria-hidden="true" style="background:#F3E8FF;color:#7C3AED;">TN</div>
+                            <div>
+                                <cite class="testimonial-card__name">Tom N.</cite>
+                                <span class="testimonial-card__role">Head of Customer Experience, ZenDesk Alternative</span>
+                            </div>
+                        </footer>
+                    </blockquote>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer" role="contentinfo">
+        <div class="footer__inner">
+            <div class="footer__logo">
+                <i class="fas fa-cube" aria-hidden="true" style="margin-right:0.4rem;color:#4F46E5;"></i>AIGON Enterprise
+            </div>
+            <nav class="footer__links" aria-label="Footer navigation">
+                <a href="#features">Features</a>
+                <a href="#how-it-works">How It Works</a>
+                <a href="#testimonials">Testimonials</a>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="#">Contact</a>
+            </nav>
+            <div class="footer__social">
+                <a href="#" aria-label="Twitter"><i class="fab fa-twitter" aria-hidden="true"></i></a>
+                <a href="#" aria-label="LinkedIn"><i class="fab fa-linkedin-in" aria-hidden="true"></i></a>
+                <a href="#" aria-label="GitHub"><i class="fab fa-github" aria-hidden="true"></i></a>
+                <a href="#" aria-label="YouTube"><i class="fab fa-youtube" aria-hidden="true"></i></a>
+            </div>
+            <p class="footer__copy">&copy; <span id="year"></span> AIGON Enterprise. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <div class="toast" id="toast" role="alert" aria-live="polite">
+        <i class="fas fa-check-circle toast__icon" aria-hidden="true" style="color:#10B981;"></i>
+        <span id="toast-message">Page loaded successfully.</span>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            var yearElement = document.getElementById('year');
+            if (yearElement) {
+                yearElement.textContent = new Date().getFullYear();
+            }
+
+            function showToast(message) {
+                try {
+                    var toast = document.getElementById('toast');
+                    var toastMessage = document.getElementById('toast-message');
+                    if (!toast || !toastMessage) return;
+                    toastMessage.textContent = message || 'Action completed.';
+                    toast.classList.add('toast--visible');
+                    setTimeout(function() {
+                        toast.classList.remove('toast--visible');
+                    }, 4000);
+                } catch (err) {
+                    console.warn('Toast notification error:', err);
+                }
+            }
+
+            function handleAnchorSmoothScroll() {
+                try {
+                    var anchorLinks = document.querySelectorAll('a[href^="#"]');
+                    for (var i = 0; i < anchorLinks.length; i++) {
+                        anchorLinks[i].addEventListener('click', function(e) {
+                            var href = this.getAttribute('href');
+                            if (href === '#') return;
+                            var target = document.querySelector(href);
+                            if (target) {
+                                e.preventDefault();
+                                var headerOffset = 80;
+                                var elementPosition = target.getBoundingClientRect().top;
+                                var offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+                                window.scrollTo({
+                                    top: offsetPosition,
+                                    behavior: 'smooth'
+                                });
+                            }
+                        });
+                    }
+                } catch (err) {
+                    console.warn('Smooth scroll error:', err);
+                }
+            }
+
+            function init() {
+                try {
+                    handleAnchorSmoothScroll();
+                    var perf = window.performance || window.webkitPerformance;
+                    if (perf && perf.timing) {
+                        var loadTime = perf.timing.domContentLoadedEventEnd - perf.timing.navigationStart;
+                        if (loadTime > 0 && loadTime < 30000) {
+                            console.log('[AIGON] Page load time: ' + loadTime + 'ms');
+                        }
+                    }
+                    showToast('Welcome to AIGON Enterprise');
+                } catch (err) {
+                    console.warn('[AIGON] Initialization error:', err);
+                }
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+        })();
+    </script>
+</body>
+</html>

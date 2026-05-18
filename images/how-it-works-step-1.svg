@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F9FAFB" />
+      <stop offset="100%" stop-color="#EEF2FF" />
+    </linearGradient>
+
+    <!-- Primary Gradient for User and Key Elements -->
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+
+    <!-- Success Gradient for Checkmarks and Completions -->
+    <linearGradient id="successGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+
+    <!-- Accent Gradient for Highlights -->
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+
+    <!-- Drop Shadows for Depth -->
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#111827" flood-opacity="0.08" />
+    </filter>
+
+    <filter id="shadow-lg" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#111827" flood-opacity="0.12" />
+    </filter>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="400" height="400" rx="24" fill="url(#bgGrad)" />
+
+  <!-- Background Decorative Elements -->
+  <g id="decorations" opacity="0.4">
+    <circle cx="360" cy="40" r="30" fill="#2563EB" opacity="0.1" />
+    <circle cx="40" cy="360" r="50" fill="#10B981" opacity="0.1" />
+    <circle cx="360" cy="360" r="40" fill="#F59E0B" opacity="0.1" />
+    <circle cx="80" cy="80" r="4" fill="#2563EB" opacity="0.4" />
+    <circle cx="320" cy="280" r="6" fill="#10B981" opacity="0.5" />
+    <circle cx="320" cy="90" r="8" fill="#F59E0B" opacity="0.3" />
+    
+    <!-- Abstract connection plus icons -->
+    <path d="M 340 260 L 340 280 M 330 270 L 350 270" stroke="#2563EB" stroke-width="3" stroke-linecap="round" opacity="0.3" />
+    <path d="M 60 80 L 60 100 M 50 90 L 70 90" stroke="#10B981" stroke-width="3" stroke-linecap="round" opacity="0.3" />
+  </g>
+
+  <!-- Isometric Platform Base -->
+  <g id="platform">
+    <!-- Left face -->
+    <polygon points="60,210 200,280 200,310 60,240" fill="#F3F4F6" />
+    <!-- Right face -->
+    <polygon points="200,280 340,210 340,240 200,310" fill="#E5E7EB" />
+    <!-- Top face -->
+    <polygon points="60,210 200,280 340,210 200,140" fill="#FFFFFF" filter="url(#shadow)" />
+  </g>
+
+  <!-- Step 1 Badge -->
+  <g id="step-1-badge">
+    <rect x="20" y="20" width="80" height="28" rx="14" fill="#FFFFFF" filter="url(#shadow)" />
+    <text x="60" y="38" text-anchor="middle" font-size="12" font-family="'Inter', sans-serif" font-weight="600" fill="#2563EB">STEP 1</text>
+  </g>
+
+  <!-- User and Device Connection (Left Side) -->
+  <g id="user-and-device">
+    <!-- User's Phone -->
+    <rect x="40" y="220" width="30" height="60" rx="4" fill="#FFFFFF" filter="url(#shadow)" />
+    <rect x="43" y="230" width="24" height="30" rx="2" fill="#2563EB" />
+    <circle cx="55" cy="270" r="3" fill="#10B981" />
+    
+    <!-- User Profile on Platform -->
+    <g transform="translate(0, -10)">
+      <!-- User Body -->
+      <polygon points="120,220 160,220 150,160 130,160" fill="url(#primaryGrad)" filter="url(#shadow)" />
+      <!-- User Head -->
+      <circle cx="140" cy="140" r="18" fill="url(#primaryGrad)" filter="url(#shadow)" />
+      <!-- Head Highlight -->
+      <circle cx="135" cy="135" r="6" fill="#FFFFFF" opacity="0.3" />
+    </g>
+  </g>
+
+  <!-- Sign Up Document (Center Top) -->
+  <g id="sign-up-document">
+    <!-- Document Card -->
+    <rect x="100" y="40" width="80" height="100" rx="8" fill="#FFFFFF" filter="url(#shadow-lg)" />
+    <!-- Document Header -->
+    <path d="M 100 48 Q 100 40 108 40 L 172 40 Q 180 40 180 48 L 180 64 L 100 64 Z" fill="#2563EB" />
+    <!-- Form Fields -->
+    <rect x="110" y="75" width="60" height="6" rx="3" fill="#E5E7EB" />
+    <rect x="110" y="90" width="60" height="6" rx="3" fill="#E5E7EB" />
+    <rect x="110" y="105" width="40" height="6" rx="3" fill="#E5E7EB" />
+    <!-- Submit Button -->
+    <rect x="115" y="120" width="50" height="12" rx="4" fill="url(#successGrad)" />
+    <!-- Checkmark on Button -->
+    <path d="M 125 126 L 130 129 L 135 123" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  <!-- Network Cloud (Right Side) -->
+  <g id="network-cloud">
+    <!-- Cloud Shape -->
+    <path d="M 290 115 A 15 15 0 0 1 275 95 A 20 20 0 0 1 295 75 A 22 22 0 0 1 325 80 A 18 18 0 0 1 320 115 Z" fill="#FFFFFF" filter="url(#shadow-lg)" />
+    <!-- Network Nodes inside Cloud -->
+    <circle cx="290" cy="95" r="5" fill="#2563EB" />
+    <circle cx="302" cy="95" r="5" fill="#10B981" />
+    <circle cx="314" cy="95" r="5" fill="#F59E0B" />
+    <!-- Connecting lines between nodes -->
+    <line x1="295" y1="95" x2="302" y2="95" stroke="#E5E7EB" stroke-width="2" />
+    <line x1="307" y1="95" x2="314" y2="95" stroke="#E5E7EB" stroke-width="2" />
+  </g>
+
+  <!-- Connection Flows (Data transfer visualization) -->
+  <g id="connections">
+    <!-- Phone to User -->
+    <path d="M 70 250 C 90 250 110 230 130 210" stroke="#2563EB" stroke-width="2" stroke-dasharray="4,4" fill="none" opacity="0.6" />
+    <!-- User to Document -->
+    <path d="M 140 158 C 140 140 140 120 140 105" stroke="#2563EB" stroke-width="2" stroke-dasharray="4,4" fill="none" opacity="0.6" />
+    <!-- Document to Cloud -->
+    <path d="M 180 80 C 210 80 250 95 275 95" stroke="#2563EB" stroke-width="2" stroke-dasharray="4,4" fill="none" opacity="0.6" />
+    <!-- Cloud to Phone (Full Cycle) -->
+    <path d="M 290 130 C 250 180 150 260 70 260" stroke="#2563EB" stroke-width="2" stroke-dasharray="4,4" fill="none" opacity="0.4" />
+
+    <!-- Data flow glowing dots -->
+    <circle cx="100" cy="230" r="4" fill="#F59E0B" filter="url(#shadow)" />
+    <circle cx="220" cy="88" r="4" fill="#10B981" filter="url(#shadow)" />
+    <circle cx="250" cy="200" r="4" fill="#2563EB" filter="url(#shadow)" />
+  </g>
+
+  <!-- Text Section (Title and Description) -->
+  <g id="text">
+    <!-- Title -->
+    <text x="200" y="355" text-anchor="middle" font-size="22" font-family="'Poppins', sans-serif" font-weight="600" fill="#111827">
+      Sign Up &amp; Connect
+    </text>
+    <!-- Description -->
+    <text x="200" y="380" text-anchor="middle" font-size="14" font-family="'Inter', sans-serif" fill="#6B7280">
+      Create your account and join the network
+    </text>
+  </g>
+</svg>

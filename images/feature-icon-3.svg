@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Easy Integration puzzle piece icon">
+  <defs>
+    <linearGradient id="icon-gradient-3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+  </defs>
+  
+  <rect x="4" y="4" width="56" height="56" rx="14" ry="14" fill="url(#icon-gradient-3)" opacity="0.9"/>
+  
+  <g fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M44,24 C44,20 40,16 36,16 C32,16 30,18 30,20 L24,20 C20,20 16,24 16,28 C16,32 20,36 24,36 L28,36 L28,42 C28,46 32,48 36,48 C40,48 44,44 44,40 C44,36 42,34 38,34 L38,30 C42,30 44,28 44,24 Z" fill="rgba(255,255,255,0.15)"/>
+    <path d="M30,20 L30,28 C30,30 28,32 26,32 L24,32" stroke-width="2"/>
+    <path d="M38,36 L38,40 C38,42 36,44 34,44 L32,44" stroke-width="2"/>
+  </g>
+  
+  <g fill="#FFFFFF" opacity="0.9">
+    <circle cx="22" cy="24" r="1.5"/>
+    <circle cx="22" cy="28" r="1.5"/>
+    <circle cx="22" cy="32" r="1.5"/>
+    <circle cx="40" cy="22" r="1.5"/>
+    <circle cx="36" cy="22" r="1.5"/>
+    <circle cx="42" cy="26" r="1.5"/>
+  </g>
+  
+  <path d="M20,20 L20,24 L24,24" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M40,42 L44,42 L44,46" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

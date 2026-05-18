@@ -1,0 +1,45 @@
+svg
+<!--
+  ======================================================================
+  AIGON Enterprise Lightning Icon
+  ----------------------------------------------------------------------
+  Purpose: Represents 'Lightning Fast' performance and speed on landing pages.
+  Used in: Hero section, feature highlights.
+  Author: AIGON Design System
+  Version: 1.0.0
+  Accessibility: Includes aria-label, title, and desc for screen readers.
+  Performance: Optimized path data (minimal decimal places, integer coords).
+  Maintainability: Self-contained, no external dependencies.
+  Security: Static SVG, no user input, CSP-ready.
+  ======================================================================
+-->
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="64"
+  height="64"
+  viewBox="0 0 64 64"
+  fill="none"
+  stroke="#2563EB"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  role="img"
+  aria-label="Lightning bolt icon representing lightning fast performance"
+>
+  <!-- Document structure: title + desc for screen readers -->
+  <title>Lightning Fast Icon</title>
+  <desc>A stylized lightning bolt shape used to indicate speed and performance.</desc>
+
+  <!--
+    Lightning bolt path:
+    - Start at top (28, 4)
+    - Pointing downward to center (16, 36)
+    - Horizontal right to (28, 36)
+    - Continue downward to bottom (12, 60)
+    - Large zigzag to right (36, 28)
+    - Horizontal left to (32, 28)
+    - Continue upward to top (28, 4)
+    Closed shape (implicitly because stroke-linejoin="round").
+  -->
+  <path d="M28 4 L16 36 h12 l-4 24 20-32 H32 l4-24 H28z" />
+</svg>

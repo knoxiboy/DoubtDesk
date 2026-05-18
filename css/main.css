@@ -1,0 +1,432 @@
+/*
+ * main.css
+ * Production-grade styles for landing page.
+ * Design tokens, resets, component styles, responsive breakpoints.
+ */
+
+/* ==========================================================================
+   CSS Reset
+   ========================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+  color: #1F2937;
+  background-color: #F9FAFB;
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+video,
+svg {
+  max-width: 100%;
+  display: block;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* ==========================================================================
+   Design Tokens
+   ========================================================================== */
+:root {
+  --color-primary: #4F46E5;
+  --color-secondary: #EC4899;
+  --color-background: #F9FAFB;
+  --color-text: #1F2937;
+  --color-accent: #10B981;
+  --color-white: #FFFFFF;
+  --color-gray-light: #E5E7EB;
+  --color-gray-mid: #9CA3AF;
+  --font-family: 'Inter', sans-serif;
+  --font-weight-heading: 700;
+  --font-weight-subheading: 600;
+  --font-weight-body: 400;
+  --font-size-h1: 2.5rem;
+  --font-size-h2: 2rem;
+  --font-size-h3: 1.5rem;
+  --font-size-body: 1rem;
+  --font-size-small: 0.875rem;
+  --spacing-unit: 4px;
+  --section-padding: 80px 0;
+  --container-max-width: 1200px;
+  --grid-gap: 32px;
+  --card-padding: 24px;
+  --border-radius-card: 12px;
+  --shadow-card: 0 4px 6px rgba(0, 0, 0, 0.07), 0 10px 15px rgba(0, 0, 0, 0.04);
+  --shadow-button-hover: 0 8px 16px rgba(79, 70, 229, 0.25);
+}
+
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--font-weight-heading);
+  line-height: 1.2;
+  color: var(--color-text);
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+}
+
+h3 {
+  font-size: var(--font-size-h3);
+}
+
+p {
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+}
+
+small {
+  font-size: var(--font-size-small);
+}
+
+/* ==========================================================================
+   Container & Section Utilities
+   ========================================================================== */
+.container {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.section {
+  padding: var(--section-padding);
+}
+
+.section-heading {
+  text-align: center;
+  margin-bottom: 48px;
+}
+
+.section-heading h2 {
+  display: inline-block;
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.section-heading h2::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  transform: translateX(-50%);
+  width: 64px;
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--color-accent);
+}
+
+.section-heading p {
+  color: var(--color-gray-mid);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* ==========================================================================
+   Hero Section (Retained)
+   ========================================================================== */
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80vh;
+  background: linear-gradient(135deg, var(--color-primary) 0%, #7C3AED 100%);
+  color: var(--color-white);
+  text-align: center;
+  padding: 80px 24px;
+}
+
+.hero-content {
+  max-width: 700px;
+}
+
+.hero h1 {
+  font-size: 3rem;
+  margin-bottom: 24px;
+  color: var(--color-white);
+}
+
+.hero p {
+  font-size: 1.125rem;
+  margin-bottom: 32px;
+  color: rgba(255,255,255,0.9);
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 32px;
+  border-radius: 8px;
+  font-weight: var(--font-weight-subheading);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  box-shadow: 0 2px 4px rgba(79,70,229,0.2);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-button-hover);
+}
+
+.btn-secondary {
+  background-color: var(--color-white);
+  color: var(--color-primary);
+  border: 2px solid var(--color-primary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   Feature Cards
+   ========================================================================== */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--grid-gap);
+}
+
+.feature-card {
+  background: var(--color-white);
+  padding: var(--card-padding);
+  border-radius: var(--border-radius-card);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 20px rgba(0, 0, 0, 0.08);
+}
+
+.feature-card .icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 20px;
+  color: var(--color-primary);
+}
+
+.feature-card h3 {
+  margin-bottom: 12px;
+  font-size: var(--font-size-h3);
+}
+
+.feature-card p {
+  color: var(--color-gray-mid);
+  line-height: 1.6;
+}
+
+/* ==========================================================================
+   Step Cards (Horizontal on desktop)
+   ========================================================================== */
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.step-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  background: var(--color-white);
+  padding: var(--card-padding);
+  border-radius: var(--border-radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.step-number {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.step-content h3 {
+  margin-bottom: 8px;
+  font-size: var(--font-size-h3);
+}
+
+.step-content p {
+  color: var(--color-gray-mid);
+}
+
+/* ==========================================================================
+   Testimonial Cards
+   ========================================================================== */
+.testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--grid-gap);
+}
+
+.testimonial-card {
+  background: var(--color-white);
+  padding: var(--card-padding);
+  border-radius: var(--border-radius-card);
+  box-shadow: var(--shadow-card);
+  position: relative;
+  margin-top: 24px;
+}
+
+.testimonial-card::before {
+  content: '\201C';
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--color-accent);
+  opacity: 0.3;
+  position: absolute;
+  top: 12px;
+  left: 16px;
+}
+
+.testimonial-card blockquote {
+  font-style: italic;
+  margin-bottom: 16px;
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.testimonial-card .testimonial-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.testimonial-card .avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--color-gray-light);
+  object-fit: cover;
+}
+
+.testimonial-card .author-name {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.testimonial-card .author-role {
+  font-size: var(--font-size-small);
+  color: var(--color-gray-mid);
+}
+
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+@media (max-width: 768px) {
+  :root {
+    --font-size-h1: 2rem;
+    --font-size-h2: 1.625rem;
+    --font-size-h3: 1.25rem;
+    --section-padding: 60px 0;
+  }
+
+  .hero h1 {
+    font-size: 2rem;
+  }
+
+  .hero p {
+    font-size: 1rem;
+  }
+
+  .step-card {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
+  }
+
+  .step-number {
+    margin-bottom: 12px;
+  }
+
+  .features-grid,
+  .testimonials-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading h2::after {
+    width: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --font-size-h1: 1.75rem;
+    --font-size-h2: 1.5rem;
+    --font-size-h3: 1.125rem;
+    --section-padding: 48px 0;
+    --grid-gap: 24px;
+    --card-padding: 20px;
+  }
+
+  .hero {
+    min-height: 60vh;
+    padding: 60px 16px;
+  }
+
+  .hero h1 {
+    font-size: 1.75rem;
+  }
+
+  .btn {
+    padding: 10px 24px;
+    font-size: 0.875rem;
+  }
+}
