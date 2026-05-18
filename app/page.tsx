@@ -20,6 +20,39 @@ export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const { signOut } = useClerk();
 
+  const features = [
+    {
+      title: "Real-time collaborative discussions",
+      description: "Share questions, answers, and classroom updates instantly across study groups.",
+      icon: MessageCircle,
+    },
+    {
+      title: "Smart classroom management",
+      description: "Organize learning spaces, schedules, and teacher workflows with ease.",
+      icon: LayoutGrid,
+    },
+    {
+      title: "Notes and resource sharing",
+      description: "Keep study materials, highlights, and shared guides organized in one hub.",
+      icon: Clipboard,
+    },
+    {
+      title: "Learning roadmaps and guidance",
+      description: "Follow curated study paths that keep learners focused on milestones.",
+      icon: Map,
+    },
+    {
+      title: "AI-powered doubt solving",
+      description: "Get instant, context-aware answers to questions with smart AI support.",
+      icon: Activity,
+    },
+    {
+      title: "Organized study collaboration",
+      description: "Coordinate projects, peer review, and group work with clear tools and structure.",
+      icon: Users,
+    },
+  ];
+
   const handleSignOut = async () => {
     await signOut({ redirectUrl: '/' });
   };
@@ -38,6 +71,15 @@ export default function Home() {
               DoubtDesk
             </h1>
           </Link>
+
+          <div className="hidden sm:flex items-center gap-3">
+            <a
+              href="#features"
+              className="px-4 py-2 text-sm font-semibold text-slate-400 transition-all duration-300 hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)]"
+            >
+              Features
+            </a>
+          </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
             <ThemeToggle />
@@ -118,20 +160,40 @@ export default function Home() {
       </AlertDialog>
 
       {/* Hero Section */}
-      <main className="flex-1 pt-24 mt-6 relative overflow-hidden">
-        <section className="px-6 pb-12 relative z-10">
-          <div className="max-w-7xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-500/10 text-blue-400 rounded-full text-sm font-medium mb-6 border border-blue-500/20 animate-fade-in backdrop-blur-md">
-              <Sparkles className="w-4 h-4" />
-              AI-Powered Classroom Collaboration
-            </div>
+      <main className="flex-1 pt-[128px] relative overflow-hidden scroll-smooth">
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <ShapeGrid
+            speed={0.45}
+            squareSize={42}
+            direction="diagonal"
+            borderColor="rgba(139, 184, 255, 0.10)"
+            hoverFillColor="rgba(94, 140, 255, 0.2)"
+            shape="square"
+            hoverTrailAmount={5}
+            className="opacity-90"
+          />
+          <div className="absolute inset-0 bg-[#020617]/36" />
+        </div>
+        <section className="px-6 pb-12 relative z-10 pt-3 md:pt-6">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-12 xl:gap-16 items-start">
+            <div className="text-left">
+              <h2 className="max-w-[12ch] text-4xl sm:text-5xl lg:text-6xl xl:text-[4.2rem] font-black text-[#F2F5FF] tracking-tight leading-[1.04] mb-6">
+                Empower <br />
+                Your Learning <br />
+                with{' '}
+                <span className={`${staatliches.className} uppercase tracking-[0.08em] text-[#8BB8FF] drop-shadow-[0_0_10px_rgba(120,184,255,0.56)]`}>
+                  Collaborative AI.
+                </span>
+              </h2>
 
-            <h2 className="text-6xl md:text-8xl font-black text-white tracking-tight leading-[1.1] mb-6">
-              Empower Your Learning with <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600">
-                Collaborative AI.
-              </span>
-            </h2>
+              <div className="max-w-2xl mb-10">
+                <div className={`${staatliches.className} mb-3 text-sm tracking-[0.16em] text-[#AABFFF]/80 uppercase`}>
+                  Collaborative classrooms
+                </div>
+                <p className="text-xl text-slate-300/90 leading-relaxed">
+                  Built for collaborative classrooms, instant doubt solving, and smarter learning.
+                </p>
+              </div>
 
               <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
                 <SignedIn>
@@ -175,15 +237,44 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Dynamic Background Elements */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none overflow-hidden -z-10">
-          <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-blue-600/20 blur-[150px] rounded-full animate-pulse"></div>
-          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-600/20 blur-[150px] rounded-full"></div>
-          <div className="absolute top-[30%] right-[10%] w-[30%] h-[30%] bg-cyan-600/10 blur-[120px] rounded-full"></div>
+        <section id="features" className="scroll-mt-28 px-6 py-16 md:py-20 relative z-10">
+          <div className="absolute inset-x-0 top-10 h-40 bg-gradient-to-r from-blue-500/10 via-transparent to-purple-500/10 blur-3xl pointer-events-none" />
+          <div className="max-w-7xl mx-auto">
+            <div className="max-w-3xl mx-auto text-center">
+              <div className={`${staatliches.className} mb-4 text-sm tracking-[0.16em] text-[#AABFFF]/70 uppercase`}>
+                Features
+              </div>
+              <h3 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F2F5FF] tracking-tight leading-tight">
+                Everything your classroom needs to solve doubts, stay aligned, and move faster.
+              </h3>
+              <p className="mt-5 text-base sm:text-lg text-slate-300/85 leading-8">
+                Built for modern study teams, DoubtDesk blends AI-powered doubt solving, shared resources, and smart classroom flows into a single polished platform.
+              </p>
+            </div>
 
-          {/* Subtle Grid Pattern */}
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
-        </div>
+            <div className="mt-12 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {features.map((feature) => {
+                const Icon = feature.icon;
+                return (
+                  <div
+                    key={feature.title}
+                    className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 shadow-2xl shadow-slate-950/10 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.06]"
+                  >
+                    <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-[#5E8CFF]/10 text-[#8BB8FF] shadow-[0_0_18px_rgba(94,140,255,0.18)] transition-colors duration-300 group-hover:bg-[#5E8CFF]/15">
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <h4 className="mt-6 text-xl font-semibold text-[#F2F5FF] tracking-tight">
+                      {feature.title}
+                    </h4>
+                    <p className="mt-3 text-sm leading-7 text-slate-300/80">
+                      {feature.description}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
       </main>
 {/*Here's Your Previous Footer. I have just commented it in case */}
       {/* Footer

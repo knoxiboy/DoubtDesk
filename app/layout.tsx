@@ -70,7 +70,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
         <body
-          className={AppFont.className}
+          className={`${AppFont.className} scroll-smooth`}
         >
           <Provider>
             {children}

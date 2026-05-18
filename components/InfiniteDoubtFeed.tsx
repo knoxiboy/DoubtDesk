@@ -34,21 +34,23 @@ export default function InfiniteDoubtFeed({
     emptyActionLabel
 }: InfiniteDoubtFeedProps) {
     const getKey = (pageIndex: number, previousPageData: any) => {
-        if (previousPageData && !previousPageData.pagination.hasMore) return null;
-        
+        if (previousPageData && !previousPageData.pagination?.hasMore) return null;
+
+
         const params = new URLSearchParams();
         const userName = typeof window !== 'undefined' ? localStorage.getItem("anonymous_user") : null;
-        
+
+
         if (classroomId) params.append("classroomId", classroomId.toString());
         if (subject && subject !== "All") params.append("subject", subject);
         if (type) params.append("type", type);
         if (tag && tag !== "All") params.append("tag", tag);
         if (isSolved) params.append("isSolved", isSolved);
         if (userName) params.append("userName", userName);
-        
+
         params.append("limit", PAGE_SIZE.toString());
         params.append("offset", (pageIndex * PAGE_SIZE).toString());
-        
+
         return `/api/doubts?${params.toString()}`;
     };
 
@@ -56,8 +58,8 @@ export default function InfiniteDoubtFeed({
         revalidateFirstPage: false
     });
 
-    const doubts = data ? data.flatMap((page) => page?.doubts || []) : [];
-    const isEmpty = data?.[0]?.doubts?.length === 0;
+    const doubts = data ? data.flatMap((page) => page?.doubts ?? []) : [];
+    const isEmpty = data?.[0]?.doubts?.length === 0 || data?.[0]?.error !== undefined;
     const isReachingEnd = isEmpty || (data && !data[data.length - 1]?.pagination?.hasMore);
     const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
 
@@ -75,8 +77,8 @@ export default function InfiniteDoubtFeed({
                 <MessageSquare className="w-12 h-12 text-slate-700 mx-auto" />
                 <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">{emptyMessage}</p>
                 {emptyAction && (
-                    <button 
-                        onClick={emptyAction} 
+                    <button
+                        onClick={emptyAction}
                         className="text-blue-500 font-black uppercase tracking-widest text-[10px] hover:underline underline-offset-4"
                     >
                         {emptyActionLabel}
@@ -90,16 +92,16 @@ export default function InfiniteDoubtFeed({
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {doubts.map((doubt: any) => (
-                    <DoubtCard 
-                        key={doubt.id} 
-                        doubt={doubt} 
-                        role={role} 
-                        onUpdate={() => mutate()} 
+                    <DoubtCard
+                        key={doubt.id}
+                        doubt={doubt}
+                        role={role}
+                        onUpdate={() => mutate()}
                         onViewAISolution={onViewAISolution}
                     />
                 ))}
             </div>
-            
+
             {/* Pagination Control */}
             <div className="py-10 flex flex-col items-center gap-4">
                 {!isReachingEnd ? (
@@ -123,8 +125,8 @@ export default function InfiniteDoubtFeed({
                 ) : (
                     doubts.length > 0 && (
                         <div className="flex flex-col items-center gap-2">
-                             <div className="w-8 h-[1px] bg-gradient-to-r from-transparent via-slate-700 to-transparent mb-2"></div>
-                             <p className="text-slate-600 text-[9px] font-black uppercase tracking-[0.4em]">Vault Fully Synchronized</p>
+                            <div className="w-8 h-[1px] bg-gradient-to-r from-transparent via-slate-700 to-transparent mb-2"></div>
+                            <p className="text-slate-600 text-[9px] font-black uppercase tracking-[0.4em]">Vault Fully Synchronized</p>
                         </div>
                     )
                 )}

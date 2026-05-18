@@ -19,9 +19,11 @@ import {
     MoreHorizontal,
     Zap,
     School,
-    Bookmark
+    Bookmark,
+    BarChart3
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { useAppUser } from '@/app/provider'
 
 const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
@@ -36,6 +38,7 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     const pathname = usePathname()
+    const { appUser } = useAppUser()
 
     return (
         <>
@@ -173,6 +176,42 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 </Link>
                             </div>
                         </div>
+
+                        {/* Teacher/Admin Tools Section */}
+                        {(appUser?.role === 'teacher' || appUser?.role === 'admin') && (
+                            <div className="space-y-4">
+                                <div className="px-4">
+                                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 mb-2 flex items-center gap-1.5">
+                                        <BarChart3 className="w-3.5 h-3.5" />
+                                        Teacher Panel
+                                    </h2>
+                                    <div className="h-px w-full bg-blue-500/20"></div>
+                                </div>
+                                
+                                <div className="space-y-1">
+                                    <Link
+                                        href="/dashboard/analytics"
+                                        onClick={onClose}
+                                        className={`
+                                            flex items-center gap-3 px-4 py-3 rounded-xl
+                                            transition-all duration-200 group
+                                            ${pathname === '/dashboard/analytics'
+                                                ? 'bg-blue-600/10 text-blue-400'
+                                                : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                                            }
+                                        `}
+                                    >
+                                        <div className="p-1.5 rounded-lg bg-muted border border-border transition-colors">
+                                            <BarChart3 className={`w-4 h-4 ${pathname === '/dashboard/analytics' ? 'text-blue-400' : 'text-muted-foreground group-hover:text-blue-400 transition-colors'}`} />
+                                        </div>
+                                        <span className="text-sm font-medium">Class Analytics</span>
+                                        {pathname === '/dashboard/analytics' && (
+                                            <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.6)]" />
+                                        )}
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
                     </nav>
 
                     {/* Footer */}

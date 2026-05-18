@@ -12,6 +12,7 @@ global.WritableStream = WritableStream as any;
 global.MessageChannel = MessageChannel as any;
 global.MessagePort = MessagePort as any;
 global.Blob = Blob as any;
+global.FormData = require('undici').FormData;
 
 if (!String.prototype.toWellFormed) {
     String.prototype.toWellFormed = function () {
