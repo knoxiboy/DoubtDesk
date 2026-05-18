@@ -1,10 +1,10 @@
 import { db } from "@/configs/db";
-import { repliesTable, doubtsTable, classroomsTable, replyLikesTable } from "@/configs/schema";
+import { repliesTable, doubtsTable, classroomsTable, replyLikesTable, usersTable } from "@/configs/schema";
 import { eq, asc, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
-import { usersTable } from "@/configs/schema";
+import { buildErrorResponse } from "@/lib/error-handler";
 import { inngest } from "@/inngest/client";
 
 export async function GET(req: Request) {
@@ -18,9 +18,10 @@ export async function GET(req: Request) {
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
         if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
             const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            return NextResponse.json({ 
-                error: `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.` 
-            }, { status: 403 });
+            const { status, body } = buildErrorResponse(
+                new Error(`Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`)
+            );
+            return NextResponse.json(body, { status });
         }
 
         const { searchParams } = new URL(req.url);
@@ -40,7 +41,6 @@ export async function GET(req: Request) {
             const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId!));
             const isTeacher = room && email && room.teacherEmail === email;
             const isOwner = email && doubt.userEmail === email;
-
             if (!isTeacher && !isOwner) {
                 return NextResponse.json({ error: "Access denied" }, { status: 403 });
             }
@@ -51,25 +51,20 @@ export async function GET(req: Request) {
             .where(eq(repliesTable.doubtId, doubtId))
             .orderBy(asc(repliesTable.createdAt));
 
-        // If userName is provided, check which replies are upvoted by this user
         let repliesWithVotes = data;
         if (userName) {
-            const userUpvotes = await db.select()
-                .from(replyLikesTable)
-                .where(eq(replyLikesTable.userName, userName));
-            
-            const upvotedReplyIds = new Set(userUpvotes.map(v => v.replyId));
-            
-            repliesWithVotes = data.map(reply => ({
+            const userUpvotes = await db.select().from(replyLikesTable).where(eq(replyLikesTable.userName, userName));
+            const upvotedReplyIds = new Set(userUpvotes.map((v: any) => v.replyId));
+            repliesWithVotes = data.map((reply: any) => ({
                 ...reply,
-                hasUpvoted: upvotedReplyIds.has(reply.id)
+                hasUpvoted: upvotedReplyIds.has(reply.id),
             }));
         }
 
         return NextResponse.json(repliesWithVotes);
     } catch (error) {
-        console.error("Error fetching replies:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }
 
@@ -84,9 +79,10 @@ export async function POST(req: Request) {
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
         if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
             const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            return NextResponse.json({ 
-                error: `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.` 
-            }, { status: 403 });
+            const { status, body } = buildErrorResponse(
+                new Error(`Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`)
+            );
+            return NextResponse.json(body, { status });
         }
 
         const { doubtId, userName, type, content, imageUrl } = await req.json();
@@ -119,7 +115,7 @@ export async function POST(req: Request) {
             userEmail: email,
             type,
             content: content || null,
-            imageUrl: imageUrl || null
+            imageUrl: imageUrl || null,
         }).returning();
 
         // Trigger background email notification via Inngest
@@ -175,9 +171,8 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json(newReply[0]);
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Internal Server Error";
-        console.error("Error creating reply:", error);
-        return NextResponse.json({ error: message }, { status: 500 });
+    } catch (error) {
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }

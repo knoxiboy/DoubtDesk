@@ -55,6 +55,15 @@ const suggestTags = (text: string, subject: string) => {
  */
 export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSuccess, doubtToEdit, classroomId = null, type = 'community' }: AskDoubtProps) {
     const [content, setContent] = useState(doubtToEdit?.content || "");
+    const maxLength = 500;
+    const charCount = content.length;
+    let colorClass = "text-slate-400";
+
+if (charCount >= maxLength) {
+  colorClass = "text-red-500";
+} else if (charCount >= maxLength * 0.8) {
+  colorClass = "text-yellow-400";
+}
     const [subject, setSubject] = useState(doubtToEdit?.subject || defaultSubject);
     const [imageUrl, setImageUrl] = useState(doubtToEdit?.imageUrl || "");
     const [fileName, setFileName] = useState(
@@ -168,6 +177,10 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (charCount > maxLength) {
+            toast.error("Character limit exceeded (500)");
+            return;
+            }
         if ((!content.trim() && !imageUrl) || !subject.trim()) return;
 
         setIsSubmitting(true);
@@ -262,21 +275,50 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 px-1">Your Question (Optional if attachment added)</label>
-                        <textarea
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                                    e.preventDefault();
-                                    if (content.trim() || imageUrl) {
-                                        handleSubmit(e as any);
-                                    }
-                                }
-                            }}
-                            placeholder="Type your question here..."
-                            className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all resize-none"
-                        />
+                        <div className="flex items-center justify-between px-1">
+                            <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Your Question (Optional if attachment added)</label>
+                            <div className="flex items-center gap-1">
+                                <button type="button" onClick={() => insertMarkdown("bold")} className="p-1.5 hover:bg-white/10 rounded text-slate-400"><Bold className="w-3 h-3" /></button>
+                                <button type="button" onClick={() => insertMarkdown("italic")} className="p-1.5 hover:bg-white/10 rounded text-slate-400"><Italic className="w-3 h-3" /></button>
+                                <button type="button" onClick={() => insertMarkdown("code")} className="p-1.5 hover:bg-white/10 rounded text-slate-400"><Code className="w-3 h-3" /></button>
+                                <button type="button" onClick={() => insertMarkdown("list")} className="p-1.5 hover:bg-white/10 rounded text-slate-400"><List className="w-3 h-3" /></button>
+                                <div className="w-px h-3 bg-white/10 mx-1" />
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsPreviewMode(!isPreviewMode)} 
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded text-[9px] font-black uppercase transition-all ${isPreviewMode ? 'bg-blue-500 text-white' : 'hover:bg-white/10 text-slate-400'}`}
+                                >
+                                    {isPreviewMode ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                    {isPreviewMode ? "Edit" : "Preview"}
+                                </button>
+                            </div>
+                        </div>
+                        {isPreviewMode ? (
+                            <div className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-white text-sm overflow-y-auto">
+                                <MarkdownRenderer content={content || "*Nothing to preview*"} />
+                            </div>
+                        ) : (
+                            <>
+                                <textarea
+                                    ref={contentTextareaRef}
+                                    value={content}
+                                    onChange={(e) => setContent(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                                            e.preventDefault();
+                                            if (content.trim() || imageUrl) {
+                                                handleSubmit(e as any);
+                                            }
+                                        }
+                                    }}
+                                    placeholder="Type your question here... (Markdown supported)"
+                                    className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all resize-none"
+                                />
+                                <p className={`text-xs text-right mt-1 ${colorClass}`}>
+                                    {charCount} / {maxLength}
+                                </p>
+                            </>
+                        )}
                     </div>
 
                     <div className="space-y-3">
