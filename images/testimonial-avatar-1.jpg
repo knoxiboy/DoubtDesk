@@ -1,0 +1,24 @@
+<section class="testimonials" aria-label="Client testimonials">
+  <div class="container">
+    <h2 class="section-title">What Our Clients Say</h2>
+    <div class="testimonial-grid">
+      <div class="testimonial-card">
+        <img
+          src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face&auto=format&q=80"
+          alt="Smiling professional testimonial avatar"
+          width="200"
+          height="200"
+          class="testimonial-avatar"
+          loading="lazy"
+        />
+        <blockquote class="testimonial-text">
+          “The platform transformed our workflow entirely. Integration was seamless and the team was incredibly supportive.”
+        </blockquote>
+        <cite class="testimonial-author">
+          <span class="author-name">Alex Rivera</span>
+          <span class="author-role">CTO, Synapse Corp</span>
+        </cite>
+      </div>
+    </div>
+  </div>
+</section>

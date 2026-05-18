@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="display:none">
+  <defs>
+    <!-- Shield icon -->
+    <symbol id="shield" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <path d="M9 12l2 2 4-4"/>
+    </symbol>
+
+    <!-- Bolt icon -->
+    <symbol id="bolt" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="#2563EB" fill-opacity="0.15"/>
+    </symbol>
+
+    <!-- Chart icon (bar chart) -->
+    <symbol id="chart" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+      <rect x="4" y="18" width="16" height="2" fill="#2563EB" fill-opacity="0.15"/>
+    </symbol>
+
+    <!-- User initials avatar placeholder -->
+    <symbol id="avatar" viewBox="0 0 48 48">
+      <circle cx="24" cy="24" r="22" fill="#F9FAFB" stroke="#E5E7EB" stroke-width="2"/>
+      <text x="24" y="24" text-anchor="middle" dominant-baseline="central" font-family="'Inter', sans-serif" font-size="18" font-weight="700" fill="#2563EB">AB</text>
+    </symbol>
+  </defs>
+</svg>

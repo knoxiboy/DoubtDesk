@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="auto" role="img" xml:lang="en" aria-label="How it Works - Step 3: Go Live and Analyze Results">
+  <title>Go Live &amp; Results Dashboard</title>
+  <desc>A modern analytics dashboard illustrating the Go Live step with key metrics, a live status badge, a weekly bar chart, and a rocket launch illustration.</desc>
+
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="successGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+
+    <!-- Shadows -->
+    <filter id="cardShadow" x="-5%" y="-5%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000000" flood-opacity="0.08"/>
+    </filter>
+    <filter id="metricShadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000000" flood-opacity="0.04"/>
+    </filter>
+    <filter id="chartShadow" x="-5%" y="-5%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.05"/>
+    </filter>
+  </defs>
+
+  <!-- Background Layer -->
+  <rect width="800" height="600" fill="#F9FAFB"/>
+  <pattern id="gridPattern" width="40" height="40" patternUnits="userSpaceOnUse">
+    <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#E5E7EB" stroke-width="0.5" opacity="0.6"/>
+  </pattern>
+  <rect width="800" height="600" fill="url(#gridPattern)"/>
+
+  <!-- Main Dashboard Card -->
+  <rect x="100" y="100" width="600" height="420" rx="16" fill="#FFFFFF" filter="url(#cardShadow)"/>
+
+  <!-- Card Header -->
+  <g id="card-header">
+    <rect x="100" y="100" width="600" height="72" rx="16" fill="#FFFFFF"/>
+    <rect x="100" y="156" width="600" height="16" fill="#FFFFFF"/>
+
+    <!-- Title -->
+    <text x="132" y="144" font-family="system-ui, -apple-system, sans-serif" font-size="18" font-weight="600" fill="#111827" letter-spacing="-0.02em">AI Analytics Dashboard</text>
+
+    <!-- Go Live Button (matches button_primary pattern) -->
+    <rect x="540" y="122" width="80" height="28" rx="6" fill="url(#primaryGrad)"/>
+    <text x="580" y="141" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#FFFFFF" text-anchor="middle">Go Live</text>
+
+    <!-- Live Status Badge -->
+    <rect x="632" y="122" width="56" height="28" rx="14" fill="#FEF2F2"/>
+    <circle cx="644" cy="136" r="4" fill="#EF4444"/>
+    <text x="659" y="140" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" fill="#DC2626" text-anchor="middle">LIVE</text>
+  </g>
+
+  <!-- Metrics Row (3 Cards) -->
+  <g id="metrics-row">
+    <!-- Metric 1: Total Users -->
+    <g id="metric-users">
+      <rect x="132" y="192" width="168" height="96" rx="10" fill="#FFFFFF" filter="url(#metricShadow)"/>
+      <text x="148" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#6B7280">Total Users</text>
+      <text x="148" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700" fill="#111827" letter-spacing="-0.02em">14,847</text>
+      <!-- Upward trend indicator -->
+      <path d="M 260 250 Q 268 240 278 244 Q 288 248 298 234" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="298" cy="234" r="3" fill="#10B981"/>
+    </g>
+
+    <!-- Metric 2: Revenue -->
+    <g id="metric-revenue">
+      <rect x="316" y="192" width="168" height="96" rx="10" fill="#FFFFFF" filter="url(#metricShadow)"/>
+      <text x="332" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#6B7280">Revenue</text>
+      <text x="332" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700" fill="#111827" letter-spacing="-0.02em">$48,290</text>
+      <!-- Upward trend indicator -->
+      <path d="M 444 250 Q 452 242 462 246 Q 472 250 482 236" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="482" cy="236" r="3" fill="#10B981"/>
+    </g>
+
+    <!-- Metric 3: Conversion -->
+    <g id="metric-conversion">
+      <rect x="500" y="192" width="168" height="96" rx="10" fill="#FFFFFF" filter="url(#metricShadow)"/>
+      <text x="516" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="500" fill="#6B7280">Conversion</text>
+      <text x="516" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="700" fill="#111827" letter-spacing="-0.02em">3.2%</text>
+      <!-- Slight upward trend indicator -->
+      <path d="M 628 250 Q 636 254 646 250 Q 656 246 666 252" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="666" cy="252" r="3" fill="#F59E0B"/>
+    </g>
+  </g>
+
+  <!-- Main Content Area: Chart & Illustration -->
+  <g id="main-content">
+    <!-- Bar Chart Section -->
+    <g id="chart-section">
+      <rect x="132" y="308" width="384" height="184" rx="10" fill="#FFFFFF" filter="url(#chartShadow)"/>
+      <text x="148" y="336" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="600" fill="#111827">Weekly Active Users</text>
+
+      <!-- Y-axis Grid & Labels -->
+      <line x1="180" y1="348" x2="492" y2="348" stroke="#F3F4F6" stroke-width="1"/>
+      <line x1="180" y1="374" x2="492" y2="374" stroke="#F3F4F6" stroke-width="1"/>
+      <line x1="180" y1="400" x2="492" y2="400" stroke="#F3F4F6" stroke-width="1"/>
+      <line x1="180" y1="426" x2="492" y2="426" stroke="#F3F4F6" stroke-width="1"/>
+      <line x1="180" y1="452" x2="492" y2="452" stroke="#E5E7EB" stroke-width="1"/>
+
+      <text x="172" y="352" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#6B7280" text-anchor="end">200</text>
+      <text x="172" y="378" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#6B7280" text-anchor="end">150</text>
+      <text x="172" y="404" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#6B7280" text-anchor="end">100</text>
+      <text x="172" y="430" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#6B7280" text-anchor="end">50</text>
+      <text x="172" y="456" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#6B7280" text-anchor="end">0</text>
+
+      <!-- Bars (Mon-Sun) -->
+      <g fill="url(#primaryGrad)" opacity="0.85">
+        <rect x="200" y="418" width="28" height="34" rx="4" opacity="0.75"/>
+        <rect x="240" y="400" width="28" height="52" rx="4" opacity="0.8"/>
+        <rect x="280" y="408" width="28" height="44" rx="4" opacity="0.75"/>
+        <rect x="320" y="390" width="28" height="62" rx="4" opacity="0.85"/>
+        <rect x="360" y="370" width="28" height="82" rx="4" opacity="0.95"/>
+        <rect x="400" y="402" width="28" height="50" rx="4" opacity="0.8"/>
+        <rect x="440" y="420" width="28" height="32" rx="4" opacity="0.7"/>
+      </g>
+
+      <!-- X-axis Labels -->
+      <text x="214" y="472" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#6B7280" text-anchor="middle">Mon</text>
+      <text x="254" y="472" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#6B7280" text-anchor="middle">Tue</text>
+      <text x="294" y="472" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#6B7280" text-anchor="middle">Wed</text>
+      <text x="334" y="472" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#6B7280" text-anchor="middle">Thu</text>
+      <text x="374" y="472" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#6B7280" text-anchor="middle">Fri</text>
+      <text x="414" y="472" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#6B7280" text-anchor="middle">Sat</text>
+      <text x="454" y="472" font-family="system-ui, -apple-system, sans-serif" font-size="11" fill="#6B7280" text-anchor="middle">Sun</text>
+    </g>
+
+    <!-- Go Live Illustration: Rocket Launch -->
+    <g id="go-live-illustration">
+      <!-- Background Circle -->
+      <circle cx="596" cy="400" r="72" fill="#F9FAFB" filter="url(#metricShadow)"/>
+
+      <!-- Stars / Confetti -->
+      <g fill="#F59E0B">
+        <circle cx="550" cy="350" r="3"/>
+        <circle cx="640" cy="340" r="2.5"/>
+        <circle cx="655" cy="380" r="2"/>
+        <path d="M 545 420 L 548 418 L 551 420 L 548 422 Z" fill="#10B981"/>
+        <path d="M 645 430 L 648 428 L 651 430 L 648 432 Z" fill="#10B981"/>
+        <circle cx="555" cy="390" r="2" fill="#2563EB"/>
+        <circle cx="635" cy="410" r="2.5" fill="#2563EB"/>
+      </g>
+
+      <!-- Rocket -->
+      <!-- Main Body -->
+      <path d="M 596 348 L 580 400 L 596 392 L 612 400 Z" fill="#2563EB"/>
+      <!-- Nose Cone -->
+      <path d="M 596 348 C 584 372 580 388 580 400 L 596 392 Z" fill="#1D4ED8"/>
+      <!-- Fins -->
+      <path d="M 580 400 L 568 416 L 580 410 Z" fill="#F59E0B"/>
+      <path d="M 612 400 L 624 416 L 612 410 Z" fill="#F59E0B"/>
+      <!-- Window -->
+      <circle cx="596" cy="376" r="10" fill="#FFFFFF"/>
+      <circle cx="596" cy="376" r="5" fill="#10B981"/>
+      <!-- Flames -->
+      <path d="M 588 410 Q 596 430 604 410 Q 596 445 588 410" fill="#F59E0B" opacity="0.8"/>
+      <path d="M 592 410 Q 596 422 600 410" fill="#FFFFFF" opacity="0.9"/>
+
+      <!-- Launch Text -->
+      <text x="596" y="490" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="600" fill="#111827" text-anchor="middle" letter-spacing="0.02em">Launching...</text>
+      <!-- Subtext -->
+      <text x="596" y="508" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="400" fill="#6B7280" text-anchor="middle">Your project is live!</text>
+    </g>
+  </g>
+</svg>
