@@ -5,6 +5,7 @@ import { and, eq, desc, inArray, isNull, or, not, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
+import { buildErrorResponse } from "@/lib/error-handler";
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
@@ -23,13 +24,17 @@ export async function GET(req: Request) {
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         const email = user.primaryEmailAddress?.emailAddress;
 
+        const { searchParams } = new URL(req.url);
+        const subject = searchParams.get("subject");
+        const userName = searchParams.get("userName");
+        const classroomIdStr = searchParams.get("classroomId");
+        const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
+        const type = searchParams.get("type") || 'community';
+
         // Security: If classroomId is provided, check membership
         if (classroomId && email) {
             const [membership] = await db.select().from(membershipsTable).where(
-                and(
-                    eq(membershipsTable.userEmail, email),
-                    eq(membershipsTable.classroomId, classroomId)
-                )
+                and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, classroomId))
             );
             if (!membership) {
                 return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
@@ -46,22 +51,18 @@ export async function GET(req: Request) {
         }
 
         // Fetch classroom role info
-        const [room] = classroomId ? await db.select().from(classroomsTable).where(eq(classroomsTable.id, classroomId)) : [null];
+        const [room] = classroomId
+            ? await db.select().from(classroomsTable).where(eq(classroomsTable.id, classroomId))
+            : [null];
         const isTeacher = room && email && room.teacherEmail === email;
 
         // GLOBAL VISIBILITY FILTER
         if (!isTeacher && email) {
-            conditions.push(
-                or(
-                    not(eq(doubtsTable.type, 'teacher')),
-                    eq(doubtsTable.userEmail, email)
-                )
-            );
+            conditions.push(or(not(eq(doubtsTable.type, 'teacher')), eq(doubtsTable.userEmail, email)));
         } else if (!isTeacher && !email) {
             conditions.push(not(eq(doubtsTable.type, 'teacher')));
         }
 
-        // Filters
         if (subject && subject !== "All") {
             conditions.push(eq(doubtsTable.subject, subject));
         }
@@ -173,8 +174,8 @@ export async function GET(req: Request) {
             }
         });
     } catch (error) {
-        console.error("Error fetching doubts:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }
 
@@ -182,7 +183,7 @@ export async function POST(req: Request) {
     try {
         const user = await currentUser();
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        
+
         const email = user.primaryEmailAddress?.emailAddress;
         if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
@@ -190,9 +191,10 @@ export async function POST(req: Request) {
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
         if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
             const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            return NextResponse.json({ 
-                error: `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.` 
-            }, { status: 403 });
+            const { status, body } = buildErrorResponse(
+                new Error(`Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`)
+            );
+            return NextResponse.json(body, { status });
         }
 
         const { userName, subject, content, imageUrl, classroomId, type = 'community', tags = [] } = await req.json();

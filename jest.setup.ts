@@ -20,13 +20,14 @@ if (!String.prototype.toWellFormed) {
     };
 }
 
-const { Request, Response, Headers, fetch } = require('undici');
+const { Request, Response, Headers, fetch, FormData } = require('undici');
 
 Object.defineProperties(globalThis, {
     Request: { value: Request, writable: true, configurable: true },
     Response: { value: Response, writable: true, configurable: true },
     Headers: { value: Headers, writable: true, configurable: true },
     fetch: { value: fetch, writable: true, configurable: true },
+    FormData: { value: FormData, writable: true, configurable: true },
 });
 
 // Mock window.matchMedia

@@ -6,15 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, MessageSquare, BookOpen, Users, ThumbsUp, ArrowLeft } from "lucide-react";
+import { CalendarDays, MessageSquare, BookOpen, Users, ThumbsUp, ArrowLeft, Mail, Bell, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function ProfilePage() {
     const { isLoaded, userId } = useAuth();
     const router = useRouter();
     const [profileData, setProfileData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
+    const [isSavingPref, setIsSavingPref] = useState(false);
 
     useEffect(() => {
         if (!isLoaded) return;
@@ -28,6 +31,7 @@ export default function ProfilePage() {
             .then(data => {
                 if (data.user) {
                     setProfileData(data);
+                    setEmailNotificationsEnabled(data.user.emailNotificationsEnabled ?? true);
                 }
                 setLoading(false);
             })
@@ -86,6 +90,61 @@ export default function ProfilePage() {
                         {user.university && <Badge variant="outline" className="border-slate-700 text-slate-300">{user.university}</Badge>}
                         {user.year && <Badge variant="outline" className="border-slate-700 text-slate-300">{user.year}</Badge>}
                     </div>
+                </div>
+
+                {/* Email Notification Settings Switch */}
+                <div className="flex items-center gap-4 bg-slate-950/40 border border-slate-800/80 rounded-xl p-4 md:self-center shadow-inner">
+                    <div className="flex flex-col max-w-[240px]">
+                        <span className="text-sm font-semibold text-slate-200 flex items-center gap-1.5">
+                            <Mail className="w-4 h-4 text-purple-400" />
+                            Email Alerts
+                        </span>
+                        <span className="text-xs text-slate-400 mt-0.5 leading-normal">
+                            Get notified when someone replies to your doubts.
+                        </span>
+                    </div>
+                    <button
+                        onClick={async () => {
+                            if (isSavingPref) return;
+                            setIsSavingPref(true);
+                            const newValue = !emailNotificationsEnabled;
+                            try {
+                                const res = await fetch("/api/profile", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({ emailNotificationsEnabled: newValue }),
+                                });
+                                if (res.ok) {
+                                    setEmailNotificationsEnabled(newValue);
+                                    toast.success(newValue ? "Email notifications enabled!" : "Email notifications disabled!");
+                                } else {
+                                    toast.error("Failed to update preferences");
+                                }
+                            } catch (error) {
+                                console.error(error);
+                                toast.error("Error updating preferences");
+                            } finally {
+                                setIsSavingPref(false);
+                            }
+                        }}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            emailNotificationsEnabled ? "bg-purple-600" : "bg-slate-700"
+                        } ${isSavingPref ? "opacity-50 pointer-events-none" : ""}`}
+                    >
+                        <span
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out flex items-center justify-center ${
+                                emailNotificationsEnabled ? "translate-x-5" : "translate-x-0"
+                            }`}
+                        >
+                            {isSavingPref ? (
+                                <Loader2 className="w-3 h-3 text-slate-600 animate-spin" />
+                            ) : emailNotificationsEnabled ? (
+                                <Bell className="w-3 h-3 text-purple-600" />
+                            ) : null}
+                        </span>
+                    </button>
                 </div>
             </div>
 

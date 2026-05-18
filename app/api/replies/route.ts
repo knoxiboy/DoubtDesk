@@ -1,10 +1,11 @@
 import { db } from "@/configs/db";
-import { repliesTable, doubtsTable, classroomsTable, replyLikesTable } from "@/configs/schema";
+import { repliesTable, doubtsTable, classroomsTable, replyLikesTable, usersTable } from "@/configs/schema";
 import { eq, asc, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
-import { usersTable } from "@/configs/schema";
+import { buildErrorResponse } from "@/lib/error-handler";
+import { inngest } from "@/inngest/client";
 
 export async function GET(req: Request) {
     try {
@@ -17,9 +18,10 @@ export async function GET(req: Request) {
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
         if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
             const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            return NextResponse.json({ 
-                error: `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.` 
-            }, { status: 403 });
+            const { status, body } = buildErrorResponse(
+                new Error(`Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`)
+            );
+            return NextResponse.json(body, { status });
         }
 
         const { searchParams } = new URL(req.url);
@@ -39,7 +41,6 @@ export async function GET(req: Request) {
             const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId!));
             const isTeacher = room && email && room.teacherEmail === email;
             const isOwner = email && doubt.userEmail === email;
-
             if (!isTeacher && !isOwner) {
                 return NextResponse.json({ error: "Access denied" }, { status: 403 });
             }
@@ -50,25 +51,20 @@ export async function GET(req: Request) {
             .where(eq(repliesTable.doubtId, doubtId))
             .orderBy(asc(repliesTable.createdAt));
 
-        // If userName is provided, check which replies are upvoted by this user
         let repliesWithVotes = data;
         if (userName) {
-            const userUpvotes = await db.select()
-                .from(replyLikesTable)
-                .where(eq(replyLikesTable.userName, userName));
-            
-            const upvotedReplyIds = new Set(userUpvotes.map(v => v.replyId));
-            
-            repliesWithVotes = data.map(reply => ({
+            const userUpvotes = await db.select().from(replyLikesTable).where(eq(replyLikesTable.userName, userName));
+            const upvotedReplyIds = new Set(userUpvotes.map((v: any) => v.replyId));
+            repliesWithVotes = data.map((reply: any) => ({
                 ...reply,
-                hasUpvoted: upvotedReplyIds.has(reply.id)
+                hasUpvoted: upvotedReplyIds.has(reply.id),
             }));
         }
 
         return NextResponse.json(repliesWithVotes);
     } catch (error) {
-        console.error("Error fetching replies:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }
 
@@ -83,9 +79,10 @@ export async function POST(req: Request) {
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
         if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
             const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            return NextResponse.json({ 
-                error: `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.` 
-            }, { status: 403 });
+            const { status, body } = buildErrorResponse(
+                new Error(`Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`)
+            );
+            return NextResponse.json(body, { status });
         }
 
         const { doubtId, userName, type, content, imageUrl } = await req.json();
@@ -117,12 +114,64 @@ export async function POST(req: Request) {
             userName,
             type,
             content: content || null,
-            imageUrl: imageUrl || null
+            imageUrl: imageUrl || null,
         }).returning();
 
+        // Trigger background email notification via Inngest
+        try {
+            await inngest.send({
+                name: "reply.created",
+                data: {
+                    doubtId: parseInt(doubtId),
+                    replyId: newReply[0].id,
+                    replierName: userName,
+                    replierEmail: email || "",
+                    replyContent: content || ""
+                }
+            });
+        } catch (inngestErr) {
+            console.error("Failed to trigger Inngest event for reply (safely caught):", inngestErr);
+        }
+
+        // 🚀 ZERO-SETUP DEV FALLBACK:
+        // If running in local development, run the email simulation logger synchronously 
+        // to give immediate feedback on the console.
+        if (process.env.NODE_ENV === "development") {
+            try {
+                const [d] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, parseInt(doubtId))).limit(1);
+                if (d && d.userEmail && d.userEmail !== email) {
+                    const [u] = await db.select().from(usersTable).where(eq(usersTable.email, d.userEmail)).limit(1);
+                    const notificationsEnabled = u ? u.emailNotificationsEnabled : true;
+                    
+                    if (notificationsEnabled) {
+                        const { emailNotificationLimiter } = await import("@/lib/ratelimit");
+                        const rateLimitKey = `email_notify:${doubtId}`;
+                        const limitResult = await emailNotificationLimiter.limit(rateLimitKey);
+                        
+                        if (limitResult.success) {
+                            const { sendReplyNotificationEmail } = await import("@/lib/email");
+                            // Run non-blocking in background
+                            sendReplyNotificationEmail({
+                                toEmail: d.userEmail,
+                                doubtId: d.id,
+                                doubtSubject: d.subject,
+                                doubtContent: d.content || "",
+                                replierName: userName,
+                                replyContent: content || ""
+                            }).catch(err => console.error("Immediate dev mailer failed:", err));
+                        } else {
+                            console.log(`[RATE LIMIT EXCEEDED] Immediate dev notification skipped for doubt ${doubtId} to prevent spam.`);
+                        }
+                    }
+                }
+            } catch (fallbackErr) {
+                console.error("Zero-setup developer email fallback failed:", fallbackErr);
+            }
+        }
+
         return NextResponse.json(newReply[0]);
-    } catch (error: any) {
-        console.error("Error creating reply:", error);
-        return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 });
+    } catch (error) {
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }

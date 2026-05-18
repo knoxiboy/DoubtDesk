@@ -111,6 +111,21 @@ Return ONLY a JSON object with a "scenes" array.`;
         const composition = await selectComposition({ serveUrl: bundleLocation, id: compositionId, inputProps });
         await renderMedia({ composition, serveUrl: bundleLocation, codec: 'h264', outputLocation, inputProps });
 
+        // Clean up temporary audio files asynchronously after rendering is successful
+        Promise.all(
+            scenes.map(async (scene: any) => {
+                try {
+                    const fileName = path.basename(scene.audioUrl);
+                    const localPath = path.join(tempDir, fileName);
+                    if (fs.existsSync(localPath)) {
+                        await fs.promises.unlink(localPath);
+                    }
+                } catch (err) {
+                    console.error("Failed to delete temp audio file:", err);
+                }
+            })
+        ).catch((err) => console.error("Error during temp audio cleanup:", err));
+
         return NextResponse.json({ videoUrl: `/videos/${path.basename(outputLocation)}`, type: videoType });
 
     } catch (error: any) {
