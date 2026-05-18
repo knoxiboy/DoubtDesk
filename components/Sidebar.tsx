@@ -84,7 +84,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                         <div className="space-y-1.5">
                             {menuItems.map((item) => {
                                 const Icon = item.icon
-                                const isActive = pathname === item.href
+                                const isActive = pathname === item.href || (item.href === '/rooms' && pathname.startsWith('/rooms/'))
 
                                 return (
                                     <Link
