@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { SignInButton, SignUpButton, SignedIn, SignedOut, useClerk, UserButton } from "@clerk/nextjs";
-import { FileText, Map, MessageCircle, FileEdit, ArrowRight, Mail, Linkedin, Github } from "lucide-react";
+import { Activity, ArrowRight, Clipboard, LayoutGrid, Map, MessageCircle, Users } from "lucide-react";
 import Link from "next/link";
 import { Inter, Staatliches, IBM_Plex_Mono } from "next/font/google";
 import ShapeGrid from "@/components/ShapeGrid";
@@ -26,6 +26,39 @@ export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const { signOut } = useClerk();
 
+  const features = [
+    {
+      title: "Real-time collaborative discussions",
+      description: "Share questions, answers, and classroom updates instantly across study groups.",
+      icon: MessageCircle,
+    },
+    {
+      title: "Smart classroom management",
+      description: "Organize learning spaces, schedules, and teacher workflows with ease.",
+      icon: LayoutGrid,
+    },
+    {
+      title: "Notes and resource sharing",
+      description: "Keep study materials, highlights, and shared guides organized in one hub.",
+      icon: Clipboard,
+    },
+    {
+      title: "Learning roadmaps and guidance",
+      description: "Follow curated study paths that keep learners focused on milestones.",
+      icon: Map,
+    },
+    {
+      title: "AI-powered doubt solving",
+      description: "Get instant, context-aware answers to questions with smart AI support.",
+      icon: Activity,
+    },
+    {
+      title: "Organized study collaboration",
+      description: "Coordinate projects, peer review, and group work with clear tools and structure.",
+      icon: Users,
+    },
+  ];
+
   const handleSignOut = async () => {
     await signOut({ redirectUrl: '/' });
   };
@@ -44,6 +77,15 @@ export default function Home() {
               DoubtDesk
             </h1>
           </Link>
+
+          <div className="hidden sm:flex items-center gap-3">
+            <a
+              href="#features"
+              className="px-4 py-2 text-sm font-semibold text-slate-400 transition-all duration-300 hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)]"
+            >
+              Features
+            </a>
+          </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
             <ThemeToggle />
@@ -124,7 +166,7 @@ export default function Home() {
       </AlertDialog>
 
       {/* Hero Section */}
-      <main className="flex-1 pt-[128px] relative overflow-hidden">
+      <main className="flex-1 pt-[128px] relative overflow-hidden scroll-smooth">
         <div className="absolute inset-0 z-0 pointer-events-none">
           <ShapeGrid
             speed={0.45}
@@ -197,6 +239,45 @@ export default function Home() {
                   <p><span className="text-[#8BB8FF]">4</span> active placement roadmaps</p>
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="features" className="scroll-mt-28 px-6 py-16 md:py-20 relative z-10">
+          <div className="absolute inset-x-0 top-10 h-40 bg-gradient-to-r from-blue-500/10 via-transparent to-purple-500/10 blur-3xl pointer-events-none" />
+          <div className="max-w-7xl mx-auto">
+            <div className="max-w-3xl mx-auto text-center">
+              <div className={`${staatliches.className} mb-4 text-sm tracking-[0.16em] text-[#AABFFF]/70 uppercase`}>
+                Features
+              </div>
+              <h3 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#F2F5FF] tracking-tight leading-tight">
+                Everything your classroom needs to solve doubts, stay aligned, and move faster.
+              </h3>
+              <p className="mt-5 text-base sm:text-lg text-slate-300/85 leading-8">
+                Built for modern study teams, DoubtDesk blends AI-powered doubt solving, shared resources, and smart classroom flows into a single polished platform.
+              </p>
+            </div>
+
+            <div className="mt-12 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {features.map((feature) => {
+                const Icon = feature.icon;
+                return (
+                  <div
+                    key={feature.title}
+                    className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 shadow-2xl shadow-slate-950/10 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-white/[0.06]"
+                  >
+                    <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-[#5E8CFF]/10 text-[#8BB8FF] shadow-[0_0_18px_rgba(94,140,255,0.18)] transition-colors duration-300 group-hover:bg-[#5E8CFF]/15">
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <h4 className="mt-6 text-xl font-semibold text-[#F2F5FF] tracking-tight">
+                      {feature.title}
+                    </h4>
+                    <p className="mt-3 text-sm leading-7 text-slate-300/80">
+                      {feature.description}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>
