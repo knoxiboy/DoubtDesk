@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { SignInButton, SignUpButton, SignedIn, SignedOut, useClerk, UserButton } from "@clerk/nextjs";
-import { Sparkles, FileText, Map, MessageCircle, FileEdit, ArrowRight, Mail, Linkedin, Github } from "lucide-react";
+import { Sparkles, FileText, Map, MessageCircle, FileEdit, ArrowRight } from "lucide-react";
+import Footer from "@/components/Footer";
 import Link from "next/link";
 import {
   AlertDialog,
@@ -146,29 +147,7 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5 bg-slate-950/50 py-5">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-slate-500">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">D</div>
-            <span className="font-bold text-white">DoubtDesk</span>
-          </div>
-          <p className="text-sm">© 2026 DoubtDesk. Engineered for Excellence.</p>
-          <div className="flex items-center gap-6">
-            <a href="mailto:divysaxena2402@gmail.com" className="hover:text-blue-400 transition-colors" title="Email">
-              <Mail className="w-5 h-5" />
-            </a>
-            <a href="https://linkedin.com/in/divyasaxena24/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors" title="LinkedIn">
-              <Linkedin className="w-5 h-5" />
-            </a>
-            <a href="https://github.com/divysaxena24" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors" title="GitHub">
-              <Github className="w-5 h-5" />
-            </a>
-          </div>
-          <div className="flex gap-6 text-sm">
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
