@@ -248,6 +248,7 @@ export const repliesTable = pgTable("replies", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     doubtId: integer().notNull(),
     userName: varchar({ length: 255 }).notNull(),
+    userEmail: varchar({ length: 255 }), // Stable identifier for the reply author
     type: varchar({ length: 20 }).notNull(), // 'comment' or 'solution'
     content: text(),
     imageUrl: text(),

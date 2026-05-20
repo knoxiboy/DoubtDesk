@@ -1,11 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { SignInButton, SignUpButton, SignedIn, SignedOut, useClerk, UserButton } from "@clerk/nextjs";
-import { Activity, ArrowRight, Clipboard, LayoutGrid, Map, MessageCircle, Users } from "lucide-react";
+import {
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  useClerk,
+  UserButton,
+} from "@clerk/nextjs";
+
+import {
+  FileText,
+  Map,
+  MessageCircle,
+  FileEdit,
+  ArrowRight,
+  Mail,
+  Linkedin,
+  Github,
+  LayoutGrid,
+  Clipboard,
+  Activity,
+  Users,
+} from "lucide-react";
+
 import Link from "next/link";
-import { Inter, Staatliches, IBM_Plex_Mono } from "next/font/google";
-import ShapeGrid from "@/components/ShapeGrid";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,10 +37,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import ShapeGrid from "@/components/ShapeGrid";
+import { Inter, Staatliches } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"] });
-const staatliches = Staatliches({ subsets: ["latin"], weight: "400" });
-const ibmPlexMono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"] });
+const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 
 export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
@@ -90,47 +111,27 @@ export default function Home() {
           <div className="flex items-center gap-2 sm:gap-4">
             <ThemeToggle />
             <SignedOut>
-              <div className="flex items-center gap-3">
-                <SignInButton mode="modal" forceRedirectUrl="/rooms">
-                  <button className="group relative overflow-hidden px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl border border-white/10 bg-white/[0.04]
-                          backdrop-blur-md text-white font-semibold text-sm tracking-wide transition-all duration-300 hover:bg-white/[0.08] hover:border-white/20 hover:shadow-[0_0_24px_rgba(255,255,255,0.08)] hover:-translate-y-0.5
-                          active:scale-[0.98]">
-                      {/* Glow Effect */}
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r from-white/0 via-white/10 to-white/0 blur-xl" />
+              <Link href="/sign-in">
+                <button className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl text-sm font-semibold border border-white/10 transition-all hover:shadow-[0_0_16px_rgba(255,255,255,0.08)]">
+                  Sign In
+                </button>
+              </Link>
 
-                      <span className="relative z-10 flex items-center gap-2">
-                        Sign In
-                      </span>
-                  </button>
-                </SignInButton>
-
-                <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
-                  <button className="group relative overflow-hidden px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[#5E8CFF] to-[#7AA2FF] text-white
-                          text-sm font-semibold tracking-wide transition-all duration-300 shadow-[0_0_18px_rgba(94,140,255,0.30)] hover:shadow-[0_0_30px_rgba(94,140,255,0.50)]
-                          hover:scale-[1.03] hover:-translate-y-0.5 active:scale-[0.98]">
-                    <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full
-                          transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/25 to-transparent skew-x-12"/>
-                    <div className="absolute inset-0 bg-[#8BB8FF]/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                    <span className="relative z-10 flex items-center gap-2">
-                      Join DoubtDesk
-                      <span className="transition-transform duration-300 group-hover:translate-x-1">
-                        →
-                      </span>
-                    </span>
-                  </button>
-                </SignUpButton>
-              </div>
+              <Link href="/sign-up">
+                <button className="px-5 py-2.5 bg-[#5E8CFF] hover:bg-[#8BB8FF] text-white rounded-xl text-sm font-semibold shadow-[0_0_14px_rgba(94,140,255,0.28)] transition-all">
+                  Join DoubtDesk
+                </button>
+              </Link>
             </SignedOut>
             <SignedIn>
               <div className="flex items-center gap-4">
-                <Link href="/rooms" className="hidden sm:block px-4 py-2 text-sm font-semibold text-slate-400 hover:text-[#AABFFF] transition-all hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)]">
+                <Link href="/rooms" className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors">
                   Classrooms
                 </Link>
-                <Link href="/profile" className="hidden sm:block px-4 py-2 text-sm font-semibold text-slate-400 hover:text-[#AABFFF] transition-all hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)]">
+                <Link href="/profile" className="px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors">
                   Profile
                 </Link>
-                <UserButton 
+                <UserButton
                   afterSignOutUrl="/"
                   appearance={{
                     elements: {
@@ -211,35 +212,38 @@ export default function Home() {
                   </Link>
                 </SignedIn>
                 <SignedOut>
-                  <SignUpButton mode="modal" forceRedirectUrl="/rooms">
+                  <Link href="/sign-up" className="w-full sm:w-auto">
                     <button className="group px-10 py-5 bg-white text-slate-950 rounded-2xl text-lg font-bold hover:bg-slate-200 transition-all w-full sm:w-auto flex items-center justify-center gap-2">
-                      <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>Open Classroom</span>
+                      <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>
+                        Open
+                      </span>
+                      <span>Classroom</span>
                       <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </button>
-                  </SignUpButton>
+                  </Link>
                 </SignedOut>
               </div>
             </div>
 
-            <div className="pt-2 xl:pt-3">
-              <div className={`${staatliches.className} mb-6 text-sm tracking-[0.16em] text-[#AABFFF]/40 uppercase`}>
-                Live campus feed
-              </div>
-              <div className={`${ibmPlexMono.className} space-y-4 text-base sm:text-lg text-slate-200/85`}>
-                <div className="flex items-start gap-3">
-                  <span className="text-[#AABFFF]/85 font-semibold">&gt;</span>
-                  <p><span className="text-[#8BB8FF]">23</span> students discussing Operating Systems</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-[#AABFFF]/85 font-semibold">&gt;</span>
-                  <p><span className="text-[#8BB8FF]">12</span> new notes uploaded</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <span className="text-[#AABFFF]/85 font-semibold">&gt;</span>
-                  <p><span className="text-[#8BB8FF]">4</span> active placement roadmaps</p>
-                </div>
-              </div>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 mb-16">
+              <SignedIn>
+                <Link href="/rooms" className="w-full sm:w-auto">
+                  <button className="group px-10 py-5 bg-blue-600 text-white rounded-2xl text-lg font-bold hover:bg-blue-700 hover:shadow-[0_0_30px_rgba(37,99,235,0.4)] transition-all w-full flex items-center justify-center gap-2">
+                    Open Classroom
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </Link>
+              </SignedIn>
+              <SignedOut>
+                <SignUpButton mode="modal" forceRedirectUrl="/rooms">
+                  <button className="group px-10 py-5 bg-white text-slate-950 rounded-2xl text-lg font-bold hover:bg-slate-200 transition-all w-50 flex items-center justify-center gap-2">
+                    Open Classroom
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </SignUpButton>
+              </SignedOut>
             </div>
+
           </div>
         </section>
 
@@ -282,7 +286,7 @@ export default function Home() {
           </div>
         </section>
       </main>
-{/*Here's Your Previous Footer. I have just commented it in case */}
+      {/*Here's Your Previous Footer. I have just commented it in case */}
       {/* Footer
       <footer className="border-t border-white/5 bg-slate-950/50 py-5">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-slate-500">

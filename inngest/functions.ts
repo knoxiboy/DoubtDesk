@@ -1,5 +1,5 @@
 import { inngest } from "./client";
-import fs from "fs";
+import fs from "fs";                  
 import path from "path";
 import { db } from "../configs/db";
 import { doubtsTable, usersTable } from "../configs/schema";
@@ -8,8 +8,8 @@ import { emailNotificationLimiter } from "../lib/ratelimit";
 import { sendReplyNotificationEmail } from "../lib/email";
 
 export const helloWorld = inngest.createFunction(
-    { id: "hello-world", triggers: [{ event: "test/hello.world" }] },
-    async ({ event, step }) => {
+    { id: "hello-world", triggers: [{ event: "test/hello.world" }] }, 
+    async ({ event, step }: { event: any, step: any }) => {                
         await step.sleep("wait-a-moment", "1s");
         return { message: `Hello ${(event.data as any).email}!` };
     },
@@ -49,8 +49,8 @@ export const cleanupTempAssets = inngest.createFunction(
 );
 
 export const sendReplyNotification = inngest.createFunction(
-    { id: "send-reply-notification", triggers: [{ event: "reply.created" }] },
-    async ({ event, step }) => {
+    { id: "send-reply-notification", triggers: [{ event: "reply.created" }] }, 
+    async ({ event, step }: { event: any, step: any }) => {                    
         const { doubtId, replyId, replierName, replierEmail, replyContent } = event.data;
 
         // 1. Fetch parent doubt and original author details

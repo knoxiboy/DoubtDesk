@@ -6,55 +6,142 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, MessageSquare, BookOpen, Users, ThumbsUp, ArrowLeft, Mail, Bell, Loader2 } from "lucide-react";
+import { CalendarDays, MessageSquare, BookOpen, Users, ThumbsUp, ArrowLeft, RefreshCw, AlertTriangle, Mail, Loader2, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import type { ProfileData, ProfileDoubt, ProfileReply, ProfileClassroom } from "@/types/profile";
+
+
+/** Skeleton placeholder that mirrors the profile page layout. */
+function ProfileSkeleton() {
+    return (
+        <div className="container mx-auto p-4 md:p-8 max-w-5xl mt-16 animate-pulse">
+            {/* Back button skeleton */}
+            <div className="h-5 w-24 bg-slate-800 rounded mb-6" />
+
+            {/* Header skeleton */}
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-8 bg-slate-900/50 rounded-xl border border-slate-800 p-6">
+                <div className="w-24 h-24 rounded-full bg-slate-800" />
+                <div className="flex-1 space-y-3 text-center md:text-left">
+                    <div className="h-8 w-48 bg-slate-800 rounded mx-auto md:mx-0" />
+                    <div className="h-4 w-36 bg-slate-800/70 rounded mx-auto md:mx-0" />
+                    <div className="flex gap-2 mt-4 justify-center md:justify-start">
+                        <div className="h-6 w-16 bg-slate-800 rounded-full" />
+                        <div className="h-6 w-24 bg-slate-800 rounded-full" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Stats skeleton */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 flex flex-col items-center gap-2">
+                        <div className="w-8 h-8 bg-slate-800 rounded" />
+                        <div className="h-7 w-10 bg-slate-800 rounded" />
+                        <div className="h-4 w-20 bg-slate-800/70 rounded" />
+                    </div>
+                ))}
+            </div>
+
+            {/* Tabs skeleton */}
+            <div className="h-10 w-full bg-slate-900 rounded-lg border border-slate-800 mb-8" />
+            <div className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 space-y-3">
+                        <div className="h-5 w-2/3 bg-slate-800 rounded" />
+                        <div className="h-4 w-1/3 bg-slate-800/70 rounded" />
+                        <div className="h-4 w-full bg-slate-800/50 rounded" />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+interface ErrorStateProps {
+    message: string;
+    onRetry: () => void;
+}
+
+/** Full-screen error state with retry button. */
+function ErrorState({ message, onRetry }: ErrorStateProps) {
+    return (
+        <div className="flex h-screen flex-col items-center justify-center text-slate-200 px-4">
+            <AlertTriangle className="w-12 h-12 text-amber-400 mb-4" />
+            <h1 className="text-2xl font-bold">Something went wrong</h1>
+            <p className="text-muted-foreground mt-2 text-center max-w-md">{message}</p>
+            <button
+                onClick={onRetry}
+                className="mt-6 flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-sm font-semibold border border-slate-700 transition-all"
+            >
+                <RefreshCw className="w-4 h-4" />
+                Try Again
+            </button>
+        </div>
+    );
+}
+
 
 export default function ProfilePage() {
     const { isLoaded, userId } = useAuth();
     const router = useRouter();
-    const [profileData, setProfileData] = useState<any>(null);
+    const [profileData, setProfileData] = useState<ProfileData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
     const [isSavingPref, setIsSavingPref] = useState(false);
 
-    useEffect(() => {
-        if (!isLoaded) return;
-        if (!userId) {
-            window.location.href = "/sign-in";
-            return;
-        }
+    const fetchProfile = () => {
+        setLoading(true);
+        setError(null);
 
         fetch("/api/profile")
-            .then(res => res.json())
-            .then(data => {
+            .then((res) => {
+                if (!res.ok) throw new Error(`Failed to load profile (${res.status})`);
+                return res.json();
+            })
+            .then((data: ProfileData) => {
                 if (data.user) {
                     setProfileData(data);
                     setEmailNotificationsEnabled(data.user.emailNotificationsEnabled ?? true);
+                } else {
+                    setError("Profile data is unavailable. Please try again.");
                 }
                 setLoading(false);
             })
-            .catch(err => {
-                console.error(err);
+            .catch((err: unknown) => {
+                const message = err instanceof Error ? err.message : "An unexpected error occurred.";
+                console.error("Profile fetch error:", err);
+                setError(message);
                 setLoading(false);
             });
-    }, [isLoaded, userId]);
+    };
+
+    useEffect(() => {
+        if (!isLoaded) return;
+        // Auth is handled by middleware — if we reach here, userId is guaranteed.
+        if (!userId) {
+            router.replace("/sign-in");
+            return;
+        }
+        fetchProfile();
+    }, [isLoaded, userId, router]);
 
     if (!isLoaded || loading) {
-        return (
-            <div className="flex h-screen items-center justify-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
-            </div>
-        );
+        return <ProfileSkeleton />;
+    }
+
+    if (error) {
+        return <ErrorState message={error} onRetry={fetchProfile} />;
     }
 
     if (!profileData?.user) {
         return (
-            <div className="flex h-screen flex-col items-center justify-center">
-                <h1 className="text-2xl font-bold">Error loading profile</h1>
-                <p className="text-muted-foreground mt-2">Please try again later.</p>
-            </div>
+            <ErrorState
+                message="We couldn't find your profile data. Please try again later."
+                onRetry={fetchProfile}
+            />
         );
     }
 
@@ -63,28 +150,28 @@ export default function ProfilePage() {
     return (
         <div className="container mx-auto p-4 md:p-8 max-w-5xl mt-16 text-slate-200">
             {/* Go Back Button */}
-            <button 
-                onClick={() => router.back()} 
+            <button
+                onClick={() => router.back()}
                 className="flex items-center gap-2 text-slate-400 hover:text-slate-100 transition-colors mb-6 group"
             >
-                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> 
+                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                 Go Back
             </button>
-            
+
             {/* Header Section */}
             <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-8 bg-slate-900/50 rounded-xl border border-slate-800 p-6 shadow-sm">
                 <Avatar className="w-24 h-24 border-4 border-slate-950 shadow-sm">
                     <AvatarImage src={user.imageUrl} />
                     <AvatarFallback className="text-3xl bg-slate-800 text-slate-200">{user.name.charAt(0)}</AvatarFallback>
                 </Avatar>
-                
+
                 <div className="flex-1 text-center md:text-left">
                     <h1 className="text-3xl font-bold text-slate-100">{user.name}</h1>
                     <p className="text-slate-400 mt-1 flex items-center justify-center md:justify-start gap-2">
                         <CalendarDays className="w-4 h-4" />
                         Joined {format(new Date(user.joinDate), "MMMM yyyy")}
                     </p>
-                    
+
                     <div className="flex flex-wrap gap-2 mt-4 justify-center md:justify-start">
                         {user.role && <Badge className="bg-slate-800 text-slate-200 hover:bg-slate-700">{user.role}</Badge>}
                         {user.university && <Badge variant="outline" className="border-slate-700 text-slate-300">{user.university}</Badge>}
@@ -187,18 +274,18 @@ export default function ProfilePage() {
                     <TabsTrigger value="replies" className="data-[state=active]:bg-slate-800 data-[state=active]:text-slate-100 text-slate-400">My Replies</TabsTrigger>
                     <TabsTrigger value="classrooms" className="data-[state=active]:bg-slate-800 data-[state=active]:text-slate-100 text-slate-400">My Classrooms</TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="doubts" className="space-y-4">
                     {activities.doubts.length === 0 ? (
                         <Card className="bg-slate-900/50 border-slate-800">
                             <CardContent className="flex flex-col items-center justify-center p-12 text-center">
                                 <MessageSquare className="w-12 h-12 text-slate-600 mb-4 opacity-50" />
                                 <h3 className="text-lg font-medium text-slate-300">No doubts yet</h3>
-                                <p className="text-sm text-slate-500 mt-1">You haven't posted any doubts.</p>
+                                <p className="text-sm text-slate-500 mt-1">You haven&apos;t posted any doubts.</p>
                             </CardContent>
                         </Card>
                     ) : (
-                        activities.doubts.map((doubt: any) => (
+                        activities.doubts.map((doubt: ProfileDoubt) => (
                             <Card key={doubt.id} className="bg-slate-900/50 border-slate-800 hover:bg-slate-800/80 transition-all shadow-sm">
                                 <CardHeader className="py-4">
                                     <div className="flex justify-between items-start">
@@ -235,11 +322,11 @@ export default function ProfilePage() {
                             <CardContent className="flex flex-col items-center justify-center p-12 text-center">
                                 <BookOpen className="w-12 h-12 text-slate-600 mb-4 opacity-50" />
                                 <h3 className="text-lg font-medium text-slate-300">No replies yet</h3>
-                                <p className="text-sm text-slate-500 mt-1">You haven't replied to any doubts.</p>
+                                <p className="text-sm text-slate-500 mt-1">You haven&apos;t replied to any doubts.</p>
                             </CardContent>
                         </Card>
                     ) : (
-                        activities.replies.map((reply: any) => (
+                        activities.replies.map((reply: ProfileReply) => (
                             <Card key={reply.id} className="bg-slate-900/50 border-slate-800 hover:bg-slate-800/80 transition-all shadow-sm">
                                 <CardHeader className="py-4">
                                     <div className="flex justify-between items-start">
@@ -264,12 +351,12 @@ export default function ProfilePage() {
                                 <CardContent className="flex flex-col items-center justify-center p-12 text-center">
                                     <Users className="w-12 h-12 text-slate-600 mb-4 opacity-50" />
                                     <h3 className="text-lg font-medium text-slate-300">No classrooms yet</h3>
-                                    <p className="text-sm text-slate-500 mt-1">You haven't joined any classrooms.</p>
+                                    <p className="text-sm text-slate-500 mt-1">You haven&apos;t joined any classrooms.</p>
                                 </CardContent>
                             </Card>
                         </div>
                     ) : (
-                        activities.classrooms.map((classroom: any) => (
+                        activities.classrooms.map((classroom: ProfileClassroom) => (
                             <Card key={classroom.id} className="flex flex-col bg-slate-900/50 border-slate-800 hover:bg-slate-800/80 transition-all shadow-sm">
                                 <CardHeader>
                                     <CardTitle className="text-xl text-slate-100">{classroom.name}</CardTitle>

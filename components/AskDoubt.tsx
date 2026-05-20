@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Loader2, Upload, File, Eye, EyeOff, Bold, Italic, Code, List, Tags, Sparkles, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import MarkdownRenderer from "./MarkdownRenderer";
-import { useRef } from "react";
 
 interface AskDoubtProps {
     defaultSubject?: string;
@@ -74,13 +73,49 @@ if (charCount >= maxLength) {
     const [fileSize, setFileSize] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [userName, setUserName] = useState("");
-    const [isPreviewMode, setIsPreviewMode] = useState(false);
-    const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
     const [tags, setTags] = useState<string[]>(doubtToEdit?.tags?.map((tag: any) => tag.name) || []);
     const [tagDraft, setTagDraft] = useState("");
     const [subjectWasEdited, setSubjectWasEdited] = useState(false);
     const [suggestedSubject, setSuggestedSubject] = useState("");
     const [isDragging, setIsDragging] = useState(false);
+    const [isPreviewMode, setIsPreviewMode] = useState(false);
+    const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+    const insertMarkdown = (type: "bold" | "italic" | "code" | "list") => {
+        const textarea = contentTextareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const selectedText = text.substring(start, end);
+
+        let replacement = "";
+        switch (type) {
+            case "bold":
+                replacement = `**${selectedText || "bold text"}**`;
+                break;
+            case "italic":
+                replacement = `*${selectedText || "italic text"}*`;
+                break;
+            case "code":
+                replacement = `\`${selectedText || "code"}\``;
+                break;
+            case "list":
+                replacement = `\n- ${selectedText || "list item"}`;
+                break;
+        }
+
+        const newContent = text.substring(0, start) + replacement + text.substring(end);
+        setContent(newContent);
+
+        // Reset cursor pos and focus
+        setTimeout(() => {
+            textarea.focus();
+            const newCursorPos = start + replacement.length;
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }, 0);
+    };
 
     useEffect(() => {
         if (doubtToEdit) {
@@ -128,32 +163,6 @@ if (charCount >= maxLength) {
         }
         setUserName(savedName);
     }, []);
-
-    const insertMarkdown = (type: string) => {
-        const textarea = contentTextareaRef.current;
-        if (!textarea) return;
-
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const text = textarea.value;
-        const selectedText = text.substring(start, end);
-        let replacement = "";
-
-        switch (type) {
-            case "bold": replacement = `**${selectedText || "bold text"}**`; break;
-            case "italic": replacement = `*${selectedText || "italic text"}*`; break;
-            case "code": replacement = `\`\`\`\n${selectedText || "code"}\n\`\`\``; break;
-            case "list": replacement = `\n- ${selectedText || "list item"}`; break;
-        }
-
-        const newText = text.substring(0, start) + replacement + text.substring(end);
-        setContent(newText);
-        
-        setTimeout(() => {
-            textarea.focus();
-            textarea.setSelectionRange(start + replacement.length, start + replacement.length);
-        }, 0);
-    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
