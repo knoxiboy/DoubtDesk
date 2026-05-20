@@ -1,5 +1,6 @@
 import { db } from "@/configs/db";
-import { repliesTable, doubtsTable, classroomsTable, replyLikesTable, usersTable } from "@/configs/schema";
+
+import { repliesTable, doubtsTable, classroomsTable, replyLikesTable, usersTable, notificationsTable } from "@/configs/schema";
 import { eq, asc, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
@@ -101,9 +102,9 @@ export async function POST(req: Request) {
         }
 
         // Security: Check if it's a teacher doubt
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, parseInt(doubtId)));
-        if (doubt?.type === 'teacher') {
-            const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId!));
+        const [existingDoubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, parseInt(doubtId)));
+        if (existingDoubt?.type === 'teacher') { 
+            const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, existingDoubt.classroomId!));
             if (room && email && room.teacherEmail !== email) {
                 return NextResponse.json({ error: "Only the teacher can reply to this doubt" }, { status: 403 });
             }
@@ -132,6 +133,22 @@ export async function POST(req: Request) {
         } catch (inngestErr) {
             console.error("Failed to trigger Inngest event for reply (safely caught):", inngestErr);
         }
+
+        // Create notification for doubt owner
+        const [doubt] = await db
+            .select()
+            .from(doubtsTable)
+            .where(eq(doubtsTable.id, parseInt(doubtId)));
+
+        if (doubt?.userEmail && doubt.userEmail !== email) {
+            await db.insert(notificationsTable).values({
+                userEmail: doubt.userEmail,
+                title: "New Reply",
+                message: `${userName} replied to your doubt.`,
+                doubtId: parseInt(doubtId),
+            });
+        }
+
 
         // 🚀 ZERO-SETUP DEV FALLBACK:
         // If running in local development, run the email simulation logger synchronously 

@@ -1,5 +1,5 @@
-import { db } from "@/configs/db";
-import { bookmarksTable, doubtTagsTable, doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, tagsTable, usersTable } from "@/configs/schema";
+import { db } from "@/db";
+import { bookmarksTable, doubtTagsTable, doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, tagsTable, usersTable, notificationsTable } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
 import { and, eq, desc, inArray, isNull, or, not, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -41,7 +41,7 @@ export async function GET(req: Request) {
             }
         }
 
-        let conditions = [];
+                let conditions: any[] = [];
 
         // Base Classroom scoping
         if (classroomId) {
@@ -90,7 +90,7 @@ export async function GET(req: Request) {
                     classroomId ? eq(tagsTable.classroomId, classroomId) : isNull(tagsTable.classroomId)
                 ));
             
-            const taggedDoubtIds = taggedDoubts.map(row => row.doubtId);
+           const taggedDoubtIds = taggedDoubts.map((row: any) => row.doubtId);
             if (taggedDoubtIds.length > 0) {
                 conditions.push(inArray(doubtsTable.id, taggedDoubtIds));
             } else {
@@ -103,7 +103,7 @@ export async function GET(req: Request) {
             .from(doubtsTable)
             .where(and(...conditions));
 
-        let doubts = await db.select().from(doubtsTable)
+       let doubts: any[] = await db.select().from(doubtsTable)
             .where(and(...conditions))
             .orderBy(desc(doubtsTable.isPinned), desc(doubtsTable.createdAt))
             .limit(limit)
@@ -114,7 +114,7 @@ export async function GET(req: Request) {
 
             // User Specific Data: Likes
             if (userName) {
-                const userLikes = await db.select({ doubtId: likesTable.doubtId })
+                const userLikes: any[] = await db.select({ doubtId: likesTable.doubtId })
                     .from(likesTable)
                     .where(eq(likesTable.userName, userName));
                 const likedIds = new Set(userLikes.map(l => l.doubtId));
@@ -123,7 +123,7 @@ export async function GET(req: Request) {
 
             // User Specific Data: Bookmarks
             if (email) {
-                const userBookmarks = await db.select({ doubtId: bookmarksTable.doubtId })
+                const userBookmarks: any[] = await db.select({ doubtId: bookmarksTable.doubtId })
                     .from(bookmarksTable)
                     .where(eq(bookmarksTable.userEmail, email));
                 const bookmarkedIds = new Set(userBookmarks.map(b => b.doubtId));
@@ -138,10 +138,9 @@ export async function GET(req: Request) {
             .from(repliesTable)
             .where(inArray(repliesTable.doubtId, doubtIds))
             .groupBy(repliesTable.doubtId);
-            const countsMap = Object.fromEntries(replyCounts.map(r => [r.doubtId, r.count]));
-
+           const countsMap = Object.fromEntries(replyCounts.map((r: any) => [r.doubtId, r.count]));
             // Tags
-            const tagRows = await db.select({
+            const tagRows: any[] = await db.select({
                 doubtId: doubtTagsTable.doubtId,
                 id: tagsTable.id,
                 name: tagsTable.name,
@@ -151,13 +150,13 @@ export async function GET(req: Request) {
             .innerJoin(tagsTable, eq(doubtTagsTable.tagId, tagsTable.id))
             .where(inArray(doubtTagsTable.doubtId, doubtIds));
 
-            const tagsByDoubt = tagRows.reduce<Record<number, any[]>>((acc, row) => {
+            const tagsByDoubt = tagRows.reduce<Record<number, any[]>>((acc, row: any) =>  {
                 acc[row.doubtId] = acc[row.doubtId] || [];
                 acc[row.doubtId].push({ id: row.id, name: row.name, normalizedName: row.normalizedName });
                 return acc;
             }, {});
 
-            doubts = doubts.map(doubt => ({
+            doubts = doubts.map((doubt: any) => ({
                 ...doubt,
                 replyCount: countsMap[doubt.id] || 0,
                 tags: tagsByDoubt[doubt.id] || []
@@ -256,6 +255,32 @@ export async function POST(req: Request) {
             }).onConflictDoNothing();
         }
 
+
+if (parsedClassroomId) {
+    const members = await db
+        .select()
+        .from(membershipsTable)
+        .where(eq(membershipsTable.classroomId, parsedClassroomId));
+
+    const notificationUsers = members.filter(
+       (member: any) => member.userEmail !== email
+    );
+
+    if (notificationUsers.length > 0) {
+        await db.insert(notificationsTable).values(
+           notificationUsers.map((member: any) => ({
+                userEmail: member.userEmail,
+                title: "New Doubt Posted",
+                message: `${userName} posted a new doubt in your classroom.`,
+                doubtId: newDoubt.id,
+            }))
+        );
+    }
+}
+
+
+
+    
         return NextResponse.json({ ...newDoubt, tags: savedTags });
     } catch (error: any) {
         console.error("Error saving doubt:", error);

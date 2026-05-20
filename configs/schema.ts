@@ -314,3 +314,14 @@ export const bookmarksTable = pgTable("bookmarks", {
     userEmailIndex: index("bookmark_userEmail_idx").on(table.userEmail),
     doubtIdIndex: index("bookmark_doubtId_idx").on(table.doubtId),
 }));
+
+
+export const notificationsTable = pgTable("notifications", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userEmail: varchar({ length: 255 }).notNull(),
+    title: varchar({ length: 255 }).notNull(),
+    message: text().notNull(),
+    isRead: boolean().default(false).notNull(),
+    doubtId: integer(),
+    createdAt: timestamp().defaultNow().notNull(),
+});

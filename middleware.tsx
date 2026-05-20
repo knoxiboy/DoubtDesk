@@ -4,7 +4,13 @@ import { aiLimiter, generalLimiter } from '@/lib/ratelimit';
 
 const isProtectedRoute = createRouteMatcher(['/dashboard(.*)']);
 
-const isPublicRoute = createRouteMatcher(['/sign-in', '/sign-up', '/api/inngest', '/', '/public-rooms(.*)']);
+const isPublicRoute = createRouteMatcher([
+    '/sign-in(.*)',
+    '/sign-up(.*)',
+    '/api/inngest',
+    '/',
+    '/public-rooms(.*)'
+]);
 
 export default clerkMiddleware(async (auth, req) => {
     // Skip middleware for Inngest API
