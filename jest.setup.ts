@@ -30,7 +30,6 @@ Object.defineProperties(globalThis, {
     FormData: { value: global.FormData, writable: true, configurable: true },
 });
 
-
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
     writable: true,
