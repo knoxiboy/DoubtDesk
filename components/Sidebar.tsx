@@ -14,6 +14,12 @@ import {
 
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useAppUser } from '@/app/provider'
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
@@ -96,6 +102,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     </div>
 
                     {/* Navigation */}
+                    <TooltipProvider delayDuration={150}>
                     <nav className="flex-1 px-4 py-6 space-y-8 overflow-y-auto">
 
                         {/* Main Navigation */}
@@ -109,24 +116,30 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                         pathname.startsWith('/rooms/'))
 
                                 return (
-                                    <Link
-                                        key={item.name}
-                                        href={item.href}
-                                        onClick={onClose}
-                                        className={linkClasses(isActive)}
-                                    >
-                                        <Icon
-                                            className={`w-5 h-5 transition-colors ${isActive ? 'text-blue-400' : 'text-muted-foreground group-hover:text-foreground' }`}
-                                        />
+                                    <Tooltip key={item.name}>
+                                        <TooltipTrigger asChild>
+                                            <Link
+                                                href={item.href}
+                                                onClick={onClose}
+                                                className={linkClasses(isActive)}
+                                            >
+                                                <Icon
+                                                    className={`w-5 h-5 transition-colors ${isActive ? 'text-blue-400' : 'text-muted-foreground group-hover:text-foreground' }`}
+                                                />
 
-                                        <span className="text-sm font-semibold">
+                                                <span className="text-sm font-semibold">
+                                                    {item.name}
+                                                </span>
+
+                                                {isActive && (
+                                                    <div className="ml-auto w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.7)]" />
+                                                )}
+                                            </Link>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right">
                                             {item.name}
-                                        </span>
-
-                                        {isActive && (
-                                            <div className="ml-auto w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.7)]" />
-                                        )}
-                                    </Link>
+                                        </TooltipContent>
+                                    </Tooltip>
                                 )
                             })}
                         </div>
@@ -142,19 +155,26 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             </div>
 
                             <div className="space-y-2">
-                                <Link
-                                    href="/public-rooms"
-                                    onClick={onClose}
-                                    className={linkClasses(pathname === '/public-rooms')}
-                                >
-                                    <div className="p-1.5 rounded-lg bg-muted border border-border/60">
-                                        <MessageSquare className="w-4 h-4" />
-                                    </div>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Link
+                                            href="/public-rooms"
+                                            onClick={onClose}
+                                            className={linkClasses(pathname === '/public-rooms')}
+                                        >
+                                            <div className="p-1.5 rounded-lg bg-muted border border-border/60">
+                                                <MessageSquare className="w-4 h-4" />
+                                            </div>
 
-                                    <span className="text-sm font-semibold">
+                                            <span className="text-sm font-semibold">
+                                                Public Doubts
+                                            </span>
+                                        </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
                                         Public Doubts
-                                    </span>
-                                </Link>
+                                    </TooltipContent>
+                                </Tooltip>
                             </div>
                         </div>
 
@@ -170,19 +190,26 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             </div>
 
                             <div className="space-y-2">
-                                <Link
-                                    href="/ask-ai"
-                                    onClick={onClose}
-                                    className={linkClasses(pathname === '/ask-ai')}
-                                >
-                                    <div className="p-1.5 rounded-lg bg-muted border border-border/60">
-                                        <Zap className="w-4 h-4 text-cyan-400" />
-                                    </div>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Link
+                                            href="/ask-ai"
+                                            onClick={onClose}
+                                            className={linkClasses(pathname === '/ask-ai')}
+                                        >
+                                            <div className="p-1.5 rounded-lg bg-muted border border-border/60">
+                                                <Zap className="w-4 h-4 text-cyan-400" />
+                                            </div>
 
-                                    <span className="text-sm font-semibold">
+                                            <span className="text-sm font-semibold">
+                                                Ask AI Solver
+                                            </span>
+                                        </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">
                                         Ask AI Solver
-                                    </span>
-                                </Link>
+                                    </TooltipContent>
+                                </Tooltip>
                             </div>
                         </div>
 
@@ -200,25 +227,33 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Link
-                                        href="/dashboard/analytics"
-                                        onClick={onClose}
-                                        className={linkClasses(
-                                            pathname === '/dashboard/analytics'
-                                        )}
-                                    >
-                                        <div className="p-1.5 rounded-lg bg-muted border border-border/60">
-                                            <BarChart3 className="w-4 h-4 text-blue-400" />
-                                        </div>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Link
+                                                href="/dashboard/analytics"
+                                                onClick={onClose}
+                                                className={linkClasses(
+                                                    pathname === '/dashboard/analytics'
+                                                )}
+                                            >
+                                                <div className="p-1.5 rounded-lg bg-muted border border-border/60">
+                                                    <BarChart3 className="w-4 h-4 text-blue-400" />
+                                                </div>
 
-                                        <span className="text-sm font-semibold">
+                                                <span className="text-sm font-semibold">
+                                                    Class Analytics
+                                                </span>
+                                            </Link>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right">
                                             Class Analytics
-                                        </span>
-                                    </Link>
+                                        </TooltipContent>
+                                    </Tooltip>
                                 </div>
                             </div>
                         )}
                     </nav>
+                    </TooltipProvider>
 
                     {/* Footer */}
                     <div className="p-5 border-t border-border/60 bg-muted/20 space-y-4">
