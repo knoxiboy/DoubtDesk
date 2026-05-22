@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { MessageSquare, Plus, SlidersHorizontal, Loader2 } from "lucide-react";
 import AskDoubt from "@/components/AskDoubt";
 import DoubtCard from "@/components/DoubtCard";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 import useSWRInfinite from "swr/infinite";
 import { useInView } from "react-intersection-observer";
 
@@ -79,6 +80,8 @@ export default function PublicRoomsPage() {
 
     return (
         <div className="p-4 md:p-8 space-y-6 max-w-[1000px] mx-auto pb-24">
+            <ScrollToTopButton />
+
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-200 dark:border-white/5">
                 <div className="space-y-1">
                     <h1 className="text-6xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">
