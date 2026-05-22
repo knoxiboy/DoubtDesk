@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import {
   BrainCircuit,
   Users,
@@ -9,6 +10,12 @@ import {
   ArrowRight,
   Github,
 } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "About",
+  description:
+    "Learn more about DoubtDesk, an AI-powered educational platform for instant doubt solving and collaborative classrooms.",
+};
 
 const features = [
   {

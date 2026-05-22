@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   ShieldCheck,
   Database,
@@ -6,6 +7,12 @@ import {
   Globe,
   Mail,
 } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "Understand how DoubtDesk collects, protects, and uses data while keeping user privacy transparent.",
+};
 
 export default function PrivacyPolicyPage() {
   const sections = [
