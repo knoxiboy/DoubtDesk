@@ -40,25 +40,28 @@ export default function Footer() {
         {
             icon: Linkedin,
             href: "https://www.linkedin.com/",
-            label: "LinkedIn",
+            label: "Visit DoubtDesk on LinkedIn",
             hoverColor: "hover:text-blue-500 dark:hover:text-blue-400",
         },
         {
             icon: Github,
             href: "https://github.com/knoxiboy/DoubtDesk",
-            label: "GitHub",
+            label: "Visit DoubtDesk on GitHub",
             hoverColor: "hover:text-slate-900 dark:hover:text-slate-300",
         },
         {
             icon: Mail,
             href: "mailto:karankmt.tripathi@gmail.com",
-            label: "Email",
+            label: "Email the DoubtDesk team",
             hoverColor: "hover:text-purple-500 dark:hover:text-purple-400",
         },
     ]
 
     return (
-        <footer className="relative overflow-hidden border-t border-slate-200 dark:border-white/10 bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 transition-colors duration-300">
+        <footer
+            aria-label="Footer navigation"
+            className="relative overflow-hidden border-t border-slate-200 dark:border-white/10 bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 transition-colors duration-300"
+        >
 
             {/* Background Effects */}
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-transparent to-purple-500/10 dark:from-blue-600/5 dark:to-purple-600/5 pointer-events-none" />
@@ -92,7 +95,11 @@ export default function Footer() {
                     </div>
 
                     {/* Footer Links */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
+                    <div
+                        role="navigation"
+                        aria-label="Footer navigation links"
+                        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12"
+                    >
 
                         {footerSections.map((section) => (
                             <div key={section.title}>
