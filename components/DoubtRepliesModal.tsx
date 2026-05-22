@@ -4,6 +4,17 @@ import { useState, useEffect, useRef } from "react";
 import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, MoreVertical, Pencil, Trash2, PlusCircle, Eye, EyeOff, Bold, Italic, Code, List, ThumbsUp, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import MarkdownRenderer from "./MarkdownRenderer";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Reply {
     id: number;
@@ -402,16 +413,35 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                             >
                                                 <Pencil className="w-3 h-3" /> Edit
                                             </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteReply(reply.id);
-                                                }}
-                                                disabled={isDeletingReply}
-                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase text-red-400 hover:bg-red-600 hover:text-slate-900 dark:hover:text-white transition-all text-left disabled:opacity-50"
-                                            >
-                                                {isDeletingReply ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Delete
-                                            </button>
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <button
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        disabled={isDeletingReply}
+                                                        className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase text-red-400 hover:bg-red-600 hover:text-slate-900 dark:hover:text-white transition-all text-left disabled:opacity-50"
+                                                    >
+                                                        {isDeletingReply ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Delete
+                                                    </button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent className="border-slate-200 dark:border-white/10">
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Delete this reply?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            Are you sure you want to delete this? This action cannot be undone.
+                                                        </AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel disabled={isDeletingReply}>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction
+                                                            onClick={() => handleDeleteReply(reply.id)}
+                                                            disabled={isDeletingReply}
+                                                            className="bg-red-600 text-white hover:bg-red-700"
+                                                        >
+                                                            {isDeletingReply ? "Deleting..." : "Delete"}
+                                                        </AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
                                         </div>
                                     )}
                                 </div>
