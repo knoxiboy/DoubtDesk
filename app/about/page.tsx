@@ -9,6 +9,13 @@ import {
   ArrowRight,
   Github,
 } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "About",
+  description:
+    "Learn more about DoubtDesk, an AI-powered educational platform for collaborative classroom doubt solving.",
+};
 
 const features = [
   {

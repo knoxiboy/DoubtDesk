@@ -6,6 +6,13 @@ import {
   RefreshCw,
   AlertTriangle,
 } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description:
+    "Review the terms, responsibilities, acceptable use guidelines, and account policies for using DoubtDesk.",
+};
 
 export default function TermsOfServicePage() {
   const sections = [

@@ -6,6 +6,13 @@ import {
   Globe,
   Mail,
 } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "Understand how DoubtDesk collects, uses, protects, and manages user data across the platform.",
+};
 
 export default function PrivacyPolicyPage() {
   const sections = [

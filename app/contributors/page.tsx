@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import {
   Sparkles,
   Github,
@@ -7,6 +8,12 @@ import {
   GitPullRequest,
   ArrowRight,
 } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Contributors",
+  description:
+    "Meet the open-source contributors helping improve DoubtDesk for collaborative AI-powered education.",
+};
 
 async function getContributors() {
   const res = await fetch(
