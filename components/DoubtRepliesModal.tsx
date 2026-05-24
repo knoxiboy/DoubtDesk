@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, MoreVertical, Pencil, Trash2, PlusCircle, Eye, EyeOff, Bold, Italic, Code, List, ThumbsUp, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import MarkdownRenderer from "./MarkdownRenderer";
-
+import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 interface Reply {
     id: number;
     doubtId: number;
@@ -48,6 +48,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [editingId, setEditingId] = useState<number | null>(null);
     const [editContent, setEditContent] = useState("");
     const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
+    const [replyToDelete, setReplyToDelete] = useState<number | null>(null);
     const [isFullscreenImageOpen, setIsFullscreenImageOpen] = useState(false);
     const [fullscreenImageUrl, setFullscreenImageUrl] = useState("");
     const [isPreviewMode, setIsPreviewMode] = useState(false);
@@ -79,9 +80,10 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     }, [isOpen, onClose]);
 
     const fetchReplies = async () => {
-        const storedUserName = localStorage.getItem("anonymous_user") || "";
+        const storedUserName = localStorage.getItem("anonymous_user");
         try {
-            const res = await fetch(`/api/replies?doubtId=${doubt.id}&userName=${storedUserName}`);
+            const url = `/api/replies?doubtId=${doubt.id}` + (storedUserName ? `&userName=${encodeURIComponent(storedUserName)}` : "");
+            const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
                 setReplies(data);
@@ -224,6 +226,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 setReplies(replies.filter(r => r.id !== replyId));
                 if (onReplyChange) onReplyChange();
                 toast.success("Reply deleted", { id: `reply-delete-${replyId}` });
+                setReplyToDelete(null);
             } else {
                 const data = await res.json();
                 toast.error(data.error || "Failed to delete reply.", { id: `reply-delete-error-${replyId}` });
@@ -237,15 +240,17 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     };
 
     const handleVote = async (replyId: number) => {
-        const storedUserName = localStorage.getItem("anonymous_user");
-        if (!storedUserName) return;
-
         try {
             const res = await fetch("/api/replies/vote", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ replyId, userName: storedUserName })
+                body: JSON.stringify({ replyId })
             });
+
+            if (res.status === 401) {
+                toast.error("Sign in to vote.", { id: `vote-auth-required-${replyId}` });
+                return;
+            }
 
             if (res.ok) {
                 const updatedReply = await res.json();
@@ -254,9 +259,13 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     upvotes: updatedReply.upvotes,
                     hasUpvoted: updatedReply.hasUpvoted
                 } : r));
+            } else {
+                const data = await res.json().catch(() => ({}));
+                toast.error(data.error || "Failed to vote.", { id: `vote-error-${replyId}` });
             }
         } catch (error) {
             console.error("Failed to vote:", error);
+            toast.error("Network error while voting.", { id: `vote-network-error-${replyId}` });
         }
     };
 
@@ -405,12 +414,12 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    handleDeleteReply(reply.id);
+                                                    setReplyToDelete(reply.id);
+                                                    setMenuOpenId(null);
                                                 }}
-                                                disabled={isDeletingReply}
-                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase text-red-400 hover:bg-red-600 hover:text-slate-900 dark:hover:text-white transition-all text-left disabled:opacity-50"
+                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-[10px] font-black uppercase text-red-400 hover:bg-red-600 hover:text-slate-900 dark:hover:text-white transition-all text-left"
                                             >
-                                                {isDeletingReply ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Delete
+                                                <Trash2 className="w-3 h-3" /> Delete
                                             </button>
                                         </div>
                                     )}
@@ -927,6 +936,20 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     </div>
                 </div>
             )}
+            
+            <DeleteConfirmationDialog
+                isOpen={replyToDelete !== null}
+                onClose={(open) => {
+                    if (!open) setReplyToDelete(null);
+                }}
+                onConfirm={() => {
+                    if (replyToDelete) handleDeleteReply(replyToDelete);
+                }}
+                isDeleting={isDeletingReply}
+                title="Delete Reply?"
+                description="This action cannot be undone. The reply will be permanently removed."
+                confirmText="Delete Reply"
+            />
         </div>
     );
 }

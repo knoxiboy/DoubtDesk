@@ -253,3 +253,198 @@ export async function sendReplyNotificationEmail(params: {
     }
 }
 
+/**
+ * Sends a premium, responsive HTML email digest to the user.
+ */
+export async function sendDigestEmail(params: {
+    toEmail: string;
+    subject: string;
+    totalReplies: number;
+    totalDoubts: number;
+    doubts: Array<{
+        id: number;
+        subject: string;
+        content: string;
+        replies: Array<{
+            replierName: string;
+            content: string;
+        }>;
+    }>;
+}) {
+    const { toEmail, subject, totalReplies, totalDoubts, doubts } = params;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const unsubscribeLink = `${appUrl}/api/unsubscribe?email=${encodeURIComponent(toEmail)}`;
+
+    let doubtsHtml = "";
+    for (const d of doubts) {
+        const doubtLink = `${appUrl}/rooms/${d.id}`;
+        const cleanDoubtContent = d.content.length > 100 ? `${d.content.slice(0, 97)}...` : d.content;
+        
+        let repliesHtml = "";
+        for (const r of d.replies) {
+            const cleanReplyContent = r.content.length > 180 ? `${r.content.slice(0, 177)}...` : r.content;
+            repliesHtml += `
+                <div style="margin-bottom: 12px; border-bottom: 1px solid #334155; padding-bottom: 12px; last-child { border-bottom: none; }">
+                    <div style="font-size: 14px; font-weight: 700; color: #f8fafc; margin-bottom: 4px;">Response from ${r.replierName}</div>
+                    <p style="font-size: 14px; line-height: 20px; color: #cbd5e1; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin: 0;">"${cleanReplyContent}"</p>
+                </div>
+            `;
+        }
+
+        doubtsHtml += `
+            <div style="background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #38bdf8; margin-top: 0; margin-bottom: 8px;">Doubt: ${d.subject}</div>
+                <div style="font-size: 14px; line-height: 22px; color: #94a3b8; font-style: italic; margin-bottom: 16px; border-left: 3px solid #38bdf8; padding-left: 12px;">"${cleanDoubtContent}"</div>
+                
+                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #a855f7; margin-bottom: 12px;">New Replies</div>
+                ${repliesHtml}
+                
+                <div style="text-align: right; margin-top: 16px;">
+                    <a href="${doubtLink}" style="display: inline-block; background: #6366f1; color: #ffffff !important; text-decoration: none; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 6px; box-shadow: 0 2px 8px 0 rgba(99, 102, 241, 0.3);">Go to Doubt Room</a>
+                </div>
+            </div>
+        `;
+    }
+
+    const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #0f172a;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                color: #e2e8f0;
+            }
+            .wrapper {
+                width: 100%;
+                background-color: #0f172a;
+                padding: 40px 20px;
+                box-sizing: border-box;
+            }
+            .container {
+                max-width: 600px;
+                margin: 0 auto;
+                background: #1e293b;
+                border: 1px solid #334155;
+                border-radius: 16px;
+                overflow: hidden;
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+            }
+            .header {
+                background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%);
+                padding: 30px 40px;
+                text-align: center;
+                border-bottom: 1px solid #475569;
+            }
+            .logo {
+                font-size: 24px;
+                font-weight: 800;
+                color: #f1f5f9;
+                letter-spacing: 0.5px;
+                margin: 0 0 10px 0;
+            }
+            .header-subtitle {
+                font-size: 14px;
+                color: #94a3b8;
+                margin: 0;
+            }
+            .content {
+                padding: 40px;
+            }
+            .greeting {
+                font-size: 18px;
+                font-weight: 600;
+                color: #f8fafc;
+                margin-top: 0;
+                margin-bottom: 16px;
+            }
+            .message {
+                font-size: 15px;
+                line-height: 24px;
+                color: #cbd5e1;
+                margin-bottom: 24px;
+            }
+            .footer {
+                background: #0f172a;
+                padding: 24px 40px;
+                text-align: center;
+                font-size: 12px;
+                color: #64748b;
+                border-top: 1px solid #334155;
+            }
+            .footer a {
+                color: #38bdf8;
+                text-decoration: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrapper">
+            <div class="container">
+                <div class="header">
+                    <div class="logo">⚡ DoubtDesk Digest</div>
+                    <p class="header-subtitle">Your peer-to-peer classroom resolution platform</p>
+                </div>
+                <div class="content">
+                    <h3 class="greeting">Hi there,</h3>
+                    <p class="message">You have <strong>${totalReplies}</strong> new replies across <strong>${totalDoubts}</strong> doubts. Here is a summary of your unread replies:</p>
+                    
+                    ${doubtsHtml}
+                </div>
+                <div class="footer">
+                    <p>You received this email because you are registered on DoubtDesk and opted to receive digests.</p>
+                    <p>Don't want to receive these digests? <a href="${unsubscribeLink}">Unsubscribe instantly</a> or manage settings in your <a href="${appUrl}/profile">User Profile</a>.</p>
+                    <p>&copy; ${new Date().getFullYear()} DoubtDesk. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+
+    console.log(`[EMAIL SIMULATION] Sending digest notification email to: ${toEmail}`);
+    console.log(`Subject: ${subject}`);
+    console.log(`Total unread: ${totalReplies} replies across ${totalDoubts} doubts`);
+
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey || apiKey === "re_your_actual_key_here") {
+        console.log("[EMAIL SIMULATION] Skipping real delivery. Resend API Key is not configured.");
+        return { success: true, simulated: true };
+    }
+
+    try {
+        const res = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                from: "DoubtDesk <onboarding@resend.dev>",
+                to: [toEmail],
+                subject,
+                html: htmlContent
+            })
+        });
+
+        if (res.ok) {
+            console.log(`[EMAIL SUCCESS] Digest email successfully delivered to: ${toEmail}`);
+            return { success: true, simulated: false };
+        } else {
+            const errText = await res.text();
+            console.error(`[EMAIL ERROR] Resend API responded with status ${res.status}:`, errText);
+            return { success: false, error: errText };
+        }
+    } catch (error: any) {
+        console.error("[EMAIL ERROR] Failed to send digest email via Resend:", error);
+        return { success: false, error: error?.message || error };
+    }
+}
+
+

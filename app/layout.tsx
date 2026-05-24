@@ -30,6 +30,13 @@ function getSiteUrl() {
 
 const siteUrl = getSiteUrl();
 
+export const viewport = {
+  themeColor: "#0f172a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
@@ -38,7 +45,12 @@ export const metadata: Metadata = {
   },
   description:
     "DoubtDesk enables students to solve engineering doubts instantly with AI, join interactive classrooms, and view clear learning analytics.",
-
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "DoubtDesk",
+  },
   keywords: [
     "DoubtDesk",
     "AI doubt solver",

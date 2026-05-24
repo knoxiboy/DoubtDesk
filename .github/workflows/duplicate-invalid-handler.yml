@@ -1,0 +1,49 @@
+name: Handle Duplicate/Invalid Issues
+
+on:
+  issues:
+    types: [labeled]
+  pull_request_target:
+    types: [labeled]
+
+jobs:
+  close_and_comment:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    if: ${{ github.event.label.name == 'duplicate' || github.event.label.name == 'invalid' }}
+    steps:
+      - name: Comment and Close
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const labelName = context.payload.label.name;
+            const isIssue = context.eventName === 'issues';
+            const typeStr = isIssue ? 'issue' : 'pull request';
+            const number = isIssue ? context.issue.number : context.payload.pull_request.number;
+            
+            let message = '';
+            
+            if (labelName === 'duplicate') {
+              message = `Hi there! 👋 Thanks for your contribution. However, this ${typeStr} has been marked as a **duplicate** of an existing one. We are closing it to keep our tracker organized. Please search existing ${typeStr}s before opening new ones!`;
+            } else if (labelName === 'invalid') {
+              message = `Hi there! 👋 Thanks for reaching out. This ${typeStr} has been marked as **invalid**. This usually means it does not follow our contributing guidelines, is out of scope for the project, or lacks necessary information. It will now be closed.`;
+            }
+            
+            // Add comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+              body: message
+            });
+            
+            // Close the issue/PR
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+              state: 'closed'
+            });

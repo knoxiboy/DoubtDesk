@@ -2,10 +2,10 @@ import { inngest } from "./client";
 import fs from "fs";
 import path from "path";
 import { db } from "../configs/db";
-import { doubtsTable, usersTable } from "../configs/schema";
-import { eq } from "drizzle-orm";
+import { doubtsTable, usersTable, pendingNotificationsTable, repliesTable } from "../configs/schema";
+import { eq, inArray } from "drizzle-orm";
 import { emailNotificationLimiter } from "../lib/ratelimit";
-import { sendReplyNotificationEmail } from "../lib/email";
+import { sendReplyNotificationEmail, sendDigestEmail } from "../lib/email";
 export const helloWorld = inngest.createFunction(
   { id: "hello-world", triggers: [{ event: "test/hello.world" }] },
   async ({ event, step }: { event: any; step: any }) => {
@@ -65,6 +65,7 @@ export const sendReplyNotification = inngest.createFunction(
         content: d.content || "",
         authorName: d.userName,
         notificationsEnabled: u ? u.emailNotificationsEnabled : true,
+        notificationPreference: u ? u.notificationPreference : "instant",
       };
     });
 
@@ -78,8 +79,21 @@ export const sendReplyNotification = inngest.createFunction(
     }
 
     // 3. User preference check: Opt-out verification
-    if (!doubt.notificationsEnabled) {
+    if (!doubt.notificationsEnabled || doubt.notificationPreference === "none") {
       return { success: true, reason: "Skipped: User has disabled email notifications." };
+    }
+
+    // 3.5. Queue digest notifications instead of sending immediately
+    if (doubt.notificationPreference === "daily" || doubt.notificationPreference === "weekly") {
+      const queueResult = await step.run("queue-pending-notification", async () => {
+        await db.insert(pendingNotificationsTable).values({
+          userEmail: doubt.email,
+          doubtId,
+          replyId,
+        });
+        return { success: true };
+      });
+      return { success: true, reason: "Queued for digest notification.", queueResult };
     }
 
     // 4. Rate-limiting check: Prevents spamming emails for rapid replies
@@ -110,5 +124,167 @@ export const sendReplyNotification = inngest.createFunction(
     });
 
     return { success: true, sendResult };
+  }
+);
+
+export const sendDailyDigest = inngest.createFunction(
+  { id: "send-daily-digest", triggers: [{ cron: "0 8 * * *" }] },
+  async ({ step }: { step: any }) => {
+    const digestedCount = await step.run("process-daily-digest", async () => {
+      // 1. Get all users with daily digest preference
+      const dailyUsers = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.notificationPreference, "daily"));
+
+      if (dailyUsers.length === 0) return 0;
+
+      let sentCount = 0;
+
+      for (const user of dailyUsers) {
+        // Fetch all pending notifications for this user
+        const pending = await db
+          .select({
+            id: pendingNotificationsTable.id,
+            doubtId: pendingNotificationsTable.doubtId,
+            doubtSubject: doubtsTable.subject,
+            doubtContent: doubtsTable.content,
+            replyId: pendingNotificationsTable.replyId,
+            replierName: repliesTable.userName,
+            replyContent: repliesTable.content,
+          })
+          .from(pendingNotificationsTable)
+          .innerJoin(doubtsTable, eq(pendingNotificationsTable.doubtId, doubtsTable.id))
+          .innerJoin(repliesTable, eq(pendingNotificationsTable.replyId, repliesTable.id))
+          .where(eq(pendingNotificationsTable.userEmail, user.email));
+
+        if (pending.length === 0) continue;
+
+        // Group notifications by doubt
+        const doubtsMap = new Map<number, {
+          id: number;
+          subject: string;
+          content: string;
+          replies: Array<{ replierName: string; content: string }>;
+        }>();
+
+        for (const p of pending) {
+          if (!doubtsMap.has(p.doubtId)) {
+            doubtsMap.set(p.doubtId, {
+              id: p.doubtId,
+              subject: p.doubtSubject,
+              content: p.doubtContent || "",
+              replies: []
+            });
+          }
+          doubtsMap.get(p.doubtId)!.replies.push({
+            replierName: p.replierName,
+            content: p.replyContent || ""
+          });
+        }
+
+        // Send digest email
+        await sendDigestEmail({
+          toEmail: user.email,
+          subject: "[DoubtDesk] Your Daily Doubt Updates Digest",
+          totalReplies: pending.length,
+          totalDoubts: doubtsMap.size,
+          doubts: Array.from(doubtsMap.values()),
+        });
+
+        // Delete processed pending notifications for this user
+        const notificationIds = pending.map(p => p.id);
+        await db
+          .delete(pendingNotificationsTable)
+          .where(inArray(pendingNotificationsTable.id, notificationIds));
+
+        sentCount++;
+      }
+
+      return sentCount;
+    });
+
+    return { message: `Successfully sent daily digest to ${digestedCount} users.` };
+  }
+);
+
+export const sendWeeklyDigest = inngest.createFunction(
+  { id: "send-weekly-digest", triggers: [{ cron: "0 8 * * 1" }] },
+  async ({ step }: { step: any }) => {
+    const digestedCount = await step.run("process-weekly-digest", async () => {
+      // 1. Get all users with weekly digest preference
+      const weeklyUsers = await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.notificationPreference, "weekly"));
+
+      if (weeklyUsers.length === 0) return 0;
+
+      let sentCount = 0;
+
+      for (const user of weeklyUsers) {
+        // Fetch all pending notifications for this user
+        const pending = await db
+          .select({
+            id: pendingNotificationsTable.id,
+            doubtId: pendingNotificationsTable.doubtId,
+            doubtSubject: doubtsTable.subject,
+            doubtContent: doubtsTable.content,
+            replyId: pendingNotificationsTable.replyId,
+            replierName: repliesTable.userName,
+            replyContent: repliesTable.content,
+          })
+          .from(pendingNotificationsTable)
+          .innerJoin(doubtsTable, eq(pendingNotificationsTable.doubtId, doubtsTable.id))
+          .innerJoin(repliesTable, eq(pendingNotificationsTable.replyId, repliesTable.id))
+          .where(eq(pendingNotificationsTable.userEmail, user.email));
+
+        if (pending.length === 0) continue;
+
+        // Group notifications by doubt
+        const doubtsMap = new Map<number, {
+          id: number;
+          subject: string;
+          content: string;
+          replies: Array<{ replierName: string; content: string }>;
+        }>();
+
+        for (const p of pending) {
+          if (!doubtsMap.has(p.doubtId)) {
+            doubtsMap.set(p.doubtId, {
+              id: p.doubtId,
+              subject: p.doubtSubject,
+              content: p.doubtContent || "",
+              replies: []
+            });
+          }
+          doubtsMap.get(p.doubtId)!.replies.push({
+            replierName: p.replierName,
+            content: p.replyContent || ""
+          });
+        }
+
+        // Send digest email
+        await sendDigestEmail({
+          toEmail: user.email,
+          subject: "[DoubtDesk] Your Weekly Doubt Updates Digest",
+          totalReplies: pending.length,
+          totalDoubts: doubtsMap.size,
+          doubts: Array.from(doubtsMap.values()),
+        });
+
+        // Delete processed pending notifications for this user
+        const notificationIds = pending.map(p => p.id);
+        await db
+          .delete(pendingNotificationsTable)
+          .where(inArray(pendingNotificationsTable.id, notificationIds));
+
+        sentCount++;
+      }
+
+      return sentCount;
+    });
+
+    return { message: `Successfully sent weekly digest to ${digestedCount} users.` };
   }
 );

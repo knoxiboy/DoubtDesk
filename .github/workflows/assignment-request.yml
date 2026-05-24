@@ -1,0 +1,41 @@
+name: Assignment Request Handler
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  handle_assign_request:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    if: ${{ !github.event.issue.pull_request && contains(github.event.comment.body, '/assign') }}
+    steps:
+      - name: Acknowledge and notify maintainers
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commenter = context.payload.comment.user.login;
+            
+            // Add a label indicating it needs maintainer review
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: ['needs-maintainer-approval']
+              });
+            } catch (e) {
+              console.log("Could not add label (it might not exist yet).", e);
+            }
+
+            // Leave a comment
+            const message = `Hello @${commenter}! Thanks for your interest in working on this issue. \n\nWe have notified the maintainers. They will review your request and assign the issue to you shortly if it's available. Please do not start working until you are officially assigned.`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: message
+            });

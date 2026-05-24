@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark } from "lucide-react";
+import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock } from "lucide-react";
 import AskDoubt from "./AskDoubt";
 import DoubtRepliesModal from "./DoubtRepliesModal";
 import { toast } from "sonner";
+import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 
 interface DoubtCardProps {
     doubt: any;
@@ -24,6 +25,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
     const [isDeleting, setIsDeleting] = useState(false);
     const [isPinning, setIsPinning] = useState(false);
     const [isBookmarking, setIsBookmarking] = useState(false);
+    const [likes, setLikes] = useState<number>(doubt.likes || 0);
 
     const isTeacher = role === 'teacher';
 
@@ -35,7 +37,10 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
     }, [doubt.userName]);
 
     const handleAction = async (action: string) => {
-        if (action === "like") setIsLiking(true);
+        if (action === "like") {
+            setIsLiking(true);
+            setLikes(prev => prev + 1);
+        }
         if (action === "solve") setIsSolving(true);
 
         const userName = localStorage.getItem("anonymous_user");
@@ -59,6 +64,8 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                 toast.error(data.error || `Failed to ${action} doubt.`);
             }
         } catch (error) {
+            if(action === 'like') setLikes(prev => prev -1);
+
             console.error(`Action ${action} failed:`, error);
             toast.error(`Failed to ${action} doubt.`);
         } finally {
@@ -77,6 +84,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
             if (res.ok) {
                 toast.success("Doubt deleted successfully");
                 if (onUpdate) onUpdate();
+                setIsDeleteDialogOpen(false);
             } else {
                 toast.error("Failed to delete doubt");
             }
@@ -85,7 +93,6 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
             toast.error("An error occurred during deletion");
         } finally {
             setIsDeleting(false);
-            setIsDeleteDialogOpen(false);
         }
     };
 
@@ -174,6 +181,11 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                                 <CheckCircle className="w-3 h-3 text-emerald-500" />
                                 <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Solved</span>
                             </div>
+                        ) : doubt.isSolved === "in-progress" ? (
+                            <div className="px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center gap-1.5">
+                                <Clock className="w-3 h-3 text-amber-500" />
+                                <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">In Progress</span>
+                            </div>
                         ) : (
                             <div className="px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-full flex items-center gap-1.5">
                                 <AlertTriangle className="w-3 h-3 text-red-500" />
@@ -233,7 +245,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                             className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-6 py-3 rounded-2xl transition-all group/btn ${ doubt.hasLiked ? "bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-lg shadow-blue-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
                         >
                             <ThumbsUp className={`w-4 h-4 ${isLiking ? 'animate-pulse' : 'group-hover/btn:scale-110 transition-transform'} ${doubt.hasLiked ? 'fill-blue-400' : ''}`} />
-                            <span className="text-xs font-black">{doubt.likes || 0}</span>
+                            <span className="text-xs font-black">{likes}</span>
                         </button>
 
                         <button
@@ -352,49 +364,15 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
             )}
 
             {/* Premium Delete Confirmation Dialog */}
-            {isDeleteDialogOpen && (
-                <div
-                    className="fixed inset-0 z-[150] flex items-center justify-center bg-white/80 dark:bg-slate-950/80 backdrop-blur-md p-4 animate-in fade-in duration-300"
-                    onClick={() => setIsDeleteDialogOpen(false)}
-                >
-                    <div
-                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="p-10 flex flex-col items-center text-center">
-                            <div className="w-20 h-20 bg-red-500/10 rounded-[2rem] flex items-center justify-center mb-6 border border-red-500/20">
-                                <AlertTriangle className="w-10 h-10 text-red-500" />
-                            </div>
-                            <h2 className="text-2xl font-black text-slate-900 dark:text-white italic tracking-tighter uppercase mb-4">
-                                Delete <span className="text-red-500">Post?</span>
-                            </h2>
-                            <p className="text-slate-600 dark:text-slate-400 text-sm font-medium leading-relaxed mb-8">
-                                This action cannot be undone. Your doubt and all interactions will be permanently removed.
-                            </p>
-
-                            <div className="w-full flex gap-4">
-                                <button
-                                    onClick={() => setIsDeleteDialogOpen(false)}
-                                    className="flex-1 py-4 bg-slate-50 dark:bg-slate-800 hover:bg-slate-700 text-slate-900 dark:text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all border border-slate-200 dark:border-white/5 active:scale-95"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleDelete}
-                                    disabled={isDeleting}
-                                    className="flex-[1.5] py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-lg shadow-red-600/20 active:scale-95 flex items-center justify-center gap-2"
-                                >
-                                    {isDeleting ? (
-                                        <div className="w-4 h-4 border-2 border-slate-300 dark:border-white/20 border-t-white rounded-full animate-spin" />
-                                    ) : (
-                                        "Yes, Delete"
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <DeleteConfirmationDialog
+                isOpen={isDeleteDialogOpen}
+                onClose={setIsDeleteDialogOpen}
+                onConfirm={handleDelete}
+                isDeleting={isDeleting}
+                title="Delete Post?"
+                description="This action cannot be undone. Your doubt and all interactions will be permanently removed."
+                confirmText="Yes, Delete"
+            />
         </>
     );
 }

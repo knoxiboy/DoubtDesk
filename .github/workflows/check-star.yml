@@ -1,0 +1,73 @@
+name: Verify Repository Star
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+jobs:
+  check-star:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Verify author has starred repo
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const query = `
+            query($cursor: String) {
+              repository(owner: context.repo.owner, name: context.repo.repo) {
+                stargazers(first: 100, after: $cursor) {
+                  nodes { login }
+                  pageInfo { hasNextPage, endCursor }
+                }
+              }
+            }`;
+            
+            // Note: Since we need the literal owner/repo string for the query, 
+            // we will inject the variables into the query string safely.
+            const queryWithVars = `
+            query($cursor: String) {
+              repository(owner: "${context.repo.owner}", name: "${context.repo.repo}") {
+                stargazers(first: 100, after: $cursor) {
+                  nodes { login }
+                  pageInfo { hasNextPage, endCursor }
+                }
+              }
+            }`;
+
+            let stargazers = new Set();
+            let cursor = null;
+            let hasNextPage = true;
+
+            try {
+              while (hasNextPage) {
+                const result = await github.graphql(queryWithVars, { cursor: cursor });
+                const stargazersData = result.repository.stargazers;
+                stargazersData.nodes.forEach(node => stargazers.add(node.login));
+                hasNextPage = stargazersData.pageInfo.hasNextPage;
+                cursor = stargazersData.pageInfo.endCursor;
+              }
+
+              const author = context.payload.pull_request.user.login;
+
+              if (!stargazers.has(author)) {
+                const msg = `Technical Review\n\nHi @${author}! Thank you for your contribution to DoubtDesk.\n\nThe code changes look good. Before we can complete the technical review, approve, and merge this pull request, we have one final requirement for all contributors: Please star the DoubtDesk repository.\n\nOnce you have starred the repository, please drop a comment here saying "done" (or we will automatically detect it) and we will proceed with approving and merging your PR. Thank you.`;
+                
+                await github.rest.pulls.createReview({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.payload.pull_request.number,
+                  body: msg,
+                  event: 'REQUEST_CHANGES'
+                });
+                
+                core.setFailed("Author has not starred the repository. Left a review requesting it.");
+              } else {
+                console.log(`Success! @${author} has starred the repository.`);
+              }
+            } catch (error) {
+              console.error("Error fetching stargazers", error);
+              core.setFailed("GraphQL Error: " + error.message);
+            }

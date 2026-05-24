@@ -1,0 +1,34 @@
+name: Auto-Assign Reviewers
+
+on:
+  pull_request_target:
+    types: [opened, ready_for_review]
+
+jobs:
+  assign-reviewers:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Request review from maintainers
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const maintainers = ['knoxiboy']; // Add other maintainer usernames here
+            
+            // Check if PR author is already a maintainer to avoid self-request errors
+            const author = context.payload.pull_request.user.login;
+            const reviewersToAssign = maintainers.filter(m => m !== author);
+
+            if (reviewersToAssign.length > 0) {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                reviewers: reviewersToAssign
+              });
+              console.log(`Requested review from: ${reviewersToAssign.join(', ')}`);
+            } else {
+              console.log("No valid reviewers to assign (author is the only maintainer listed).");
+            }

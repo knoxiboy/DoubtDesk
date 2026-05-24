@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useUser } from "@clerk/nextjs";
 
 import { cn } from "@/lib/utils";
 
@@ -12,11 +13,42 @@ type ThemeToggleProps = {
 
 export function ThemeToggle({ className }: ThemeToggleProps) {
     const { resolvedTheme, setTheme } = useTheme();
+    const { isSignedIn } = useUser();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    useEffect(() => {
+        if (!isSignedIn) return;
+
+        fetch("/api/user/preferences")
+            .then((res) => res.json())
+            .then((data) => {
+                if (data.themePreference) {
+                    setTheme(data.themePreference);
+                }
+            })
+            .catch(() => {
+            });
+    }, [isSignedIn, setTheme]);
+
+    async function handleToggle() {
+        const isDark = resolvedTheme === "dark";
+        const nextTheme = isDark ? "light" : "dark";
+
+        setTheme(nextTheme);
+
+        if (isSignedIn) {
+            fetch("/api/user/preferences", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ themePreference: nextTheme }),
+            }).catch(() => {
+            });
+        }
+    }
 
     const isDark = mounted ? resolvedTheme === "dark" : true;
     const nextTheme = isDark ? "light" : "dark";
@@ -26,7 +58,7 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
             type="button"
             aria-label={`Switch to ${nextTheme} mode`}
             title={`Switch to ${nextTheme} mode`}
-            onClick={() => setTheme(nextTheme)}
+            onClick={handleToggle}
             className={cn(
                 "relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200/70 bg-white/80 text-slate-700 shadow-sm transition-all hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white",
                 className

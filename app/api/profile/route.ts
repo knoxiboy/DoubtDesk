@@ -57,6 +57,8 @@ export async function GET(req: Request) {
             collegeEmail: dbUser?.collegeEmail || undefined,
             role: dbUser?.role || undefined,
             onboarded: dbUser?.onboarded || false,
+            emailNotificationsEnabled: dbUser?.emailNotificationsEnabled ?? true,
+            notificationPreference: dbUser?.notificationPreference || "instant",
             imageUrl: clerkUser?.imageUrl || undefined,
             joinDate: joinDate,
         };
@@ -98,15 +100,42 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "No email found" }, { status: 400 });
         }
 
-        const { emailNotificationsEnabled } = await req.json();
+        const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
 
-        if (typeof emailNotificationsEnabled !== "boolean") {
-            return NextResponse.json({ error: "Invalid preference value" }, { status: 400 });
+        const { emailNotificationsEnabled, notificationPreference } = await req.json();
+
+        const updateData: Record<string, any> = {};
+
+        if (typeof emailNotificationsEnabled === "boolean") {
+            updateData.emailNotificationsEnabled = emailNotificationsEnabled;
+            // Sync notificationPreference if turning email notifications completely off/on
+            if (!emailNotificationsEnabled) {
+                updateData.notificationPreference = "none";
+            } else if (dbUser?.notificationPreference === "none") {
+                updateData.notificationPreference = "instant";
+            }
+        }
+
+        if (notificationPreference !== undefined) {
+            const validPreferences = ["instant", "daily", "weekly", "none"];
+            if (!validPreferences.includes(notificationPreference)) {
+                return NextResponse.json({ error: "Invalid preference value" }, { status: 400 });
+            }
+            updateData.notificationPreference = notificationPreference;
+            if (notificationPreference === "none") {
+                updateData.emailNotificationsEnabled = false;
+            } else {
+                updateData.emailNotificationsEnabled = true;
+            }
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: "No fields to update" }, { status: 400 });
         }
 
         // Update the user preference in DB
         const updated = await db.update(usersTable)
-            .set({ emailNotificationsEnabled })
+            .set(updateData)
             .where(eq(usersTable.email, email))
             .returning();
 

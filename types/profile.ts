@@ -58,6 +58,7 @@ export interface ProfileUser {
     imageUrl: string;
     joinDate: string;
     emailNotificationsEnabled?: boolean;
+    notificationPreference?: "instant" | "daily" | "weekly" | "none";
     createdAt: string;
 }
 

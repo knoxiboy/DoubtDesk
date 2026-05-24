@@ -11,6 +11,7 @@ import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { ProfileData, ProfileDoubt, ProfileReply, ProfileClassroom } from "@/types/profile";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 /** Skeleton placeholder that mirrors the profile page layout. */
@@ -90,7 +91,34 @@ export default function ProfilePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
+    const [notificationPreference, setNotificationPreference] = useState<"instant" | "daily" | "weekly" | "none">("instant");
     const [isSavingPref, setIsSavingPref] = useState(false);
+
+    const handlePrefChange = async (value: "instant" | "daily" | "weekly" | "none") => {
+        if (isSavingPref) return;
+        setIsSavingPref(true);
+        try {
+            const res = await fetch("/api/profile", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ notificationPreference: value }),
+            });
+            if (res.ok) {
+                setNotificationPreference(value);
+                setEmailNotificationsEnabled(value !== "none");
+                toast.success("Notification preferences updated!");
+            } else {
+                toast.error("Failed to update preferences");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Error updating preferences");
+        } finally {
+            setIsSavingPref(false);
+        }
+    };
 
     const fetchProfile = () => {
         setLoading(true);
@@ -105,6 +133,7 @@ export default function ProfilePage() {
                 if (data.user) {
                     setProfileData(data);
                     setEmailNotificationsEnabled(data.user.emailNotificationsEnabled ?? true);
+                    setNotificationPreference(data.user.notificationPreference ?? "instant");
                 } else {
                     setError("Profile data is unavailable. Please try again.");
                 }
@@ -127,6 +156,17 @@ export default function ProfilePage() {
         }
         fetchProfile();
     }, [isLoaded, userId, router]);
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const searchParams = new URLSearchParams(window.location.search);
+            if (searchParams.get("unsubscribed") === "true") {
+                toast.success("Successfully unsubscribed from email notifications!");
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+        }
+    }, []);
 
     if (!isLoaded || loading) {
         return <ProfileSkeleton />;
@@ -179,10 +219,10 @@ export default function ProfilePage() {
                     </div>
                 </div>
 
-                {/* Email Notification Settings Switch */}
-                <div className="flex items-center gap-4 bg-slate-950/40 border border-slate-800/80 rounded-xl p-4 md:self-center shadow-inner">
+                {/* Email Notification Settings Select */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-slate-950/40 border border-slate-800/80 rounded-xl p-4 md:self-center shadow-inner min-w-[280px] sm:min-w-[380px] w-full sm:w-auto">
                     <div className="flex flex-col max-w-[240px]">
-                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 font-medium">
                             <Mail className="w-4 h-4 text-purple-400" />
                             Email Alerts
                         </span>
@@ -190,44 +230,23 @@ export default function ProfilePage() {
                             Get notified when someone replies to your doubts.
                         </span>
                     </div>
-                    <button
-                        onClick={async () => {
-                            if (isSavingPref) return;
-                            setIsSavingPref(true);
-                            const newValue = !emailNotificationsEnabled;
-                            try {
-                                const res = await fetch("/api/profile", {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({ emailNotificationsEnabled: newValue }),
-                                });
-                                if (res.ok) {
-                                    setEmailNotificationsEnabled(newValue);
-                                    toast.success(newValue ? "Email notifications enabled!" : "Email notifications disabled!");
-                                } else {
-                                    toast.error("Failed to update preferences");
-                                }
-                            } catch (error) {
-                                console.error(error);
-                                toast.error("Error updating preferences");
-                            } finally {
-                                setIsSavingPref(false);
-                            }
-                        }}
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${ emailNotificationsEnabled ? "bg-purple-600" : "bg-slate-700" } ${isSavingPref ? "opacity-50 pointer-events-none" : ""}`}
-                    >
-                        <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out flex items-center justify-center ${ emailNotificationsEnabled ? "translate-x-5" : "translate-x-0" }`}
+                    <div className="w-full sm:w-auto sm:ml-auto">
+                        <Select
+                            value={notificationPreference}
+                            onValueChange={handlePrefChange}
+                            disabled={isSavingPref}
                         >
-                            {isSavingPref ? (
-                                <Loader2 className="w-3 h-3 text-slate-600 animate-spin" />
-                            ) : emailNotificationsEnabled ? (
-                                <Bell className="w-3 h-3 text-purple-600" />
-                            ) : null}
-                        </span>
-                    </button>
+                            <SelectTrigger className="w-full sm:w-[160px] border-slate-700 bg-slate-900/60 dark:text-slate-200 focus:ring-purple-500">
+                                <SelectValue placeholder="Select frequency" />
+                            </SelectTrigger>
+                            <SelectContent className="border-slate-800 bg-slate-905 dark:bg-slate-900 text-slate-200">
+                                <SelectItem value="instant">Instant Alerts</SelectItem>
+                                <SelectItem value="daily">Daily Digest</SelectItem>
+                                <SelectItem value="weekly">Weekly Digest</SelectItem>
+                                <SelectItem value="none">Muted (None)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
             </div>
 

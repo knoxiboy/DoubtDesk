@@ -1,0 +1,47 @@
+name: GSSoC Auto Labeler
+
+on:
+  issues:
+    types: [opened, edited]
+  pull_request_target:
+    types: [opened, edited]
+
+jobs:
+  label_gssoc:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Add GSSoC Labels
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const labelsToAdd = ['gssoc', "gssoc'26"];
+            
+            // Extract the title regardless of whether it's an issue or PR
+            const payload = context.payload;
+            const title = (payload.issue ? payload.issue.title : payload.pull_request.title).toLowerCase();
+            
+            // Parse title for semantic types
+            if (title.includes('bug') || title.includes('fix')) {
+              labelsToAdd.push('type:bug');
+            }
+            if (title.includes('feat') || title.includes('enhancement')) {
+              labelsToAdd.push('type:feature');
+            }
+            if (title.includes('docs')) {
+              labelsToAdd.push('type:docs');
+            }
+            if (title.includes('refactor')) {
+              labelsToAdd.push('type:refactor');
+            }
+            
+            // Add labels
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: payload.issue ? payload.issue.number : payload.pull_request.number,
+              labels: labelsToAdd
+            });

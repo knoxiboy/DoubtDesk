@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useAppUser } from "../../provider";
 import {
@@ -37,6 +37,7 @@ import DoubtCard from "@/components/DoubtCard";
 import Dashboard from "@/app/dashboard/page"; // We can reuse or adapt the Analytics view
 import AskAIView from "../../../components/AskAIView";
 import ExportButton from "@/components/ExportButton";
+import DoubtSortSelect, { DoubtSortValue } from "@/components/DoubtSortSelect";
 import { toast } from "sonner";
 import useSWRInfinite from "swr/infinite";
 import { useInView } from "react-intersection-observer";
@@ -54,6 +55,8 @@ interface Classroom {
 export default function ClassroomPage() {
     const { id } = useParams();
     const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const { appUser } = useAppUser();
 
     const [classroom, setClassroom] = useState<Classroom | null>(null);
@@ -63,11 +66,12 @@ export default function ClassroomPage() {
     const [isAskModalOpen, setIsAskModalOpen] = useState(false);
     const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [doubtFilter, setDoubtFilter] = useState<'pending' | 'solved'>('pending');
+    const [doubtFilter, setDoubtFilter] = useState<'unsolved' | 'in-progress' | 'solved'>('unsolved');
     const [searchVal, setSearchVal] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [subjectFilter, setSubjectFilter] = useState("All");
     const [tagFilter, setTagFilter] = useState("");
+    const sort = (searchParams.get("sort") as DoubtSortValue) || "newest";
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -80,6 +84,19 @@ export default function ClassroomPage() {
     const userName = typeof window !== 'undefined' ? localStorage.getItem("anonymous_user") : "";
 
     const fetcher = (url: string) => fetch(url).then(res => res.json());
+    const updateSort = (nextSort: DoubtSortValue) => {
+        const nextParams = new URLSearchParams(searchParams.toString());
+        if (nextSort === "newest") {
+            nextParams.delete("sort");
+        } else {
+            nextParams.set("sort", nextSort);
+        }
+
+        const query = nextParams.toString();
+        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+        setSize(1);
+    };
+
     const getKey = (pageIndex: number, previousPageData: any[]) => {
         if (previousPageData && !previousPageData.length) return null; // reached the end
         if (activeTab === 'insights') return null;
@@ -93,6 +110,7 @@ export default function ClassroomPage() {
         if (tagFilter.trim()) params.append("tag", tagFilter.trim());
         if (searchQuery) params.append("search", searchQuery);
         if (subjectFilter !== "All") params.append("subject", subjectFilter);
+        if (sort !== "newest") params.append("sort", sort);
         return `/api/doubts?${params.toString()}`;
     };
 
@@ -252,6 +270,12 @@ export default function ClassroomPage() {
             </div>
 
             {/* Content Area */}
+            <div className="max-w-7xl mx-auto px-4 md:px-12 pb-2 flex justify-end">
+                {activeTab !== "ask-ai" && activeTab !== "insights" && (
+                    <DoubtSortSelect value={sort} onValueChange={updateSort} />
+                )}
+            </div>
+
             <div className="max-w-7xl mx-auto p-4 md:py-8 md:px-12">
                 {activeTab === "ask-ai" && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-10">
@@ -310,10 +334,16 @@ export default function ClassroomPage() {
 
                             <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-950/50 p-1.5 rounded-2xl border border-slate-200 dark:border-white/5">
                                 <button
-                                    onClick={() => setDoubtFilter('pending')}
-                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${ doubtFilter === 'pending' ? "bg-red-500/10 text-red-500 border border-red-500/20" : "text-slate-500 hover:text-white" }`}
+                                    onClick={() => setDoubtFilter('unsolved')}
+                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${ doubtFilter === 'unsolved' ? "bg-red-500/10 text-red-500 border border-red-500/20" : "text-slate-500 hover:text-white" }`}
                                 >
-                                    Pending
+                                    Unsolved
+                                </button>
+                                <button
+                                    onClick={() => setDoubtFilter('in-progress')}
+                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${ doubtFilter === 'in-progress' ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : "text-slate-500 hover:text-white" }`}
+                                >
+                                    In Progress
                                 </button>
                                 <button
                                     onClick={() => setDoubtFilter('solved')}
@@ -410,7 +440,7 @@ export default function ClassroomPage() {
                             </div>
                         ) : (
                             <div className="space-y-8 animate-in fade-in duration-500">
-                                {doubtFilter === 'pending' ? (
+                                {doubtFilter === 'unsolved' && (
                                     <div className="space-y-8">
                                         <div className="flex items-center gap-4">
                                             <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red-500/20 to-transparent"></div>
@@ -418,17 +448,37 @@ export default function ClassroomPage() {
                                             <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red-500/20 to-transparent"></div>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved !== "solved").map((doubt: any) => (
+                                            {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "unsolved" || (!d.isSolved)).map((doubt: any) => (
                                                 <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
                                              ))}
-                                            {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved !== "solved").length === 0) && (
+                                            {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "unsolved" || (!d.isSolved)).length === 0) && (
                                                 <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
-                                                    No pending queries in this category.
+                                                    No unsolved queries in this category.
                                                 </div>
                                             )}
                                         </div>
                                     </div>
-                                ) : (
+                                )}
+                                {doubtFilter === 'in-progress' && (
+                                    <div className="space-y-8">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"></div>
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-500/60 bg-amber-500/5 px-4 py-1.5 rounded-full border border-amber-500/10">In Progress</h3>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"></div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "in-progress").map((doubt: any) => (
+                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
+                                             ))}
+                                            {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "in-progress").length === 0) && (
+                                                <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
+                                                    No doubts in progress right now.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                                {doubtFilter === 'solved' && (
                                     <div className="space-y-8">
                                         <div className="flex items-center gap-4">
                                             <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
@@ -461,10 +511,16 @@ export default function ClassroomPage() {
 
                             <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-950/50 p-1.5 rounded-2xl border border-slate-200 dark:border-white/5">
                                 <button
-                                    onClick={() => setDoubtFilter('pending')}
-                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${ doubtFilter === 'pending' ? "bg-red-500/10 text-red-500 border border-red-500/20" : "text-slate-500 hover:text-white" }`}
+                                    onClick={() => setDoubtFilter('unsolved')}
+                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${ doubtFilter === 'unsolved' ? "bg-red-500/10 text-red-500 border border-red-500/20" : "text-slate-500 hover:text-white" }`}
                                 >
-                                    Pending
+                                    Unsolved
+                                </button>
+                                <button
+                                    onClick={() => setDoubtFilter('in-progress')}
+                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${ doubtFilter === 'in-progress' ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : "text-slate-500 hover:text-white" }`}
+                                >
+                                    In Progress
                                 </button>
                                 <button
                                     onClick={() => setDoubtFilter('solved')}
@@ -537,22 +593,22 @@ export default function ClassroomPage() {
                             </div>
                         ) : (
                             <div className="space-y-8 animate-in fade-in duration-500">
-                                {doubtFilter === 'pending' ? (
+                                {doubtFilter === 'unsolved' && (
                                     <div className="space-y-8">
                                         <div className="flex items-center gap-4">
                                             <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red-500/20 to-transparent"></div>
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-red-500/60 bg-red-500/5 px-4 py-1.5 rounded-full border border-red-500/10">Pending Doubts</h3>
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-red-500/60 bg-red-500/5 px-4 py-1.5 rounded-full border border-red-500/10">Unsolved Doubts</h3>
                                             <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red-500/20 to-transparent"></div>
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved !== "solved").map((doubt: any) => (
+                                            {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "unsolved" || (!d.isSolved)).map((doubt: any) => (
                                                 <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
                                             ))}
-                                            {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved !== "solved").length === 0) && (
+                                            {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "unsolved" || (!d.isSolved)).length === 0) && (
                                                 <div className="col-span-full py-24 text-center space-y-4 bg-slate-100 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[2.5rem]">
                                                     <GraduationCap className="w-12 h-12 text-slate-700 mx-auto" />
                                                     <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">
-                                                        {classroom?.role === 'teacher' ? "No doubts from students yet." : "No teacher doubts yet."}
+                                                        {classroom?.role === 'teacher' ? "No unsolved doubts from students." : "No unsolved teacher doubts."}
                                                     </p>
                                                     {classroom?.role !== 'teacher' && (
                                                         <button onClick={() => setIsAskModalOpen(true)} className="text-purple-500 font-black uppercase tracking-widest text-[10px] hover:underline underline-offset-4">Send the first query</button>
@@ -561,7 +617,27 @@ export default function ClassroomPage() {
                                             )}
                                         </div>
                                     </div>
-                                ) : (
+                                )}
+                                {doubtFilter === 'in-progress' && (
+                                    <div className="space-y-8">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"></div>
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-500/60 bg-amber-500/5 px-4 py-1.5 rounded-full border border-amber-500/10">In Progress</h3>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"></div>
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "in-progress").map((doubt: any) => (
+                                                <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
+                                            ))}
+                                            {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "in-progress").length === 0) && (
+                                                <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
+                                                    No teacher doubts in progress right now.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                                {doubtFilter === 'solved' && (
                                     <div className="space-y-8">
                                         <div className="flex items-center gap-4">
                                             <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
