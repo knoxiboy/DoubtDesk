@@ -1,11 +1,14 @@
 import { db } from "@/configs/db";
 import { repliesTable, doubtsTable, classroomsTable, replyLikesTable, usersTable } from "@/configs/schema";
-import { eq, asc, sql } from "drizzle-orm";
+import { eq, asc, sql, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 import { buildErrorResponse } from "@/lib/error-handler";
 import { inngest } from "@/inngest/client";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { createReplySchema } from "@/lib/validations/reply";
+import { DOUBT_STATUS } from "@/lib/doubtStatus";
 
 export async function GET(req: Request) {
     try {
@@ -72,6 +75,11 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
+        const { errorResponse, data } = await parseAndValidateRequest(req, createReplySchema);
+        if (errorResponse) return errorResponse;
+
+        const { doubtId, userName, type, content, imageUrl } = data;
+
         const user = await currentUser();
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         const email = user.primaryEmailAddress?.emailAddress;
@@ -87,12 +95,6 @@ export async function POST(req: Request) {
             return NextResponse.json(body, { status });
         }
 
-        const { doubtId, userName, type, content, imageUrl } = await req.json();
-
-        if (!doubtId || !userName || !type) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-        }
-
         // 1. AI Moderation Check
         if (content) {
             const moderation = await moderateContent(content);
@@ -103,7 +105,7 @@ export async function POST(req: Request) {
         }
 
         // Security: Check if it's a teacher doubt
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, parseInt(doubtId)));
+        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId));
         if (doubt?.type === 'teacher') {
             const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId!));
             if (room && email && room.teacherEmail !== email) {
@@ -112,7 +114,7 @@ export async function POST(req: Request) {
         }
 
         const newReply = await db.insert(repliesTable).values({
-            doubtId: parseInt(doubtId),
+            doubtId: doubtId,
             userName,
             userEmail: email,
             type,
@@ -120,12 +122,37 @@ export async function POST(req: Request) {
             imageUrl: imageUrl || null,
         }).returning();
 
+        // Auto-transition: unsolved -> in-progress on first reply.
+        // Design notes:
+        //  - Any reply type qualifies (issue 183 says "when the first reply is posted").
+        //  - We never downgrade `solved` -> `in-progress`; the WHERE guard (`isSolved = 'unsolved'`) makes this idempotent and race condition-safe when two replies land near-simultaneously.
+        //  - AI-typed doubts are excluded because they follow a separate teacher-verification flow (see app/api/doubts/action/[id]/route.ts).
+        //  - This update is best-effort; a failure here must not fail the reply creation, so we swallow errors and log.
+        if (doubt && doubt.type !== "ai") {
+            try {
+                await db
+                    .update(doubtsTable)
+                    .set({ isSolved: DOUBT_STATUS.IN_PROGRESS })
+                    .where(
+                        and(
+                            eq(doubtsTable.id, parseInt(doubtId)),
+                            eq(doubtsTable.isSolved, DOUBT_STATUS.UNSOLVED)
+                        )
+                    );
+            } catch (transitionErr) {
+                console.error(
+                    "Failed to auto-transition doubt to in-progress (safely caught):",
+                    transitionErr
+                );
+            }
+        }
+
         // Trigger background email notification via Inngest
         try {
             await inngest.send({
                 name: "reply.created",
                 data: {
-                    doubtId: parseInt(doubtId),
+                    doubtId: doubtId,
                     replyId: newReply[0].id,
                     replierName: userName,
                     replierEmail: email || "",
@@ -141,29 +168,41 @@ export async function POST(req: Request) {
         // to give immediate feedback on the console.
         if (process.env.NODE_ENV === "development") {
             try {
-                const [d] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, parseInt(doubtId))).limit(1);
+                const [d] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
                 if (d && d.userEmail && d.userEmail !== email) {
                     const [u] = await db.select().from(usersTable).where(eq(usersTable.email, d.userEmail)).limit(1);
                     const notificationsEnabled = u ? u.emailNotificationsEnabled : true;
+                    const preference = u ? u.notificationPreference : "instant";
                     
                     if (notificationsEnabled) {
-                        const { emailNotificationLimiter } = await import("@/lib/ratelimit");
-                        const rateLimitKey = `email_notify:${doubtId}`;
-                        const limitResult = await emailNotificationLimiter.limit(rateLimitKey);
-                        
-                        if (limitResult.success) {
-                            const { sendReplyNotificationEmail } = await import("@/lib/email");
-                            // Run non-blocking in background
-                            sendReplyNotificationEmail({
-                                toEmail: d.userEmail,
+                        if (preference === "instant") {
+                            const { emailNotificationLimiter } = await import("@/lib/ratelimit");
+                            const rateLimitKey = `email_notify:${doubtId}`;
+                            const limitResult = await emailNotificationLimiter.limit(rateLimitKey);
+                            
+                            if (limitResult.success) {
+                                const { sendReplyNotificationEmail } = await import("@/lib/email");
+                                // Run non-blocking in background
+                                sendReplyNotificationEmail({
+                                    toEmail: d.userEmail,
+                                    doubtId: d.id,
+                                    doubtSubject: d.subject,
+                                    doubtContent: d.content || "",
+                                    replierName: userName,
+                                    replyContent: content || ""
+                                }).catch(err => console.error("Immediate dev mailer failed:", err));
+                            } else {
+                                console.log(`[RATE LIMIT EXCEEDED] Immediate dev notification skipped for doubt ${doubtId} to prevent spam.`);
+                            }
+                        } else if (preference === "daily" || preference === "weekly") {
+                            // Queue pending notification in dev database directly for digest testing
+                            const { pendingNotificationsTable } = await import("@/configs/schema");
+                            await db.insert(pendingNotificationsTable).values({
+                                userEmail: d.userEmail,
                                 doubtId: d.id,
-                                doubtSubject: d.subject,
-                                doubtContent: d.content || "",
-                                replierName: userName,
-                                replyContent: content || ""
-                            }).catch(err => console.error("Immediate dev mailer failed:", err));
-                        } else {
-                            console.log(`[RATE LIMIT EXCEEDED] Immediate dev notification skipped for doubt ${doubtId} to prevent spam.`);
+                                replyId: newReply[0].id,
+                            }).catch(err => console.error("Dev fallback pending notification insert failed:", err));
+                            console.log(`[DEV EMAIL] Queued reply notification for digest (${preference}) for user ${d.userEmail}`);
                         }
                     }
                 }

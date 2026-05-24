@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { aiLimiter, generalLimiter } from '@/lib/ratelimit';
+import { aiLimiter, generalLimiter, videoLimiter } from '@/lib/ratelimit';
 
 const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/profile(.*)']);
 
@@ -18,7 +18,8 @@ export default clerkMiddleware(async (auth, req) => {
         
         // Choose limiter based on path
         const isAiRoute = req.nextUrl.pathname.includes('/solve') || req.nextUrl.pathname.includes('/ask-ai');
-        const limiter = isAiRoute ? aiLimiter : generalLimiter;
+        const isVideoRoute = req.nextUrl.pathname.includes('/video/generate');
+        const limiter = isVideoRoute ? videoLimiter : (isAiRoute ? aiLimiter : generalLimiter);
 
         try {
             const { success, limit, remaining, reset } = await limiter.limit(ip);
@@ -27,9 +28,11 @@ export default clerkMiddleware(async (auth, req) => {
                 return new NextResponse(
                     JSON.stringify({
                         error: "Too many requests. Please try again later.",
-                        message: isAiRoute 
-                            ? "AI Solver is currently rate limited to protect resources." 
-                            : "You've reached the rate limit for this action."
+                        message: isVideoRoute 
+                            ? "Video generation limit reached (max 3 per hour)."
+                            : (isAiRoute 
+                                ? "AI Solver is currently rate limited to protect resources." 
+                                : "You've reached the rate limit for this action.")
                     }),
                     {
                         status: 429,

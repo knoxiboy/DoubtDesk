@@ -3,9 +3,16 @@ import { repliesTable, replyLikesTable } from "@/configs/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { voteReplySchema } from "@/lib/validations/reply";
 
 export async function POST(req: Request) {
     try {
+        const { errorResponse, data } = await parseAndValidateRequest(req, voteReplySchema);
+        if (errorResponse) return errorResponse;
+
+        const { replyId, userName } = data;
+
         const user = await currentUser();
         const authenticatedUserId = user?.id;
 

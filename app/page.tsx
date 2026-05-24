@@ -114,7 +114,7 @@ export default function Home() {
   return (
     <div className={`${inter.className} min-h-screen bg-background text-foreground flex flex-col selection:bg-[#5E8CFF]/30 transition-colors duration-300`}>
       {/* Navbar */}
-      <header className="fixed inset-x-0 top-0 z-50 bg-background/88 supports-[backdrop-filter]:bg-background/72 backdrop-blur-xl relative overflow-visible transition-colors duration-300">
+      <header className="sticky inset-x-0 top-0 z-50 bg-background/88 supports-[backdrop-filter]:bg-background/72 backdrop-blur-xl overflow-visible transition-colors duration-300">
         <div className="absolute inset-x-0 bottom-0 h-px bg-border shadow-[0_0_10px_rgba(139,184,255,0.18)]" />
         <div className="max-w-7xl mx-auto h-16 sm:h-20 flex items-center justify-between px-4 sm:px-6 md:px-[clamp(24px,5vw,64px)]">
           <Link href="/" className="flex items-center gap-1 sm:gap-2 hover:opacity-90 transition-opacity shrink-0">
@@ -127,12 +127,33 @@ export default function Home() {
           </Link>
 
           <div className="hidden sm:flex items-center gap-3">
-            <a
-              href="#features"
+            <button
+            onClick={()=> {
+              document.getElementById("features")
+              ?.scrollIntoView({ behavior:"smooth"});
+            }}
               className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-600 dark:hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)]"
             >
               Features
-            </a>
+            </button>
+            <button
+              onClick={()=> {
+              document.getElementById("how-it-works")
+              ?.scrollIntoView({ behavior:"smooth"});
+            }}
+              className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-600 dark:hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)] "
+            >
+              How It Works
+            </button>
+            <button
+              onClick={()=> {
+              document.getElementById("testimonials")
+              ?.scrollIntoView({ behavior:"smooth"});
+            }}
+              className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-600 dark:hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)]"
+            >
+              Testimonial
+            </button>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
@@ -258,7 +279,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="features" className="scroll-mt-28 px-6 py-16 md:py-20 relative z-10">
+        <section id="features" className="scroll-mt-24 px-6 py-16 md:py-20 relative z-10">
           <div className="absolute inset-x-0 top-10 h-40 bg-gradient-to-r from-blue-500/10 via-transparent to-purple-500/10 blur-3xl pointer-events-none" />
           <div className="max-w-7xl mx-auto">
             <div className="max-w-3xl mx-auto text-center">
@@ -297,7 +318,7 @@ export default function Home() {
           </div>
         </section>
         {/* How It Works */}
-        <section id="how-it-works" className="px-6 py-20 relative z-10">
+        <section id="how-it-works" className="scroll-mt-24 px-6 py-20 relative z-10">
           <div className="max-w-7xl mx-auto text-center">
 
             <h3 className="text-3xl sm:text-4xl font-bold text-[#F2F5FF]">
@@ -332,7 +353,7 @@ export default function Home() {
           </div>
         </section>
         {/* Testimonials */}
-        <section className="px-6 py-20 relative z-10">
+        <section id="testimonials" className="scroll-mt-24 px-6 py-20 relative z-10">
           <div className="max-w-7xl mx-auto text-center">
             <div className={`${staatliches.className} mb-4 text-sm tracking-[0.16em] text-[#AABFFF]/70 uppercase`}>
               Testimonials

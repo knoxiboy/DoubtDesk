@@ -7,6 +7,11 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
+export const metadata = {
+  title: "Terms of Service",
+  description: "Read the rules, responsibilities, and conditions for using DoubtDesk.",
+};
+
 export default function TermsOfServicePage() {
   const sections = [
     {

@@ -4,10 +4,16 @@ import { useEffect, useState } from "react";
 import { MessageSquare, Plus, SlidersHorizontal, Loader2 } from "lucide-react";
 import AskDoubt from "@/components/AskDoubt";
 import DoubtCard from "@/components/DoubtCard";
+import DoubtSortSelect, { DoubtSortValue } from "@/components/DoubtSortSelect";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import useSWRInfinite from "swr/infinite";
 import { useInView } from "react-intersection-observer";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 export default function PublicRoomsPage() {
+    const pathname = usePathname();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [isAskModalOpen, setIsAskModalOpen] = useState(false);
     const [filter, setFilter] = useState("All");
     const [tagFilter, setTagFilter] = useState("");
@@ -15,6 +21,7 @@ export default function PublicRoomsPage() {
     const [isOthersActive, setIsOthersActive] = useState(false);
     const [appliedCustomFilter, setAppliedCustomFilter] = useState("");
     const [appliedTagFilter, setAppliedTagFilter] = useState("");
+    const [statusFilter, setStatusFilter] = useState<'all' | 'unsolved' | 'in-progress' | 'solved'>('all');
 
     // Debounced search query
     const [searchVal, setSearchVal] = useState("");
@@ -27,7 +34,22 @@ export default function PublicRoomsPage() {
         return () => clearTimeout(timer);
     }, [searchVal]);
 
+    const sort = (searchParams.get("sort") as DoubtSortValue) || "newest";
+
     const fetcher = (url: string) => fetch(url).then(res => res.json());
+
+    const updateSort = (nextSort: DoubtSortValue) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (nextSort === "newest") {
+            params.delete("sort");
+        } else {
+            params.set("sort", nextSort);
+        }
+
+        const query = params.toString();
+        router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+        setSize(1);
+    };
 
     const getKey = (pageIndex: number, previousPageData: any[]) => {
         if (previousPageData && !previousPageData.length) return null;
@@ -48,6 +70,10 @@ export default function PublicRoomsPage() {
             params.append("tag", appliedTagFilter.trim());
         }
 
+        if (sort !== "newest") {
+            params.append("sort", sort);
+        }
+
         if (userName) params.append("userName", userName);
         params.append("page", (pageIndex + 1).toString());
         params.append("limit", "20");
@@ -65,6 +91,12 @@ export default function PublicRoomsPage() {
     });
 
     const doubts = data ? [].concat(...data) : [];
+    const filteredDoubts = (doubts as any[]).filter((d) => {
+        if (statusFilter === 'all') return true;
+        if (statusFilter === 'unsolved') return d.isSolved === 'unsolved' || !d.isSolved;
+        if (statusFilter === 'in-progress') return d.isSolved === 'in-progress';
+        return d.isSolved === 'solved';
+    });
     const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
     const isReachingEnd = data && data[data.length - 1]?.length < 20;
 
@@ -104,6 +136,9 @@ export default function PublicRoomsPage() {
 
     return (
         <div className="p-4 md:p-8 space-y-6 max-w-[1000px] mx-auto pb-24">
+
+            <ScrollToTopButton />
+
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-200 dark:border-white/5">
                 <div className="space-y-1">
                     <h1 className="text-6xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">
@@ -204,7 +239,34 @@ export default function PublicRoomsPage() {
                         >
                             Tag
                         </button>
+
+                        <DoubtSortSelect value={sort} onValueChange={updateSort} className="ml-auto" />
                     </div>
+                </div>
+
+                {/* Status filter — All / Unsolved / In Progress / Solved */}
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-500 dark:text-slate-500">
+                        <span className="text-[10px] font-black uppercase tracking-widest">Status:</span>
+                    </div>
+                    {([
+                        { key: 'all',         label: 'All',         active: "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" },
+                        { key: 'unsolved',    label: 'Unsolved',    active: "bg-red-500/10 border-red-500/20 text-red-500" },
+                        { key: 'in-progress', label: 'In Progress', active: "bg-amber-500/10 border-amber-500/20 text-amber-500" },
+                        { key: 'solved',      label: 'Solved',      active: "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" },
+                    ] as const).map((s) => (
+                        <button
+                            key={s.key}
+                            onClick={() => setStatusFilter(s.key)}
+                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${
+                                statusFilter === s.key
+                                    ? s.active
+                                    : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white"
+                            }`}
+                        >
+                            {s.label}
+                        </button>
+                    ))}
                 </div>
             </div>
 
@@ -213,10 +275,10 @@ export default function PublicRoomsPage() {
                     <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                     <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">Syncing with community...</p>
                 </div>
-            ) : doubts.length > 0 ? (
+            ) : filteredDoubts.length > 0 ? (
                 <>
                     <div className="flex flex-col gap-6 lg:gap-8">
-                        {doubts.map((doubt: any, index: number) => (
+                        {filteredDoubts.map((doubt: any, index: number) => (
                             <DoubtCard key={`${doubt.id}-${index}`} doubt={doubt} onUpdate={() => mutate()} />
                         ))}
                     </div>
@@ -224,6 +286,19 @@ export default function PublicRoomsPage() {
                         {isLoadingMore && <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />}
                     </div>
                 </>
+            ) : doubts.length > 0 ? (
+                // We have doubts, but none match the current status filter.
+                <div className="py-20 text-center space-y-4 bg-white/[0.02] border border-dashed border-slate-200 dark:border-white/10 rounded-[2.5rem]">
+                    <p className="text-slate-500 dark:text-slate-500 font-black uppercase tracking-widest text-xs">
+                        No doubts matching this status filter.
+                    </p>
+                    <button
+                        onClick={() => setStatusFilter('all')}
+                        className="px-6 py-2.5 bg-white/5 text-slate-300 hover:bg-blue-600 hover:text-white border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                    >
+                        Show all
+                    </button>
+                </div>
             ) : (
                 <div className="relative flex flex-col items-center justify-center py-20 rounded-[3rem] text-center px-6 overflow-hidden border border-slate-200 dark:border-white/5 bg-slate-950/20">
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-950/40 via-slate-900/20 to-indigo-950/30 rounded-[3rem]" />
