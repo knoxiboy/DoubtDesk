@@ -74,12 +74,15 @@ export default function Footer() {
   return (
     <footer className="relative overflow-hidden border-t border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950 transition-colors duration-300">
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
+        {/* Top Section */}
         <div className="flex flex-col lg:flex-row lg:justify-between gap-14 pb-12 border-b border-slate-300 dark:border-white/10">
+          {/* Brand Section */}
           <div className="max-w-md">
             <Link href="/" className="inline-flex items-center gap-3 group">
               <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_15px_rgba(37,99,235,0.15)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                 D
               </div>
+
               <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 tracking-tight transition-colors duration-300">
                 DoubtDesk
               </span>
@@ -96,6 +99,7 @@ export default function Footer() {
                 <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 mb-5">
                   {section.title}
                 </h4>
+
                 <ul className="space-y-4">
                   {section.links.map((link) => {
                     const isExternal =

@@ -72,7 +72,14 @@ jobs:
               'type:design': [
                 'design', 'ui/ux', 'mockup', 'wireframe', 'figma',
                 'layout', 'theme', 'dark mode', 'light mode', 'responsive',
-                'animation', 'accessibility', 'a11y', 'wcag', 'aria'
+                'animation'
+              ],
+              'type:accessibility': [
+                'accessibility', 'a11y', 'wcag', 'aria', 'screen reader'
+              ],
+              'type:devops': [
+                'ci/cd', 'github actions', 'workflow', 'docker', 'deploy',
+                'infrastructure', 'devops', 'pipeline', 'build process'
               ]
             };
 
@@ -117,9 +124,11 @@ jobs:
               ]
             };
 
-            for (const [label, keywords] of Object.entries(areaSignals)) {
-              const score = keywords.filter(k => combined.includes(k)).length;
-              if (score >= 2) labelsToAdd.push(label);
+            if (!isPR) {
+              for (const [label, keywords] of Object.entries(areaSignals)) {
+                const score = keywords.filter(k => combined.includes(k)).length;
+                if (score >= 2) labelsToAdd.push(label);
+              }
             }
 
             // ──────────────────────────────────────────
