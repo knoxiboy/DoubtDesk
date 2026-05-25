@@ -1,5 +1,5 @@
 import { db } from "@/configs/db";
-import { repliesTable, doubtsTable, classroomsTable, replyLikesTable, usersTable } from "@/configs/schema";
+import { repliesTable, doubtsTable, classroomsTable, replyLikesTable, usersTable, notificationsTable } from "@/configs/schema";
 import { eq, asc, sql, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";

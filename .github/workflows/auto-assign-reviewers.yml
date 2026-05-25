@@ -8,6 +8,7 @@ jobs:
   assign-reviewers:
     runs-on: ubuntu-latest
     permissions:
+      issues: write
       pull-requests: write
     steps:
       - name: Request review from maintainers
@@ -17,8 +18,16 @@ jobs:
           script: |
             const maintainers = ['knoxiboy']; // Add other maintainer usernames here
             
-            // Check if PR author is already a maintainer to avoid self-request errors
+            // Assign the author of the PR as the assignee
             const author = context.payload.pull_request.user.login;
+            
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              assignees: [author]
+            });
+
             const reviewersToAssign = maintainers.filter(m => m !== author);
 
             if (reviewersToAssign.length > 0) {

@@ -17,15 +17,15 @@ const groq = new Groq({
 });
 
 export async function POST(req: Request) {
+    const user = await currentUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     let lockKey = null;
     try {
         const { errorResponse, data } = await parseAndValidateRequest(req, generateVideoSchema);
         if (errorResponse) return errorResponse;
-
-        const user = await currentUser();
-        if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
         
         lockKey = `video_lock:${user.id}`;
         const lockAcquired = await redisClient.setnx(lockKey, "1");

@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/configs/db';
 import { doubtsTable, repliesTable, usersTable } from '@/configs/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { moderateContent, handleModerationViolation } from '@/lib/moderation';
 
 const groq = new Groq({
@@ -11,27 +11,39 @@ const groq = new Groq({
 });
 
 /**
+ * Security & Context Limits
+ */
+const MAX_HISTORY_MESSAGES = 10;
+const MAX_MESSAGE_LENGTH = 4000;
+const MAX_HISTORY_MESSAGE_LENGTH = 2000;
+const MAX_CONTEXT_TOKENS = 12000;
+const MAX_REQUEST_SIZE_BYTES = 6 * 1024 * 1024; // 6MB
+
+/**
  * List of academic subjects for auto-detection and categorization.
  */
-const SUBJECT_LIST = 'Algebra, Calculus, Geometry, Trigonometry, Statistics, Physics, Chemistry, Biology, Operating Systems, Networking, Data Structures, Algorithms, Programming, Computer Science, Economics, Accounting, English, Other';
+const SUBJECT_LIST =
+    'Algebra, Calculus, Geometry, Trigonometry, Statistics, Physics, Chemistry, Biology, Operating Systems, Networking, Data Structures, Algorithms, Programming, Computer Science, Economics, Accounting, English, Other';
 
 /**
  * Priority models for different types of queries.
  * We use a fallback system to ensure reliability if a model is rate-limited or decommissioned.
  */
 const VISION_MODELS = [
-    "meta-llama/llama-4-scout-17b-16e-instruct",
-    "pixtral-12b-2409",
-    "llama-3.2-90b-vision-preview"
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'pixtral-12b-2409',
+    'llama-3.2-90b-vision-preview',
 ];
 
 const TEXT_MODELS = [
-    "llama-3.3-70b-versatile",
-    "meta-llama/llama-4-scout-17b-16e-instruct",
-    "llama-3.1-70b-versatile"
+    'llama-3.3-70b-versatile',
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'llama-3.1-70b-versatile',
 ];
 
-const IMAGE_QUALITY_ERROR = "We couldn't read your image clearly. Please upload a clearer photo or type your doubt instead.";
+const IMAGE_QUALITY_ERROR =
+    "We couldn't read your image clearly. Please upload a clearer photo or type your doubt instead.";
+
 const UNCLEAR_IMAGE_PATTERNS = [
     /cannot\s+(read|see|determine|identify)/i,
     /can't\s+(read|see|determine|identify)/i,
@@ -40,10 +52,55 @@ const UNCLEAR_IMAGE_PATTERNS = [
     /please\s+(upload|provide).*(clearer|higher[-\s]?quality)/i,
 ];
 
-function isUnclearVisionReply(reply: string) {
-    const normalizedReply = reply.replace(/^SUBJECT:\s*.+\n?/im, '').trim();
+type ChatHistoryMessage = {
+    role: 'user' | 'assistant';
+    content: string;
+};
 
-    return normalizedReply.length < 50 || UNCLEAR_IMAGE_PATTERNS.some((pattern) => pattern.test(normalizedReply));
+function isUnclearVisionReply(reply: string) {
+    const normalizedReply = reply
+        .replace(/^SUBJECT:\s*.+\n?/im, '')
+        .trim();
+
+    return (
+        normalizedReply.length < 50 ||
+        UNCLEAR_IMAGE_PATTERNS.some((pattern) =>
+            pattern.test(normalizedReply)
+        )
+    );
+}
+
+/**
+ * Sanitizes and validates conversation history.
+ */
+function sanitizeHistory(history: any[]): ChatHistoryMessage[] {
+    if (!Array.isArray(history)) return [];
+
+    return history
+        .filter(
+            (msg) =>
+                msg &&
+                (msg.role === 'user' || msg.role === 'assistant') &&
+                typeof msg.content === 'string'
+        )
+        .map((msg) => ({
+            role: msg.role,
+            content: msg.content.slice(
+                0,
+                MAX_HISTORY_MESSAGE_LENGTH
+            ),
+        }))
+        .slice(-MAX_HISTORY_MESSAGES);
+}
+
+/**
+ * Lightweight token estimation.
+ * Approximation: 1 token ~= 4 characters.
+ */
+function estimateTokenCount(messages: any[]): number {
+    const totalCharacters = JSON.stringify(messages).length;
+
+    return Math.ceil(totalCharacters / 4);
 }
 
 /**
@@ -51,77 +108,192 @@ function isUnclearVisionReply(reply: string) {
  * @param messages Array of chat messages
  * @param isVision Whether the request includes an image
  */
-async function callGroqWithFallback(messages: any[], isVision: boolean) {
+async function callGroqWithFallback(
+    messages: any[],
+    isVision: boolean
+) {
     const models = isVision ? VISION_MODELS : TEXT_MODELS;
+
     let lastError = null;
 
     for (const model of models) {
         try {
-            console.log(`Attempting Groq request with model: ${model}`);
-            const completion = await groq.chat.completions.create({
-                messages,
-                model,
-                temperature: 0.5,
-                max_tokens: 2048,
-                top_p: 1,
-            });
-            return { completion, modelUsed: model };
+            console.log(
+                `Attempting Groq request with model: ${model}`
+            );
+
+            const completion =
+                await groq.chat.completions.create({
+                    messages,
+                    model,
+                    temperature: 0.5,
+                    max_tokens: 2048,
+                    top_p: 1,
+                });
+
+            return {
+                completion,
+                modelUsed: model,
+            };
         } catch (err: any) {
-            console.warn(`Model ${model} failed:`, err?.message);
+            console.warn(
+                `Model ${model} failed:`,
+                err?.message
+            );
+
             lastError = err;
+
             // Continue to next model if it's a 404, 400 (decommissioned), or 401
-            if (err?.status === 404 || err?.status === 400 || err?.status === 401) continue;
-            throw err; // For other errors (like rate limits), throw immediately
+            if (
+                err?.status === 404 ||
+                err?.status === 400 ||
+                err?.status === 401
+            ) {
+                continue;
+            }
+
+            throw err;
         }
     }
+
     throw lastError;
 }
 
 /**
  * Main AI Solver API Route.
- * Handles:
- * 1. User Authentication (Clerk)
- * 2. Safety Block Checks
- * 3. Content Moderation (AI-based)
- * 4. Multi-mode AI Response Generation (Standard, Exam, Simple, etc.)
- * 5. Database Persistence for queries and solutions
  */
 export async function POST(req: Request) {
     try {
         const user = await currentUser();
+
         if (!user) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
         }
 
-        const fullName = user.fullName || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : "Academic Student");
-        const email = user.primaryEmailAddress?.emailAddress;
-        if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+        const fullName =
+            user.fullName ||
+            (user.firstName && user.lastName
+                ? `${user.firstName} ${user.lastName}`
+                : 'Academic Student');
+
+        const email =
+            user.primaryEmailAddress?.emailAddress;
+
+        if (!email) {
+            return NextResponse.json(
+                { error: 'Email required' },
+                { status: 400 }
+            );
+        }
 
         // 0. Check if user is blocked
-        const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-        if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
-            const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            return NextResponse.json({ 
-                error: `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.` 
-            }, { status: 403 });
+        const [dbUser] = await db
+            .select()
+            .from(usersTable)
+            .where(eq(usersTable.email, email));
+
+        if (
+            dbUser?.blockedUntil &&
+            new Date(dbUser.blockedUntil) > new Date()
+        ) {
+            const unlockDate = new Date(
+                dbUser.blockedUntil
+            ).toDateString();
+
+            return NextResponse.json(
+                {
+                    error: `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`,
+                },
+                { status: 403 }
+            );
         }
 
         const body = await req.json();
-        const { prompt, type = 'standard', imageBase64, classroomId, history = [] } = body;
 
-        // history format: Array<{role: 'user' | 'assistant', content: string}>
+        /**
+         * Total request payload validation
+         */
+        const requestSize = Buffer.byteLength(
+            JSON.stringify(body),
+            'utf8'
+        );
+
+        if (requestSize > MAX_REQUEST_SIZE_BYTES) {
+            return NextResponse.json(
+                { error: 'Request payload too large' },
+                { status: 413 }
+            );
+        }
+
+        const {
+            prompt,
+            type = 'standard',
+            imageBase64,
+            classroomId,
+            history = [],
+        } = body;
+
+        /**
+         * Prompt validation
+         */
+        if (prompt && typeof prompt !== 'string') {
+            return NextResponse.json(
+                { error: 'Invalid prompt format' },
+                { status: 400 }
+            );
+        }
+
+        if (
+            prompt &&
+            prompt.length > MAX_MESSAGE_LENGTH
+        ) {
+            return NextResponse.json(
+                {
+                    error:
+                        'Prompt exceeds maximum allowed length',
+                },
+                { status: 400 }
+            );
+        }
+
+        /**
+         * History sanitization & truncation
+         */
+        const sanitizedHistory =
+            sanitizeHistory(history);
 
         // 1. AI Moderation Check for Prompts
         if (prompt) {
-            const moderation = await moderateContent(prompt);
-            const violationError = await handleModerationViolation(email, prompt, moderation);
+            const moderation =
+                await moderateContent(prompt);
+
+            const violationError =
+                await handleModerationViolation(
+                    email,
+                    prompt,
+                    moderation
+                );
+
             if (violationError) {
-                return NextResponse.json({ error: violationError }, { status: 400 });
+                return NextResponse.json(
+                    { error: violationError },
+                    { status: 400 }
+                );
             }
         }
 
-        if (!prompt && !imageBase64 && history.length === 0) {
-            return NextResponse.json({ error: 'Message content is required' }, { status: 400 });
+        if (
+            !prompt &&
+            !imageBase64 &&
+            sanitizedHistory.length === 0
+        ) {
+            return NextResponse.json(
+                { error: 'Message content is required' },
+                { status: 400 }
+            );
         }
 
         // Global formatting rules for mathematical content using KaTeX compatibility
@@ -135,20 +307,24 @@ export async function POST(req: Request) {
 - Cleanliness: No repeated characters or filler text.`;
 
         let systemPrompt: string;
-        const isFollowUp = history.length > 0;
+
+        const isFollowUp =
+            sanitizedHistory.length > 0;
 
         /**
          * Dynamic Prompt Selection based on 'type' and 'history'
          */
         if (isFollowUp) {
-            systemPrompt = `You are an expert AI Tutor helping a student with a doubt. 
+            systemPrompt = `You are an expert AI Tutor helping a student with a doubt.
 This is a FOLLOW-UP conversation. The student is asking about the previous solution.
+
 RULES:
 1. Stay focused on the previous context.
 2. Be concise but encouraging.
 ${MATH_RULES}
 3. If they ask to explain a step, break it down even further.
 4. If they ask a new unrelated doubt, politely ask them to start a new session.
+
 Respond in clean, well-spaced markdown. Do NOT use the "SUBJECT:" header for follow-ups.`;
         } else if (type === 'simple') {
             systemPrompt = `You are an expert AI Doubt Solver. VERY FIRST LINE must be: SUBJECT: [Detected Subject from: ${SUBJECT_LIST}]
@@ -160,17 +336,21 @@ ${MATH_RULES}
 Structure: Provide an EXAM-READY answer with Key Formula, Step-by-step, Common mistakes, and Examiner keywords. Use **Step X:** for sub-steps inside sections.`;
         } else if (type === 'eli10') {
             systemPrompt = `You are a friendly AI teacher explaining to a 10-year-old. VERY FIRST LINE must be: SUBJECT: [Detected Subject from: ${SUBJECT_LIST}]
-Use fun analogies, simple words, and no complex math notation unless explained by a fun story. 
+Use fun analogies, simple words, and no complex math notation unless explained by a fun story.
+
 Structure:
 ## Step-by-step explanation
 ## Simplified explanation
 ## Final Answer
+
 Use bold text (e.g. **Step 1:**) for sub-steps inside the sections. Do NOT use any other ## headings.`;
         } else {
             // Default/Standard mode
             systemPrompt = `You are an expert AI Doubt Solver. Always respond in clean, well-spaced markdown.
+
 VERY FIRST LINE of your response must be exactly this:
 SUBJECT: [Detected Subject]
+
 Choose the subject from: ${SUBJECT_LIST}
 
 ${MATH_RULES}
@@ -183,7 +363,37 @@ Use EXACTLY these 3 ## sections:
 Use bold text (e.g. **Step 1:**) for sub-steps inside the sections. Do NOT use any other ## headings.`;
         }
 
-        const isVisionRequest = !!imageBase64 && !isFollowUp;
+        /**
+         * Context/token estimation
+         */
+        const estimatedTokens =
+            estimateTokenCount([
+                {
+                    role: 'system',
+                    content: systemPrompt,
+                },
+                ...sanitizedHistory,
+                {
+                    role: 'user',
+                    content: prompt || '',
+                },
+            ]);
+
+        if (
+            estimatedTokens > MAX_CONTEXT_TOKENS
+        ) {
+            return NextResponse.json(
+                {
+                    error:
+                        'Conversation is too long. Please start a new session.',
+                },
+                { status: 400 }
+            );
+        }
+
+        const isVisionRequest =
+            !!imageBase64 && !isFollowUp;
+
         let userMessageContent: any;
 
         if (isVisionRequest) {
@@ -195,86 +405,159 @@ Use bold text (e.g. **Step 1:**) for sub-steps inside the sections. Do NOT use a
 ${prompt ? `Additional context from student: ${prompt}` : ''}`;
 
             userMessageContent = [
-                { type: "text", text: visionInstruction },
-                { type: "image_url", image_url: { url: imageBase64 } }
+                {
+                    type: 'text',
+                    text: visionInstruction,
+                },
+                {
+                    type: 'image_url',
+                    image_url: {
+                        url: imageBase64,
+                    },
+                },
             ];
         } else {
             userMessageContent = prompt;
         }
 
         const messages: any[] = [];
-        messages.push({ role: "system", content: systemPrompt });
-        
-        // Add history context
+
+        messages.push({
+            role: 'system',
+            content: systemPrompt,
+        });
+
+        // Add sanitized history context
         if (isFollowUp) {
-            messages.push(...history);
+            messages.push(...sanitizedHistory);
         }
 
         // Add current prompt
         if (userMessageContent) {
-            messages.push({ role: "user", content: userMessageContent });
+            messages.push({
+                role: 'user',
+                content: userMessageContent,
+            });
         }
 
-        const { completion, modelUsed } = await callGroqWithFallback(messages, isVisionRequest);
-        let reply = completion.choices[0]?.message?.content || "Sorry, I couldn't generate a response.";
+        const {
+            completion,
+            modelUsed,
+        } = await callGroqWithFallback(
+            messages,
+            isVisionRequest
+        );
 
-        if (isVisionRequest && isUnclearVisionReply(reply)) {
+        let reply =
+            completion.choices[0]?.message?.content ||
+            "Sorry, I couldn't generate a response.";
+
+        if (
+            isVisionRequest &&
+            isUnclearVisionReply(reply)
+        ) {
             return NextResponse.json(
-                { error: IMAGE_QUALITY_ERROR, code: "IMAGE_QUALITY_LOW" },
+                {
+                    error: IMAGE_QUALITY_ERROR,
+                    code: 'IMAGE_QUALITY_LOW',
+                },
                 { status: 422 }
             );
         }
 
         // Extract and strip the SUBJECT line (only for initial doubt)
         let subject: string = 'Other';
+
         if (!isFollowUp) {
-            const subjectMatch = reply.match(/^SUBJECT:\s*(.+)/im);
+            const subjectMatch =
+                reply.match(/^SUBJECT:\s*(.+)/im);
+
             if (subjectMatch) {
                 subject = subjectMatch[1].trim();
-                reply = reply.replace(/^SUBJECT:\s*.+\n?/im, '').trimStart();
+
+                reply = reply
+                    .replace(
+                        /^SUBJECT:\s*.+\n?/im,
+                        ''
+                    )
+                    .trimStart();
             }
         }
 
         // --- PERSISTENCE LOGIC (Only for the first message to create the doubt) ---
         if (!isFollowUp) {
             try {
-                const [newDoubt] = await db.insert(doubtsTable).values({
-                    userName: fullName,
-                    userEmail: email || null,
-                    subject: subject,
-                    content: prompt || "Visual Inquiry",
-                    imageUrl: imageBase64?.slice(0, 500),
-                    classroomId: classroomId ? parseInt(classroomId.toString()) : null,
-                    type: 'ai',
-                    isSolved: "solved"
-                }).returning();
+                const [newDoubt] = await db
+                    .insert(doubtsTable)
+                    .values({
+                        userName: fullName,
+                        userEmail: email || null,
+                        subject,
+                        content:
+                            prompt || 'Visual Inquiry',
+                        imageUrl:
+                            imageBase64?.slice(0, 500),
+                        classroomId: classroomId
+                            ? parseInt(
+                                  classroomId.toString()
+                              )
+                            : null,
+                        type: 'ai',
+                        isSolved: 'solved',
+                    })
+                    .returning();
 
                 if (newDoubt) {
-                    const [aiReply] = await db.insert(repliesTable).values({
-                        doubtId: newDoubt.id,
-                        userName: "DoubtDesk AI",
-                        type: "solution",
-                        content: reply,
-                    }).returning();
+                    const [aiReply] = await db
+                        .insert(repliesTable)
+                        .values({
+                            doubtId: newDoubt.id,
+                            userName: 'DoubtDesk AI',
+                            type: 'solution',
+                            content: reply,
+                        })
+                        .returning();
 
                     if (aiReply) {
-                        await db.update(doubtsTable).set({ solvedReplyId: aiReply.id }).where(eq(doubtsTable.id, newDoubt.id));
+                        await db
+                            .update(doubtsTable)
+                            .set({
+                                solvedReplyId:
+                                    aiReply.id,
+                            })
+                            .where(
+                                eq(
+                                    doubtsTable.id,
+                                    newDoubt.id
+                                )
+                            );
                     }
                 }
             } catch (dbErr) {
-                console.error('Failed to fully persist AI doubt and solution turn 1:', dbErr);
+                console.error(
+                    'Failed to fully persist AI doubt and solution turn 1:',
+                    dbErr
+                );
             }
-        } else {
-            // For follow-ups, we might want to log the interaction eventually, 
-            // but for now, we just return the reply to maintain the chat thread.
         }
 
-        return NextResponse.json({ reply, subject, model: modelUsed });
-
+        return NextResponse.json({
+            reply,
+            subject,
+            model: modelUsed,
+        });
     } catch (error: any) {
-        console.error('Error in Groq API Flow:', error);
+        console.error(
+            'Error in Groq API Flow:',
+            error
+        );
+
         return NextResponse.json(
-            { error: error?.message || 'The AI service is currently overloaded or experiencing issues. Please try again in 30 seconds.' },
+            {
+                error:
+                    error?.message ||
+                    'The AI service is currently overloaded or experiencing issues. Please try again in 30 seconds.',
+            },
             { status: 500 }
         );
     }

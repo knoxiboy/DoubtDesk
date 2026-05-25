@@ -239,6 +239,15 @@ export async function POST(req: Request) {
             return NextResponse.json(body, { status });
         }
 
+        // Security: Check classroom membership before allowing post
+        if (parsedClassroomId) {
+            const [membership] = await db.select().from(membershipsTable).where(
+                and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, parsedClassroomId))
+            );
+            if (!membership) {
+                return NextResponse.json({ error: "Access denied: You are not a member of this classroom" }, { status: 403 });
+            }
+        }
         // 1. AI Moderation Check
         if (content) {
             const moderation = await moderateContent(content);

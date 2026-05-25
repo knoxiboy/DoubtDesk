@@ -305,6 +305,7 @@ export const moderationLogsTable = pgTable("moderation_logs", {
     reason: text().notNull(),
     violationType: varchar({ length: 50 }).notNull(), // 'abusive', 'off-topic', etc.
     contentSnippet: text(),
+    status: varchar({ length: 20 }).default("pending").notNull(), // 'pending', 'reviewed', 'dismissed', 'blocked', 'warned'
     createdAt: timestamp().defaultNow().notNull(),
 });
 
@@ -318,6 +319,26 @@ export const bookmarksTable = pgTable("bookmarks", {
     doubtIdIndex: index("bookmark_doubtId_idx").on(table.doubtId),
 }));
 
+/**
+ * In-app notifications for users.
+ */
+export const notificationsTable = pgTable("notifications", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userEmail: varchar({ length: 255 }).notNull(),
+    title: varchar({ length: 255 }).notNull(),
+    message: text().notNull(),
+    link: text(), // Optional URL to navigate to when clicked
+    type: varchar({ length: 50 }).notNull(), // e.g., 'reply', 'doubt_solved', 'new_member'
+    isRead: boolean().default(false).notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    userEmailIndex: index("notification_userEmail_idx").on(table.userEmail),
+    /** Remove notifications when the referenced user is deleted. */
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+}));
 export const pendingNotificationsTable = pgTable("pending_notifications", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     userEmail: varchar({ length: 255 }).notNull(),

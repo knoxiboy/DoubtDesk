@@ -21,7 +21,7 @@ async function testQuery() {
         const sessions = await db
             .select({
                 chatId: chatHistoryTable.chatId,
-                chatTitle: sql<string>`MAX(${chatHistoryTable.chatTitle})`,
+                chatTitle: sql<string>`MIN(${chatHistoryTable.chatTitle})`,
                 createdAt: sql<string>`MAX(${chatHistoryTable.createdAt})`,
             })
             .from(chatHistoryTable)

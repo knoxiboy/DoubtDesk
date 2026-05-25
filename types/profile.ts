@@ -70,6 +70,17 @@ export interface ProfileStats {
     classroomsCount: number;
 }
 
+/** Activity stats fetched from the new stats endpoint. */
+export interface ActivityStats {
+    totalDoubts: number;
+    totalReplies: number;
+    totalLikesReceived: number;
+    totalReplyUpvotes: number;
+    doubtsSolved: number;
+    memberSince: string;
+    mostActiveSubject: string | null;
+}
+
 /** The user's recent activity, grouped by type. */
 export interface ProfileActivities {
     doubts: ProfileDoubt[];
@@ -83,3 +94,6 @@ export interface ProfileData {
     stats: ProfileStats;
     activities: ProfileActivities;
 }
+
+/** Combined stats shape for the UI */
+export interface CombinedStats extends ProfileStats, ActivityStats {}

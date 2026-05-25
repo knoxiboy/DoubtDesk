@@ -1,0 +1,63 @@
+name: Maintainer Commands
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  assign_command:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    if: ${{ github.event_name == 'issue_comment' && contains(github.event.comment.body, '/assign @') && !github.event.issue.pull_request }}
+    steps:
+      - name: Assign user via command
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const commenter = context.payload.comment.user.login;
+            try {
+              const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: commenter
+              });
+              if (!['admin', 'write'].includes(permission.permission)) {
+                console.log(`User ${commenter} is not a maintainer.`);
+                return;
+              }
+            } catch (e) {
+              return;
+            }
+
+            const body = context.payload.comment.body;
+            const match = body.match(/\/assign\s+@([a-zA-Z0-9-]+)/);
+            if (!match) return;
+            const assignee = match[1];
+
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              assignees: [assignee]
+            });
+            
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'needs-maintainer-approval'
+              });
+            } catch (e) { }
+
+            const message = `Assigned @${assignee} to this issue! Happy coding! 🚀`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: message
+            });

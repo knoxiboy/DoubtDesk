@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
 import { useAppUser } from '@/app/provider'
 
 const menuItems = [
@@ -61,7 +62,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             )}
 
             {/* Sidebar */}
-            <aside
+            <TooltipProvider>
+        <aside
                 className={`fixed lg:sticky lg:top-0 lg:h-screen shrink-0 inset-y-0 left-0 z-40 w-72 bg-background/80 backdrop-blur-xl border-r border-border/60 shadow-xl transform transition-all duration-300 ease-out ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
             >
                 <div className="flex flex-col h-full">
@@ -109,8 +111,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                         pathname.startsWith('/rooms/'))
 
                                 return (
+                                    <Tooltip key={item.name}>
+                                    <TooltipTrigger asChild>
                                     <Link
-                                        key={item.name}
                                         href={item.href}
                                         onClick={onClose}
                                         className={linkClasses(isActive)}
@@ -127,6 +130,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                             <div className="ml-auto w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.7)]" />
                                         )}
                                     </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">{item.name}</TooltipContent>
+                                    </Tooltip>
                                 )
                             })}
                         </div>
@@ -142,6 +148,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             </div>
 
                             <div className="space-y-2">
+                                <Tooltip>
+                                <TooltipTrigger asChild>
                                 <Link
                                     href="/public-rooms"
                                     onClick={onClose}
@@ -155,6 +163,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                         Public Doubts
                                     </span>
                                 </Link>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">Public Doubts</TooltipContent>
+                                </Tooltip>
                             </div>
                         </div>
 
@@ -170,6 +181,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             </div>
 
                             <div className="space-y-2">
+                                <Tooltip>
+                                <TooltipTrigger asChild>
                                 <Link
                                     href="/ask-ai"
                                     onClick={onClose}
@@ -183,6 +196,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                         Ask AI Solver
                                     </span>
                                 </Link>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">Ask AI Solver</TooltipContent>
+                                </Tooltip>
                             </div>
                         </div>
 
@@ -200,6 +216,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 </div>
 
                                 <div className="space-y-2">
+                                    <Tooltip>
+                                    <TooltipTrigger asChild>
                                     <Link
                                         href="/dashboard/analytics"
                                         onClick={onClose}
@@ -215,6 +233,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                             Class Analytics
                                         </span>
                                     </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">Class Analytics</TooltipContent>
+                                    </Tooltip>
                                 </div>
                             </div>
                         )}
@@ -236,6 +257,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     </div>
                 </div>
             </aside>
+        </TooltipProvider>
         </>
     )
 }

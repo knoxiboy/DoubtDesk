@@ -79,7 +79,7 @@
     "react-markdown": "9.0.1",
     "react-resizable-panels": "2.1.4",
     "react-syntax-highlighter": "^16.1.1",
-    "recharts": "2.13.0",
+    "recharts": "^2.13.0",
     "rehype-katex": "7.0.1",
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "4.0.0",
