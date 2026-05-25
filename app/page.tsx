@@ -118,8 +118,8 @@ export default function Home() {
         <div className="absolute inset-x-0 bottom-0 h-px bg-border shadow-[0_0_10px_rgba(139,184,255,0.18)]" />
         <div className="max-w-7xl mx-auto h-16 sm:h-20 flex items-center justify-between px-4 sm:px-6 md:px-[clamp(24px,5vw,64px)]">
           <Link href="/" className="flex items-center gap-1 sm:gap-2 hover:opacity-90 transition-opacity shrink-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-[#5E8CFF] rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_20px_rgba(94,140,255,0.25)] ring-1 ring-[#AABFFF]/35">
-              D
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_20px_rgba(94,140,255,0.25)] ring-1 ring-[#AABFFF]/35">
+              <img src="/logo.png" alt="DoubtDesk logo" className="h-5 w-5 object-contain" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground transition-colors drop-shadow-[0_0_10px_rgba(170,191,255,0.15)]">
               DoubtDesk
