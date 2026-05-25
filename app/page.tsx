@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   SignedIn,
   SignedOut,
@@ -33,13 +33,25 @@ import {
 import { ThemeToggle } from "@/components/ThemeToggle";
 import ShapeGrid from "@/components/ShapeGrid";
 import { Inter, Staatliches } from "next/font/google";
-import ClassroomPreviewCard from "@/components/ClassroomPreviewCard";
+import LiveCampusThreadPanel from "@/components/LiveCampusThreadPanel";
 
 const inter = Inter({ subsets: ["latin"] });
 const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 
 export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      setScrollProgress(progress);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
   const { signOut } = useClerk();
 
   const features = [
@@ -273,7 +285,8 @@ export default function Home() {
             </div>
 
             <div className="flex items-center justify-center xl:justify-end xl:pt-16">
-              <ClassroomPreviewCard />
+              {/* Replace or enhance the right-side card with the new Live Campus Thread panel */}
+              <LiveCampusThreadPanel />
             </div>
 
           </div>
@@ -392,6 +405,36 @@ export default function Home() {
         </section>
       </main>
       {/*Here's Your Previous Footer. I have just commented it in case */}
+      {/* Scroll to Top Button */}
+      {scrollProgress > 5 && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-8 right-8 z-50 w-14 h-14 flex items-center justify-center"
+          aria-label="Scroll to top"
+        >
+          <svg className="absolute top-0 left-0 w-14 h-14 -rotate-90" viewBox="0 0 56 56">
+            <circle
+              cx="28" cy="28" r="24"
+              fill="none"
+              stroke="rgba(94,140,255,0.15)"
+              strokeWidth="3"
+            />
+            <circle
+              cx="28" cy="28" r="24"
+              fill="none"
+              stroke="#5E8CFF"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray={`${2 * Math.PI * 24}`}
+              strokeDashoffset={`${2 * Math.PI * 24 * (1 - scrollProgress / 100)}`}
+              className="transition-all duration-150"
+            />
+          </svg>
+          <div className="w-10 h-10 rounded-full bg-slate-900/80 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white hover:bg-slate-800 transition-colors">
+            ↑
+          </div>
+        </button>
+      )}
       {/* Footer
       <footer className="border-t border-slate-200 dark:border-white/5 bg-white/50 dark:bg-slate-950/50 py-5">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-slate-500 dark:text-slate-500">

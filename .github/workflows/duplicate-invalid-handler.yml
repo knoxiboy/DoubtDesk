@@ -48,7 +48,7 @@ jobs:
               labels: ['duplicate']
             });
 
-            const message = `Hi there! 👋 Thanks for your contribution. However, this issue has been marked as a **duplicate** of #${dupNumber}. We are closing it to keep our tracker organized. Please search existing issues before opening new ones!`;
+            const message = `Hi there! Thanks for your contribution. However, this issue has been marked as a **duplicate** of #${dupNumber}. We are closing it to keep our tracker organized. Please search existing issues before opening new ones!`;
             
             await github.rest.issues.createComment({
               owner: context.repo.owner,
@@ -85,9 +85,9 @@ jobs:
             let message = '';
             
             if (labelName === 'duplicate') {
-              message = `Hi there! 👋 Thanks for your contribution. However, this ${typeStr} has been marked as a **duplicate** of an existing one. We are closing it to keep our tracker organized.\n\n*(Maintainers: To explicitly state which issue this duplicates, use the command \`/duplicate #123\` in a comment!)*`;
+              message = `Hi there! Thanks for your contribution. However, this ${typeStr} has been marked as a **duplicate** of an existing one. We are closing it to keep our tracker organized.\n\n*(Maintainers: To explicitly state which issue this duplicates, use the command /duplicate #123 in a comment!)*`;
             } else if (labelName === 'invalid') {
-              message = `Hi there! 👋 Thanks for reaching out. This ${typeStr} has been marked as **invalid**. This usually means it does not follow our contributing guidelines, is out of scope for the project, or lacks necessary information. It will now be closed.`;
+              message = `Hi there! Thanks for reaching out. This ${typeStr} has been marked as **invalid**. This usually means it does not follow our contributing guidelines, is out of scope for the project, or lacks necessary information. It will now be closed.`;
             }
 
             await github.rest.issues.setLabels({
