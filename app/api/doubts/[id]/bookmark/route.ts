@@ -1,5 +1,5 @@
 import { db } from "@/configs/db";
-import { bookmarksTable } from "@/configs/schema";
+import { bookmarksTable, doubtsTable, membershipsTable } from "@/configs/schema";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
@@ -12,6 +12,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
         const { id } = await params;
         const doubtId = parseInt(id);
+
+        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+        if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+
+        if (doubt.classroomId && email) {
+            const [membership] = await db.select().from(membershipsTable).where(
+                and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, doubt.classroomId))
+            );
+            if (!membership) {
+                return NextResponse.json({ error: "Access denied to this classroom's doubt" }, { status: 403 });
+            }
+        } else if (doubt.classroomId && !email) {
+            return NextResponse.json({ error: "Unauthorized access to classroom doubt" }, { status: 401 });
+        }
 
         // Check if already bookmarked
         const existing = await db.select().from(bookmarksTable)
@@ -42,6 +56,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
         const { id } = await params;
         const doubtId = parseInt(id);
+
+        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+        if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+
+        if (doubt.classroomId && email) {
+            const [membership] = await db.select().from(membershipsTable).where(
+                and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, doubt.classroomId))
+            );
+            if (!membership) {
+                return NextResponse.json({ error: "Access denied to this classroom's doubt" }, { status: 403 });
+            }
+        } else if (doubt.classroomId && !email) {
+            return NextResponse.json({ error: "Unauthorized access to classroom doubt" }, { status: 401 });
+        }
 
         await db.delete(bookmarksTable)
             .where(and(eq(bookmarksTable.userEmail, email), eq(bookmarksTable.doubtId, doubtId)));

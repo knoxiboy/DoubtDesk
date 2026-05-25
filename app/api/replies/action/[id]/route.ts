@@ -1,16 +1,62 @@
 import { db } from "@/configs/db";
-import { repliesTable } from "@/configs/schema";
+import { repliesTable, doubtsTable, classroomsTable } from "@/configs/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { currentUser } from "@clerk/nextjs/server";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { updateReplyActionSchema } from "@/lib/validations/reply";
+import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubtStatus";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const { content, imageUrl } = await req.json();
+        const { errorResponse, data } = await parseAndValidateRequest(req, updateReplyActionSchema);
+        if (errorResponse) return errorResponse;
+        const { content, imageUrl } = data;
+
+        const user = await currentUser();
+        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const email = user.primaryEmailAddress?.emailAddress;
+        if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+
         const { id } = await params;
         const replyId = parseInt(id);
 
         if (isNaN(replyId)) {
             return NextResponse.json({ error: "Invalid data" }, { status: 400 });
+        }
+
+        const [reply] = await db.select().from(repliesTable).where(eq(repliesTable.id, replyId)).limit(1);
+        if (!reply) return NextResponse.json({ error: "Reply not found" }, { status: 404 });
+
+        let isTeacher = false;
+        if (reply.doubtId) {
+            const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, reply.doubtId)).limit(1);
+            if (doubt?.classroomId) {
+                const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId)).limit(1);
+                isTeacher = !!(room && email && room.teacherEmail === email);
+            }
+        }
+
+        const isOwner = email && reply.userEmail === email;
+        if (!isOwner && !isTeacher) {
+            return NextResponse.json({ error: "Forbidden: not allowed to edit this reply" }, { status: 403 });
+        }
+        const [reply] = await db.select().from(repliesTable).where(eq(repliesTable.id, replyId)).limit(1);
+        if (!reply) return NextResponse.json({ error: "Reply not found" }, { status: 404 });
+
+        let isTeacher = false;
+        if (reply.doubtId) {
+            const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, reply.doubtId)).limit(1);
+            if (doubt?.classroomId) {
+                const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId)).limit(1);
+                isTeacher = !!(room && email && room.teacherEmail === email);
+            }
+        }
+
+        const isOwner = email && reply.userEmail === email;
+        if (!isOwner && !isTeacher) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+>>>>>>> upstream/main
         }
 
         const updateData: any = {};
@@ -31,11 +77,45 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const user = await currentUser();
+        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const email = user.primaryEmailAddress?.emailAddress;
+        if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+
         const { id } = await params;
         const replyId = parseInt(id);
 
         if (isNaN(replyId)) {
             return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+        }
+
+        const [reply] = await db.select().from(repliesTable).where(eq(repliesTable.id, replyId)).limit(1);
+        if (!reply) return NextResponse.json({ error: "Reply not found" }, { status: 404 });
+
+        let isTeacher = false;
+        if (reply.doubtId) {
+            const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, reply.doubtId)).limit(1);
+            if (doubt?.classroomId) {
+                const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId)).limit(1);
+                isTeacher = !!(room && email && room.teacherEmail === email);
+            }
+        }
+        const [reply] = await db.select().from(repliesTable).where(eq(repliesTable.id, replyId)).limit(1);
+        if (!reply) return NextResponse.json({ error: "Reply not found" }, { status: 404 });
+
+        let isTeacher = false;
+        if (reply.doubtId) {
+            const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, reply.doubtId)).limit(1);
+            if (doubt?.classroomId) {
+                const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId)).limit(1);
+                isTeacher = !!(room && email && room.teacherEmail === email);
+            }
+>>>>>>> upstream/main
+        }
+
+        const isOwner = email && reply.userEmail === email;
+        if (!isOwner && !isTeacher) {
+            return NextResponse.json({ error: "Forbidden: not allowed to delete this reply" }, { status: 403 });
         }
 
         await db.delete(repliesTable).where(eq(repliesTable.id, replyId));

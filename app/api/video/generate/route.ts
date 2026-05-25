@@ -7,13 +7,40 @@ import * as googleTTS from 'google-tts-api';
 import axios from 'axios';
 import ffmpeg from 'ffmpeg-static';
 import Tesseract from 'tesseract.js';
+import { parseAndValidateRequest } from '@/lib/validations/validate';
+import { generateVideoSchema } from '@/lib/validations/video';
+import { currentUser } from '@clerk/nextjs/server';
+import { redisClient } from '@/lib/ratelimit';
 
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY,
 });
 
 export async function POST(req: Request) {
+    const user = await currentUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    let lockKey = null;
     try {
+        const { errorResponse, data } = await parseAndValidateRequest(req, generateVideoSchema);
+        if (errorResponse) return errorResponse;
+        
+        lockKey = `video_lock:${user.id}`;
+        const lockAcquired = await redisClient.setnx(lockKey, "1");
+        
+        if (!lockAcquired || lockAcquired === 0) {
+            return NextResponse.json({ 
+                error: 'A video generation is already in progress for your account. Please wait for it to finish.' 
+            }, { status: 429 });
+        }
+        
+        // Ensure lock expires after 5 minutes to prevent deadlocks if process crashes
+        if (redisClient.expire) {
+            await redisClient.expire(lockKey, 300);
+        }
+
         let { content, imageUrl } = await req.json();
 
         // 1. OCR if image is provided
@@ -131,5 +158,9 @@ Return ONLY a JSON object with a "scenes" array.`;
     } catch (error: any) {
         console.error('Video generation failed:', error);
         return NextResponse.json({ error: error.message || 'Rendering failed' }, { status: 500 });
+    } finally {
+        if (lockKey) {
+            await redisClient.del(lockKey).catch(console.error);
+        }
     }
 }

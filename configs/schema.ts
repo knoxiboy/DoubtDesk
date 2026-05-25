@@ -18,6 +18,8 @@ export const usersTable = pgTable("users", {
     blockedUntil: timestamp(),
     blockCount: integer().default(0).notNull(),
     emailNotificationsEnabled: boolean().default(true).notNull(),
+    notificationPreference: varchar({ length: 50 }).default("instant").notNull(),
+    themePreference: varchar({ length: 10 }).default("system").notNull(),
     createdAt: timestamp().defaultNow().notNull(),
 });
 
@@ -184,7 +186,7 @@ export const doubtsTable = pgTable("doubts", {
     content: text(),
     imageUrl: text(),
     likes: integer().default(0),
-    isSolved: varchar({ length: 20 }).default("unsolved"), // unsolved, solved
+    isSolved: varchar({ length: 20 }).default("unsolved"), // unsolved | in-progress | solved : see lib/doubtStatus.ts
     solvedReplyId: integer(),                       // ID of the specific reply that solved it
     type: varchar({ length: 20 }).default("community"),    // 'ai', 'community', 'teacher'
     isPinned: boolean().default(false),
@@ -303,6 +305,7 @@ export const moderationLogsTable = pgTable("moderation_logs", {
     reason: text().notNull(),
     violationType: varchar({ length: 50 }).notNull(), // 'abusive', 'off-topic', etc.
     contentSnippet: text(),
+    status: varchar({ length: 20 }).default("pending").notNull(), // 'pending', 'reviewed', 'dismissed', 'blocked', 'warned'
     createdAt: timestamp().defaultNow().notNull(),
 });
 
@@ -315,3 +318,48 @@ export const bookmarksTable = pgTable("bookmarks", {
     userEmailIndex: index("bookmark_userEmail_idx").on(table.userEmail),
     doubtIdIndex: index("bookmark_doubtId_idx").on(table.doubtId),
 }));
+
+/**
+ * In-app notifications for users.
+ */
+export const notificationsTable = pgTable("notifications", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userEmail: varchar({ length: 255 }).notNull(),
+    title: varchar({ length: 255 }).notNull(),
+    message: text().notNull(),
+    link: text(), // Optional URL to navigate to when clicked
+    type: varchar({ length: 50 }).notNull(), // e.g., 'reply', 'doubt_solved', 'new_member'
+    isRead: boolean().default(false).notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    userEmailIndex: index("notification_userEmail_idx").on(table.userEmail),
+    /** Remove notifications when the referenced user is deleted. */
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+}));
+export const pendingNotificationsTable = pgTable("pending_notifications", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userEmail: varchar({ length: 255 }).notNull(),
+    doubtId: integer().notNull(),
+    replyId: integer().notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => {
+    return {
+        userEmailIdx: index("pending_notifications_user_email_idx").on(table.userEmail),
+        /** Remove pending notifications when user, doubt, or reply is deleted. */
+        userEmailFk: foreignKey({
+            columns: [table.userEmail],
+            foreignColumns: [usersTable.email],
+        }).onDelete("cascade"),
+        doubtIdFk: foreignKey({
+            columns: [table.doubtId],
+            foreignColumns: [doubtsTable.id],
+        }).onDelete("cascade"),
+        replyIdFk: foreignKey({
+            columns: [table.replyId],
+            foreignColumns: [repliesTable.id],
+        }).onDelete("cascade"),
+    };
+});

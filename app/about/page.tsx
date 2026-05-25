@@ -62,6 +62,11 @@ const techStack = [
   "Inngest",
 ];
 
+export const metadata = {
+  title: "About",
+  description: "Learn more about DoubtDesk - an AI-powered educational platform.",
+};
+
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-white overflow-hidden transition-colors duration-300">

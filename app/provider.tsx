@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, Suspense } from "react";
+import { useAuth } from "@clerk/nextjs";
 
 export type AppUser = {
     id: string;
@@ -47,13 +48,24 @@ function ThemedToaster() {
     );
 }
 
+function NavigationEvents({ onChange }: { onChange: () => void }) {
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+        onChange();
+    }, [pathname, searchParams, onChange]);
+
+    return null;
+}
+
 export function Provider({ children }: { children: React.ReactNode }) {
     const [appUser, setAppUser] = useState<AppUser | null>(null);
     const [loading, setLoading] = useState(true);
     const [isNavigating, setIsNavigating] = useState(false);
     const router = useRouter();
+    const { isSignedIn, isLoaded } = useAuth();
     const pathname = usePathname();
-    const searchParams = useSearchParams();
 
     async function refresh() {
         setLoading(true);
@@ -79,38 +91,42 @@ export function Provider({ children }: { children: React.ReactNode }) {
     }
 
     useEffect(() => {
+        if (!isLoaded) return;
+
+        if (!isSignedIn) {
+            setAppUser(null);
+            setLoading(false);
+            return;
+        }
+
         void refresh();
-    }, []);
+    }, [isSignedIn, isLoaded]);
 
     useEffect(() => {
-        setIsNavigating(false);
-    }, [pathname, searchParams]);
+        const handleAnchorClick = (event: MouseEvent) => {
+            const target = event.target;
 
-    useEffect(() => {
-            const handleAnchorClick = (event: MouseEvent) => {
-                const target = event.target;
-                
-                if (!(target instanceof Element)) {
-                    return;
-                }
-            
-                const anchor = target.closest("a");
-            
-                if (!(anchor instanceof HTMLAnchorElement) || !anchor.href || anchor.target === "_blank") {
-                    return;
-                }
-            
-                const targetUrl = new URL(anchor.href);
-                const currentUrl = new URL(window.location.href);
-                if (
-                    targetUrl.origin === currentUrl.origin &&
-                    (targetUrl.pathname !== currentUrl.pathname || targetUrl.search !== currentUrl.search)
-                ) {
-                    setIsNavigating(true);
-                }
-            };
-            document.addEventListener("click", handleAnchorClick);
-            return () => document.removeEventListener("click", handleAnchorClick);
+            if (!(target instanceof Element)) {
+                return;
+            }
+
+            const anchor = target.closest("a");
+
+            if (!(anchor instanceof HTMLAnchorElement) || !anchor.href || anchor.target === "_blank") {
+                return;
+            }
+
+            const targetUrl = new URL(anchor.href);
+            const currentUrl = new URL(window.location.href);
+            if (
+                targetUrl.origin === currentUrl.origin &&
+                (targetUrl.pathname !== currentUrl.pathname || targetUrl.search !== currentUrl.search)
+            ) {
+                setIsNavigating(true);
+            }
+        };
+        document.addEventListener("click", handleAnchorClick);
+        return () => document.removeEventListener("click", handleAnchorClick);
     }, []);
 
     useEffect(() => {
@@ -126,11 +142,14 @@ export function Provider({ children }: { children: React.ReactNode }) {
     return (
         <UserContext.Provider value={{ appUser, setAppUser, loading, refresh }}>
             <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="doubtdesk-theme">
+                <Suspense fallback={null}>
+                    <NavigationEvents onChange={() => setIsNavigating(false)} />
+                </Suspense>
                 <KeyboardShortcutsProvider>
                     <SessionTracker />
-                    
+
                     {/* 🌀 This catches client-side clicks instantly! */}
-                    {isNavigating && <FullScreenSpinner/>}
+                    {isNavigating && <FullScreenSpinner />}
 
                     {children}
                     <CommandMenu />

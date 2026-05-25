@@ -1,15 +1,22 @@
 import { db } from "@/configs/db";
-import { doubtTagsTable, doubtsTable, likesTable, classroomsTable, repliesTable, tagsTable } from "@/configs/schema";
+import { doubtTagsTable, doubtsTable, likesTable, classroomsTable, repliesTable, tagsTable, membershipsTable } from "@/configs/schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { updateDoubtActionSchema } from "@/lib/validations/doubt";
+import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubtStatus";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const { errorResponse, data } = await parseAndValidateRequest(req, updateDoubtActionSchema);
+        if (errorResponse) return errorResponse;
+
+        const { action, content, subject, imageUrl, userName, replyId, tags = [] } = data;
+
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
         
-        const { action, content, subject, imageUrl, userName, replyId, tags = [] } = await req.json();
         const { id } = await params;
         const doubtId = parseInt(id);
 
@@ -19,6 +26,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
         const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+
+        // Security: Verify doubt visibility/classroom membership
+        if (doubt.classroomId && email) {
+            const [membership] = await db.select().from(membershipsTable).where(
+                and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, doubt.classroomId))
+            );
+            if (!membership) {
+                return NextResponse.json({ error: "Access denied to this classroom's doubt" }, { status: 403 });
+            }
+        } else if (doubt.classroomId && !email) {
+            return NextResponse.json({ error: "Unauthorized access to classroom doubt" }, { status: 401 });
+        }
 
         // Permission check for sensitive actions
         const isOwner = email && doubt.userEmail === email;
@@ -30,19 +49,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         }
 
         if (action === "like") {
-            if (!userName) {
-                return NextResponse.json({ error: "User name required for like" }, { status: 400 });
+            if (!email) {
+                return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
             }
+            
+            const secureUserIdentifier = email;
 
             // Check if already liked
             const existingLike = await db.select()
                 .from(likesTable)
-                .where(and(eq(likesTable.userName, userName), eq(likesTable.doubtId, doubtId)))
+                .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)))
                 .limit(1);
 
             if (existingLike.length > 0) {
                 await db.delete(likesTable)
-                    .where(and(eq(likesTable.userName, userName), eq(likesTable.doubtId, doubtId)));
+                    .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)));
                 
                 const updated = await db.update(doubtsTable)
                     .set({ likes: sql`${doubtsTable.likes} - 1` })
@@ -52,7 +73,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 return NextResponse.json({ ...updated[0], hasLiked: false });
             } else {
                 await db.insert(likesTable).values({
-                    userName,
+                    userName: secureUserIdentifier,
                     doubtId
                 });
 
@@ -76,12 +97,32 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 return NextResponse.json({ error: "Only a teacher can verify and mark AI-generated solutions as solved." }, { status: 403 });
             }
 
-            let newStatus = doubt.isSolved === "solved" ? "unsolved" : "solved";
-            let newSolvedReplyId = replyId || null;
+            // Resolve the target status.
+            //
+            //  - If the client passes an explicit `status` (e.g. a teacher
+            //    setting `in-progress` from a dropdown), use it after validation.
+            //  - Otherwise preserve the historical toggle behaviour:
+            //      solved      -> unsolved   (un-marking a resolved doubt)
+            //      anything    -> solved     (unsolved or in-progress => solved)
+            //
+            // `solvedReplyId` continues to be cleared whenever we leave the
+            // `solved` state, so we don't keep stale references around.
+            let newStatus: DoubtStatus;
+            if (status !== undefined) {
+                if (!isValidDoubtStatus(status)) {
+                    return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
+                }
+                newStatus = status;
+            } else {
+                newStatus = doubt.isSolved === DOUBT_STATUS.SOLVED
+                    ? DOUBT_STATUS.UNSOLVED
+                    : DOUBT_STATUS.SOLVED;
+            }
+            let newSolvedReplyId: number | null = replyId || null;
 
             // Conditional Solving: Teacher can only mark as solved if at least 1 solution exists
             // (unless they are unsolving, or providing a replyId right now)
-            if (isTeacher && !isOwner && newStatus === "solved" && !replyId) {
+            if (isTeacher && !isOwner && newStatus === DOUBT_STATUS.SOLVED && !replyId) {
                 const solutionReplies = await db.select()
                     .from(repliesTable)
                     .where(and(eq(repliesTable.doubtId, doubtId), eq(repliesTable.type, 'solution')))
@@ -94,12 +135,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 }
             }
 
+            // If a replyId is provided, it is used to either toggle off a previously
+            // pinned solution or pin a new one — this overrides the resolved status above.
             if (replyId && doubt.solvedReplyId === replyId) {
-                newStatus = "unsolved";
+                newStatus = DOUBT_STATUS.UNSOLVED;
                 newSolvedReplyId = null;
             } else if (replyId) {
-                newStatus = "solved";
+                newStatus = DOUBT_STATUS.SOLVED;
                 newSolvedReplyId = replyId;
+            }
+
+            // Defensive: only `solved` doubts should retain a solvedReplyId.
+            if (newStatus !== DOUBT_STATUS.SOLVED) {
+                newSolvedReplyId = null;
             }
 
             const updated = await db.update(doubtsTable)
