@@ -14,7 +14,7 @@ jobs:
     permissions:
       issues: write
       pull-requests: write
-    if: ${{ github.event_name == 'issue_comment' && contains(github.event.comment.body, '/duplicate #') && !github.event.issue.pull_request }}
+    if: ${{ github.event_name == 'issue_comment' && contains(github.event.comment.body, '/duplicate #') && github.event.issue.pull_request == null }}
     steps:
       - name: Handle duplicate via comment command
         uses: actions/github-script@v6
