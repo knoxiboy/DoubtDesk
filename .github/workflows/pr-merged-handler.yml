@@ -31,7 +31,7 @@ jobs:
             });
             
             for (const label of labels) {
-              if (label.name.startsWith('size/')) {
+              if (label.name.startsWith('size/') || label.name === 'review-needed') {
                 try {
                   await github.rest.issues.removeLabel({
                     owner: context.repo.owner,

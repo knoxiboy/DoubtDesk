@@ -1,9 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import { SignUp } from "@clerk/nextjs";
+import { useTheme } from "next-themes";
+import { dark } from "@clerk/themes";
 
 export default function SignUpPage() {
+  const { theme } = useTheme();
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
       {/* The new Back to Home link */}
       <Link 
         href="/" 
@@ -12,18 +18,6 @@ export default function SignUpPage() {
         &larr; Back to Home
       </Link>
       
-      <SignUp />
-"use client";
-
-import { SignUp } from "@clerk/nextjs";
-import { useTheme } from "next-themes";
-import { dark } from "@clerk/themes";
-
-export default function Page() {
-  const { theme } = useTheme();
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
       <SignUp
         appearance={{
           baseTheme: theme === "dark" ? dark : undefined,

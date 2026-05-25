@@ -1,11 +1,12 @@
 import { db } from "@/configs/db";
-import { bookmarksTable, doubtTagsTable, doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, tagsTable, usersTable } from "@/configs/schema";
+import { bookmarksTable, doubtTagsTable, doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, tagsTable } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
-import { and, eq, inArray, isNull, or, not, sql, ilike } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, not, sql, ilike, SQL } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 import { buildErrorResponse } from "@/lib/error-handler";
+import { checkUserBlock } from "@/lib/auth-utils";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createDoubtSchema } from "@/lib/validations/doubt";
 
@@ -25,31 +26,20 @@ export async function GET(req: Request) {
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         const email = user.primaryEmailAddress?.emailAddress;
 
-        const { searchParams } = new URL(req.url);
-        const subject = searchParams.get("subject");
-        const userName = searchParams.get("userName");
-        const classroomIdStr = searchParams.get("classroomId");
-        const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
-        const type = searchParams.get("type") || 'community';
-
-        // Security: If classroomId is provided, check membership
         if (classroomId && email) {
-            console.log(`Security Check: Classroom ${classroomId}, User ${email}`);
             const [membership] = await db.select().from(membershipsTable).where(
                 and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, classroomId))
             );
             if (!membership) {
-                console.warn(`Denied access to classroom ${classroomId} for user ${email}`);
                 return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
             }
         } else if (classroomId && !email) {
-            console.warn(`Anonymous user attempting to access classroom ${classroomId}`);
             // For hackathon simplicity, we might allow it if they have the link, 
             // but usually this should be blocked.
         }
 
         let query = db.select().from(doubtsTable);
-        let conditions: any[] = [];
+        let conditions: SQL<unknown>[] = [];
 
         // Base Classroom scoping
         if (classroomId) {
@@ -102,7 +92,7 @@ export async function GET(req: Request) {
         const limit = limitStr ? parseInt(limitStr) : 20;
         const offset = offsetStr ? parseInt(offsetStr) : (page - 1) * limit;
 
-        let doubts = await query.where(and(...conditions));
+        let doubts: any[] = await query.where(and(...conditions));
 
         if (tag && tag !== "All" && doubts.length > 0) {
             const normalizedTag = tag.trim().replace(/\s+/g, " ").toLowerCase();
@@ -139,8 +129,8 @@ export async function GET(req: Request) {
             replyCount: countsMap[doubt.id] || 0
         }));
 
-        const createdAtValue = (value: any) => new Date(value).getTime() || 0;
-        const pinnedScore = (value: any) => (value ? 1 : 0);
+        const createdAtValue = (value: unknown) => new Date(value as string).getTime() || 0;
+        const pinnedScore = (value: unknown) => (value ? 1 : 0);
 
         doubts = doubts.sort((a, b) => {
             const pinnedDiff = pinnedScore(b.isPinned) - pinnedScore(a.isPinned);
@@ -229,15 +219,8 @@ export async function POST(req: Request) {
         const email = user.primaryEmailAddress?.emailAddress;
         if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
-        // 0. Check if user is blocked
-        const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-        if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
-            const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            const { status, body } = buildErrorResponse(
-                new Error(`Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`)
-            );
-            return NextResponse.json(body, { status });
-        }
+        const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
+        if (isBlocked) return blockResponse;
 
         // Security: Check classroom membership before allowing post
         if (parsedClassroomId) {
@@ -277,7 +260,7 @@ export async function POST(req: Request) {
                 .filter(Boolean)
         )).slice(0, 8);
 
-        const savedTags: any[] = [];
+        const savedTags: (typeof tagsTable.$inferSelect)[] = [];
         for (const normalizedName of normalizedTags) {
             const [existingTag] = await db.select().from(tagsTable).where(and(
                 eq(tagsTable.normalizedName, normalizedName),
@@ -301,8 +284,8 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json({ ...newDoubt, tags: savedTags });
-    } catch (error: any) {
-        console.error("Error saving doubt:", error);
-        return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 });
+    } catch (error) {
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }
