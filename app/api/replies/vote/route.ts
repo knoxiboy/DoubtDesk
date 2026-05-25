@@ -20,9 +20,6 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        if (!replyId) {
-            return NextResponse.json({ error: "Reply ID is required" }, { status: 400 });
-        }
 
         // Check if reply exists
         const [reply] = await db.select().from(repliesTable).where(eq(repliesTable.id, replyId)).limit(1);

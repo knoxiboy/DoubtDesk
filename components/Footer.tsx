@@ -1,7 +1,16 @@
+```tsx
 "use client";
 
 import Link from "next/link";
-import { Github, Linkedin, Mail, ChevronRight, Users, MessageSquare } from "lucide-react";
+import Image from "next/image";
+import {
+  Github,
+  Linkedin,
+  Mail,
+  ChevronRight,
+  Users,
+  MessageSquare,
+} from "lucide-react";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -19,6 +28,8 @@ export default function Footer() {
     {
       title: "Resources",
       links: [
+        { label: "Public Doubts", href: "/public-rooms" },
+        { label: "Bookmarks", href: "/bookmarks" },
         { label: "Privacy Policy", href: "/privacy-policy" },
         { label: "Terms of Service", href: "/terms-of-service" },
         { label: "About", href: "/about" },
@@ -69,21 +80,34 @@ export default function Footer() {
       aria-label="Footer navigation"
       className="relative overflow-hidden border-t border-slate-200 dark:border-white/10 bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 transition-colors duration-300"
     >
+      {/* Background Effects */}
       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-transparent to-purple-500/10 dark:from-blue-600/5 dark:to-purple-600/5 pointer-events-none" />
+
       <div className="absolute top-0 left-1/4 w-72 h-72 bg-blue-500/10 dark:bg-blue-500/10 blur-3xl rounded-full pointer-events-none" />
+
       <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-purple-500/10 dark:bg-purple-500/10 blur-3xl rounded-full pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
+        {/* Top Section */}
         <div className="flex flex-col lg:flex-row lg:justify-between gap-14 pb-12 border-b border-slate-300 dark:border-white/10">
+          {/* Brand Section */}
           <div className="max-w-md">
             <Link href="/" className="inline-flex items-center gap-3 mb-5 group">
-              <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_15px_rgba(37,99,235,0.2)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
-                D
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.2)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <Image
+                  src="/logo.png"
+                  alt="DoubtDesk logo"
+                  width={35}
+                  height={35}
+                  className="object-cover"
+                />
               </div>
+
               <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 tracking-tight transition-colors duration-300">
                 DoubtDesk
               </span>
             </Link>
+
             <p className="text-sm leading-7 text-slate-600 dark:text-slate-400">
               Simplifying classroom doubt solving with AI-powered collaboration,
               smart discussions, and interactive virtual learning spaces.
@@ -100,9 +124,11 @@ export default function Footer() {
                 <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-900 dark:text-white mb-5">
                   {section.title}
                 </h4>
+
                 <ul className="space-y-4">
                   {section.links.map((link) => {
                     const isCommunity = section.title === "Community";
+
                     const Icon = isCommunity
                       ? communityIcons[link.label as keyof typeof communityIcons]
                       : null;
@@ -112,7 +138,11 @@ export default function Footer() {
                         <Link
                           href={link.href}
                           target={link.href.startsWith("http") ? "_blank" : undefined}
-                          rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                          rel={
+                            link.href.startsWith("http")
+                              ? "noopener noreferrer"
+                              : undefined
+                          }
                           className="group inline-flex items-center gap-2 text-sm text-slate-600 transition-all duration-300 hover:translate-x-1 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"
                         >
                           {isCommunity && Icon ? (
@@ -120,6 +150,7 @@ export default function Footer() {
                           ) : (
                             <ChevronRight className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400 opacity-90 transition-transform duration-300 group-hover:translate-x-1" />
                           )}
+
                           <span className="relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 group-hover:after:w-full">
                             {link.label}
                           </span>
@@ -148,6 +179,7 @@ export default function Footer() {
               </Link>
             ))}
           </div>
+
           <div className="text-center md:text-right">
             <p className="text-sm text-slate-600 dark:text-slate-500">
               © {currentYear} DoubtDesk. Built for collaborative AI-powered learning.
@@ -160,3 +192,4 @@ export default function Footer() {
     </footer>
   );
 }
+```
