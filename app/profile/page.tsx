@@ -228,7 +228,7 @@ export default function ProfilePage() {
                 {/* Email Notification Settings Select */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-slate-950/40 border border-slate-800/80 rounded-xl p-4 md:self-center shadow-inner min-w-[280px] sm:min-w-[380px] w-full sm:w-auto">
                     <div className="flex flex-col max-w-[240px]">
-                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 font-medium">
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                             <Mail className="w-4 h-4 text-purple-400" />
                             Email Alerts
                         </span>
