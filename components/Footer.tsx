@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link"
 import {
@@ -16,6 +16,8 @@ const footerSections = [
     links: [
       { label: "Dashboard", href: "/dashboard" },
       { label: "Virtual Campus", href: "/rooms" },
+      { label: "Public Doubts", href: "/public-rooms" },
+      { label: "Bookmarks", href: "/bookmarks" },
       { label: "AI Solver", href: "/ask-ai" },
       { label: "Analytics", href: "/dashboard/analytics" },
     ],
@@ -52,18 +54,21 @@ const socialLinks = [
     icon: Linkedin,
     href: "https://www.linkedin.com/",
     label: "LinkedIn",
+    ariaLabel: "Visit DoubtDesk on LinkedIn",
     hoverColor: "hover:text-blue-500 dark:hover:text-blue-400",
   },
   {
     icon: Github,
     href: "https://github.com/knoxiboy/DoubtDesk",
     label: "GitHub",
+    ariaLabel: "Visit the DoubtDesk GitHub repository",
     hoverColor: "hover:text-slate-900 dark:hover:text-slate-300",
   },
   {
     icon: Mail,
     href: "mailto:karankmt.tripathi@gmail.com",
     label: "Email",
+    ariaLabel: "Email the DoubtDesk team",
     hoverColor: "hover:text-purple-500 dark:hover:text-purple-400",
   },
 ]
@@ -93,7 +98,7 @@ export default function Footer() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
+          <nav aria-label="Footer navigation" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
             {footerSections.map((section) => (
               <div key={section.title}>
                 <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 mb-5">
@@ -145,7 +150,7 @@ export default function Footer() {
                 </ul>
               </div>
             ))}
-          </div>
+          </nav>
         </div>
 
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -156,7 +161,7 @@ export default function Footer() {
                 href={social.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={social.label}
+                aria-label={social.ariaLabel ?? social.label}
                 className={`group p-3 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-400 transition-all duration-300 hover:bg-slate-200 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:-translate-y-1 hover:scale-110 ${social.hoverColor}`}
               >
                 <social.icon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
