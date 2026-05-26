@@ -28,37 +28,68 @@ export async function POST(req: Request) {
         }
 
         // Check if already upvoted (store stable identity: Clerk user id)
-        const existingLike = await db.select()
-            .from(replyLikesTable)
-            .where(and(eq(replyLikesTable.userName, authenticatedUserId), eq(replyLikesTable.replyId, replyId)))
-            .limit(1);
+        const result = await db.transaction(async (tx) => {
 
-        if (existingLike.length > 0) {
-            // Unvote
-            await db.delete(replyLikesTable)
-                .where(and(eq(replyLikesTable.userName, authenticatedUserId), eq(replyLikesTable.replyId, replyId)));
-            
-            const updated = await db.update(repliesTable)
-                .set({ upvotes: sql`${repliesTable.upvotes} - 1` })
-                .where(eq(repliesTable.id, replyId))
-                .returning();
-            
-            return NextResponse.json({ ...updated[0], hasUpvoted: false });
-        } else {
-            // Vote
-            // Insert a stable identity for the like (use Clerk `user.id`)
-            await db.insert(replyLikesTable).values({
-                userName: authenticatedUserId,
-                replyId
-            });
+            // Check existing vote inside transaction
+            const existingLike = await tx.select()
+                .from(replyLikesTable)
+                .where(
+                    and(
+                        eq(replyLikesTable.userName, authenticatedUserId),
+                        eq(replyLikesTable.replyId, replyId)
+                    )
+                )
+                .limit(1);
 
-            const updated = await db.update(repliesTable)
-                .set({ upvotes: sql`${repliesTable.upvotes} + 1` })
-                .where(eq(repliesTable.id, replyId))
-                .returning();
-            
-            return NextResponse.json({ ...updated[0], hasUpvoted: true });
-        }
+            if (existingLike.length > 0) {
+
+                // Remove vote
+                await tx.delete(replyLikesTable)
+                    .where(
+                        and(
+                            eq(replyLikesTable.userName, authenticatedUserId),
+                            eq(replyLikesTable.replyId, replyId)
+                        )
+                    );
+
+                // Prevent negative vote counts
+                const updated = await tx.update(repliesTable)
+                    .set({
+                        upvotes: sql`GREATEST(${repliesTable.upvotes} - 1, 0)`
+                    })
+                    .where(eq(repliesTable.id, replyId))
+                    .returning();
+
+                return {
+                    ...updated[0],
+                    hasUpvoted: false
+                };
+
+            } else {
+
+                // Add vote
+                await tx.insert(replyLikesTable)
+                    .values({
+                        userName: authenticatedUserId,
+                        replyId
+                    });
+
+                // Atomic increment
+                const updated = await tx.update(repliesTable)
+                    .set({
+                        upvotes: sql`${repliesTable.upvotes} + 1`
+                    })
+                    .where(eq(repliesTable.id, replyId))
+                    .returning();
+
+                return {
+                    ...updated[0],
+                    hasUpvoted: true
+                };
+            }
+        });
+
+        return NextResponse.json(result);
     } catch (error) {
         console.error("Error voting on reply:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

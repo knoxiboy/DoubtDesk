@@ -15,6 +15,8 @@ describe('Footer Component', () => {
         expect(screen.getByRole('link', { name: 'Virtual Campus' })).toHaveAttribute('href', '/rooms');
         expect(screen.getByRole('link', { name: 'AI Solver' })).toHaveAttribute('href', '/ask-ai');
         expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute('href', '/dashboard/analytics');
+        expect(screen.getByRole('link', { name: 'Public Doubts' })).toHaveAttribute('href', '/public-rooms');
+        expect(screen.getByRole('link', { name: 'Bookmarks' })).toHaveAttribute('href', '/bookmarks');
         expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy-policy');
         expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms-of-service');
         expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute('href', '/about');

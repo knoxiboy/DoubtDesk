@@ -1,5 +1,5 @@
 import { db } from "@/configs/db";
-import { repliesTable, doubtsTable, classroomsTable, replyLikesTable, usersTable, notificationsTable } from "@/configs/schema";
+import { repliesTable, doubtsTable, classroomsTable, replyLikesTable, usersTable, membershipsTable, notificationsTable } from "@/configs/schema";
 import { eq, asc, sql, and } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
@@ -41,6 +41,17 @@ export async function GET(req: Request) {
         // Security: Verify doubt visibility
         const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId));
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+
+        if (doubt.classroomId && email) {
+            const [membership] = await db.select().from(membershipsTable).where(
+                and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, doubt.classroomId))
+            );
+            if (!membership) {
+                return NextResponse.json({ error: "Access denied to this classroom's doubt replies" }, { status: 403 });
+            }
+        } else if (doubt.classroomId && !email) {
+            console.warn(`Anonymous user attempting to access replies for doubt ${doubtId} in classroom ${doubt.classroomId}`);
+        }
 
         if (doubt.type === 'teacher') {
             const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId!));
