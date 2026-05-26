@@ -30,13 +30,34 @@ export default function DashboardLayout({
     const { signOut } = useClerk()
 
     const pathname = usePathname()
-    const pageTitles: Record<string, string> = {
-        "/dashboard": "Dashboard",
-        "/rooms": "Virtual Campus",
-        "/public-rooms": "Public Doubts"
+    const pageInfo: Record<
+    string,
+    {
+        title: string,
+        description: string
     }
-        
-    const pageTitle = pageTitles[pathname] || "Dashboard";
+    > = {
+        "/dashboard": {
+            title: "Dashboard",
+            description: "Welcome back to DoubtDesk",
+        },
+
+        "/rooms": {
+            title: "Virtual Campus",
+            description:
+            "Collaborate and learn with your campus community",
+        },
+
+        "/public-rooms": {
+            title: "Public Doubts",
+            description:
+                "Explore and solve doubts with the community",
+        },
+    }
+    const currentPage =
+        Object.entries(pageInfo).find(([route]) =>
+            pathname.startsWith(route)
+        )?.[1] || pageInfo["/dashboard"];
 
     const handleSignOut = async () => {
         await signOut({ redirectUrl: "/" })
@@ -67,10 +88,10 @@ export default function DashboardLayout({
 
                             <div className="hidden md:flex flex-col">
                                 <h1 className="text-sm font-semibold tracking-wide text-foreground">
-                                   {pageTitle}
+                                   {currentPage.title}
                                 </h1>
                                 <p className="text-xs text-muted-foreground">
-                                    {'Welcome back to DoubtDesk'}
+                                    {currentPage.description}
                                 </p>
                             </div>
                         </div>
