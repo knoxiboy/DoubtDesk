@@ -121,3 +121,14 @@ body {
 .markdown-renderer pre {
   margin: 0 !important;
 }
+
+/* Hide Clerk development mode "Configure your application" widget */
+button[aria-label="Keyless prompt"],
+#\:r0\: {
+  display: none !important;
+}
+
+/* Hide the wrapper div inside #clerk-components that contains the keyless prompt */
+#clerk-components > div:has(button[aria-label="Keyless prompt"]) {
+  display: none !important;
+}

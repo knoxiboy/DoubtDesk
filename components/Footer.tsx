@@ -50,102 +50,27 @@ export default function Footer() {
     "Report Issue": MessageSquare,
     Contact: Mail,
   } as const
-        {
-          label: "Report Issue",
-          href: "https://github.com/knoxiboy/DoubtDesk/issues",
-        },
-        { label: "Contact", href: "mailto:karankmt.tripathi@gmail.com" },
-      ],
-    },
-  ];
 
   const socialLinks = [
     {
       icon: Linkedin,
       href: "https://www.linkedin.com/",
-      label: "LinkedIn",
       label: "Visit DoubtDesk on LinkedIn",
       hoverColor: "hover:text-blue-500 dark:hover:text-blue-400",
     },
     {
       icon: Github,
       href: "https://github.com/knoxiboy/DoubtDesk",
-      label: "GitHub",
       label: "Visit DoubtDesk on GitHub",
       hoverColor: "hover:text-slate-900 dark:hover:text-slate-300",
     },
     {
       icon: Mail,
       href: "mailto:karankmt.tripathi@gmail.com",
-      label: "Email",
-    },
-  ]
-
-  return (
-<footer className="relative overflow-hidden border-t border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950 transition-colors duration-300">
-
-  <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
-
-    <div className="flex flex-col lg:flex-row lg:justify-between gap-14 pb-12 border-b border-slate-300 dark:border-white/10">
-
-      {/* Brand Section */}
-      <div className="max-w-md">
-        <Link href="/" className="inline-flex items-center gap-3 group">
-
-          <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_15px_rgba(37,99,235,0.15)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
-            D
-          </div>
-
-          <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 tracking-tight transition-colors duration-300">
-            DoubtDesk
-          </span>
-
-        </Link>
-
-        <p className="mt-6 text-sm leading-7 text-slate-600 dark:text-slate-400 max-w-md">
-          Simplifying classroom doubt solving with AI-powered collaboration,
-          smart discussions, and interactive virtual learning spaces.
-        </p>
-      </div>
-
-      {/* Footer Links */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12">
-
-        {footerSections.map((section) => (
-          <div key={section.title}>
-
-            <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-blue-600 dark:text-blue-400 mb-5">
-              {section.title}
-            </h4>
-
-            <ul className="space-y-4">
-
-              {section.links.map((link) => {
-                const isExternal =
-                  link.href.startsWith("http") ||
-                  link.href.startsWith("mailto:")
-
-                const isCommunity = section.title === "Community"
-
-                const Icon = isCommunity
-                  ? communityIcons[
-                      link.label as keyof typeof communityIcons
-                    ]
-                  : null
-
-                return (
-                  <li key={link.label}>
-                    {isExternal ? (
-                      <a
-                        href={link.href}
-                        target={
-                          link.href.startsWith("http")
-                            ? "_blank"
-                            : undefined
-      label: "Send the DoubtDesk team",
+      label: "Send the DoubtDesk team an email",
       hoverColor: "hover:text-purple-500 dark:hover:text-purple-400",
     },
-  ];
+  ]
 
   return (
     <footer
@@ -154,29 +79,23 @@ export default function Footer() {
     >
       {/* Background Effects */}
       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-transparent to-purple-500/10 dark:from-blue-600/5 dark:to-purple-600/5 pointer-events-none" />
-
       <div className="absolute top-0 left-1/4 w-72 h-72 bg-blue-500/10 dark:bg-blue-500/10 blur-3xl rounded-full pointer-events-none" />
-
       <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-purple-500/10 dark:bg-purple-500/10 blur-3xl rounded-full pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
         {/* Top Section */}
         <div className="flex flex-col lg:flex-row lg:justify-between gap-14 pb-12 border-b border-slate-300 dark:border-white/10">
+
           {/* Brand Section */}
           <div className="max-w-md">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-3 mb-5 group"
-            >
+            <Link href="/" className="inline-flex items-center gap-3 mb-5 group">
               <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-slate-900 dark:text-white font-bold text-xl shadow-[0_0_15px_rgba(37,99,235,0.2)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                 D
               </div>
-
               <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 tracking-tight transition-colors duration-300">
                 DoubtDesk
               </span>
             </Link>
-
             <p className="text-sm leading-7 text-slate-600 dark:text-slate-400">
               Simplifying classroom doubt solving with AI-powered collaboration,
               smart discussions, and interactive virtual learning spaces.
@@ -194,104 +113,33 @@ export default function Footer() {
                 <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-900 dark:text-white mb-5">
                   {section.title}
                 </h4>
-
                 <ul className="space-y-4">
-                  {section.links.map((link) => (
-                    <li key={link.label}>
-                      <Link
-                        href={link.href}
-                        target={
-                          link.href.startsWith("http") ? "_blank" : undefined
-                        }
-                        rel={
-                          link.href.startsWith("http")
-                            ? "noopener noreferrer"
-                            : undefined
-                        }
-                        className="group inline-flex items-center gap-2 text-sm text-slate-600 transition-all duration-300 hover:translate-x-1 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"
-                      >
+                  {section.links.map((link) => {
+                    const isCommunity = section.title === "Community"
+                    const Icon = isCommunity
+                      ? communityIcons[link.label as keyof typeof communityIcons]
+                      : null
 
-                        {isCommunity ? (
-                          <Icon className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400 opacity-90 transition-transform duration-300 group-hover:translate-x-1" />
-                        )}
-
-                        <span className="relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 group-hover:after:w-full">
-                          {link.label}
-                        </span>
-
-                      </a>
-                    ) : (
-                      <Link
-                        href={link.href}
-                        className="group inline-flex items-center gap-2 text-sm text-slate-600 transition-all duration-300 hover:translate-x-1 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"
-                      >
-
-                        {isCommunity ? (
-                          <Icon className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400 opacity-90 transition-transform duration-300 group-hover:translate-x-1" />
-                        )}
-
-                        <span className="relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 group-hover:after:w-full">
-                          {link.label}
-                        </span>
-
-                      </Link>
-                    )}
-                  </li>
-                )
-              })}
-
-            </ul>
-          </div>
-        ))}
-
-      </div>
-    </div>
-
-    {/* Bottom Section */}
-    <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
-
-      <div className="flex items-center gap-4">
-
-        {socialLinks.map((social) => (
-          <Link
-            key={social.label}
-            href={social.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={social.label}
-            className="group p-3 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-400 transition-all duration-300 hover:bg-slate-200 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:-translate-y-1 hover:scale-110 hover:text-blue-500 dark:hover:text-blue-400"
-          >
-            <social.icon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
-          </Link>
-        ))}
-
-      </div>
-
-      <div className="text-center md:text-right">
-        <p className="text-sm text-slate-600 dark:text-slate-500">
-          © {currentYear} DoubtDesk. Built for collaborative AI-powered learning.
-        </p>
-      </div>
-
-    </div>
-
-    {/* Top Line */}
-    <div className="absolute top-0 left-0 right-0 h-px bg-slate-200 dark:bg-white/10" />
-
-  </div>
-</footer>
-  )
-}
-                        className="relative inline-flex text-sm text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-500 dark:hover:text-blue-400 hover:translate-x-1 after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 hover:after:w-3/4"
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
+                    return (
+                      <li key={link.label}>
+                        <Link
+                          href={link.href}
+                          target={link.href.startsWith("http") ? "_blank" : undefined}
+                          rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                          className="group inline-flex items-center gap-2 text-sm text-slate-600 transition-all duration-300 hover:translate-x-1 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"
+                        >
+                          {isCommunity && Icon ? (
+                            <Icon className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400 opacity-90 transition-transform duration-300 group-hover:translate-x-1" />
+                          )}
+                          <span className="relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 group-hover:after:w-full">
+                            {link.label}
+                          </span>
+                        </Link>
+                      </li>
+                    )
+                  })}
                 </ul>
               </div>
             ))}
@@ -319,8 +167,7 @@ export default function Footer() {
           {/* Copyright */}
           <div className="text-center md:text-right">
             <p className="text-sm text-slate-600 dark:text-slate-500">
-              © {currentYear} DoubtDesk. Built for collaborative AI-powered
-              learning.
+              © {currentYear} DoubtDesk. Built for collaborative AI-powered learning.
             </p>
           </div>
         </div>
@@ -329,5 +176,5 @@ export default function Footer() {
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 dark:via-blue-500/30 to-transparent" />
       </div>
     </footer>
-  );
+  )
 }
