@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import {
     Send, Zap, BookOpen, Lightbulb, Loader2, RefreshCcw,
-    ImagePlus, X, Type, Camera, ListOrdered, Brain, CheckCircle2, AlertCircle
+    ImagePlus, X, Type, Camera, ListOrdered, Brain, CheckCircle2, AlertCircle, Copy, Check
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -13,7 +13,22 @@ import { toast } from 'sonner';
 import 'katex/dist/katex.min.css';
 
 type SolveType = 'standard' | 'simple' | 'exam' | 'eli10';
+function useCopyToClipboard(timeout = 2000) {
+    const [copied, setCopied] = useState<string | null>(null);
 
+    const copy = async (text: string, id: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopied(id);
+            toast.success("Copied to clipboard!");
+            setTimeout(() => setCopied(null), timeout);
+        } catch {
+            toast.error("Failed to copy. Please try manually.");
+        }
+    };
+
+    return { copied, copy };
+}
 const SECTION_META: Record<string, { icon: React.ReactNode; color: string; badge: string }> = {
     'Step-by-step explanation': {
         icon: <ListOrdered className="w-5 h-5" />,
@@ -65,6 +80,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
     const [isVideoLoading, setIsVideoLoading] = useState(false);
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+const { copied, copy } = useCopyToClipboard();
 
     useEffect(() => {
         if (initialDoubt) {
@@ -292,8 +308,21 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
             )}
 
             {response && (
-                <div className="space-y-4">
-                    {sections.map((sec, idx) => {
+    <div className="space-y-4">
+        <div className="flex justify-end">
+            <button
+                onClick={() => copy(response, "full-response")}
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-bold uppercase tracking-tighter text-[9px] transition-all text-slate-400 hover:text-white"
+                aria-label="Copy full response"
+            >
+                {copied === "full-response" ? (
+                    <><Check className="w-3 h-3 text-green-400" /> All Copied!</>
+                ) : (
+                    <><Copy className="w-3 h-3" /> Copy All</>
+                )}
+            </button>
+        </div>
+        {sections.map((sec, idx) => {
                         const meta = SECTION_META[sec.title];
                         return (
                             <div key={idx} className="bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-white/8 rounded-3xl overflow-hidden shadow-lg">
@@ -304,15 +333,29 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                                         </div>
                                     )}
                                     <h2 className="text-slate-900 dark:text-white font-black tracking-tight text-sm uppercase italic">{sec.title}</h2>
-                                    {idx === 0 && (
-                                        <button
-                                            onClick={handleGenerateVideo}
-                                            disabled={isVideoLoading}
-                                            className="ml-auto flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-slate-900 dark:text-white rounded-xl font-bold uppercase tracking-tighter text-[9px] shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50"
-                                        >
-                                            {isVideoLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3 text-yellow-400 fill-yellow-400" />} {isVideoLoading ? "Generating..." : "Generate Video"}
-                                        </button>
-                                    )}
+                                    <div className="ml-auto flex items-center gap-2">
+    <button
+        onClick={() => copy(sec.content, `section-${idx}`)}
+        className="flex items-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-bold uppercase tracking-tighter text-[9px] transition-all text-slate-400 hover:text-white"
+        aria-label="Copy section content"
+        title="Copy to clipboard"
+    >
+        {copied === `section-${idx}` ? (
+            <><Check className="w-3 h-3 text-green-400" /> Copied!</>
+        ) : (
+            <><Copy className="w-3 h-3" /> Copy</>
+        )}
+    </button>
+    {idx === 0 && (
+        <button
+            onClick={handleGenerateVideo}
+            disabled={isVideoLoading}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-slate-900 dark:text-white rounded-xl font-bold uppercase tracking-tighter text-[9px] shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50"
+        >
+            {isVideoLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3 text-yellow-400 fill-yellow-400" />} {isVideoLoading ? "Generating..." : "Generate Video"}
+        </button>
+    )}
+</div>
                                 </div>
                                 <div className="px-6 py-6 prose prose-invert max-w-none">
                                     <ReactMarkdown

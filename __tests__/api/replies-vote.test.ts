@@ -32,7 +32,18 @@ jest.mock('@/configs/db', () => ({
                     })),
                 })),
             })),
-        };
+        } as any;
+
+        // Add transaction that runs callback with a tx proxy sharing the same mocks
+        db.transaction = jest.fn().mockImplementation((callback: (tx: any) => Promise<any>) => {
+            const tx = {
+                select: () => createQueryMock(selectResultQueue.shift() ?? []),
+                delete: () => ({ where: jest.fn().mockResolvedValue({}) }),
+                insert: db.insert,
+                update: db.update,
+            };
+            return callback(tx);
+        });
 
         (globalThis as any).__voteDbMock = db;
         return db;

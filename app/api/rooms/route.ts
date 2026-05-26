@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { classroomsTable, membershipsTable, usersTable } from '@/configs/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, notInArray } from 'drizzle-orm';
 import { currentUser } from '@clerk/nextjs/server';
 import { checkUserBlock } from '@/lib/auth-utils';
 import { buildErrorResponse } from '@/lib/error-handler';
@@ -45,19 +45,19 @@ const [dbUser] = await db
 
 let recommendedRooms: any[] = [];
 
-if (dbUser) {
+if (dbUser && dbUser.university && dbUser.year) {
     const joinedIds = joinedRooms.map((r) => r.id);
-
-    const allRooms = await db
+    const conditions = [
+        eq(classroomsTable.university, dbUser.university),
+        eq(classroomsTable.year, dbUser.year)
+    ];
+    if (joinedIds.length > 0) {
+        conditions.push(notInArray(classroomsTable.id, joinedIds));
+    }
+    recommendedRooms = await db
         .select()
-        .from(classroomsTable);
-
-    recommendedRooms = allRooms.filter(
-        (room) =>
-            room.university === dbUser.university &&
-            room.year === dbUser.year &&
-            !joinedIds.includes(room.id)
-    );
+        .from(classroomsTable)
+        .where(and(...conditions));
 }
 
         return NextResponse.json({

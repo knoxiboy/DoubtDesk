@@ -1,4 +1,3 @@
-```tsx
 "use client";
 
 import Link from "next/link";
@@ -127,34 +126,59 @@ export default function Footer() {
 
                 <ul className="space-y-4">
                   {section.links.map((link) => {
+                    const isExternal =
+                      link.href.startsWith("http") ||
+                      link.href.startsWith("mailto:");
+
                     const isCommunity = section.title === "Community";
 
                     const Icon = isCommunity
-                      ? communityIcons[link.label as keyof typeof communityIcons]
+                      ? communityIcons[
+                          link.label as keyof typeof communityIcons
+                        ]
                       : null;
 
                     return (
                       <li key={link.label}>
-                        <Link
-                          href={link.href}
-                          target={link.href.startsWith("http") ? "_blank" : undefined}
-                          rel={
-                            link.href.startsWith("http")
-                              ? "noopener noreferrer"
-                              : undefined
-                          }
-                          className="group inline-flex items-center gap-2 text-sm text-slate-600 transition-all duration-300 hover:translate-x-1 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"
-                        >
-                          {isCommunity && Icon ? (
-                            <Icon className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400 opacity-90 transition-transform duration-300 group-hover:translate-x-1" />
-                          )}
+                        {isExternal ? (
+                          <a
+                            href={link.href}
+                            target={
+                              link.href.startsWith("http") ? "_blank" : undefined
+                            }
+                            rel={
+                              link.href.startsWith("http")
+                                ? "noopener noreferrer"
+                                : undefined
+                            }
+                            className="group inline-flex items-center gap-2 text-sm text-slate-600 transition-all duration-300 hover:translate-x-1 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"
+                          >
+                            {isCommunity && Icon ? (
+                              <Icon className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400 opacity-90 transition-transform duration-300 group-hover:translate-x-1" />
+                            )}
 
-                          <span className="relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 group-hover:after:w-full">
-                            {link.label}
-                          </span>
-                        </Link>
+                            <span className="relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 group-hover:after:w-full">
+                              {link.label}
+                            </span>
+                          </a>
+                        ) : (
+                          <Link
+                            href={link.href}
+                            className="group inline-flex items-center gap-2 text-sm text-slate-600 transition-all duration-300 hover:translate-x-1 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"
+                          >
+                            {isCommunity && Icon ? (
+                              <Icon className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400 opacity-90 transition-transform duration-300 group-hover:translate-x-1" />
+                            )}
+
+                            <span className="relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 group-hover:after:w-full">
+                              {link.label}
+                            </span>
+                          </Link>
+                        )}
                       </li>
                     );
                   })}
@@ -167,7 +191,7 @@ export default function Footer() {
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             {socialLinks.map((social) => (
-              <Link
+              <a
                 key={social.label}
                 href={social.href}
                 target="_blank"
@@ -176,7 +200,7 @@ export default function Footer() {
                 className={`group p-3 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-white/5 text-slate-700 dark:text-slate-400 backdrop-blur-sm transition-all duration-300 hover:bg-slate-300/80 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:-translate-y-1 hover:scale-110 ${social.hoverColor}`}
               >
                 <social.icon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
-              </Link>
+              </a>
             ))}
           </div>
 
@@ -192,4 +216,3 @@ export default function Footer() {
     </footer>
   );
 }
-```

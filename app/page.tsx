@@ -334,11 +334,11 @@ export default function Home() {
         <section id="how-it-works" className="scroll-mt-24 px-6 py-20 relative z-10">
           <div className="max-w-7xl mx-auto text-center">
 
-            <h3 className="text-3xl sm:text-4xl font-bold text-[#F2F5FF]">
+            <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-[#F2F5FF]">
               How it works
             </h3>
 
-            <p className="mt-4 text-slate-300/80">
+            <p className="mt-4 text-slate-700 dark:text-slate-300/80">
               Simple flow from doubt → solution → understanding
             </p>
 
@@ -346,17 +346,17 @@ export default function Home() {
               {howItWorks.map((step, index) => (
                 <div
                   key={step.title}
-                  className="p-6 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl hover:bg-white/[0.06] transition"
+                  className="p-6 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] backdrop-blur-xl hover:bg-slate-100 dark:hover:bg-white/[0.06] transition"
                 >
                   <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[#5E8CFF] text-white flex items-center justify-center font-bold shadow-[0_0_18px_rgba(94,140,255,0.45)] ring-1 ring-[#8BB8FF]/40">
                     {index + 1}
                   </div>
 
-                  <h4 className="text-lg font-semibold text-[#F2F5FF]">
+                  <h4 className="text-lg font-semibold text-slate-900 dark:text-[#F2F5FF]">
                     {step.title}
                   </h4>
 
-                  <p className="mt-2 text-sm text-slate-300/80">
+                  <p className="mt-2 text-sm text-slate-700 dark:text-slate-300/80">
                     {step.description}
                   </p>
                 </div>
@@ -368,14 +368,14 @@ export default function Home() {
         {/* Testimonials */}
         <section id="testimonials" className="scroll-mt-24 px-6 py-20 relative z-10">
           <div className="max-w-7xl mx-auto text-center">
-            <div className={`${staatliches.className} mb-4 text-sm tracking-[0.16em] text-[#AABFFF]/70 uppercase`}>
+            <div className={`${staatliches.className} mb-4 text-sm tracking-[0.16em] text-blue-700 dark:text-[#AABFFF]/70 uppercase`}>
               Testimonials
             </div>
-            <h3 className="text-3xl sm:text-4xl font-bold text-[#F2F5FF]">
+            <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-[#F2F5FF]">
               What students say
             </h3>
 
-            <p className="mt-4 text-slate-300/80">
+            <p className="mt-4 text-slate-700 dark:text-slate-300/80">
               Real feedback from learners and educators
             </p>
 
@@ -383,17 +383,17 @@ export default function Home() {
               {testimonials.map((t) => (
                 <div
                   key={t.name}
-                  className="p-6 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl hover:bg-white/[0.06] transition"
+                  className="p-6 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] backdrop-blur-xl hover:bg-slate-100 dark:hover:bg-white/[0.06] transition"
                 >
-                  <p className="text-slate-300/80 text-sm leading-7">
+                  <p className="text-slate-700 dark:text-slate-300/80 text-sm leading-7">
                     “{t.text}”
                   </p>
 
                   <div className="mt-5">
-                    <div className="text-[#F2F5FF] font-semibold">
+                    <div className="text-slate-900 dark:text-[#F2F5FF] font-semibold">
                       {t.name}
                     </div>
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
                       {t.role}
                     </div>
                   </div>

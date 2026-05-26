@@ -10,7 +10,7 @@ export async function POST(req: Request) {
         }
 
         const groq = new Groq({
-            apiKey: process.env.GROQ_API_KEY,
+            apiKey: process.env.GROQ_API_KEY || 'dummy_key',
         });
 
         const { content } = await req.json();
