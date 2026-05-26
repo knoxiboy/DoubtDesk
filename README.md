@@ -230,7 +230,7 @@ Create a `.env` file in the project root with the following keys:
 
 ```env
 # Database (Neon PostgreSQL)
-NEXT_PUBLIC_NEON_DB_CONNECTION_STRING=your_neon_connection_string
+DATABASE_URL=your_neon_connection_string
 
 # Authentication (Clerk)
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...

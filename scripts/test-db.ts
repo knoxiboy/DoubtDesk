@@ -2,9 +2,10 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { chatHistoryTable } from "../configs/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import * as dotenv from "dotenv";
+import { getDatabaseUrl } from "../configs/database-url";
 dotenv.config();
 
-const db = drizzle(process.env.NEXT_PUBLIC_NEON_DB_CONNECTION_STRING!);
+const db = drizzle(getDatabaseUrl());
 
 async function testQuery() {
   try {
