@@ -309,15 +309,42 @@ export const moderationLogsTable = pgTable("moderation_logs", {
     createdAt: timestamp().defaultNow().notNull(),
 });
 
-export const bookmarksTable = pgTable("bookmarks", {
+export const bookmarksTable = pgTable(
+  "bookmarks",
+  {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
+
     userEmail: varchar({ length: 255 }).notNull(),
+
     doubtId: integer().notNull(),
+
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
-    userEmailIndex: index("bookmark_userEmail_idx").on(table.userEmail),
-    doubtIdIndex: index("bookmark_doubtId_idx").on(table.doubtId),
-}));
+  },
+
+  (table) => ({
+    userEmailIndex: index("bookmark_userEmail_idx").on(
+      table.userEmail
+    ),
+
+    doubtIdIndex: index("bookmark_doubtId_idx").on(
+      table.doubtId
+    ),
+
+    userEmailFk: foreignKey({
+      columns: [table.userEmail],
+      foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+
+    doubtIdFk: foreignKey({
+      columns: [table.doubtId],
+      foreignColumns: [doubtsTable.id],
+    }).onDelete("cascade"),
+
+    uniqueBookmark: unique(
+      "bookmarks_userEmail_doubtId_unique"
+    ).on(table.userEmail, table.doubtId),
+  })
+);
 
 /**
  * In-app notifications for users.
