@@ -9,7 +9,12 @@ import {
     Bookmark,
     MessageSquare,
     Zap,
-    BarChart3
+    BarChart3,
+    FileText,      
+    ScanSearch,    
+    Mail,          
+    Map,           
+    Bot,           
 } from 'lucide-react'
 
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -199,6 +204,42 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 </TooltipTrigger>
                                 <TooltipContent side="right">Ask AI Solver</TooltipContent>
                                 </Tooltip>
+                            </div>
+                        </div>
+                        {/* Career Tools */}
+                        <div className="space-y-4">
+                            <div className="px-4">
+                                <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-purple-500 mb-3 flex items-center gap-2">
+                                    <FileText className="w-3.5 h-3.5" />
+                                    Career
+                                </h2>
+                                <div className="h-px w-full bg-purple-500/20"></div>
+                            </div>
+
+                            <div className="space-y-2">
+                                {[
+                                    { label: 'Resume Builder',  href: '/resume-builder',  icon: FileText },
+                                    { label: 'Resume Analyzer', href: '/resume-analyzer', icon: ScanSearch },
+                                    { label: 'Cover Letter',    href: '/cover-letter',    icon: Mail },
+                                    { label: 'Roadmaps',        href: '/roadmaps',        icon: Map },
+                                    { label: 'AI Career Chat',  href: '/ai-career-chat',  icon: Bot },
+                                ].map(({ label, href, icon: Icon }) => (
+                                    <Tooltip key={href}>
+                                    <TooltipTrigger asChild>
+                                    <Link
+                                        href={href}
+                                        onClick={onClose}
+                                        className={linkClasses(pathname === href)}
+                                    >
+                                        <div className="p-1.5 rounded-lg bg-muted border border-border/60">
+                                            <Icon className="w-4 h-4 text-purple-400" />
+                                        </div>
+                                        <span className="text-sm font-semibold">{label}</span>
+                                    </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">{label}</TooltipContent>
+                                    </Tooltip>
+                                ))}
                             </div>
                         </div>
 
