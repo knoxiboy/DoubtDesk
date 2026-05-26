@@ -10,13 +10,14 @@ export default function SignUpPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
-      <Link
-        href="/"
+      {/* The new Back to Home link */}
+      <Link 
+        href="/" 
         className="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
       >
         &larr; Back to Home
       </Link>
-
+      
       <SignUp
         appearance={{
           baseTheme: theme === "dark" ? dark : undefined,

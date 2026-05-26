@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   ChevronDown,
   HelpCircle,
@@ -119,6 +120,16 @@ export default function FAQPage() {
       </div>
 
       <div className="relative z-10 mx-auto max-w-5xl px-6 py-20">
+
+        {/* Back to Home Button */}
+        <div className="mb-8 flex justify-start">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-blue-700"
+          >
+            ← Back to Home
+          </Link>
+        </div>
 
         {/* Hero */}
         <div className="mb-16 text-center">

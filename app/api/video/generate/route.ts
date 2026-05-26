@@ -3,18 +3,69 @@ import { renderMedia, selectComposition } from '@remotion/renderer';
 import path from 'path';
 import fs from 'fs';
 import Groq from 'groq-sdk';
-import * as googleTTS from 'google-tts-api';
 import axios from 'axios';
 import ffmpeg from 'ffmpeg-static';
 import Tesseract from 'tesseract.js';
 import { parseAndValidateRequest } from '@/lib/validations/validate';
 import { generateVideoSchema } from '@/lib/validations/video';
 import { currentUser } from '@clerk/nextjs/server';
+import { checkUserBlock } from '@/lib/auth-utils';
 import { redisClient } from '@/lib/ratelimit';
 
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY,
 });
+
+function splitTextIntoChunks(text: string, maxLen: number = 200): string[] {
+    const rawWords = text.split(/\s+/);
+    const words: string[] = [];
+    for (const word of rawWords) {
+        if (word.length > maxLen) {
+            // Split overlong word into <=maxLen pieces
+            for (let i = 0; i < word.length; i += maxLen) {
+                words.push(word.slice(i, i + maxLen));
+            }
+        } else {
+            words.push(word);
+        }
+    }
+
+    const chunks: string[] = [];
+    let currentChunk = "";
+
+    for (const word of words) {
+        if ((currentChunk + " " + word).trim().length > maxLen) {
+            if (currentChunk.trim().length > 0) {
+                chunks.push(currentChunk.trim());
+            }
+            currentChunk = word;
+        } else {
+            currentChunk = (currentChunk + " " + word).trim();
+        }
+    }
+    if (currentChunk.trim().length > 0) {
+        chunks.push(currentChunk.trim());
+    }
+    return chunks;
+}
+
+function getGoogleTtsUrls(text: string, lang: string = 'en', speed: number = 1): string[] {
+    const chunks = splitTextIntoChunks(text, 200);
+    return chunks.map(chunk => {
+        const queryParams = new URLSearchParams({
+            ie: 'UTF-8',
+            q: chunk,
+            tl: lang,
+            total: '1',
+            idx: '0',
+            textlen: chunk.length.toString(),
+            client: 'tw-ob',
+            prev: 'input',
+            ttsspeed: speed.toString()
+        });
+        return `https://translate.google.com/translate_tts?${queryParams.toString()}`;
+    });
+}
 
 export async function POST(req: Request) {
     const user = await currentUser();
@@ -22,26 +73,33 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const email = user.primaryEmailAddress?.emailAddress;
+    if (!email) {
+        return NextResponse.json({ error: 'Email required' }, { status: 400 });
+    }
+
+    const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
+    if (isBlocked) return blockResponse;
+
     let lockKey = null;
     try {
         const { errorResponse, data } = await parseAndValidateRequest(req, generateVideoSchema);
         if (errorResponse) return errorResponse;
-        
+
         lockKey = `video_lock:${user.id}`;
         const lockAcquired = await redisClient.setnx(lockKey, "1");
-        
+
         if (!lockAcquired || lockAcquired === 0) {
-            return NextResponse.json({ 
-                error: 'A video generation is already in progress for your account. Please wait for it to finish.' 
+            return NextResponse.json({
+                error: 'A video generation is already in progress for your account. Please wait for it to finish.'
             }, { status: 429 });
         }
-        
-        // Ensure lock expires after 5 minutes to prevent deadlocks if process crashes
+
         if (redisClient.expire) {
             await redisClient.expire(lockKey, 300);
         }
 
-        let { content, imageUrl } = await req.json();
+        let { content, imageUrl } = data;
 
         // 1. OCR if image is provided
         if (imageUrl && !content) {
@@ -117,9 +175,13 @@ Return ONLY a JSON object with a "scenes" array.`;
             const audioPath = path.join(tempDir, `audio-${Date.now()}-${i}.mp3`);
             const narrationText = scene.text || scene.title || "Next step";
             
-            const url = googleTTS.getAudioUrl(narrationText, { lang: 'en', slow: false, host: 'https://translate.google.com' });
-            const response = await axios({ method: 'get', url, responseType: 'arraybuffer' });
-            await fs.promises.writeFile(audioPath, Buffer.from(response.data));
+            const urls = getGoogleTtsUrls(narrationText, 'en', 1);
+            const audioBuffers = await Promise.all(urls.map(async (url) => {
+                const response = await axios({ method: 'get', url, responseType: 'arraybuffer' });
+                return Buffer.from(response.data);
+            }));
+            const combinedBuffer = Buffer.concat(audioBuffers);
+            await fs.promises.writeFile(audioPath, combinedBuffer);
             
             return { ...scene, audioUrl: `${baseUrl}/temp-assets/${path.basename(audioPath)}` };
         }));

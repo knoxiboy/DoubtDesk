@@ -1,6 +1,8 @@
+```tsx
 "use client";
 
-import Link from "next/link"
+import Link from "next/link";
+import Image from "next/image";
 import {
   Github,
   Linkedin,
@@ -8,11 +10,10 @@ import {
   ChevronRight,
   Users,
   MessageSquare,
-  LifeBuoy,
-} from "lucide-react"
+} from "lucide-react";
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear()
+  const currentYear = new Date().getFullYear();
 
   const footerSections = [
     {
@@ -27,6 +28,8 @@ export default function Footer() {
     {
       title: "Resources",
       links: [
+        { label: "Public Doubts", href: "/public-rooms" },
+        { label: "Bookmarks", href: "/bookmarks" },
         { label: "Privacy Policy", href: "/privacy-policy" },
         { label: "Terms of Service", href: "/terms-of-service" },
         { label: "About", href: "/about" },
@@ -42,14 +45,14 @@ export default function Footer() {
         { label: "Contact", href: "mailto:karankmt.tripathi@gmail.com" },
       ],
     },
-  ]
+  ];
 
   const communityIcons = {
     GitHub: Github,
     Contributors: Users,
     "Report Issue": MessageSquare,
     Contact: Mail,
-  } as const
+  } as const;
 
   const socialLinks = [
     {
@@ -89,8 +92,14 @@ export default function Footer() {
           {/* Brand Section */}
           <div className="max-w-md">
             <Link href="/" className="inline-flex items-center gap-3 mb-5 group">
-              <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-slate-900 dark:text-white font-bold text-xl shadow-[0_0_15px_rgba(37,99,235,0.2)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
-                D
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.2)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <Image
+                  src="/logo.png"
+                  alt="DoubtDesk logo"
+                  width={35}
+                  height={35}
+                  className="object-cover"
+                />
               </div>
               <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 tracking-tight transition-colors duration-300">
                 DoubtDesk
@@ -102,7 +111,6 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* Footer Links */}
           <div
             role="navigation"
             aria-label="Footer navigation links"
@@ -115,17 +123,22 @@ export default function Footer() {
                 </h4>
                 <ul className="space-y-4">
                   {section.links.map((link) => {
-                    const isCommunity = section.title === "Community"
+                    const isCommunity = section.title === "Community";
+
                     const Icon = isCommunity
                       ? communityIcons[link.label as keyof typeof communityIcons]
-                      : null
+                      : null;
 
                     return (
                       <li key={link.label}>
                         <Link
                           href={link.href}
                           target={link.href.startsWith("http") ? "_blank" : undefined}
-                          rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                          rel={
+                            link.href.startsWith("http")
+                              ? "noopener noreferrer"
+                              : undefined
+                          }
                           className="group inline-flex items-center gap-2 text-sm text-slate-600 transition-all duration-300 hover:translate-x-1 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"
                         >
                           {isCommunity && Icon ? (
@@ -133,12 +146,13 @@ export default function Footer() {
                           ) : (
                             <ChevronRight className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400 opacity-90 transition-transform duration-300 group-hover:translate-x-1" />
                           )}
+
                           <span className="relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 group-hover:after:w-full">
                             {link.label}
                           </span>
                         </Link>
                       </li>
-                    )
+                    );
                   })}
                 </ul>
               </div>
@@ -146,9 +160,7 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom Section */}
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          {/* Social Icons */}
           <div className="flex items-center gap-4">
             {socialLinks.map((social) => (
               <Link
@@ -164,7 +176,6 @@ export default function Footer() {
             ))}
           </div>
 
-          {/* Copyright */}
           <div className="text-center md:text-right">
             <p className="text-sm text-slate-600 dark:text-slate-500">
               © {currentYear} DoubtDesk. Built for collaborative AI-powered learning.
@@ -172,9 +183,9 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Top Glow Line */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 dark:via-blue-500/30 to-transparent" />
       </div>
     </footer>
-  )
+  );
 }
+```

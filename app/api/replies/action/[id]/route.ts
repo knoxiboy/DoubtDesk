@@ -11,10 +11,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     try {
         const { errorResponse, data } = await parseAndValidateRequest(req, updateReplyActionSchema);
         if (errorResponse) return errorResponse;
-        const { action, content, subject, imageUrl, userName, replyId, status, tags = [] } = data;
-        
+        const { content, imageUrl } = data;
+
         const user = await currentUser();
-        const email = user?.primaryEmailAddress?.emailAddress;
+        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const email = user.primaryEmailAddress?.emailAddress;
+        if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+
         const { id } = await params;
         const replyId = parseInt(id);
 
@@ -36,7 +39,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
         const isOwner = email && reply.userEmail === email;
         if (!isOwner && !isTeacher) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+            return NextResponse.json({ error: "Forbidden: not allowed to edit this reply" }, { status: 403 });
         }
 
         const updateData: any = {};
@@ -58,7 +61,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const user = await currentUser();
-        const email = user?.primaryEmailAddress?.emailAddress;
+        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const email = user.primaryEmailAddress?.emailAddress;
+        if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
         const { id } = await params;
         const replyId = parseInt(id);
@@ -81,7 +86,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
         const isOwner = email && reply.userEmail === email;
         if (!isOwner && !isTeacher) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+            return NextResponse.json({ error: "Forbidden: not allowed to delete this reply" }, { status: 403 });
         }
 
         await db.delete(repliesTable).where(eq(repliesTable.id, replyId));
