@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import AskDoubt from "@/components/AskDoubt";
 import DoubtCard from "@/components/DoubtCard";
+import { motion, AnimatePresence } from "framer-motion";
 import Dashboard from "@/app/dashboard/page"; // We can reuse or adapt the Analytics view
 import AskAIView from "../../../components/AskAIView";
 import ExportButton from "@/components/ExportButton";
@@ -667,57 +668,73 @@ export default function ClassroomPage() {
                 )}
             </div>
 
-            {isAskModalOpen && (
-                <AskDoubt
-                    isOpen={isAskModalOpen}
-                    onClose={() => setIsAskModalOpen(false)}
-                    onSuccess={() => {
-                        setIsAskModalOpen(false);
-                        mutate();
-                    }}
-                    classroomId={Number(id)}
-                    type={activeTab === 'teacher-doubts' ? 'teacher' : activeTab === 'ask-ai' ? 'ai' : 'community'}
-                    defaultSubject={classroom?.name || "General"}
-                />
-            )}
+            <AnimatePresence>
+                {isAskModalOpen && (
+                    <AskDoubt
+                        isOpen={isAskModalOpen}
+                        onClose={() => setIsAskModalOpen(false)}
+                        onSuccess={() => {
+                            setIsAskModalOpen(false);
+                            mutate();
+                        }}
+                        classroomId={Number(id)}
+                        type={activeTab === 'teacher-doubts' ? 'teacher' : activeTab === 'ask-ai' ? 'ai' : 'community'}
+                        defaultSubject={classroom?.name || "General"}
+                    />
+                )}
+            </AnimatePresence>
 
             {/* CLASS CODE MODAL */}
-            {isCodeModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80 animate-in fade-in duration-300">
-                    <div className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-md rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 relative overflow-hidden">
-                         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
-                         <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                                <h2 className="text-2xl font-black uppercase tracking-tighter">Access <span className="text-blue-500">Key</span></h2>
-                                <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-[9px]">Invite your students</p>
+            <AnimatePresence>
+                {isCodeModalOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 15 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 15 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                            className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-md rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden"
+                        >
+                             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
+                             <div className="flex items-center justify-between">
+                                <div className="space-y-1">
+                                    <h2 className="text-2xl font-black uppercase tracking-tighter">Access <span className="text-blue-500">Key</span></h2>
+                                    <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-[9px]">Invite your students</p>
+                                </div>
+                                <button
+                                    onClick={() => setIsCodeModalOpen(false)}
+                                    className="p-2 text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                    aria-label="Close modal"
+                                >
+                                    <Plus className="w-5 h-5 rotate-45" />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setIsCodeModalOpen(false)}
-                                className="p-2 text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-                                aria-label="Close modal"
-                            >
-                                <Plus className="w-5 h-5 rotate-45" />
-                            </button>
-                        </div>
 
-                        <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 relative group overflow-hidden">
-                            <div className="absolute inset-0 bg-blue-600/5 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <code className="text-3xl sm:text-4xl font-black text-blue-400 tracking-[0.2em] relative z-10 text-center sm:text-left">{classroom?.inviteCode}</code>
+                            <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 relative group overflow-hidden">
+                                <div className="absolute inset-0 bg-blue-600/5 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                <code className="text-3xl sm:text-4xl font-black text-blue-400 tracking-[0.2em] relative z-10 text-center sm:text-left">{classroom?.inviteCode}</code>
 
-                            <button
-                                onClick={copyCode}
-                                className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] relative z-10"
-                            >
-                                {copied ? (
-                                    <><Check className="w-4 h-4 text-slate-900 dark:text-white" /> Copied!</>
-                                ) : (
-                                    <><Copy className="w-4 h-4 text-slate-900 dark:text-white" /> Copy Code</>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                                <button
+                                    onClick={copyCode}
+                                    className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] relative z-10"
+                                >
+                                    {copied ? (
+                                        <><Check className="w-4 h-4 text-slate-900 dark:text-white" /> Copied!</>
+                                    ) : (
+                                        <><Copy className="w-4 h-4 text-slate-900 dark:text-white" /> Copy Code</>
+                                    )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

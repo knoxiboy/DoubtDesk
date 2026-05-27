@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock } from "lucide-react";
 import AskDoubt from "./AskDoubt";
 import DoubtRepliesModal from "./DoubtRepliesModal";
@@ -139,7 +140,12 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
 
     return (
         <>
-            <div className="group bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 hover:border-blue-500/30 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/5 flex flex-col h-full relative overflow-hidden">
+            <motion.div
+                whileHover={{ y: -4, scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="group bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 hover:border-blue-500/30 hover:shadow-2xl hover:shadow-blue-500/5 flex flex-col h-full relative overflow-hidden transition-colors transition-shadow duration-300"
+            >
                 {/* Background Glow */}
                 <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/5 blur-[100px] rounded-full group-hover:bg-blue-600/10 transition-all duration-500"></div>
 
@@ -316,26 +322,32 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                     </div>
                 </div>
 
-                {isEditModalOpen && (
-                    <AskDoubt
-                        isOpen={isEditModalOpen}
-                        onClose={() => setIsEditModalOpen(false)}
-                        doubtToEdit={doubt}
-                        onSuccess={() => {
-                            setIsEditModalOpen(false);
-                            if (onUpdate) onUpdate();
-                        }}
-                    />
-                )}
+                <AnimatePresence>
+                    {isEditModalOpen && (
+                        <AskDoubt
+                            isOpen={isEditModalOpen}
+                            onClose={() => setIsEditModalOpen(false)}
+                            doubtToEdit={doubt}
+                            onSuccess={() => {
+                                setIsEditModalOpen(false);
+                                if (onUpdate) onUpdate();
+                            }}
+                        />
+                    )}
+                </AnimatePresence>
 
-                <DoubtRepliesModal
-                    doubt={doubt}
-                    isOpen={isRepliesOpen}
-                    onClose={() => setIsRepliesOpen(false)}
-                    onReplyChange={onUpdate}
-                    isTeacher={isTeacher}
-                />
-            </div>
+                <AnimatePresence>
+                    {isRepliesOpen && (
+                        <DoubtRepliesModal
+                            doubt={doubt}
+                            isOpen={isRepliesOpen}
+                            onClose={() => setIsRepliesOpen(false)}
+                            onReplyChange={onUpdate}
+                            isTeacher={isTeacher}
+                        />
+                    )}
+                </AnimatePresence>
+            </motion.div>
 
             {/* Fullscreen Image Overlay */}
             {isFullscreenImageOpen && (

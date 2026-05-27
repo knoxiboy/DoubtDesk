@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { SignedIn, UserButton, useClerk } from "@clerk/nextjs"
 import { usePathname } from "next/navigation"
+import { motion } from "framer-motion"
 import Sidebar from "@/components/Sidebar"
 import { Menu, LogOut, User, Keyboard } from "lucide-react"
 import Link from "next/link"
@@ -196,7 +197,14 @@ export default function DashboardLayout({
                 {/* Page Content */}
                 <main className="flex-1 overflow-y-auto bg-background/40 backdrop-blur-sm scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent transition-colors duration-300">
                     <div className="p-4 md:p-6">
-                        {children}
+                        <motion.div
+                            key={pathname}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                        >
+                            {children}
+                        </motion.div>
                     </div>
                 </main>
             </div>

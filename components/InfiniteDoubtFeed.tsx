@@ -3,6 +3,7 @@
 import { MessageSquare, Loader2, ChevronDown } from "lucide-react";
 import DoubtCard from "@/components/DoubtCard";
 import useSWRInfinite from "swr/infinite";
+import { motion } from "framer-motion";
 import ScrollToTopButton from "./ScrollToTopButton";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -94,13 +95,19 @@ export default function InfiniteDoubtFeed({
             <ScrollToTopButton />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {doubts.map((doubt: any, index: number) => (
-                    <DoubtCard
+                    <motion.div
                         key={`${doubt.id}-${index}`}
-                        doubt={doubt}
-                        role={role}
-                        onUpdate={() => mutate()}
-                        onViewAISolution={onViewAISolution}
-                    />
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: Math.min(index % 10, 5) * 0.05 }}
+                    >
+                        <DoubtCard
+                            doubt={doubt}
+                            role={role}
+                            onUpdate={() => mutate()}
+                            onViewAISolution={onViewAISolution}
+                        />
+                    </motion.div>
                 ))}
             </div>
 

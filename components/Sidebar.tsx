@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
     LayoutDashboard,
     X,
@@ -42,10 +43,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         hover:shadow-[0_0_20px_rgba(59,130,246,0.08)]
         ${isActive
             ? `
-                bg-gradient-to-r from-blue-600/15 to-cyan-500/10
                 text-blue-400
-                border border-blue-500/20
-                shadow-sm
                 before:absolute before:left-0 before:top-2
                 before:h-8 before:w-1 before:rounded-r-full
                 before:bg-blue-400
@@ -57,12 +55,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     return (
         <>
             {/* Mobile Overlay */}
-            {isOpen && (
-                <div
-                    className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
-                    onClick={onClose}
-                />
-            )}
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-30"
+                        onClick={onClose}
+                    />
+                )}
+            </AnimatePresence>
 
             {/* Sidebar */}
             <TooltipProvider>
@@ -121,6 +125,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                         onClick={onClose}
                                         className={linkClasses(isActive)}
                                     >
+                                        {isActive && (
+                                            <motion.div
+                                                layoutId="activeSidebarIndicator"
+                                                className="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-cyan-500/10 border border-blue-500/20 shadow-sm rounded-2xl -z-10 pointer-events-none"
+                                                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                                            />
+                                        )}
                                         <Icon
                                             className={`w-5 h-5 transition-colors ${isActive ? 'text-blue-400' : 'text-muted-foreground group-hover:text-foreground' }`}
                                         />
@@ -158,6 +169,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                     onClick={onClose}
                                     className={linkClasses(pathname === '/public-rooms')}
                                 >
+                                    {pathname === '/public-rooms' && (
+                                        <motion.div
+                                            layoutId="activeSidebarIndicator"
+                                            className="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-cyan-500/10 border border-blue-500/20 shadow-sm rounded-2xl -z-10 pointer-events-none"
+                                            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                                        />
+                                    )}
                                     <div className="p-1.5 rounded-lg bg-muted border border-border/60">
                                         <MessageSquare className="w-4 h-4" />
                                     </div>
@@ -191,6 +209,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                     onClick={onClose}
                                     className={linkClasses(pathname === '/ask-ai')}
                                 >
+                                    {pathname === '/ask-ai' && (
+                                        <motion.div
+                                            layoutId="activeSidebarIndicator"
+                                            className="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-cyan-500/10 border border-blue-500/20 shadow-sm rounded-2xl -z-10 pointer-events-none"
+                                            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                                        />
+                                    )}
                                     <div className="p-1.5 rounded-lg bg-muted border border-border/60">
                                         <Zap className="w-4 h-4 text-cyan-400" />
                                     </div>
@@ -228,6 +253,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                             pathname === '/dashboard/analytics'
                                         )}
                                     >
+                                        {pathname === '/dashboard/analytics' && (
+                                            <motion.div
+                                                layoutId="activeSidebarIndicator"
+                                                className="absolute inset-0 bg-gradient-to-r from-blue-600/15 to-cyan-500/10 border border-blue-500/20 shadow-sm rounded-2xl -z-10 pointer-events-none"
+                                                transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                                            />
+                                        )}
                                         <div className="p-1.5 rounded-lg bg-muted border border-border/60">
                                             <BarChart3 className="w-4 h-4 text-blue-400" />
                                         </div>

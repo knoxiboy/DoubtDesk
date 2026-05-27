@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAppUser } from "../provider";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
     Plus, 
     Link as LinkIcon, 
@@ -206,8 +207,17 @@ export default function RoomsPage() {
                                 <Users className="w-6 h-6 text-blue-500" /> My Academic Circles
                             </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {rooms.map((room) => (
-                                    <RoomCard key={room.id} room={room} isRecommended={false} />
+                                {rooms.map((room, idx) => (
+                                    <motion.div
+                                        key={room.id}
+                                        initial={{ opacity: 0, y: 12 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.3, delay: idx * 0.05 }}
+                                        whileHover={{ y: -4, scale: 1.01 }}
+                                        whileTap={{ scale: 0.99 }}
+                                    >
+                                        <RoomCard room={room} isRecommended={false} />
+                                    </motion.div>
                                 ))}
                             </div>
                         </div>
@@ -221,10 +231,19 @@ export default function RoomsPage() {
                                     </h2>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                    {recommended.map((room) => (
-                                        <RoomCard key={room.id} room={room} isRecommended={true} onDiscover={() => {
-                                        setIsJoinModalOpen(true);
-                                    }} />
+                                    {recommended.map((room, idx) => (
+                                        <motion.div
+                                            key={room.id}
+                                            initial={{ opacity: 0, y: 12 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ duration: 0.3, delay: idx * 0.05 }}
+                                            whileHover={{ y: -4, scale: 1.01 }}
+                                            whileTap={{ scale: 0.99 }}
+                                        >
+                                            <RoomCard key={room.id} room={room} isRecommended={true} onDiscover={() => {
+                                                setIsJoinModalOpen(true);
+                                            }} />
+                                        </motion.div>
                                     ))}
                                 </div>
                             </div>
@@ -234,105 +253,133 @@ export default function RoomsPage() {
             </div>
 
             {/* CREATE MODAL */}
-            {isCreateModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80 animate-in fade-in duration-300">
-                    <div className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-lg rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl space-y-6 sm:space-y-8 animate-in zoom-in-95 duration-300">
-                        <div className="space-y-2">
-                            <h2 className="text-4xl font-black italic uppercase tracking-tighter">Spawn <span className="text-blue-500">Classroom</span></h2>
-                            <p className="text-slate-600 dark:text-slate-400 font-medium">Define your new academic workspace.</p>
-                        </div>
-
-                        <form onSubmit={handleCreateRoom} className="space-y-6">
+            <AnimatePresence>
+                {isCreateModalOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 15 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 15 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                            className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-lg rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl space-y-6 sm:space-y-8"
+                        >
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 px-1">Classroom Name</label>
-                                <input 
-                                    type="text" 
-                                    required 
-                                    value={createData.name}
-                                    onChange={(e) => setCreateData({ ...createData, name: e.target.value })}
-                                    placeholder="e.g. Advanced Calculus Section A"
-                                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 sm:p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-medium" 
-                                />
+                                <h2 className="text-4xl font-black italic uppercase tracking-tighter">Spawn <span className="text-blue-500">Classroom</span></h2>
+                                <p className="text-slate-600 dark:text-slate-400 font-medium">Define your new academic workspace.</p>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 px-1">Target Year</label>
-                                <select 
-                                    value={createData.year}
-                                    onChange={(e) => setCreateData({ ...createData, year: e.target.value })}
-                                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 sm:p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-medium appearance-none"
-                                >
-                                    <option className="bg-[#0f172a]" value="1st Year">1st Year</option>
-                                    <option className="bg-[#0f172a]" value="2nd Year">2nd Year</option>
-                                    <option className="bg-[#0f172a]" value="3rd Year">3rd Year</option>
-                                    <option className="bg-[#0f172a]" value="Final Year">Final Year</option>
-                                </select>
-                            </div>
+                            <form onSubmit={handleCreateRoom} className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 px-1">Classroom Name</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        value={createData.name}
+                                        onChange={(e) => setCreateData({ ...createData, name: e.target.value })}
+                                        placeholder="e.g. Advanced Calculus Section A"
+                                        className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 sm:p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-medium" 
+                                    />
+                                </div>
 
-                            <div className="flex gap-4 pt-4">
-                                <button 
-                                    type="button" 
-                                    onClick={() => setIsCreateModalOpen(false)}
-                                    className="flex-1 py-4 sm:py-5 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    type="submit"
-                                    disabled={isActionLoading}
-                                    className="flex-[2] py-4 sm:py-5 bg-blue-600 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2"
-                                >
-                                    {isActionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Initiate room"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 px-1">Target Year</label>
+                                    <select 
+                                        value={createData.year}
+                                        onChange={(e) => setCreateData({ ...createData, year: e.target.value })}
+                                        className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 sm:p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-medium appearance-none"
+                                    >
+                                        <option className="bg-[#0f172a]" value="1st Year">1st Year</option>
+                                        <option className="bg-[#0f172a]" value="2nd Year">2nd Year</option>
+                                        <option className="bg-[#0f172a]" value="3rd Year">3rd Year</option>
+                                        <option className="bg-[#0f172a]" value="Final Year">Final Year</option>
+                                    </select>
+                                </div>
+
+                                <div className="flex gap-4 pt-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setIsCreateModalOpen(false)}
+                                        className="flex-1 py-4 sm:py-5 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        disabled={isActionLoading}
+                                        className="flex-[2] py-4 sm:py-5 bg-blue-600 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2"
+                                    >
+                                        {isActionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Initiate room"}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* JOIN MODAL */}
-            {isJoinModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80 animate-in fade-in duration-300">
-                    <div className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-lg rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl space-y-6 sm:space-y-8 animate-in zoom-in-95 duration-300">
-                        <div className="space-y-2">
-                            <h2 className="text-4xl font-black italic uppercase tracking-tighter">Enter <span className="text-blue-500">Class</span></h2>
-                            <p className="text-slate-600 dark:text-slate-400 font-medium">Input your unique invitation code.</p>
-                        </div>
-
-                        <form onSubmit={handleJoinRoom} className="space-y-6">
+            <AnimatePresence>
+                {isJoinModalOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 15 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 15 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                            className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-lg rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl space-y-6 sm:space-y-8"
+                        >
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 px-1">Invitation Code</label>
-                                <input 
-                                    type="text" 
-                                    required 
-                                    maxLength={8}
-                                    value={joinCode}
-                                    onChange={(e) => setJoinCode(e.target.value)}
-                                    placeholder="XXXXXX"
-                                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 sm:p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-black text-center text-3xl tracking-[0.5em] uppercase placeholder:text-slate-700" 
-                                />
+                                <h2 className="text-4xl font-black italic uppercase tracking-tighter">Enter <span className="text-blue-500">Class</span></h2>
+                                <p className="text-slate-600 dark:text-slate-400 font-medium">Input your unique invitation code.</p>
                             </div>
 
-                            <div className="flex gap-4 pt-4">
-                                <button 
-                                    type="button" 
-                                    onClick={() => setIsJoinModalOpen(false)}
-                                    className="flex-1 py-4 sm:py-5 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    type="submit"
-                                    disabled={isActionLoading}
-                                    className="flex-[2] py-4 sm:py-5 bg-blue-600 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2"
-                                >
-                                    {isActionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Access Circle"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
+                            <form onSubmit={handleJoinRoom} className="space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 px-1">Invitation Code</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        maxLength={8}
+                                        value={joinCode}
+                                        onChange={(e) => setJoinCode(e.target.value)}
+                                        placeholder="XXXXXX"
+                                        className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 sm:p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-black text-center text-3xl tracking-[0.5em] uppercase placeholder:text-slate-700" 
+                                    />
+                                </div>
+
+                                <div className="flex gap-4 pt-4">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setIsJoinModalOpen(false)}
+                                        className="flex-1 py-4 sm:py-5 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        type="submit"
+                                        disabled={isActionLoading}
+                                        className="flex-[2] py-4 sm:py-5 bg-blue-600 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2"
+                                    >
+                                        {isActionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Access Circle"}
+                                    </button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

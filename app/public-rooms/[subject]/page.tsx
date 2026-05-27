@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Zap, MessageSquare, Plus, Loader2 } from "lucide-react";
 import AskDoubt from "@/components/AskDoubt";
+import { AnimatePresence } from "framer-motion";
 import DoubtCard from "@/components/DoubtCard";
 import DoubtSortSelect, { DoubtSortValue } from "@/components/DoubtSortSelect";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -125,17 +126,19 @@ export default function PublicRoomPage() {
                 </div>
             )}
 
-            {isAskModalOpen && (
-                <AskDoubt 
-                    defaultSubject={subject} 
-                    isOpen={isAskModalOpen} 
-                    onClose={() => setIsAskModalOpen(false)} 
-                    onSuccess={() => {
-                        setIsAskModalOpen(false);
-                        mutate();
-                    }}
-                />
-            )}
+            <AnimatePresence>
+                {isAskModalOpen && (
+                    <AskDoubt 
+                        defaultSubject={subject} 
+                        isOpen={isAskModalOpen} 
+                        onClose={() => setIsAskModalOpen(false)} 
+                        onSuccess={() => {
+                            setIsAskModalOpen(false);
+                            mutate();
+                        }}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 }
