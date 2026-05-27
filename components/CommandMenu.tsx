@@ -26,22 +26,19 @@ import {
     CommandSeparator,
     CommandShortcut,
 } from "@/components/ui/command"
+import { useKeyboardShortcut, COMMON_SHORTCUTS } from "@/hooks/useKeyboardShortcut"
+import { ShortcutBadge } from "@/components/ui/ShortcutBadge"
 
 export function CommandMenu() {
     const [open, setOpen] = React.useState(false)
     const router = useRouter()
 
-    React.useEffect(() => {
-        const down = (e: KeyboardEvent) => {
-            if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault()
-                setOpen((open) => !open)
-            }
-        }
-
-        document.addEventListener("keydown", down)
-        return () => document.removeEventListener("keydown", down)
-    }, [])
+    // Use the new keyboard shortcut hook for Ctrl + K
+    useKeyboardShortcut({
+        ...COMMON_SHORTCUTS.SEARCH,
+        onTrigger: () => setOpen((open) => !open),
+        enabled: true
+    })
 
     const runCommand = React.useCallback((command: () => void) => {
         setOpen(false)
@@ -50,7 +47,10 @@ export function CommandMenu() {
 
     return (
         <CommandDialog open={open} onOpenChange={setOpen}>
-            <CommandInput placeholder="Type a command or search..." />
+            <div className="flex items-center justify-between px-3 py-2 border-b">
+                <CommandInput placeholder="Type a command or search..." className="flex-1" />
+                <ShortcutBadge shortcut="Esc" compact className="ml-2" />
+            </div>
             <CommandList>
                 <CommandEmpty>No results found.</CommandEmpty>
                 <CommandGroup heading="Suggestions">

@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { X, Loader2, Upload, File, Eye, EyeOff, Bold, Italic, Code, List, Tags, Sparkles, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import MarkdownRenderer from "./MarkdownRenderer";
+import { useKeyboardShortcut, COMMON_SHORTCUTS } from "@/hooks/useKeyboardShortcut";
+import { ShortcutBadge } from "@/components/ui/ShortcutBadge";
 
 interface AskDoubtProps {
     defaultSubject?: string;
@@ -147,15 +149,25 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
         }
     }, [content, subjectWasEdited]);
 
-    useEffect(() => {
-        const handleEsc = (e: KeyboardEvent) => {
-            if (e.key === "Escape") onClose();
-        };
-        if (isOpen) {
-            window.addEventListener("keydown", handleEsc);
-        }
-        return () => window.removeEventListener("keydown", handleEsc);
-    }, [isOpen, onClose]);
+    // Keyboard shortcuts: Esc to close, Ctrl+Enter to submit
+    useKeyboardShortcut({
+        ...COMMON_SHORTCUTS.CLOSE,
+        onTrigger: onClose,
+        enabled: isOpen
+    });
+
+    // Only enable submit shortcut when form is valid and not already submitting
+    const canSubmit = !isSubmitting && (content.trim() || imageUrl) && subject.trim() && !isOverLimit;
+    useKeyboardShortcut({
+        ...COMMON_SHORTCUTS.SUBMIT,
+        onTrigger: () => {
+            if (canSubmit) {
+                const form = document.querySelector('form') as HTMLFormElement;
+                form?.requestSubmit();
+            }
+        },
+        enabled: isOpen && canSubmit
+    });
 
     useEffect(() => {
         let savedName = localStorage.getItem("anonymous_user");
@@ -494,7 +506,8 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                             className="flex-[2] py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                            {doubtToEdit ? "Update Doubt" : "Post Doubt"}
+                            <span>{doubtToEdit ? "Update Doubt" : "Post Doubt"}</span>
+                            <ShortcutBadge shortcut="Ctrl + Enter" compact className="ml-auto text-xs opacity-75" />
                         </button>
                     </div>
                 </form>

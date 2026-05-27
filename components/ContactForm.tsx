@@ -1,14 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Github, Linkedin, Mail } from "lucide-react";
 import Link from "next/link";
+import { useKeyboardShortcut, COMMON_SHORTCUTS } from "@/hooks/useKeyboardShortcut";
+import { ShortcutBadge } from "@/components/ui/ShortcutBadge";
 
 export default function ContactForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Enable Ctrl+Enter to submit the form
+  useKeyboardShortcut({
+    ...COMMON_SHORTCUTS.SUBMIT,
+    onTrigger: () => formRef.current?.requestSubmit(),
+    enabled: !!(name && email && message)
+  });
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -71,6 +81,7 @@ export default function ContactForm() {
         </div>
 
         <form
+          ref={formRef}
           onSubmit={handleSubmit}
           className="p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-white/5"
         >
@@ -119,13 +130,14 @@ export default function ContactForm() {
             />
           </label>
 
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-between">
             <button
               type="submit"
               className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold shadow-md hover:scale-105 transition-all duration-200"
             >
               Send Message
             </button>
+            <ShortcutBadge shortcut="Ctrl + Enter" compact className="text-xs opacity-75" />
           </div>
         </form>
       </div>
