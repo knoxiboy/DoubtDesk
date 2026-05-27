@@ -57,7 +57,7 @@ export async function GET(req: Request) {
         // GLOBAL VISIBILITY FILTER
         // If not the teacher, you can only see 'teacher' doubts if you are the owner
         if (!isTeacher && email) {
-            conditions.push(or(not(eq(doubtsTable.type, 'teacher')), eq(doubtsTable.userEmail, email)));
+            conditions.push(or(not(eq(doubtsTable.type, 'teacher')), eq(doubtsTable.userEmail, email!))!);
         } else if (!isTeacher && !email) {
             // Extreme fallback: if no email, only show non-teacher doubts
             conditions.push(not(eq(doubtsTable.type, 'teacher')));
@@ -73,7 +73,7 @@ export async function GET(req: Request) {
                     ilike(doubtsTable.content, `%${search}%`),
                     ilike(doubtsTable.subject, `%${search}%`),
                     ilike(doubtsTable.userName, `%${search}%`)
-                )
+                )!
             );
         }
 
