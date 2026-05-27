@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   SignedIn,
   SignedOut,
@@ -17,7 +17,10 @@ import {
   Clipboard,
   Activity,
   Users,
+  Keyboard,
 } from "lucide-react";
+
+import { useKeyboardShortcuts } from "@/components/KeyboardShortcutsProvider";
 
 import Link from "next/link";
 import {
@@ -33,13 +36,26 @@ import {
 import { ThemeToggle } from "@/components/ThemeToggle";
 import ShapeGrid from "@/components/ShapeGrid";
 import { Inter, Staatliches } from "next/font/google";
-import ClassroomPreviewCard from "@/components/ClassroomPreviewCard";
+import LiveCampusThreadPanel from "@/components/LiveCampusThreadPanel";
 
 const inter = Inter({ subsets: ["latin"] });
 const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 
 export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const { toggleOpen } = useKeyboardShortcuts();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+      setScrollProgress(progress);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
   const { signOut } = useClerk();
 
   const features = [
@@ -118,8 +134,8 @@ export default function Home() {
         <div className="absolute inset-x-0 bottom-0 h-px bg-border shadow-[0_0_10px_rgba(139,184,255,0.18)]" />
         <div className="max-w-7xl mx-auto h-16 sm:h-20 flex items-center justify-between px-4 sm:px-6 md:px-[clamp(24px,5vw,64px)]">
           <Link href="/" className="flex items-center gap-1 sm:gap-2 hover:opacity-90 transition-opacity shrink-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-[#5E8CFF] rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_20px_rgba(94,140,255,0.25)] ring-1 ring-[#AABFFF]/35">
-              D
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_20px_rgba(94,140,255,0.25)] ring-1 ring-[#AABFFF]/35">
+              <img src="/logo.png" alt="DoubtDesk logo" className="h-5 w-5 object-contain" />
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-foreground transition-colors drop-shadow-[0_0_10px_rgba(170,191,255,0.15)]">
               DoubtDesk
@@ -157,6 +173,14 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            <button
+              onClick={toggleOpen}
+              className="p-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-all duration-200"
+              title="Keyboard Shortcuts (?)"
+              aria-label="Keyboard Shortcuts"
+            >
+              <Keyboard className="w-5 h-5" />
+            </button>
             <ThemeToggle />
             <SignedOut>
               <Link href="/sign-in">
@@ -273,7 +297,8 @@ export default function Home() {
             </div>
 
             <div className="flex items-center justify-center xl:justify-end xl:pt-16">
-              <ClassroomPreviewCard />
+              {/* Replace or enhance the right-side card with the new Live Campus Thread panel */}
+              <LiveCampusThreadPanel />
             </div>
 
           </div>
@@ -321,11 +346,11 @@ export default function Home() {
         <section id="how-it-works" className="scroll-mt-24 px-6 py-20 relative z-10">
           <div className="max-w-7xl mx-auto text-center">
 
-            <h3 className="text-3xl sm:text-4xl font-bold text-[#F2F5FF]">
+            <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-[#F2F5FF]">
               How it works
             </h3>
 
-            <p className="mt-4 text-slate-300/80">
+            <p className="mt-4 text-slate-700 dark:text-slate-300/80">
               Simple flow from doubt → solution → understanding
             </p>
 
@@ -333,17 +358,17 @@ export default function Home() {
               {howItWorks.map((step, index) => (
                 <div
                   key={step.title}
-                  className="p-6 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl hover:bg-white/[0.06] transition"
+                  className="p-6 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] backdrop-blur-xl hover:bg-slate-100 dark:hover:bg-white/[0.06] transition"
                 >
                   <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[#5E8CFF] text-white flex items-center justify-center font-bold shadow-[0_0_18px_rgba(94,140,255,0.45)] ring-1 ring-[#8BB8FF]/40">
                     {index + 1}
                   </div>
 
-                  <h4 className="text-lg font-semibold text-[#F2F5FF]">
+                  <h4 className="text-lg font-semibold text-slate-900 dark:text-[#F2F5FF]">
                     {step.title}
                   </h4>
 
-                  <p className="mt-2 text-sm text-slate-300/80">
+                  <p className="mt-2 text-sm text-slate-700 dark:text-slate-300/80">
                     {step.description}
                   </p>
                 </div>
@@ -355,14 +380,14 @@ export default function Home() {
         {/* Testimonials */}
         <section id="testimonials" className="scroll-mt-24 px-6 py-20 relative z-10">
           <div className="max-w-7xl mx-auto text-center">
-            <div className={`${staatliches.className} mb-4 text-sm tracking-[0.16em] text-[#AABFFF]/70 uppercase`}>
+            <div className={`${staatliches.className} mb-4 text-sm tracking-[0.16em] text-blue-700 dark:text-[#AABFFF]/70 uppercase`}>
               Testimonials
             </div>
-            <h3 className="text-3xl sm:text-4xl font-bold text-[#F2F5FF]">
+            <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-[#F2F5FF]">
               What students say
             </h3>
 
-            <p className="mt-4 text-slate-300/80">
+            <p className="mt-4 text-slate-700 dark:text-slate-300/80">
               Real feedback from learners and educators
             </p>
 
@@ -370,17 +395,17 @@ export default function Home() {
               {testimonials.map((t) => (
                 <div
                   key={t.name}
-                  className="p-6 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl hover:bg-white/[0.06] transition"
+                  className="p-6 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] backdrop-blur-xl hover:bg-slate-100 dark:hover:bg-white/[0.06] transition"
                 >
-                  <p className="text-slate-300/80 text-sm leading-7">
+                  <p className="text-slate-700 dark:text-slate-300/80 text-sm leading-7">
                     “{t.text}”
                   </p>
 
                   <div className="mt-5">
-                    <div className="text-[#F2F5FF] font-semibold">
+                    <div className="text-slate-900 dark:text-[#F2F5FF] font-semibold">
                       {t.name}
                     </div>
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
                       {t.role}
                     </div>
                   </div>
@@ -392,6 +417,36 @@ export default function Home() {
         </section>
       </main>
       {/*Here's Your Previous Footer. I have just commented it in case */}
+      {/* Scroll to Top Button */}
+      {scrollProgress > 5 && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-8 right-8 z-50 w-14 h-14 flex items-center justify-center"
+          aria-label="Scroll to top"
+        >
+          <svg className="absolute top-0 left-0 w-14 h-14 -rotate-90" viewBox="0 0 56 56">
+            <circle
+              cx="28" cy="28" r="24"
+              fill="none"
+              stroke="rgba(94,140,255,0.15)"
+              strokeWidth="3"
+            />
+            <circle
+              cx="28" cy="28" r="24"
+              fill="none"
+              stroke="#5E8CFF"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeDasharray={`${2 * Math.PI * 24}`}
+              strokeDashoffset={`${2 * Math.PI * 24 * (1 - scrollProgress / 100)}`}
+              className="transition-all duration-150"
+            />
+          </svg>
+          <div className="w-10 h-10 rounded-full bg-slate-900/80 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white hover:bg-slate-800 transition-colors">
+            ↑
+          </div>
+        </button>
+      )}
       {/* Footer
       <footer className="border-t border-slate-200 dark:border-white/5 bg-white/50 dark:bg-slate-950/50 py-5">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-slate-500 dark:text-slate-500">

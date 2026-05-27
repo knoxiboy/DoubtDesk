@@ -167,7 +167,7 @@ export default function AnalyticsDashboard() {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white p-4 md:p-8 relative overflow-hidden">
+        <div className="min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white p-4 sm:p-6 lg:p-10 relative overflow-hidden">
             {/* Ambient Background Glows */}
             <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-blue-600/5 blur-[120px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
             <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-purple-600/5 blur-[120px] rounded-full translate-x-1/3 translate-y-1/3 pointer-events-none" />
@@ -212,7 +212,7 @@ export default function AnalyticsDashboard() {
                 </div>
 
                 {/* Filters Row */}
-                <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-3xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 backdrop-blur-xl">
+                <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-3xl p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6 backdrop-blur-xl">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 flex-1">
                         
                         {/* Classroom Selector */}
@@ -260,7 +260,7 @@ export default function AnalyticsDashboard() {
 
                     {/* Preview Warning Details */}
                     {data?.isDemoData && (
-                        <div className="text-left md:text-right max-w-sm flex gap-3 p-4 bg-yellow-500/5 border border-yellow-500/10 rounded-2xl">
+                        <div className="text-left lg:text-right max-w-sm flex gap-3 p-4 bg-yellow-500/5 border border-yellow-500/10 rounded-2xl">
                             <AlertCircle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
                             <p className="text-slate-600 dark:text-slate-400 text-xs font-medium leading-relaxed">
                                 <span className="font-bold text-slate-700 dark:text-slate-300 block mb-0.5">Showing Simulated Class Data</span>
@@ -325,7 +325,7 @@ export default function AnalyticsDashboard() {
                                     border: "border-purple-500/20"
                                 }
                             ].map((card, i) => (
-                                <div key={i} className={`bg-white/40 dark:bg-slate-900/40 border ${card.border} rounded-3xl p-6 backdrop-blur-md flex flex-col justify-between hover:scale-[1.02] transition-transform`}>
+                                <div key={i} className={`bg-white/40 dark:bg-slate-900/40 border ${card.border} rounded-[1.5rem] sm:rounded-3xl p-4 sm:p-6 backdrop-blur-md flex flex-col justify-between hover:scale-[1.02] transition-transform`}>
                                     <div className="flex items-center justify-between gap-4">
                                         <div className={`p-3.5 ${card.bg} rounded-2xl`}>
                                             <card.icon className={`w-5 h-5 ${card.color}`} />
@@ -341,7 +341,7 @@ export default function AnalyticsDashboard() {
                         </div>
 
                         {/* Top Action Plan Insight */}
-                        <div className="p-6 bg-blue-500/5 border border-blue-500/10 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                        <div className="p-4 sm:p-6 bg-blue-500/5 border border-blue-500/10 rounded-[1.5rem] sm:rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                             <div className="flex gap-4">
                                 <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl shrink-0">
                                     <Sparkles className="w-5 h-5 text-blue-400" />
@@ -364,7 +364,7 @@ export default function AnalyticsDashboard() {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             
                             {/* Chart 1: Doubt Activity Trends (Line Chart) */}
-                            <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-6 md:p-8 backdrop-blur-xl">
+                            <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] p-4 sm:p-6 md:p-8 backdrop-blur-xl">
                                 <div className="flex items-center justify-between mb-6 px-2">
                                     <div>
                                         <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Doubt Activity trends</h3>
@@ -399,7 +399,7 @@ export default function AnalyticsDashboard() {
                             </div>
 
                             {/* Chart 2: Most Asked Subjects (Bar Chart) */}
-                            <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-6 md:p-8 backdrop-blur-xl">
+                            <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] p-4 sm:p-6 md:p-8 backdrop-blur-xl">
                                 <div className="flex items-center justify-between mb-6 px-2">
                                     <div>
                                         <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Most-Asked Subjects</h3>
@@ -436,7 +436,7 @@ export default function AnalyticsDashboard() {
                             </div>
 
                             {/* Chart 3: Solved vs Unsolved (Pie/Donut Chart) */}
-                            <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-6 md:p-8 backdrop-blur-xl">
+                            <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] p-4 sm:p-6 md:p-8 backdrop-blur-xl">
                                 <div className="flex items-center justify-between mb-6 px-2">
                                     <div>
                                         <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Doubt Resolution Status</h3>
@@ -489,7 +489,7 @@ export default function AnalyticsDashboard() {
                             </div>
 
                             {/* Chart 4: Peak Activity Hours (Area Chart) */}
-                            <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-6 md:p-8 backdrop-blur-xl">
+                            <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] p-4 sm:p-6 md:p-8 backdrop-blur-xl">
                                 <div className="flex items-center justify-between mb-6 px-2">
                                     <div>
                                         <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Peak Doubt Hours</h3>

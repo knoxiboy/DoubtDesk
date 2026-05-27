@@ -7,6 +7,15 @@ jest.mock('@clerk/nextjs/server', () => ({
     }))
 }));
 
+jest.mock('@/lib/moderation', () => ({
+    moderateContent: jest.fn().mockResolvedValue({ isAllowed: true, reason: 'Allowed' }),
+    handleModerationViolation: jest.fn().mockResolvedValue(null)
+}));
+
+jest.mock('@/lib/ai/categorizer', () => ({
+    categorizeDoubt: jest.fn().mockResolvedValue('General')
+}));
+
 const createQueryMock = (data: any) => {
     const chain: any = {
         from: () => chain,

@@ -9,11 +9,14 @@ import {
     Bookmark,
     MessageSquare,
     Zap,
-    BarChart3
+    BarChart3,
+    Keyboard
 } from 'lucide-react'
 
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
 import { useAppUser } from '@/app/provider'
+import { useKeyboardShortcuts } from '@/components/KeyboardShortcutsProvider'
 
 const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
@@ -29,6 +32,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     const pathname = usePathname()
     const { appUser } = useAppUser()
+    const { toggleOpen } = useKeyboardShortcuts()
 
     const linkClasses = (isActive: boolean) =>
         `
@@ -61,7 +65,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             )}
 
             {/* Sidebar */}
-            <aside
+            <TooltipProvider>
+        <aside
                 className={`fixed lg:sticky lg:top-0 lg:h-screen shrink-0 inset-y-0 left-0 z-40 w-72 bg-background/80 backdrop-blur-xl border-r border-border/60 shadow-xl transform transition-all duration-300 ease-out ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
             >
                 <div className="flex flex-col h-full">
@@ -109,8 +114,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                         pathname.startsWith('/rooms/'))
 
                                 return (
+                                    <Tooltip key={item.name}>
+                                    <TooltipTrigger asChild>
                                     <Link
-                                        key={item.name}
                                         href={item.href}
                                         onClick={onClose}
                                         className={linkClasses(isActive)}
@@ -127,6 +133,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                             <div className="ml-auto w-2 h-2 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.7)]" />
                                         )}
                                     </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">{item.name}</TooltipContent>
+                                    </Tooltip>
                                 )
                             })}
                         </div>
@@ -142,6 +151,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             </div>
 
                             <div className="space-y-2">
+                                <Tooltip>
+                                <TooltipTrigger asChild>
                                 <Link
                                     href="/public-rooms"
                                     onClick={onClose}
@@ -155,6 +166,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                         Public Doubts
                                     </span>
                                 </Link>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">Public Doubts</TooltipContent>
+                                </Tooltip>
                             </div>
                         </div>
 
@@ -170,6 +184,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             </div>
 
                             <div className="space-y-2">
+                                <Tooltip>
+                                <TooltipTrigger asChild>
                                 <Link
                                     href="/ask-ai"
                                     onClick={onClose}
@@ -183,6 +199,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                         Ask AI Solver
                                     </span>
                                 </Link>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">Ask AI Solver</TooltipContent>
+                                </Tooltip>
                             </div>
                         </div>
 
@@ -200,6 +219,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 </div>
 
                                 <div className="space-y-2">
+                                    <Tooltip>
+                                    <TooltipTrigger asChild>
                                     <Link
                                         href="/dashboard/analytics"
                                         onClick={onClose}
@@ -215,6 +236,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                             Class Analytics
                                         </span>
                                     </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right">Class Analytics</TooltipContent>
+                                    </Tooltip>
                                 </div>
                             </div>
                         )}
@@ -222,6 +246,23 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
                     {/* Footer */}
                     <div className="p-5 border-t border-border/60 bg-muted/20 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-muted-foreground">
+                                Shortcuts
+                            </span>
+                            <button
+                                onClick={() => {
+                                    onClose()
+                                    toggleOpen()
+                                }}
+                                className="p-2 rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-200"
+                                title="Keyboard Shortcuts (?)"
+                                aria-label="Keyboard Shortcuts"
+                            >
+                                <Keyboard className="w-4 h-4" />
+                            </button>
+                        </div>
+
                         <div className="flex items-center justify-between">
                             <span className="text-xs font-semibold text-muted-foreground">
                                 Theme
@@ -236,6 +277,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     </div>
                 </div>
             </aside>
+        </TooltipProvider>
         </>
     )
 }

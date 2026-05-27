@@ -1,11 +1,12 @@
 import { db } from "@/configs/db";
-import { bookmarksTable, doubtTagsTable, doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, tagsTable, usersTable } from "@/configs/schema";
+import { bookmarksTable, doubtTagsTable, doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, tagsTable } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
 import { and, eq, inArray, isNull, or, not, sql, ilike, desc, getTableColumns } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 import { buildErrorResponse } from "@/lib/error-handler";
+import { checkUserBlock } from "@/lib/auth-utils";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createDoubtSchema } from "@/lib/validations/doubt";
 
@@ -25,30 +26,20 @@ export async function GET(req: Request) {
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         const email = user.primaryEmailAddress?.emailAddress;
 
-        const { searchParams } = new URL(req.url);
-        const subject = searchParams.get("subject");
-        const userName = searchParams.get("userName");
-        const classroomIdStr = searchParams.get("classroomId");
-        const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
-        const type = searchParams.get("type") || 'community';
-
-        // Security: If classroomId is provided, check membership
         if (classroomId && email) {
-            console.log(`Security Check: Classroom ${classroomId}, User ${email}`);
             const [membership] = await db.select().from(membershipsTable).where(
                 and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, classroomId))
             );
             if (!membership) {
-                console.warn(`Denied access to classroom ${classroomId} for user ${email}`);
                 return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
             }
         } else if (classroomId && !email) {
-            console.warn(`Anonymous user attempting to access classroom ${classroomId}`);
             // For hackathon simplicity, we might allow it if they have the link, 
             // but usually this should be blocked.
         }
 
-        let conditions: any[] = [];
+        let query = db.select().from(doubtsTable);
+        let conditions: SQL<unknown>[] = [];
 
         // Base Classroom scoping
         if (classroomId) {
@@ -66,7 +57,7 @@ export async function GET(req: Request) {
         // GLOBAL VISIBILITY FILTER
         // If not the teacher, you can only see 'teacher' doubts if you are the owner
         if (!isTeacher && email) {
-            conditions.push(or(not(eq(doubtsTable.type, 'teacher')), eq(doubtsTable.userEmail, email)));
+            conditions.push(or(not(eq(doubtsTable.type, 'teacher')), eq(doubtsTable.userEmail, email!))!);
         } else if (!isTeacher && !email) {
             // Extreme fallback: if no email, only show non-teacher doubts
             conditions.push(not(eq(doubtsTable.type, 'teacher')));
@@ -82,7 +73,7 @@ export async function GET(req: Request) {
                     ilike(doubtsTable.content, `%${search}%`),
                     ilike(doubtsTable.subject, `%${search}%`),
                     ilike(doubtsTable.userName, `%${search}%`)
-                )
+                )!
             );
         }
 
@@ -212,16 +203,18 @@ export async function POST(req: Request) {
         const email = user.primaryEmailAddress?.emailAddress;
         if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
-        // 0. Check if user is blocked
-        const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-        if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
-            const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            const { status, body } = buildErrorResponse(
-                new Error(`Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`)
-            );
-            return NextResponse.json(body, { status });
-        }
+        const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
+        if (isBlocked) return blockResponse;
 
+        // Security: Check classroom membership before allowing post
+        if (parsedClassroomId) {
+            const [membership] = await db.select().from(membershipsTable).where(
+                and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, parsedClassroomId))
+            );
+            if (!membership) {
+                return NextResponse.json({ error: "Access denied: You are not a member of this classroom" }, { status: 403 });
+            }
+        }
         // 1. AI Moderation Check
         if (content) {
             const moderation = await moderateContent(content);
@@ -251,7 +244,7 @@ export async function POST(req: Request) {
                 .filter(Boolean)
         )).slice(0, 8);
 
-        const savedTags: any[] = [];
+        const savedTags: (typeof tagsTable.$inferSelect)[] = [];
         for (const normalizedName of normalizedTags) {
             const [existingTag] = await db.select().from(tagsTable).where(and(
                 eq(tagsTable.normalizedName, normalizedName),
@@ -275,8 +268,8 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json({ ...newDoubt, tags: savedTags });
-    } catch (error: any) {
-        console.error("Error saving doubt:", error);
-        return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 });
+    } catch (error) {
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }

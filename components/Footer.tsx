@@ -1,7 +1,15 @@
 "use client";
 
-import { Github, Linkedin, Mail } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
+import {
+  Github,
+  Linkedin,
+  Mail,
+  ChevronRight,
+  Users,
+  MessageSquare,
+} from "lucide-react";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -36,10 +44,17 @@ export default function Footer() {
           label: "Report Issue",
           href: "https://github.com/knoxiboy/DoubtDesk/issues",
         },
-        { label: "Contact", href: "mailto:karankmt.tripathi@gmail.com" },
+        { label: "Contact", href: "/contact" },
       ],
     },
   ];
+
+  const communityIcons = {
+    GitHub: Github,
+    Contributors: Users,
+    "Report Issue": MessageSquare,
+    Contact: Mail,
+  } as const;
 
   const socialLinks = [
     {
@@ -57,7 +72,7 @@ export default function Footer() {
     {
       icon: Mail,
       href: "mailto:karankmt.tripathi@gmail.com",
-      label: "Send the DoubtDesk team",
+      label: "Send the DoubtDesk team an email",
       hoverColor: "hover:text-purple-500 dark:hover:text-purple-400",
     },
   ];
@@ -83,8 +98,14 @@ export default function Footer() {
               href="/"
               className="inline-flex items-center gap-3 mb-5 group"
             >
-              <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center text-slate-900 dark:text-white font-bold text-xl shadow-[0_0_15px_rgba(37,99,235,0.2)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
-                D
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.2)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+                <Image
+                  src="/logo.png"
+                  alt="DoubtDesk logo"
+                  width={35}
+                  height={35}
+                  className="object-cover"
+                />
               </div>
 
               <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 tracking-tight transition-colors duration-300">
@@ -98,7 +119,6 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* Footer Links */}
           <div
             role="navigation"
             aria-label="Footer navigation links"
@@ -111,36 +131,75 @@ export default function Footer() {
                 </h4>
 
                 <ul className="space-y-4">
-                  {section.links.map((link) => (
-                    <li key={link.label}>
-                      <Link
-                        href={link.href}
-                        target={
-                          link.href.startsWith("http") ? "_blank" : undefined
-                        }
-                        rel={
-                          link.href.startsWith("http")
-                            ? "noopener noreferrer"
-                            : undefined
-                        }
-                        className="relative inline-flex text-sm text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-500 dark:hover:text-blue-400 hover:translate-x-1 after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 hover:after:w-3/4"
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
+                  {section.links.map((link) => {
+                    const isExternal =
+                      link.href.startsWith("http") ||
+                      link.href.startsWith("mailto:");
+
+                    const isCommunity = section.title === "Community";
+
+                    const Icon = isCommunity
+                      ? communityIcons[
+                          link.label as keyof typeof communityIcons
+                        ]
+                      : null;
+
+                    return (
+                      <li key={link.label}>
+                        {isExternal ? (
+                          <a
+                            href={link.href}
+                            target={
+                              link.href.startsWith("http")
+                                ? "_blank"
+                                : undefined
+                            }
+                            rel={
+                              link.href.startsWith("http")
+                                ? "noopener noreferrer"
+                                : undefined
+                            }
+                            className="group inline-flex items-center gap-2 text-sm text-slate-600 transition-all duration-300 hover:translate-x-1 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"
+                          >
+                            {isCommunity && Icon ? (
+                              <Icon className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400 opacity-90 transition-transform duration-300 group-hover:translate-x-1" />
+                            )}
+
+                            <span className="relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 group-hover:after:w-full">
+                              {link.label}
+                            </span>
+                          </a>
+                        ) : (
+                          <Link
+                            href={link.href}
+                            className="group inline-flex items-center gap-2 text-sm text-slate-600 transition-all duration-300 hover:translate-x-1 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"
+                          >
+                            {isCommunity && Icon ? (
+                              <Icon className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400 opacity-90 transition-transform duration-300 group-hover:translate-x-1" />
+                            )}
+
+                            <span className="relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 group-hover:after:w-full">
+                              {link.label}
+                            </span>
+                          </Link>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Bottom Section */}
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          {/* Social Icons */}
           <div className="flex items-center gap-4">
             {socialLinks.map((social) => (
-              <Link
+              <a
                 key={social.label}
                 href={social.href}
                 target="_blank"
@@ -149,11 +208,10 @@ export default function Footer() {
                 className={`group p-3 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-200/80 dark:bg-white/5 text-slate-700 dark:text-slate-400 backdrop-blur-sm transition-all duration-300 hover:bg-slate-300/80 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:-translate-y-1 hover:scale-110 ${social.hoverColor}`}
               >
                 <social.icon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
-              </Link>
+              </a>
             ))}
           </div>
 
-          {/* Copyright */}
           <div className="text-center md:text-right">
             <p className="text-sm text-slate-600 dark:text-slate-500">
               © {currentYear} DoubtDesk. Built for collaborative AI-powered
@@ -162,7 +220,6 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Top Glow Line */}
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-500/40 dark:via-blue-500/30 to-transparent" />
       </div>
     </footer>

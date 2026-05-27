@@ -28,7 +28,7 @@ const COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4"
 
 function DashboardSkeleton() {
     return (
-        <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto pb-24 text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-[#020617] animate-pulse">
+        <div className="p-4 sm:p-6 lg:p-10 space-y-8 max-w-7xl mx-auto pb-24 text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-[#020617] animate-pulse">
             {/* Dashboard Heading Skeleton */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-4 border-b border-slate-200 dark:border-white/5">
                 <div className="space-y-4">
@@ -91,7 +91,7 @@ export default function Dashboard() {
     })) || [];
 
     return (
-        <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto pb-24 text-slate-800 dark:text-slate-200 min-h-screen relative overflow-hidden bg-slate-50 dark:bg-[#020617]">
+        <div className="p-4 sm:p-6 lg:p-10 space-y-8 max-w-7xl mx-auto pb-24 text-slate-800 dark:text-slate-200 min-h-screen relative overflow-hidden bg-slate-50 dark:bg-[#020617]">
             {/* Ambient Background Glows */}
             <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-600/5 blur-[120px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
             <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-600/5 blur-[120px] rounded-full translate-x-1/3 translate-y-1/3 pointer-events-none" />
@@ -151,7 +151,7 @@ export default function Dashboard() {
                         border: "border-purple-500/20"
                     }
                 ].map((card, i) => (
-                    <div key={i} className={`bg-white/40 dark:bg-slate-900/40 border ${card.border} rounded-3xl p-6 backdrop-blur-md flex flex-col justify-between hover:scale-[1.02] transition-transform group`}>
+                    <div key={i} className={`bg-white/40 dark:bg-slate-900/40 border ${card.border} rounded-[1.5rem] sm:rounded-3xl p-4 sm:p-6 backdrop-blur-md flex flex-col justify-between hover:scale-[1.02] transition-transform group`}>
                         <div className="flex items-center justify-between gap-4">
                             <div className={`p-3.5 ${card.bg} rounded-2xl`}>
                                 <card.icon className={`w-5 h-5 ${card.color}`} />
@@ -170,7 +170,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
                 
                 {/* Chart 1: Global Topic Densities (Bar Chart) */}
-                <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-6 md:p-8 backdrop-blur-xl flex flex-col justify-between">
+                <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] p-4 sm:p-6 md:p-8 backdrop-blur-xl flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-6 px-2">
                         <div>
                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Global Topic Density</h3>
@@ -206,7 +206,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Chart 2: Peak Activity Hourly Area Chart */}
-                <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-6 md:p-8 backdrop-blur-xl flex flex-col justify-between">
+                <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] p-4 sm:p-6 md:p-8 backdrop-blur-xl flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-6 px-2">
                         <div>
                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Peak Doubt Timeline</h3>
@@ -299,7 +299,7 @@ export default function Dashboard() {
                             <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic font-bold">Interventions</h2>
                         </div>
 
-                        <div className="p-6 bg-red-500/5 border border-red-500/10 rounded-3xl space-y-4">
+                        <div className="p-4 sm:p-6 bg-red-500/5 border border-red-500/10 rounded-[1.5rem] sm:rounded-3xl space-y-4">
                             {!data?.weakTopics || data.weakTopics.length === 0 ? (
                                 <p className="text-slate-500 dark:text-slate-500 text-xs font-bold uppercase tracking-widest text-center py-4">No critical weak spots detected!</p>
                             ) : (
@@ -329,7 +329,7 @@ export default function Dashboard() {
                             <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic font-bold">Contributors</h2>
                         </div>
 
-                        <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-3xl p-6 space-y-4">
+                        <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-3xl p-4 sm:p-6 space-y-4">
                             {!data?.topContributors || data.topContributors.length === 0 ? (
                                 <div className="py-8 text-center text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-[10px] opacity-40">No helpers recorded yet.</div>
                             ) : (

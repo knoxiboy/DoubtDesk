@@ -66,6 +66,12 @@ jobs:
                 core.setFailed("Author has not starred the repository. Left a review requesting it.");
               } else {
                 console.log(`Success! @${author} has starred the repository.`);
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  labels: ['review-needed']
+                });
               }
             } catch (error) {
               console.error("Error fetching stargazers", error);

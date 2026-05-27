@@ -61,84 +61,95 @@ export async function GET(req: Request) {
     }
 
     try {
-        // 1. Trending Doubts
-        const trendingDoubts = await db.select({
-            id: doubtsTable.id,
-            content: doubtsTable.content,
-            subject: doubtsTable.subject,
-            createdAt: doubtsTable.createdAt
-        })
-            .from(doubtsTable)
-            .where(classroomFilter)
-            .orderBy(desc(doubtsTable.createdAt))
-            .limit(5);
+        // Run all queries in parallel to eliminate sequential query latency
+        const [
+            trendingDoubts,
+            mostAskedTopics,
+            solvedStats,
+            peakTime,
+            engagement,
+            totalReplies,
+            topContributors
+        ] = await Promise.all([
+            // 1. Trending Doubts
+            db.select({
+                id: doubtsTable.id,
+                content: doubtsTable.content,
+                subject: doubtsTable.subject,
+                createdAt: doubtsTable.createdAt
+            })
+                .from(doubtsTable)
+                .where(classroomFilter)
+                .orderBy(desc(doubtsTable.createdAt))
+                .limit(5),
 
-        // 2. Most Asked Topics (Doubt Volume)
-        const mostAskedTopics = await db.select({
-            subject: doubtsTable.subject,
-            count: count(doubtsTable.id)
-        })
-            .from(doubtsTable)
-            .where(classroomFilter)
-            .groupBy(doubtsTable.subject)
-            .orderBy(desc(count(doubtsTable.id)))
-            .limit(10);
+            // 2. Most Asked Topics (Doubt Volume)
+            db.select({
+                subject: doubtsTable.subject,
+                count: count(doubtsTable.id)
+            })
+                .from(doubtsTable)
+                .where(classroomFilter)
+                .groupBy(doubtsTable.subject)
+                .orderBy(desc(count(doubtsTable.id)))
+                .limit(10),
 
-        // 3. Resolved vs Unresolved
-        const solvedStats = await db.select({
-            status: doubtsTable.isSolved,
-            count: count(doubtsTable.id)
-        })
-            .from(doubtsTable)
-            .where(classroomFilter)
-            .groupBy(doubtsTable.isSolved);
+            // 3. Resolved vs Unresolved
+            db.select({
+                status: doubtsTable.isSolved,
+                count: count(doubtsTable.id)
+            })
+                .from(doubtsTable)
+                .where(classroomFilter)
+                .groupBy(doubtsTable.isSolved),
 
-        // 4. Peak Doubt Time (Hourly)
-        // Note: 'extract' is standard for PostgreSQL
-        const peakTime = await db.select({
-            hour: sql<number>`extract(hour from ${doubtsTable.createdAt})`,
-            count: count(doubtsTable.id)
-        })
-            .from(doubtsTable)
-            .where(classroomFilter)
-            .groupBy(sql`extract(hour from ${doubtsTable.createdAt})`)
-            .orderBy(sql`extract(hour from ${doubtsTable.createdAt})`);
+            // 4. Peak Doubt Time (Hourly)
+            db.select({
+                hour: sql<number>`extract(hour from ${doubtsTable.createdAt})`,
+                count: count(doubtsTable.id)
+            })
+                .from(doubtsTable)
+                .where(classroomFilter)
+                .groupBy(sql`extract(hour from ${doubtsTable.createdAt})`)
+                .orderBy(sql`extract(hour from ${doubtsTable.createdAt})`),
 
-        // 5. Student Engagement
-        const engagement = await db.select({
-            totalStudents: countDistinct(doubtsTable.userName),
-            totalDoubts: count(doubtsTable.id)
-        })
-            .from(doubtsTable)
-            .where(classroomFilter);
-            
-        const totalReplies = await db.select({
-            count: count(repliesTable.id)
-        })
-            .from(repliesTable)
-            .innerJoin(doubtsTable, eq(repliesTable.doubtId, doubtsTable.id))
-            .where(classroomFilter);
+            // 5. Student Engagement
+            db.select({
+                totalStudents: countDistinct(doubtsTable.userName),
+                totalDoubts: count(doubtsTable.id)
+            })
+                .from(doubtsTable)
+                .where(classroomFilter),
 
-        // 6. Top Contributors (students who reply the most)
-        const topContributors = await db.select({
-            name: repliesTable.userName,
-            replyCount: count(repliesTable.id)
-        })
-            .from(repliesTable)
-            .innerJoin(doubtsTable, eq(repliesTable.doubtId, doubtsTable.id))
-            .where(and(
-                classroomFilter,
-                ne(repliesTable.userName, 'DoubtDesk AI')
-            ))
-            .groupBy(repliesTable.userName)
-            .orderBy(desc(count(repliesTable.id)))
-            .limit(5);
+            // 6. Total Replies
+            db.select({
+                count: count(repliesTable.id)
+            })
+                .from(repliesTable)
+                .innerJoin(doubtsTable, eq(repliesTable.doubtId, doubtsTable.id))
+                .where(classroomFilter),
 
-        // 7. AI Teaching Suggestions & Weak Concept Detection (Heuristics)
+            // 7. Top Contributors (students who reply the most)
+            db.select({
+                name: repliesTable.userName,
+                replyCount: count(repliesTable.id)
+            })
+                .from(repliesTable)
+                .innerJoin(doubtsTable, eq(repliesTable.doubtId, doubtsTable.id))
+                .where(and(
+                    classroomFilter,
+                    ne(repliesTable.userName, 'DoubtDesk AI')
+                ))
+                .groupBy(repliesTable.userName)
+                .orderBy(desc(count(repliesTable.id)))
+                .limit(5),
+        ]);
+
+        // 8. AI Teaching Suggestions & Weak Concept Detection (Heuristics)
         const weakTopics = mostAskedTopics.map((topic, index) => {
             const countValue = Number(topic.count);
             let suggestion = "";
-            
+
             const subjectsMap: Record<string, string> = {
                 'Programming': 'Consider dynamic coding demonstrations and live-refactoring sessions.',
                 'Math': 'Focus on step-by-step problem derivation and visual geometry proofs.',
@@ -174,7 +185,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json({
             trendingDoubts,
-            mostAskedTopics: weakTopics, 
+            mostAskedTopics: weakTopics,
             solvedStats,
             peakTime,
             engagement: {

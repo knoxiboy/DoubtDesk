@@ -1,5 +1,5 @@
 import { db } from "@/configs/db";
-import { doubtTagsTable, doubtsTable, likesTable, classroomsTable, repliesTable, tagsTable } from "@/configs/schema";
+import { doubtTagsTable, doubtsTable, likesTable, classroomsTable, repliesTable, tagsTable, membershipsTable } from "@/configs/schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
@@ -26,6 +26,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
         const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+
+        // Security: Verify doubt visibility/classroom membership
+        if (doubt.classroomId && email) {
+            const [membership] = await db.select().from(membershipsTable).where(
+                and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, doubt.classroomId))
+            );
+            if (!membership) {
+                return NextResponse.json({ error: "Access denied to this classroom's doubt" }, { status: 403 });
+            }
+        } else if (doubt.classroomId && !email) {
+            return NextResponse.json({ error: "Unauthorized access to classroom doubt" }, { status: 401 });
+        }
 
         // Permission check for sensitive actions
         const isOwner = email && doubt.userEmail === email;

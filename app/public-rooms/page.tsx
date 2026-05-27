@@ -141,7 +141,7 @@ export default function PublicRoomsPage() {
 
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-200 dark:border-white/5">
                 <div className="space-y-1">
-                    <h1 className="text-6xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">
+                    <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">
                         Public<span className="text-blue-500"> Doubts</span>
                     </h1>
                     <p className="text-slate-600 dark:text-slate-400 text-lg font-medium tracking-tight">
@@ -150,7 +150,7 @@ export default function PublicRoomsPage() {
                 </div>
                 <button
                     onClick={() => setIsAskModalOpen(true)}
-                    className="flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition-all shadow-lg shadow-blue-600/20 active:scale-95"
+                    className="flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition-all shadow-lg shadow-blue-600/20 active:scale-95"
                 >
                     <Plus className="w-5 h-5" />
                     Ask a Doubt
@@ -172,8 +172,8 @@ export default function PublicRoomsPage() {
                     />
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-500 dark:text-slate-500">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide w-full">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-500 dark:text-slate-500 shrink-0">
                         <SlidersHorizontal className="w-4 h-4" />
                         <span className="text-[10px] font-black uppercase tracking-widest">Filter:</span>
                     </div>
@@ -199,9 +199,11 @@ export default function PublicRoomsPage() {
                             {f}
                         </button>
                     ))}
+                </div>
 
+                <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 w-full">
                     {/* Custom Filter Input */}
-                    {filter === "Others" && (
+                    {filter === "Others" ? (
                         <div className="flex items-center gap-2 animate-in slide-in-from-left-4 duration-300">
                             <input 
                                 type="text"
@@ -211,36 +213,40 @@ export default function PublicRoomsPage() {
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') setAppliedCustomFilter(customFilter);
                                 }}
-                                className="bg-white dark:bg-slate-900 border border-blue-500/30 rounded-xl px-4 py-2 text-[10px] font-bold text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all w-40"
+                                className="bg-white dark:bg-slate-900 border border-blue-500/30 rounded-xl px-4 py-2.5 text-[10px] font-bold text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all w-full sm:w-40"
                             />
                             <button 
                                 onClick={() => setAppliedCustomFilter(customFilter)}
-                                className="px-4 py-2 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-slate-900 dark:hover:text-white border border-blue-500/20 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all"
+                                className="px-4 py-2.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-slate-900 dark:hover:text-white border border-blue-500/20 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shrink-0"
                             >
                                 Apply
                             </button>
                         </div>
-                    )}
+                    ) : <div />}
 
-                    <div className="flex items-center gap-2 sm:ml-auto">
-                        <input
-                            type="text"
-                            placeholder="Filter by tag..."
-                            value={tagFilter}
-                            onChange={(e) => setTagFilter(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") fetchDoubts();
-                            }}
-                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-[10px] font-bold text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all w-40"
-                        />
-                        <button
-                            onClick={fetchDoubts}
-                            className="px-4 py-2 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:bg-blue-600 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all"
-                        >
-                            Tag
-                        </button>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto md:ml-auto">
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <input
+                                type="text"
+                                placeholder="Filter by tag..."
+                                value={tagFilter}
+                                onChange={(e) => setTagFilter(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") fetchDoubts();
+                                }}
+                                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-[10px] font-bold text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all flex-1 sm:w-40 sm:flex-none"
+                            />
+                            <button
+                                onClick={fetchDoubts}
+                                className="px-4 py-2.5 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:bg-blue-600 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shrink-0"
+                            >
+                                Tag
+                            </button>
+                        </div>
 
-                        <DoubtSortSelect value={sort} onValueChange={updateSort} className="ml-auto" />
+                        <div className="w-full sm:w-auto shrink-0">
+                            <DoubtSortSelect value={sort} onValueChange={updateSort} className="w-full" />
+                        </div>
                     </div>
                 </div>
 
