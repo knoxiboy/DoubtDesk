@@ -220,8 +220,8 @@ export default function Home() {
           
           {/* Mobile Drawer Panel */}
           <div 
-            className={`sm:hidden w-full overflow-hidden transition-all duration-300 ease-in-out ${
-              isMenuOpen ? "max-h-[420px] opacity-100 mb-4 pb-2" : "max-h-0 opacity-0 pointer-events-none"
+            className={`sm:hidden w-full overflow-hidden overflow-y-auto transition-all duration-300 ease-in-out ${
+              isMenuOpen ? "max-h-[calc(100vh-4rem)] opacity-100 mb-4 pb-2" : "max-h-0 opacity-0 pointer-events-none"
             }`}
           >
             <div className="flex flex-col gap-3 pt-2 border-t border-slate-200/50 dark:border-white/5">
