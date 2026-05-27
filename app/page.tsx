@@ -311,12 +311,13 @@ export default function Home() {
               <div className={`${staatliches.className} mb-4 text-sm tracking-[0.16em] text-blue-700 dark:text-[#AABFFF]/70 uppercase`}>
                 Features
               </div>
-              <h3 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 dark:text-[#F2F5FF] tracking-tight leading-tight">
-                Everything your classroom needs to solve doubts, stay aligned, and move faster.
-              </h3>
-              <p className="mt-5 text-base sm:text-lg text-slate-700 dark:text-slate-300/85 leading-8">
-                Built for modern study teams, DoubtDesk blends AI-powered doubt solving, shared resources, and smart classroom flows into a single polished platform.
-              </p>
+              <h3 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white dark:text-[#F2F5FF] tracking-tight leading-tight">
+  Everything your classroom needs to solve doubts, stay aligned, and move faster.
+</h3>
+
+<p className="mt-5 text-base sm:text-lg text-white dark:text-slate-300/85 leading-8">
+  Built for modern study teams, DoubtDesk blends AI-powered doubt solving, shared resources, and smart classroom flows into a single polished platform.
+</p>
             </div>
 
             <div className="mt-12 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
@@ -345,15 +346,13 @@ export default function Home() {
         {/* How It Works */}
         <section id="how-it-works" className="scroll-mt-24 px-6 py-20 relative z-10">
           <div className="max-w-7xl mx-auto text-center">
+<h3 className="text-3xl sm:text-4xl font-bold text-white dark:text-[#F2F5FF]">
+  How it works
+</h3>
 
-            <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-[#F2F5FF]">
-              How it works
-            </h3>
-
-            <p className="mt-4 text-slate-700 dark:text-slate-300/80">
-              Simple flow from doubt → solution → understanding
-            </p>
-
+          <p className="mt-4 text-white dark:text-slate-300/80">
+  Simple flow from doubt → solution → understanding
+</p>
             <div className="mt-12 grid md:grid-cols-3 gap-6">
               {howItWorks.map((step, index) => (
                 <div
@@ -383,13 +382,13 @@ export default function Home() {
             <div className={`${staatliches.className} mb-4 text-sm tracking-[0.16em] text-blue-700 dark:text-[#AABFFF]/70 uppercase`}>
               Testimonials
             </div>
-            <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-[#F2F5FF]">
-              What students say
-            </h3>
+            <h3 className="text-3xl sm:text-4xl font-bold text-white dark:text-[#F2F5FF]">
+  What students say
+</h3>
 
-            <p className="mt-4 text-slate-700 dark:text-slate-300/80">
-              Real feedback from learners and educators
-            </p>
+<p className="mt-4 text-white dark:text-slate-300/80">
+  Real feedback from learners and educators
+</p>
 
             <div className="mt-12 grid md:grid-cols-3 gap-6 text-left">
               {testimonials.map((t) => (
