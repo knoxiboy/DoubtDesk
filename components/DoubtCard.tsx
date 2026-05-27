@@ -139,12 +139,12 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
 
     return (
         <>
-            <div className="group bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-8 hover:border-blue-500/30 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/5 flex flex-col h-full relative overflow-hidden">
+            <div className="group bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 hover:border-blue-500/30 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/5 flex flex-col h-full relative overflow-hidden">
                 {/* Background Glow */}
                 <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/5 blur-[100px] rounded-full group-hover:bg-blue-600/10 transition-all duration-500"></div>
 
                 {/* Header */}
-                <div className="flex items-start justify-between mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 sm:mb-8">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform duration-500">
                             <span className="text-lg font-black text-blue-400">{doubt.userName?.slice(-1)?.toUpperCase() || '?'}</span>
@@ -159,7 +159,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                             </p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                         {isTeacher && doubt.classroomId && (
                             <button
                                 onClick={handlePin}
@@ -237,8 +237,8 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                 </div>
 
                 {/* Footer Actions */}
-                <div className="mt-auto pt-6 border-t border-slate-200 dark:border-white/5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-2.5 flex-1">
+                <div className="mt-auto pt-6 border-t border-slate-200 dark:border-white/5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-2.5 flex-1">
                         <button
                             onClick={() => handleAction("like")}
                             disabled={isLiking}
@@ -277,7 +277,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                                         setIsRepliesOpen(true);
                                     }
                                 }}
-                                className="flex-[2] sm:flex-none flex items-center justify-center gap-3 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all shadow-2xl shadow-emerald-500/30 active:scale-95 group/sol whitespace-nowrap"
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all shadow-2xl shadow-emerald-500/30 active:scale-95 group/sol whitespace-nowrap"
                             >
                                 <CheckCircle className="w-4 h-4 fill-white/20 group-hover/sol:scale-110 transition-transform flex-shrink-0" />
                                 <span className="text-[11px] font-black uppercase tracking-[0.2em]">View Official Solution</span>

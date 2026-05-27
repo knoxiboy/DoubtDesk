@@ -1,19 +1,16 @@
 import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
 import "./globals.css";
-import {
-  ClerkProvider,
-} from '@clerk/nextjs'
+import { ClerkProvider } from "@clerk/nextjs";
 import { Provider } from "./provider";
 import Footer from "@/components/Footer";
-
-
+import AnimatedCursor from "@/components/AnimatedCursor";
 
 const AppFont = DM_Sans({
-  weight: ['400', '500', '700'],
-  subsets: ['latin'],
-  variable: '--font-app',
-})
+  weight: ["400", "500", "700"],
+  subsets: ["latin"],
+  variable: "--font-app",
+});
 
 const DEFAULT_SITE_URL = "https://doubt-desk-seven.vercel.app";
 
@@ -58,9 +55,9 @@ export const metadata: Metadata = {
     "real-time debugging",
     "classroom analytics",
     "student mentorship",
-    "programming help"
+    "programming help",
   ],
-  
+
   icons: {
     icon: [
       { url: "/favicon.ico" },
@@ -103,9 +100,9 @@ export const metadata: Metadata = {
       "max-snippet": -1,
       "max-image-preview": "large",
       "max-video-preview": -1,
-      },
     },
-  };
+  },
+};
 
 export default function RootLayout({
   children,
@@ -115,12 +112,11 @@ export default function RootLayout({
   return (
     <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA"}>
       <html lang="en" suppressHydrationWarning>
-        <body
-          className={`${AppFont.className} scroll-smooth`}
-        >
+        <body className={`${AppFont.className} scroll-smooth`}>
           <Provider>
             {children}
-            <Footer/>
+            <Footer />
+            <AnimatedCursor />
           </Provider>
         </body>
       </html>

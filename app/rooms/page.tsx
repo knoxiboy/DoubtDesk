@@ -33,7 +33,7 @@ interface Classroom {
 
 function RoomCardSkeleton() {
     return (
-        <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 space-y-6">
+        <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 space-y-6">
             <Skeleton className="w-14 h-14 rounded-2xl" />
             <div className="space-y-3">
                 <Skeleton className="h-8 w-3/4" />
@@ -139,7 +139,7 @@ export default function RoomsPage() {
             
             <div className="max-w-7xl mx-auto relative z-10">
                 {/* Header Section */}
-                <div className="sticky top-0 z-50 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl -mx-4 md:-mx-8 px-4 md:px-8 py-5 mb-8 border-b border-slate-200 dark:border-white/5">
+                <div className="relative z-10 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl -mx-4 md:-mx-8 px-4 md:px-8 py-5 mb-8 border-b border-slate-200 dark:border-white/5">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
@@ -182,7 +182,7 @@ export default function RoomsPage() {
                         </div>
                     </div>
                 ) : rooms.length === 0 ? (
-                    <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[3rem] p-10 text-center space-y-4">
+                    <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-10 text-center space-y-4">
                         <div className="w-20 h-20 bg-blue-500/10 border border-blue-500/20 rounded-3xl flex items-center justify-center mx-auto mb-4">
                             <School className="w-10 h-10 text-blue-500" />
                         </div>
@@ -235,8 +235,8 @@ export default function RoomsPage() {
 
             {/* CREATE MODAL */}
             {isCreateModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80 animate-in fade-in duration-300">
-                    <div className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-lg rounded-[3rem] p-10 shadow-2xl space-y-8 animate-in zoom-in-95 duration-300">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80 animate-in fade-in duration-300">
+                    <div className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-lg rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl space-y-6 sm:space-y-8 animate-in zoom-in-95 duration-300">
                         <div className="space-y-2">
                             <h2 className="text-4xl font-black italic uppercase tracking-tighter">Spawn <span className="text-blue-500">Classroom</span></h2>
                             <p className="text-slate-600 dark:text-slate-400 font-medium">Define your new academic workspace.</p>
@@ -251,7 +251,7 @@ export default function RoomsPage() {
                                     value={createData.name}
                                     onChange={(e) => setCreateData({ ...createData, name: e.target.value })}
                                     placeholder="e.g. Advanced Calculus Section A"
-                                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-medium" 
+                                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 sm:p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-medium" 
                                 />
                             </div>
 
@@ -260,7 +260,7 @@ export default function RoomsPage() {
                                 <select 
                                     value={createData.year}
                                     onChange={(e) => setCreateData({ ...createData, year: e.target.value })}
-                                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-medium appearance-none"
+                                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 sm:p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-medium appearance-none"
                                 >
                                     <option className="bg-[#0f172a]" value="1st Year">1st Year</option>
                                     <option className="bg-[#0f172a]" value="2nd Year">2nd Year</option>
@@ -273,14 +273,14 @@ export default function RoomsPage() {
                                 <button 
                                     type="button" 
                                     onClick={() => setIsCreateModalOpen(false)}
-                                    className="flex-1 py-5 rounded-3xl font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                    className="flex-1 py-4 sm:py-5 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button 
                                     type="submit"
                                     disabled={isActionLoading}
-                                    className="flex-[2] py-5 bg-blue-600 rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2"
+                                    className="flex-[2] py-4 sm:py-5 bg-blue-600 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2"
                                 >
                                     {isActionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Initiate room"}
                                 </button>
@@ -292,8 +292,8 @@ export default function RoomsPage() {
 
             {/* JOIN MODAL */}
             {isJoinModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80 animate-in fade-in duration-300">
-                    <div className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-lg rounded-[3rem] p-10 shadow-2xl space-y-8 animate-in zoom-in-95 duration-300">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80 animate-in fade-in duration-300">
+                    <div className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-lg rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl space-y-6 sm:space-y-8 animate-in zoom-in-95 duration-300">
                         <div className="space-y-2">
                             <h2 className="text-4xl font-black italic uppercase tracking-tighter">Enter <span className="text-blue-500">Class</span></h2>
                             <p className="text-slate-600 dark:text-slate-400 font-medium">Input your unique invitation code.</p>
@@ -309,7 +309,7 @@ export default function RoomsPage() {
                                     value={joinCode}
                                     onChange={(e) => setJoinCode(e.target.value)}
                                     placeholder="XXXXXX"
-                                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-black text-center text-3xl tracking-[0.5em] uppercase placeholder:text-slate-700" 
+                                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 sm:p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-black text-center text-3xl tracking-[0.5em] uppercase placeholder:text-slate-700" 
                                 />
                             </div>
 
@@ -317,14 +317,14 @@ export default function RoomsPage() {
                                 <button 
                                     type="button" 
                                     onClick={() => setIsJoinModalOpen(false)}
-                                    className="flex-1 py-5 rounded-3xl font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                    className="flex-1 py-4 sm:py-5 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button 
                                     type="submit"
                                     disabled={isActionLoading}
-                                    className="flex-[2] py-5 bg-blue-600 rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2"
+                                    className="flex-[2] py-4 sm:py-5 bg-blue-600 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2"
                                 >
                                     {isActionLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Access Circle"}
                                 </button>
@@ -342,7 +342,7 @@ function RoomCard({ room, isRecommended, onDiscover }: { room: Classroom; isReco
         return (
             <div 
                 onClick={onDiscover}
-                className="group block bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 hover:bg-slate-200 dark:hover:bg-white/10 transition-all duration-500 relative overflow-hidden cursor-pointer"
+                className="group block bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 hover:bg-slate-200 dark:hover:bg-white/10 transition-all duration-500 relative overflow-hidden cursor-pointer"
             >
                 {/* Role Badge */}
                 <div className="absolute top-6 right-6 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-black uppercase tracking-widest text-cyan-400">
@@ -355,7 +355,7 @@ function RoomCard({ room, isRecommended, onDiscover }: { room: Classroom; isReco
                     </div>
                     
                     <div>
-                        <h3 className="text-2xl font-black uppercase tracking-tight italic mb-1 group-hover:text-blue-500 transition-colors">
+                        <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight italic mb-1 group-hover:text-blue-500 transition-colors line-clamp-2">
                             {room.name}
                         </h3>
                         <p className="text-slate-500 dark:text-slate-500 text-sm font-bold flex items-center gap-2">
@@ -380,7 +380,7 @@ function RoomCard({ room, isRecommended, onDiscover }: { room: Classroom; isReco
     return (
         <Link 
             href={`/rooms/${room.id}`} 
-            className="group block bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 hover:bg-slate-200 dark:hover:bg-white/10 transition-all duration-500 relative overflow-hidden"
+            className="group block bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 hover:bg-slate-200 dark:hover:bg-white/10 transition-all duration-500 relative overflow-hidden"
         >
             {/* Role Badge */}
             <div className="absolute top-6 right-6 px-3 py-1 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 group-hover:bg-blue-600 group-hover:border-blue-500 group-hover:text-slate-900 dark:group-hover:text-white transition-all">
@@ -393,7 +393,7 @@ function RoomCard({ room, isRecommended, onDiscover }: { room: Classroom; isReco
                 </div>
                 
                 <div>
-                    <h3 className="text-2xl font-black uppercase tracking-tight italic mb-1 group-hover:text-blue-500 transition-colors">
+                    <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight italic mb-1 group-hover:text-blue-500 transition-colors line-clamp-2">
                         {room.name}
                     </h3>
                     <p className="text-slate-500 dark:text-slate-500 text-sm font-bold flex items-center gap-2">

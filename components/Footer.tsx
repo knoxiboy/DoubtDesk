@@ -40,8 +40,11 @@ export default function Footer() {
       links: [
         { label: "GitHub", href: "https://github.com/knoxiboy/DoubtDesk" },
         { label: "Contributors", href: "/contributors" },
-        { label: "Report Issue", href: "https://github.com/knoxiboy/DoubtDesk/issues" },
-        { label: "Contact", href: "mailto:karankmt.tripathi@gmail.com" },
+        {
+          label: "Report Issue",
+          href: "https://github.com/knoxiboy/DoubtDesk/issues",
+        },
+        { label: "Contact", href: "/contact" },
       ],
     },
   ];
@@ -91,7 +94,10 @@ export default function Footer() {
         <div className="flex flex-col lg:flex-row lg:justify-between gap-14 pb-12 border-b border-slate-300 dark:border-white/10">
           {/* Brand Section */}
           <div className="max-w-md">
-            <Link href="/" className="inline-flex items-center gap-3 mb-5 group">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-3 mb-5 group"
+            >
               <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.2)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                 <Image
                   src="/logo.png"
@@ -144,7 +150,9 @@ export default function Footer() {
                           <a
                             href={link.href}
                             target={
-                              link.href.startsWith("http") ? "_blank" : undefined
+                              link.href.startsWith("http")
+                                ? "_blank"
+                                : undefined
                             }
                             rel={
                               link.href.startsWith("http")
@@ -206,7 +214,8 @@ export default function Footer() {
 
           <div className="text-center md:text-right">
             <p className="text-sm text-slate-600 dark:text-slate-500">
-              © {currentYear} DoubtDesk. Built for collaborative AI-powered learning.
+              © {currentYear} DoubtDesk. Built for collaborative AI-powered
+              learning.
             </p>
           </div>
         </div>

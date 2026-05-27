@@ -300,8 +300,7 @@ export default function AskAIPage() {
                                         id="doubt-input"
                                         value={prompt}
                                         onChange={(e) => setPrompt(e.target.value)}
-                                        onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAskAI(); }}
-                                        placeholder="e.g. How do I solve x² - 5x + 6 = 0?   (Ctrl+Enter to submit)"
+                                        placeholder="e.g. How do I solve x² - 5x + 6 = 0?"
                                         rows={4}
                                         className="w-full bg-white/60 dark:bg-slate-950/60 border border-slate-200 dark:border-white/8 rounded-2xl px-5 py-4 text-slate-900 dark:text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition-all resize-none font-medium text-[15px] leading-relaxed"
                                         disabled={isLoading}

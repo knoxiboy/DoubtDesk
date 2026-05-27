@@ -207,14 +207,6 @@ const { copied, copy } = useCopyToClipboard();
                             <textarea
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                                        e.preventDefault();
-                                        if (prompt.trim() || imageBase64) {
-                                            handleAskAI('standard');
-                                        }
-                                    }
-                                }}
                                 placeholder="Type your doubt here..."
                                 rows={4}
                                 className="w-full bg-white/60 dark:bg-slate-950/60 border border-slate-200 dark:border-white/8 rounded-2xl px-5 py-4 text-slate-900 dark:text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all resize-none font-medium text-sm leading-relaxed"

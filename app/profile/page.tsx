@@ -203,30 +203,29 @@ export default function ProfilePage() {
                 <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                 Go Back
             </button>
-
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-8 bg-white/50 dark:bg-slate-900/50 rounded-xl border border-slate-800 p-6 shadow-sm">
+            <div className="flex flex-col xl:flex-row items-center xl:items-start gap-6 mb-8 bg-white/50 dark:bg-slate-900/50 rounded-xl border border-slate-800 p-6 shadow-sm">
                 <Avatar className="w-24 h-24 border-4 border-slate-950 shadow-sm">
                     <AvatarImage src={user.imageUrl} />
                     <AvatarFallback className="text-3xl bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200">{user.name.charAt(0)}</AvatarFallback>
                 </Avatar>
-
-                <div className="flex-1 text-center md:text-left">
+ 
+                <div className="flex-1 text-center xl:text-left">
                     <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{user.name}</h1>
-                    <p className="text-slate-600 dark:text-slate-400 mt-1 flex items-center justify-center md:justify-start gap-2">
+                    <p className="text-slate-600 dark:text-slate-400 mt-1 flex items-center justify-center xl:justify-start gap-2">
                         <CalendarDays className="w-4 h-4" />
                         Joined {format(new Date(user.joinDate), "MMMM yyyy")}
                     </p>
-
-                    <div className="flex flex-wrap gap-2 mt-4 justify-center md:justify-start">
+ 
+                    <div className="flex flex-wrap gap-2 mt-4 justify-center xl:justify-start">
                         {user.role && <Badge className="bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-700">{user.role}</Badge>}
                         {user.university && <Badge variant="outline" className="border-slate-700 text-slate-700 dark:text-slate-300">{user.university}</Badge>}
                         {user.year && <Badge variant="outline" className="border-slate-700 text-slate-700 dark:text-slate-300">{user.year}</Badge>}
                     </div>
                 </div>
-
+ 
                 {/* Email Notification Settings Select */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-slate-950/40 border border-slate-800/80 rounded-xl p-4 md:self-center shadow-inner min-w-[280px] sm:min-w-[380px] w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-slate-950/40 border border-slate-800/80 rounded-xl p-4 xl:self-center shadow-inner min-w-[280px] sm:min-w-[380px] w-full sm:w-auto">
                     <div className="flex flex-col max-w-[240px]">
                         <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 font-medium">
                             <Mail className="w-4 h-4 text-purple-400" />
@@ -255,32 +254,32 @@ export default function ProfilePage() {
                     </div>
                 </div>
             </div>
-
+ 
             {/* Stats Section */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8" aria-label="Profile Statistics">
                 <Card className="bg-blue-500/10 border-blue-500/20 shadow-sm hover:bg-blue-500/20 transition-colors">
-                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                    <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 text-center h-full">
                         <MessageSquare className="w-8 h-8 text-blue-400 mb-2 opacity-90" aria-hidden="true" />
                         <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalDoubts || 0}</h3>
                         <p className="text-sm text-blue-800 dark:text-blue-200/70">Doubts Asked</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-indigo-500/10 border-indigo-500/20 shadow-sm hover:bg-indigo-500/20 transition-colors">
-                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                    <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 text-center h-full">
                         <BookOpen className="w-8 h-8 text-indigo-400 mb-2 opacity-90" aria-hidden="true" />
                         <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalReplies || 0}</h3>
                         <p className="text-sm text-indigo-800 dark:text-indigo-200/70">Replies Given</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-emerald-500/10 border-emerald-500/20 shadow-sm hover:bg-emerald-500/20 transition-colors">
-                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                    <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 text-center h-full">
                         <ThumbsUp className="w-8 h-8 text-emerald-400 mb-2 opacity-90" aria-hidden="true" />
                         <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.helpfulVotes || 0}</h3>
                         <p className="text-sm text-emerald-800 dark:text-emerald-200/70">Helpful Votes</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-purple-500/10 border-purple-500/20 shadow-sm hover:bg-purple-500/20 transition-colors">
-                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                    <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 text-center h-full">
                         <Users className="w-8 h-8 text-purple-400 mb-2 opacity-90" aria-hidden="true" />
                         <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.classroomsCount || 0}</h3>
                         <p className="text-sm text-purple-800 dark:text-purple-200/70">Classrooms</p>
@@ -289,28 +288,28 @@ export default function ProfilePage() {
                 
                 {/* New Activity Stats */}
                 <Card className="bg-rose-500/10 border-rose-500/20 shadow-sm hover:bg-rose-500/20 transition-colors">
-                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                    <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 text-center h-full">
                         <Heart className="w-8 h-8 text-rose-400 mb-2 opacity-90" aria-hidden="true" />
                         <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{activityStats.totalLikesReceived || 0}</h3>
                         <p className="text-sm text-rose-800 dark:text-rose-200/70">Likes Received</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-amber-500/10 border-amber-500/20 shadow-sm hover:bg-amber-500/20 transition-colors">
-                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                    <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 text-center h-full">
                         <TrendingUp className="w-8 h-8 text-amber-400 mb-2 opacity-90" aria-hidden="true" />
                         <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{activityStats.totalReplyUpvotes || 0}</h3>
                         <p className="text-sm text-amber-800 dark:text-amber-200/70">Reply Upvotes</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-green-500/10 border-green-500/20 shadow-sm hover:bg-green-500/20 transition-colors">
-                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                    <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 text-center h-full">
                         <CheckCircle2 className="w-8 h-8 text-green-400 mb-2 opacity-90" aria-hidden="true" />
                         <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{activityStats.doubtsSolved || 0}</h3>
                         <p className="text-sm text-green-800 dark:text-green-200/70">Doubts Solved</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-cyan-500/10 border-cyan-500/20 shadow-sm hover:bg-cyan-500/20 transition-colors">
-                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full w-full overflow-hidden">
+                    <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 text-center h-full w-full overflow-hidden">
                         <Target className="w-8 h-8 text-cyan-400 mb-2 opacity-90" aria-hidden="true" />
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate w-full max-w-full px-2" title={activityStats.mostActiveSubject || "None"}>
                             {activityStats.mostActiveSubject || "No activity"}
@@ -319,7 +318,7 @@ export default function ProfilePage() {
                     </CardContent>
                 </Card>
                 <Card className="bg-slate-500/10 border-slate-500/20 shadow-sm hover:bg-slate-500/20 transition-colors lg:col-start-2 lg:col-span-2">
-                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                    <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 text-center h-full">
                         <CalendarDays className="w-8 h-8 text-slate-400 mb-2 opacity-90" aria-hidden="true" />
                         <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                             {activityStats.memberSince ? format(new Date(activityStats.memberSince), "MMM yyyy") : "Unknown"}
