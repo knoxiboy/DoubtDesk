@@ -17,6 +17,8 @@ import {
   Clipboard,
   Activity,
   Users,
+  Menu,
+  X,
 } from "lucide-react";
 
 import Link from "next/link";
@@ -41,6 +43,7 @@ const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -128,79 +131,164 @@ export default function Home() {
       {/* Navbar */}
       <header className="sticky inset-x-0 top-0 z-50 bg-background/88 supports-[backdrop-filter]:bg-background/72 backdrop-blur-xl overflow-visible transition-colors duration-300">
         <div className="absolute inset-x-0 bottom-0 h-px bg-border shadow-[0_0_10px_rgba(139,184,255,0.18)]" />
-        <div className="max-w-7xl mx-auto h-16 sm:h-20 flex items-center justify-between px-4 sm:px-6 md:px-[clamp(24px,5vw,64px)]">
-          <Link href="/" className="flex items-center gap-1 sm:gap-2 hover:opacity-90 transition-opacity shrink-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_20px_rgba(94,140,255,0.25)] ring-1 ring-[#AABFFF]/35">
-              <img src="/logo.png" alt="DoubtDesk logo" className="h-5 w-5 object-contain" />
+        <div className="max-w-7xl mx-auto flex flex-col justify-center px-4 sm:px-6 md:px-[clamp(24px,5vw,64px)]">
+          
+          <div className="h-16 sm:h-20 flex items-center justify-between w-full">
+            <Link href="/" className="flex items-center gap-1 sm:gap-2 hover:opacity-90 transition-opacity shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_20px_rgba(94,140,255,0.25)] ring-1 ring-[#AABFFF]/35">
+                <img src="/logo.png" alt="DoubtDesk logo" className="h-5 w-5 object-contain" />
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground transition-colors drop-shadow-[0_0_10px_rgba(170,191,255,0.15)]">
+                DoubtDesk
+              </h1>
+            </Link>
+
+            <div className="hidden sm:flex items-center gap-3">
+              <button
+                onClick={()=> {
+                  document.getElementById("features")?.scrollIntoView({ behavior:"smooth"});
+                }}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-600 dark:hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)]"
+              >
+                Features
+              </button>
+              <button
+                onClick={()=> {
+                  document.getElementById("how-it-works")?.scrollIntoView({ behavior:"smooth"});
+                }}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-600 dark:hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)] "
+              >
+                How It Works
+              </button>
+              <button
+                onClick={()=> {
+                  document.getElementById("testimonials")?.scrollIntoView({ behavior:"smooth"});
+                }}
+                className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-600 dark:hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)]"
+              >
+                Testimonial
+              </button>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground transition-colors drop-shadow-[0_0_10px_rgba(170,191,255,0.15)]">
-              DoubtDesk
-            </h1>
-          </Link>
+            
+            <div className="flex items-center gap-2 sm:gap-4">
+              <ThemeToggle />
 
-          <div className="hidden sm:flex items-center gap-3">
-            <button
-            onClick={()=> {
-              document.getElementById("features")
-              ?.scrollIntoView({ behavior:"smooth"});
-            }}
-              className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-600 dark:hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)]"
-            >
-              Features
-            </button>
-            <button
-              onClick={()=> {
-              document.getElementById("how-it-works")
-              ?.scrollIntoView({ behavior:"smooth"});
-            }}
-              className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-600 dark:hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)] "
-            >
-              How It Works
-            </button>
-            <button
-              onClick={()=> {
-              document.getElementById("testimonials")
-              ?.scrollIntoView({ behavior:"smooth"});
-            }}
-              className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-600 dark:hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)]"
-            >
-              Testimonial
-            </button>
+              <div className="hidden sm:flex items-center gap-2 sm:gap-4">
+                <SignedOut>
+                  <Link href="/sign-in">
+                    <button className="px-5 py-2.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-xl text-sm font-semibold border border-slate-200 dark:border-white/10 transition-all hover:shadow-[0_0_16px_rgba(255,255,255,0.08)]">
+                      Sign In
+                    </button>
+                  </Link>
+
+                  <Link href="/sign-up">
+                    <button className="px-5 py-2.5 bg-[#5E8CFF] hover:bg-[#8BB8FF] text-white rounded-xl text-sm font-semibold shadow-[0_0_14px_rgba(94,140,255,0.28)] transition-all">
+                      Join DoubtDesk
+                    </button>
+                  </Link>
+                </SignedOut>
+                <SignedIn>
+                  <div className="flex items-center gap-4">
+                    <Link href="/rooms" className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
+                      Classrooms
+                    </Link>
+                    <Link href="/profile" className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
+                      Profile
+                    </Link>
+                    <UserButton
+                      afterSignOutUrl="/"
+                      appearance={{
+                        elements: {
+                          userButtonAvatarBox: "w-10 h-10 border border-white/20 shadow-sm"
+                        }
+                      }}
+                    />
+                  </div>
+                </SignedIn>
+              </div>
+
+              {/* Mobile Hamburger Trigger */}
+              <button 
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="sm:hidden p-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors focus:outline-none"
+                aria-label="Toggle navigation menu"
+              >
+                {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              </button>
+            </div>
           </div>
+          
+          {/* Mobile Drawer Panel */}
+          <div 
+            className={`sm:hidden w-full overflow-hidden transition-all duration-300 ease-in-out ${
+              isMenuOpen ? "max-h-[420px] opacity-100 mb-4 pb-2" : "max-h-0 opacity-0 pointer-events-none"
+            }`}
+          >
+            <div className="flex flex-col gap-3 pt-2 border-t border-slate-200/50 dark:border-white/5">
+              
+              <button
+                onClick={()=> {
+                  setIsMenuOpen(false);
+                  document.getElementById("features")?.scrollIntoView({ behavior:"smooth"});
+                }}
+                className="w-full text-left px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-[#AABFFF]"
+              >
+                Features
+              </button>
+              <button
+                onClick={()=> {
+                  setIsMenuOpen(false);
+                  document.getElementById("how-it-works")?.scrollIntoView({ behavior:"smooth"});
+                }}
+                className="w-full text-left px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-[#AABFFF]"
+              >
+                How It Works
+              </button>
+              <button
+                onClick={()=> {
+                  setIsMenuOpen(false);
+                  document.getElementById("testimonials")?.scrollIntoView({ behavior:"smooth"});
+                }}
+                className="w-full text-left px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-[#AABFFF]"
+              >
+                Testimonial
+              </button>
 
-          <div className="flex items-center gap-2 sm:gap-4">
-            <ThemeToggle />
-            <SignedOut>
-              <Link href="/sign-in">
-                <button className="px-5 py-2.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-xl text-sm font-semibold border border-slate-200 dark:border-white/10 transition-all hover:shadow-[0_0_16px_rgba(255,255,255,0.08)]">
-                  Sign In
-                </button>
-              </Link>
+              <SignedOut>
+                <hr className="border-slate-200/50 dark:border-white/5 my-1" />
+                <Link href="/sign-in" className="w-full" onClick={() => setIsMenuOpen(false)}>
+                  <button className="w-full px-5 py-2.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-xl text-sm font-semibold border border-slate-200 dark:border-white/10 transition-all">
+                    Sign In
+                  </button>
+                </Link>
 
-              <Link href="/sign-up">
-                <button className="px-5 py-2.5 bg-[#5E8CFF] hover:bg-[#8BB8FF] text-white rounded-xl text-sm font-semibold shadow-[0_0_14px_rgba(94,140,255,0.28)] transition-all">
-                  Join DoubtDesk
-                </button>
-              </Link>
-            </SignedOut>
-            <SignedIn>
-              <div className="flex items-center gap-4">
-                <Link href="/rooms" className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link href="/sign-up" className="w-full" onClick={() => setIsMenuOpen(false)}>
+                  <button className="w-full px-5 py-2.5 bg-[#5E8CFF] hover:bg-[#8BB8FF] text-white rounded-xl text-sm font-semibold shadow-[0_0_14px_rgba(94,140,255,0.28)] transition-all">
+                    Join DoubtDesk
+                  </button>
+                </Link>
+              </SignedOut>
+
+              <SignedIn>
+                <hr className="border-slate-200/50 dark:border-white/5 my-1" />
+                <Link href="/rooms" className="w-full text-left px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors" onClick={() => setIsMenuOpen(false)}>
                   Classrooms
                 </Link>
-                <Link href="/profile" className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
+                <Link href="/profile" className="w-full text-left px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors" onClick={() => setIsMenuOpen(false)}>
                   Profile
                 </Link>
-                <UserButton
-                  afterSignOutUrl="/"
-                  appearance={{
-                    elements: {
-                      userButtonAvatarBox: "w-10 h-10 border border-white/20 shadow-sm"
-                    }
-                  }}
-                />
-              </div>
-            </SignedIn>
+                <div className="px-4 py-1 flex justify-start">
+                  <UserButton
+                    afterSignOutUrl="/"
+                    appearance={{
+                      elements: {
+                        userButtonAvatarBox: "w-10 h-10 border border-white/20 shadow-sm"
+                      }
+                    }}
+                  />
+                </div>
+              </SignedIn>
+            </div>
           </div>
         </div>
       </header>
