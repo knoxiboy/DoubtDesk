@@ -42,22 +42,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         if (!isOwner && !isTeacher) {
             return NextResponse.json({ error: "Forbidden: not allowed to edit this reply" }, { status: 403 });
         }
-        const [reply] = await db.select().from(repliesTable).where(eq(repliesTable.id, replyId)).limit(1);
-        if (!reply) return NextResponse.json({ error: "Reply not found" }, { status: 404 });
-
-        let isTeacher = false;
-        if (reply.doubtId) {
-            const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, reply.doubtId)).limit(1);
-            if (doubt?.classroomId) {
-                const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId)).limit(1);
-                isTeacher = !!(room && email && room.teacherEmail === email);
-            }
-        }
-
-        const isOwner = email && reply.userEmail === email;
-        if (!isOwner && !isTeacher) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-        }
 
         const updateData: any = {};
         if (content !== undefined) updateData.content = content;
@@ -89,17 +73,6 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
         }
 
-        const [reply] = await db.select().from(repliesTable).where(eq(repliesTable.id, replyId)).limit(1);
-        if (!reply) return NextResponse.json({ error: "Reply not found" }, { status: 404 });
-
-        let isTeacher = false;
-        if (reply.doubtId) {
-            const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, reply.doubtId)).limit(1);
-            if (doubt?.classroomId) {
-                const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId)).limit(1);
-                isTeacher = !!(room && email && room.teacherEmail === email);
-            }
-        }
         const [reply] = await db.select().from(repliesTable).where(eq(repliesTable.id, replyId)).limit(1);
         if (!reply) return NextResponse.json({ error: "Reply not found" }, { status: 404 });
 

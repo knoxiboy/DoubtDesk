@@ -55,6 +55,11 @@ export default function DashboardLayout({
             description:
                 "Explore and solve doubts with the community",
         },
+
+        "/bookmarks": {
+            title: "Bookmarks",
+            description: "Saved doubts for quick reference",
+        },
     }
     const currentPage =
         Object.entries(pageInfo).find(([route]) =>
