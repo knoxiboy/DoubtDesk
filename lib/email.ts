@@ -1,3 +1,62 @@
+import { createHmac, timingSafeEqual } from "crypto";
+
+const UNSUBSCRIBE_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+function getUnsubscribeSecret() {
+    const secret = process.env.UNSUBSCRIBE_SECRET || process.env.CLERK_SECRET_KEY;
+
+    if (!secret) {
+        throw new Error("UNSUBSCRIBE_SECRET is required to generate unsubscribe links");
+    }
+
+    return secret;
+}
+
+function normalizeEmail(email: string) {
+    return email.trim().toLowerCase();
+}
+
+export function generateUnsubscribeToken(email: string, expiresAt = Date.now() + UNSUBSCRIBE_TOKEN_TTL_MS) {
+    const payload = `${normalizeEmail(email)}.${expiresAt}`;
+
+    return createHmac("sha256", getUnsubscribeSecret())
+        .update(payload)
+        .digest("hex");
+}
+
+export function verifyUnsubscribeToken(email: string, expiresAt: string | null, token: string | null) {
+    if (!expiresAt || !token) {
+        return false;
+    }
+
+    const expiresAtMs = Number(expiresAt);
+    if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
+        return false;
+    }
+
+    const expectedToken = generateUnsubscribeToken(email, expiresAtMs);
+    const expectedBuffer = Buffer.from(expectedToken, "hex");
+    const tokenBuffer = Buffer.from(token, "hex");
+
+    if (expectedBuffer.length !== tokenBuffer.length) {
+        return false;
+    }
+
+    return timingSafeEqual(expectedBuffer, tokenBuffer);
+}
+
+export function generateUnsubscribeLink(email: string, appUrl: string) {
+    const expiresAt = Date.now() + UNSUBSCRIBE_TOKEN_TTL_MS;
+    const token = generateUnsubscribeToken(email, expiresAt);
+    const url = new URL("/api/unsubscribe", appUrl);
+
+    url.searchParams.set("email", email);
+    url.searchParams.set("expires", expiresAt.toString());
+    url.searchParams.set("token", token);
+
+    return url.toString();
+}
+
 export async function sendWarningEmail(email: string, reason: string, strikes: number) {
     console.log(`[EMAIL SIMULATION] To: ${email}, Subject: Safety Warning - DoubtDesk, Message: Your post was flagged for: ${reason}. You have ${strikes}/3 strikes. Further violations will result in an automatic account block.`);
     
@@ -273,7 +332,7 @@ export async function sendDigestEmail(params: {
 }) {
     const { toEmail, subject, totalReplies, totalDoubts, doubts } = params;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const unsubscribeLink = `${appUrl}/api/unsubscribe?email=${encodeURIComponent(toEmail)}`;
+    const unsubscribeLink = generateUnsubscribeLink(toEmail, appUrl);
 
     let doubtsHtml = "";
     for (const d of doubts) {
