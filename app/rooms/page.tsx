@@ -31,8 +31,8 @@ interface Classroom {
 
 function RoomCardSkeleton() {
     return (
-        <div className="bg-white dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 rounded-2xl p-6 md:p-8 space-y-6 animate-pulse">
-            <Skeleton className="w-14 h-14 rounded-xl bg-slate-100 dark:bg-zinc-900" />
+        <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 space-y-6">
+            <Skeleton className="w-14 h-14 rounded-2xl" />
             <div className="space-y-3">
                 <Skeleton className="h-7 w-3/4 bg-slate-100 dark:bg-zinc-900" />
                 <Skeleton className="h-4 w-1/2 bg-slate-100 dark:bg-zinc-900" />
@@ -131,9 +131,24 @@ export default function RoomsPage() {
     };
 
     return (
-        <div className="p-4 md:p-8 relative overflow-hidden text-slate-900 dark:text-zinc-100 bg-white dark:bg-black min-h-screen transition-colors duration-500">
-            <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/10 dark:from-blue-500/5 blur-[120px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0" />
-            <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-500/5 dark:bg-purple-500/[0.02] blur-[120px] rounded-full translate-x-1/3 translate-y-1/3 pointer-events-none z-0" />
+        <div className="p-4 md:p-8 relative overflow-hidden">
+            {/* Background Orbs */}
+            <div className="absolute top-0 left-0 w-[800px] h-[800px] bg-blue-600/5 blur-[150px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+            
+            <div className="max-w-7xl mx-auto relative z-10">
+                {/* Header Section */}
+                <div className="relative z-10 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl -mx-4 md:-mx-8 px-4 md:px-8 py-5 mb-8 border-b border-slate-200 dark:border-white/5">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <Link href="/" className="inline-flex items-center gap-2 text-slate-600 dark:text-slate-400 text-xs font-black uppercase tracking-widest hover:text-slate-900 dark:hover:text-white underline underline-offset-4 transition-all">
+                                    <Home className="w-3.5 h-3.5" /> Home
+                                </Link>
+                            </div>
+                            <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter uppercase italic break-words">
+                                Virtual <span className="text-blue-500">Classrooms</span>
+                            </h1>
+                        </div>
 
             <div className="max-w-7xl mx-auto relative z-10 space-y-10">
                 <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-100 dark:border-zinc-900/60">
@@ -175,9 +190,9 @@ export default function RoomsPage() {
                         </div>
                     </div>
                 ) : rooms.length === 0 ? (
-                    <div className="bg-slate-50/50 dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 rounded-2xl p-10 text-center space-y-4 shadow-sm max-w-3xl mx-auto">
-                        <div className="w-16 h-16 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-sm">
-                            <School className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                    <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-10 text-center space-y-4">
+                        <div className="w-20 h-20 bg-blue-500/10 border border-blue-500/20 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                            <School className="w-10 h-10 text-blue-500" />
                         </div>
                         <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">No Classrooms Detected</h2>
                         <p className="text-slate-500 dark:text-zinc-400 max-w-sm mx-auto text-xs font-medium leading-relaxed">
@@ -222,11 +237,11 @@ export default function RoomsPage() {
 
             {/* CREATE MODAL */}
             {isCreateModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl bg-white/60 dark:bg-black/60 animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-900 w-full max-w-md rounded-2xl p-6 md:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-slate-900 dark:text-zinc-100">
-                        <div className="space-y-1">
-                            <h2 className="text-2xl font-bold tracking-tight">Spawn Classroom</h2>
-                            <p className="text-slate-500 dark:text-zinc-400 text-xs font-medium">Define your new academic workspace.</p>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80 animate-in fade-in duration-300">
+                    <div className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-lg rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl space-y-6 sm:space-y-8 animate-in zoom-in-95 duration-300">
+                        <div className="space-y-2">
+                            <h2 className="text-4xl font-black italic uppercase tracking-tighter">Spawn <span className="text-blue-500">Classroom</span></h2>
+                            <p className="text-slate-600 dark:text-slate-400 font-medium">Define your new academic workspace.</p>
                         </div>
 
                         <form onSubmit={handleCreateRoom} className="space-y-4">
@@ -238,7 +253,7 @@ export default function RoomsPage() {
                                     value={createData.name}
                                     onChange={(e) => setCreateData({ ...createData, name: e.target.value })}
                                     placeholder="e.g. Advanced Calculus Section A"
-                                    className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-xl focus:outline-none focus:border-blue-500/50 transition-all font-medium text-sm" 
+                                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 sm:p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-medium" 
                                 />
                             </div>
 
@@ -247,7 +262,7 @@ export default function RoomsPage() {
                                 <select 
                                     value={createData.year}
                                     onChange={(e) => setCreateData({ ...createData, year: e.target.value })}
-                                    className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-xl focus:outline-none focus:border-blue-500/50 transition-all font-medium appearance-none cursor-pointer text-sm"
+                                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 sm:p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-medium appearance-none"
                                 >
                                     <option className="bg-white dark:bg-zinc-900" value="1st Year">1st Year</option>
                                     <option className="bg-white dark:bg-zinc-900" value="2nd Year">2nd Year</option>
@@ -260,14 +275,14 @@ export default function RoomsPage() {
                                 <button 
                                     type="button" 
                                     onClick={() => setIsCreateModalOpen(false)}
-                                    className="flex-1 py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent"
+                                    className="flex-1 py-4 sm:py-5 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button 
                                     type="submit"
                                     disabled={isActionLoading}
-                                    className="flex-[2] py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-600/10 flex items-center justify-center gap-2 transition-all"
+                                    className="flex-[2] py-4 sm:py-5 bg-blue-600 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2"
                                 >
                                     {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Initiate room"}
                                 </button>
@@ -279,11 +294,11 @@ export default function RoomsPage() {
 
             {/* JOIN MODAL */}
             {isJoinModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl bg-white/60 dark:bg-black/60 animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-900 w-full max-w-md rounded-2xl p-6 md:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-slate-900 dark:text-zinc-100">
-                        <div className="space-y-1">
-                            <h2 className="text-2xl font-bold tracking-tight">Enter Class</h2>
-                            <p className="text-slate-500 dark:text-zinc-400 text-xs font-medium">Input your unique invitation code.</p>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80 animate-in fade-in duration-300">
+                    <div className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-lg rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-10 shadow-2xl space-y-6 sm:space-y-8 animate-in zoom-in-95 duration-300">
+                        <div className="space-y-2">
+                            <h2 className="text-4xl font-black italic uppercase tracking-tighter">Enter <span className="text-blue-500">Class</span></h2>
+                            <p className="text-slate-600 dark:text-slate-400 font-medium">Input your unique invitation code.</p>
                         </div>
 
                         <form onSubmit={handleJoinRoom} className="space-y-4">
@@ -296,7 +311,7 @@ export default function RoomsPage() {
                                     value={joinCode}
                                     onChange={(e) => setJoinCode(e.target.value)}
                                     placeholder="XXXXXX"
-                                    className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-xl focus:outline-none focus:border-blue-500/50 transition-all font-black text-center text-2xl tracking-[0.3em] uppercase placeholder:text-slate-300 dark:placeholder:text-zinc-700 text-slate-900 dark:text-white" 
+                                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 sm:p-5 rounded-2xl focus:outline-none focus:border-blue-500 transition-all font-black text-center text-3xl tracking-[0.5em] uppercase placeholder:text-slate-700" 
                                 />
                             </div>
 
@@ -304,14 +319,14 @@ export default function RoomsPage() {
                                 <button 
                                     type="button" 
                                     onClick={() => setIsJoinModalOpen(false)}
-                                    className="flex-1 py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent"
+                                    className="flex-1 py-4 sm:py-5 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button 
                                     type="submit"
                                     disabled={isActionLoading}
-                                    className="flex-[2] py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-600/10 flex items-center justify-center gap-2 transition-all"
+                                    className="flex-[2] py-4 sm:py-5 bg-blue-600 rounded-2xl sm:rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-600/20 flex items-center justify-center gap-2"
                                 >
                                     {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Access Circle"}
                                 </button>
@@ -329,7 +344,7 @@ function RoomCard({ room, isRecommended, onDiscover }: { room: Classroom; isReco
         return (
             <div 
                 onClick={onDiscover}
-                className="group block bg-white/50 dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-slate-200/5 dark:shadow-none cursor-pointer"
+                className="group block bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 hover:bg-slate-200 dark:hover:bg-white/10 transition-all duration-500 relative overflow-hidden cursor-pointer"
             >
                 <div className="absolute top-6 right-6 px-2.5 py-1 rounded-md bg-purple-500/10 border border-purple-500/20 text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">
                     Discover
@@ -340,8 +355,8 @@ function RoomCard({ room, isRecommended, onDiscover }: { room: Classroom; isReco
                         {room.name.charAt(0).toUpperCase()}
                     </div>
                     
-                    <div className="space-y-1">
-                        <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors duration-300">
+                    <div>
+                        <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight italic mb-1 group-hover:text-blue-500 transition-colors line-clamp-2">
                             {room.name}
                         </h3>
                         <p className="text-slate-400 dark:text-zinc-500 text-xs font-semibold flex items-center gap-1.5">
@@ -365,7 +380,7 @@ function RoomCard({ room, isRecommended, onDiscover }: { room: Classroom; isReco
     return (
         <Link 
             href={`/rooms/${room.id}`} 
-            className="group block bg-white/50 dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-slate-200/5 dark:shadow-none"
+            className="group block bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] p-6 sm:p-8 hover:bg-slate-200 dark:hover:bg-white/10 transition-all duration-500 relative overflow-hidden"
         >
             <div className="absolute top-6 right-6 px-2.5 py-1 rounded-md bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 group-hover:bg-blue-600 group-hover:border-blue-500 group-hover:text-white transition-all duration-300">
                 {room.role}
@@ -376,8 +391,8 @@ function RoomCard({ room, isRecommended, onDiscover }: { room: Classroom; isReco
                     {room.name.charAt(0).toUpperCase()}
                 </div>
                 
-                <div className="space-y-1">
-                    <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
+                <div>
+                    <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight italic mb-1 group-hover:text-blue-500 transition-colors line-clamp-2">
                         {room.name}
                     </h3>
                     <p className="text-slate-400 dark:text-zinc-500 text-xs font-semibold flex items-center gap-1.5">

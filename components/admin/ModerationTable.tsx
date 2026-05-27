@@ -100,7 +100,7 @@ export default function ModerationTable({ logs, onActionSuccess }: ModerationTab
     }
 
     return (
-        <div className="border rounded-md">
+        <div className="border rounded-md overflow-x-auto w-full">
             <Table>
                 <TableHeader>
                     <TableRow>

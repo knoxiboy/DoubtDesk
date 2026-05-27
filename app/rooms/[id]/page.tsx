@@ -1,8 +1,6 @@
 "use client";
 
 import { useParams, useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useHotkeys } from "react-hotkeys-hook";
 import { useAppUser } from "../../provider";
 import {
     Brain,
@@ -128,13 +126,6 @@ export default function ClassroomPage() {
         }
     }, [inView, isReachingEnd, isLoadingMore]);
 
-    useHotkeys("n", (e) => {
-        e.preventDefault();
-        setIsAskModalOpen(true);
-    }, {
-        enableOnFormTags: false,
-    });
-
     useEffect(() => {
         initialFetch();
     }, [id]);
@@ -185,8 +176,10 @@ export default function ClassroomPage() {
     if (!classroom) return null;
 
     return (
-        <div className="min-h-screen bg-white dark:bg-black text-slate-900 dark:text-zinc-100 transition-colors duration-500 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/10 dark:from-blue-500/5 blur-[120px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0" />
+        <div className="relative overflow-hidden">
+            {/* Header / Banner */}
+            <div className="relative z-10 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 pt-4 sm:pt-6 pb-4 sm:pb-6 px-4 sm:px-6 md:px-12 overflow-hidden">
+                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/5 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3" />
 
             <div className="sticky top-0 z-40 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-slate-100 dark:border-zinc-900/60 pt-4 sm:pt-6 pb-4 sm:pb-6 px-4 sm:px-6 md:px-12">
                 <div className="max-w-7xl mx-auto relative z-10 space-y-4">
@@ -665,8 +658,9 @@ export default function ClassroomPage() {
 
             {/* CLASS CODE MODAL */}
             {isCodeModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl bg-white/60 dark:bg-black/60 animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-900 w-full max-w-sm rounded-2xl p-6 md:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-slate-900 dark:text-zinc-100">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80 animate-in fade-in duration-300">
+                    <div className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-md rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 relative overflow-hidden">
+                         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
                          <div className="flex items-center justify-between">
                             <div className="space-y-0.5">
                                 <h2 className="text-xl font-bold tracking-tight">Access Key</h2>
@@ -681,12 +675,13 @@ export default function ClassroomPage() {
                             </button>
                         </div>
 
-                        <div className="bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between gap-4 relative group overflow-hidden shadow-inner">
-                            <code className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-wider relative z-10">{classroom?.inviteCode}</code>
+                        <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 relative group overflow-hidden">
+                            <div className="absolute inset-0 bg-blue-600/5 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <code className="text-3xl sm:text-4xl font-black text-blue-400 tracking-[0.2em] relative z-10 text-center sm:text-left">{classroom?.inviteCode}</code>
 
                             <button
                                 onClick={copyCode}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98] relative z-10"
+                                className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] relative z-10"
                             >
                                 {copied ? (
                                     <><Check className="w-3.5 h-3.5" /> Copied!</>
@@ -756,28 +751,29 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                     { label: "Total Queries", value: data?.engagement?.totalDoubts || 0, icon: MessageSquare, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", border: "border-slate-200 dark:border-zinc-900" },
                     { label: "Community Wisdom", value: data?.engagement?.totalReplies || 0, icon: Activity, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", border: "border-slate-200 dark:border-zinc-900" },
                 ].map((stat, i) => (
-                    <div key={i} className={`bg-white/50 dark:bg-zinc-950/30 border ${stat.border} rounded-2xl p-6 backdrop-blur-md flex items-center justify-between hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-slate-200/5 dark:shadow-none group`}>
+                    <div key={i} className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-8 flex items-center justify-between group hover:bg-white/[0.07] transition-all">
                         <div>
                             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mb-0.5">{stat.label}</p>
                             <h4 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">{stat.value}</h4>
                         </div>
-                        <div className={`p-3.5 ${stat.bg} rounded-xl`}>
-                            <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                        <div className={`w-14 h-14 rounded-2xl bg-${stat.color}-500/10 flex items-center justify-center border border-${stat.color}-500/20 group-hover:scale-110 transition-transform`}>
+                            <stat.icon className={`w-6 h-6 text-${stat.color}-500`} />
                         </div>
                     </div>
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white/50 dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 backdrop-blur-xl flex flex-col justify-between shadow-xl shadow-slate-200/5 dark:shadow-none">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider flex items-center gap-2">
-                            <Layers className="w-4 h-4 text-orange-500" /> Topic Difficulty Heatmap
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12">
+                {/* 2. Difficulty Heatmap / Most Confusing Topics */}
+                <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-10 space-y-6 sm:space-y-8">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg sm:text-xl font-black uppercase italic tracking-tight flex items-center gap-2 sm:gap-3">
+                            <Layers className="w-5 h-5 text-orange-500" /> Topic Difficulty Heatmap
                         </h3>
                         <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">By Doubt Volume</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        {data?.mostAskedTopics?.map((topic: any, i: number) => {
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {data?.mostAskedTopics.map((topic: any, i: number) => {
                             const intensity = Math.min(Number(topic.count) * 10, 100);
                             return (
                                 <div key={i} className="p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 relative overflow-hidden shadow-sm">
@@ -800,12 +796,13 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                     </div>
                 </div>
 
-                <div className="bg-white/50 dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 backdrop-blur-xl flex flex-col justify-between shadow-xl shadow-slate-200/5 dark:shadow-none">
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider flex items-center gap-2 mb-4">
-                        <PieChart className="w-4 h-4 text-emerald-500" /> Resolution Pulse
+                {/* 3. Resolved vs Unresolved Doubts */}
+                <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-10 space-y-6 sm:space-y-10">
+                    <h3 className="text-lg sm:text-xl font-black uppercase italic tracking-tight flex items-center gap-2 sm:gap-3">
+                        <PieChart className="w-5 h-5 text-emerald-500" /> Resolution Pulse
                     </h3>
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-8 py-2">
-                        <div className="relative w-36 h-36 flex items-center justify-center shrink-0">
+                    <div className="flex flex-col items-center justify-center py-4 space-y-6 sm:space-y-8">
+                        <div className="relative w-48 h-48 flex items-center justify-center">
                             <svg className="w-full h-full transform -rotate-90">
                                 <circle cx="72" cy="72" r="64" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-100 dark:text-zinc-900" />
                                 <circle
@@ -846,10 +843,15 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                 </div>
             </div>
 
-            <div className="bg-white/50 dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 rounded-2xl p-6 space-y-6 shadow-sm backdrop-blur-sm">
-                <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-zinc-900 pb-4">
-                    <Trophy className="w-4 h-4 text-amber-500" /> Top Contributors
-                </h3>
+            {/* Top Contributors Leaderboard */}
+            <div className="bg-gradient-to-br from-amber-500/5 via-white/5 to-yellow-500/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-10 space-y-6 sm:space-y-8 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 blur-[100px] rounded-full translate-x-1/3 -translate-y-1/3 group-hover:bg-amber-500/10 transition-all duration-700" />
+                <div className="flex items-center justify-between relative z-10">
+                    <h3 className="text-lg sm:text-xl font-black uppercase italic tracking-tight flex items-center gap-2 sm:gap-3">
+                        <Trophy className="w-5 h-5 text-amber-400" /> Top Contributors
+                    </h3>
+                    <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-500 tracking-widest">Community Heroes</span>
+                </div>
                 {data?.topContributors && data.topContributors.length > 0 ? (
                     <div className="grid gap-3">
                         {(() => {
@@ -863,7 +865,7 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                                 return (
                                     <div
                                         key={`${contributor.name}-${i}`}
-                                        className={`flex items-center gap-4 ${style.bg} border ${style.border} rounded-xl p-4 hover:scale-[1.005] transition-all duration-300 shadow-sm`}
+                                        className={`flex items-center gap-4 sm:gap-5 ${style.bg} border ${style.border} rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:scale-[1.01] transition-all duration-300 ${style.glow}`}
                                     >
                                         <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 flex items-center justify-center shrink-0">
                                             {style.icon || <span className="text-xs font-bold text-slate-400">{i + 1}</span>}
@@ -893,35 +895,39 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                 )}
             </div>
 
-            <div className="bg-white/50 dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 backdrop-blur-xl shadow-xl shadow-slate-200/5 dark:shadow-none space-y-6">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-purple-500" /> Peak Activity Timeline
+            {/* 4. Peak Doubt Time Heatmap */}
+            <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-10 space-y-6 sm:space-y-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h3 className="text-lg sm:text-xl font-black uppercase italic tracking-tight flex items-center gap-2 sm:gap-3">
+                        <Clock className="w-5 h-5 text-purple-500" /> Peak Activity Timeline
                     </h3>
                     <div className="flex items-center gap-2">
                         <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
                         <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">Student Activity Hours</span>
                     </div>
                 </div>
-                <div className="grid grid-cols-24 gap-1 h-24 items-end pt-2">
-                    {Array.from({ length: 24 }).map((_, hour) => {
-                        const activity = data?.peakTime?.find((p: any) => p.hour === hour)?.count || 0;
-                        const heightPercentage = Math.min((activity / 10) * 100, 100);
-                        return (
-                            <div key={hour} className="group relative flex flex-col items-center h-full justify-end gap-1.5">
-                                <div
-                                    className="w-full bg-purple-500/80 dark:bg-purple-500/60 rounded-t-sm group-hover:bg-purple-600 transition-all duration-300"
-                                    style={{ height: `${Math.max(heightPercentage, 4)}%` }}
-                                />
-                                <span className="text-[8px] font-bold text-slate-400 dark:text-zinc-600">
-                                    {hour}
-                                </span>
-                                <div className="absolute bottom-full mb-1 bg-zinc-900 text-white px-2 py-1 rounded text-[9px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30">
-                                    {activity} Doubts @ {hour}:00
+                <div className="overflow-x-auto pb-4 w-full scrollbar-hide">
+                    <div className="grid grid-cols-24 gap-1 h-32 items-end pt-4 min-w-[600px]">
+                        {Array.from({ length: 24 }).map((_, hour) => {
+                            const activity = data?.peakTime.find((p: any) => p.hour === hour)?.count || 0;
+                            const heightPercentage = Math.min((activity / 10) * 100, 100);
+                            return (
+                                <div key={hour} className="group relative flex flex-col items-center gap-2">
+                                    <div
+                                        className="w-full bg-gradient-to-t from-purple-600 to-blue-400 rounded-t-md hover:from-white hover:to-white transition-all duration-500"
+                                        style={{ height: `${Math.max(heightPercentage, 2)}%` }}
+                                    />
+                                    <span className="text-[7px] font-black text-slate-600 uppercase group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                                        {hour}h
+                                    </span>
+                                    {/* Tooltip */}
+                                    <div className="absolute bottom-full mb-2 bg-white text-[#020617] p-2 rounded-lg text-[8px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                                        {activity} Doubts @ {hour}:00
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
@@ -929,19 +935,19 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                 <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider flex items-center gap-2 px-2 mt-8">
                     <Zap className="w-4 h-4 text-yellow-500" /> AI Pedagogical Insights
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {data?.mostAskedTopics?.filter((t: any) => t.severity !== 'Low').length > 0 ? (
-                        data?.mostAskedTopics?.filter((t: any) => t.severity !== 'Low').map((topic: any, i: number) => (
-                            <div key={i} className="bg-purple-500/[0.02] border border-slate-200 dark:border-zinc-900 rounded-2xl p-6 flex items-start gap-4 relative overflow-hidden shadow-sm backdrop-blur-sm">
-                                <div className="absolute top-0 right-0 p-3 bg-slate-50 dark:bg-zinc-900 border-l border-b border-slate-100 dark:border-zinc-800 rounded-bl-xl shadow-inner">
-                                    <Lightbulb className="w-4 h-4 text-yellow-500" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {data?.mostAskedTopics.filter((t: any) => t.severity !== 'Low').length > 0 ? (
+                        data?.mostAskedTopics.filter((t: any) => t.severity !== 'Low').map((topic: any, i: number) => (
+                            <div key={i} className="bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 flex flex-col sm:flex-row items-start gap-4 sm:gap-6 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-4 border-l border-b border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded-bl-3xl">
+                                    <Lightbulb className="w-5 h-5 text-yellow-400" />
                                 </div>
                                 <div className={`p-2.5 rounded-xl flex items-center justify-center shrink-0 ${ topic.severity === 'High' ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-orange-500/10 text-orange-600 dark:text-orange-400' }`}>
                                     <AlertTriangle className="w-5 h-5" />
                                 </div>
-                                <div className="space-y-2 flex-1 pr-4">
-                                    <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">{topic.subject} struggle detected</h4>
-                                    <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed font-medium">
+                                <div className="space-y-3 min-w-0">
+                                    <h4 className="text-lg font-black uppercase italic tracking-tight">{topic.subject} struggle detected</h4>
+                                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                                         {topic.suggestion}
                                     </p>
                                     <div className="pt-1">
@@ -953,9 +959,9 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                             </div>
                         ))
                     ) : (
-                        <div className="col-span-full py-12 text-center bg-slate-50/30 dark:bg-zinc-950/10 border border-dashed border-slate-200 dark:border-zinc-900 rounded-2xl space-y-2">
-                            <Sparkles className="w-8 h-8 text-emerald-500 mx-auto" />
-                            <p className="text-slate-400 dark:text-zinc-500 font-semibold text-xs uppercase tracking-wider">Curriculum looks healthy. No major Concept blockers detected.</p>
+                        <div className="col-span-full py-16 text-center bg-slate-100 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] space-y-4">
+                            <Sparkles className="w-10 h-10 text-emerald-500 mx-auto" />
+                            <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">Curriculum looks healthy. No major Concept blockers detected.</p>
                         </div>
                     )}
                 </div>
@@ -979,26 +985,30 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
     }, [classroomId]);
 
     if (loading) return (
-        <div className="bg-slate-50/50 dark:bg-zinc-950/10 border border-slate-200 dark:border-zinc-900 rounded-2xl p-8 text-center shadow-inner">
-            <Loader2 className="w-6 h-6 text-purple-500 animate-spin mx-auto mb-2" />
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">Consulting AI Learning Mentor...</p>
+        <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-12 text-center">
+            <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">Consulting AI Learning Mentor...</p>
         </div>
     );
 
     if (!personalData?.isEngaged) return (
-        <div className="bg-purple-500/[0.01] border border-dashed border-slate-200 dark:border-zinc-900 rounded-2xl p-8 text-center space-y-2 shadow-sm backdrop-blur-sm">
-            <Sparkles className="w-8 h-8 text-purple-500/30 mx-auto animate-pulse" />
-            <h3 className="text-lg font-bold text-slate-800 dark:text-zinc-300 tracking-tight">Unlock Your AI Mentor</h3>
-            <p className="text-xs text-slate-400 dark:text-zinc-500 max-w-sm mx-auto leading-relaxed font-medium">
+        <div className="bg-gradient-to-br from-blue-600/5 to-purple-600/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-12 text-center space-y-4">
+            <Sparkles className="w-12 h-12 text-blue-500/30 mx-auto" />
+            <h3 className="text-xl font-black uppercase italic tracking-tight text-white/80">Unlock Your <span className="text-blue-500">AI Mentor</span></h3>
+            <p className="text-sm text-slate-500 dark:text-slate-500 max-w-md mx-auto leading-relaxed font-medium">
                 {personalData?.message || "Ask more doubts to unlock personalized AI Weak Topic Detection!"}
             </p>
         </div>
     );
 
     return (
-        <div className="space-y-6 animate-in slide-in-from-bottom-8 duration-1000">
-            <div className="bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-purple-500/10 p-[1px] rounded-2xl shadow-xl shadow-slate-100/50 dark:shadow-none">
-                <div className="bg-white/80 dark:bg-zinc-950/40 backdrop-blur-xl rounded-[15px] p-6 flex flex-col sm:flex-row items-center gap-6 overflow-hidden relative">
+        <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-1000">
+            {/* AI Learning Mentor Header */}
+            <div className="bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-blue-600/20 p-[1px] rounded-[1.5rem] sm:rounded-[3rem] shadow-2xl">
+                <div className="bg-slate-950/40 backdrop-blur-xl rounded-[1.4rem] sm:rounded-[2.9rem] p-5 sm:p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-8 overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/10 blur-[100px] rounded-full -ml-32 -mb-32"></div>
+
                     <div className="relative shrink-0">
                         <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg relative z-10">
                             <Brain className="w-8 h-8 text-white" />
@@ -1009,9 +1019,9 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
                             <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                             <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Personalized Strategy</span>
                         </div>
-                        <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Your Learning Mentor Insight</h3>
-                        <p className="text-sm text-slate-600 dark:text-zinc-300 font-medium leading-relaxed italic border-l-2 border-purple-500/30 pl-4 py-1 text-left">
-                            &ldquo;{personalData.insight}&nbsp;&rdquo;
+                        <h3 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter">Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Learning Mentor</span> Insight</h3>
+                        <p className="text-base sm:text-lg text-slate-700 dark:text-slate-300 font-medium leading-relaxed italic border-l-2 border-blue-500/30 pl-4 sm:pl-6 py-2 text-left">
+                           "{personalData.insight}"
                         </p>
                     </div>
                 </div>
@@ -1027,12 +1037,15 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
                     </div>
                     <div className="grid gap-4">
                         {personalData.weakTopics.map((topic: any, i: number) => (
-                            <div key={i} className="bg-white dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 rounded-2xl p-5 hover:bg-slate-50 dark:hover:bg-zinc-900/40 transition-all duration-300 group shadow-sm flex flex-col gap-2">
-                                <div className="flex items-center justify-between gap-4">
-                                    <span className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{topic.topic}</span>
-                                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-md bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 shrink-0">
-                                        {topic.confidence} Signal
-                                    </span>
+                            <div key={i} className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 hover:bg-slate-200 dark:hover:bg-white/[0.08] transition-all group relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 relative z-10">
+                                    <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white italic tracking-tight">{topic.topic}</span>
+                                    <div className="flex flex-col items-start sm:items-end">
+                                        <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20`}>
+                                            {topic.confidence} Strength Signal
+                                        </span>
+                                    </div>
                                 </div>
                                 <p className="text-xs text-slate-500 dark:text-zinc-400 font-medium leading-relaxed">
                                     {topic.reason}
@@ -1046,11 +1059,13 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
                     <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-2 flex items-center gap-2">
                         <Zap className="w-4 h-4 text-emerald-500" /> Actionable Recommendations
                     </h4>
-                    <div className="bg-emerald-500/[0.01] border border-slate-200 dark:border-zinc-900 rounded-2xl p-6 space-y-6 shadow-sm backdrop-blur-sm">
-                        <div className="space-y-2 relative z-10">
-                            <div className="flex items-center gap-2">
-                                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shadow-sm">
-                                    <Zap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-8 space-y-8 relative overflow-hidden group">
+                        <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-emerald-500/10 blur-[100px] rounded-full group-hover:bg-emerald-500/20 transition-all"></div>
+
+                        <div className="space-y-6 relative z-10">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/20">
+                                    <Zap className="w-4 h-4 text-emerald-500" />
                                 </div>
                                 <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Quick Concept Refresh</p>
                             </div>
@@ -1068,9 +1083,9 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
                             </div>
                             <div className="grid gap-3">
                                 {personalData.recommendations.practiceQuestions.map((q: string, i: number) => (
-                                    <div key={i} className="flex items-center gap-3 bg-white dark:bg-zinc-900 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 hover:border-emerald-500/30 transition-all duration-300 shadow-sm">
-                                        <div className="w-5 h-5 rounded-md bg-emerald-500/10 flex items-center justify-center shrink-0">
-                                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{i+1}</span>
+                                    <div key={i} className="flex items-center gap-4 bg-white/50 dark:bg-slate-950/50 p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-white/5 hover:border-emerald-500/30 transition-all cursor-default">
+                                        <div className="w-6 h-6 rounded-lg bg-emerald-600/20 flex items-center justify-center shrink-0">
+                                            <span className="text-[10px] font-black text-emerald-500">{i+1}</span>
                                         </div>
                                         <p className="text-xs font-semibold text-slate-700 dark:text-zinc-300 tracking-tight">{q}</p>
                                     </div>

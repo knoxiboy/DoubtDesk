@@ -11,13 +11,12 @@ const groq = new Groq({
 });
 
 /**
- * Security & Context Limits
+ * Reliability & Retry Protection
  */
-const MAX_HISTORY_MESSAGES = 10;
-const MAX_MESSAGE_LENGTH = 4000;
-const MAX_HISTORY_MESSAGE_LENGTH = 2000;
-const MAX_CONTEXT_TOKENS = 12000;
-const MAX_REQUEST_SIZE_BYTES = 6 * 1024 * 1024; // 6MB
+const MAX_FALLBACK_ATTEMPTS = 2;
+const MODEL_COOLDOWN_MS = 30000;
+
+const modelCooldowns = new Map<string, number>();
 
 /**
  * List of academic subjects for auto-detection and categorization.
@@ -52,11 +51,6 @@ const UNCLEAR_IMAGE_PATTERNS = [
     /please\s+(upload|provide).*(clearer|higher[-\s]?quality)/i,
 ];
 
-type ChatHistoryMessage = {
-    role: 'user' | 'assistant';
-    content: string;
-};
-
 function isUnclearVisionReply(reply: string) {
     const normalizedReply = reply
         .replace(/^SUBJECT:\s*.+\n?/im, '')
@@ -71,40 +65,51 @@ function isUnclearVisionReply(reply: string) {
 }
 
 /**
- * Sanitizes and validates conversation history.
+ * Determines whether a provider/model failure should trigger fallback retries.
  */
-function sanitizeHistory(history: any[]): ChatHistoryMessage[] {
-    if (!Array.isArray(history)) return [];
+function shouldRetryModel(err: any): boolean {
+    const retryableStatuses = [429, 500, 502, 503, 504];
 
-    return history
-        .filter(
-            (msg) =>
-                msg &&
-                (msg.role === 'user' || msg.role === 'assistant') &&
-                typeof msg.content === 'string'
-        )
-        .map((msg) => ({
-            role: msg.role,
-            content: msg.content.slice(
-                0,
-                MAX_HISTORY_MESSAGE_LENGTH
-            ),
-        }))
-        .slice(-MAX_HISTORY_MESSAGES);
+    if (retryableStatuses.includes(err?.status)) {
+        return true;
+    }
+
+    const message = err?.message?.toLowerCase?.() || '';
+
+    if (
+        message.includes('timeout') ||
+        message.includes('network') ||
+        message.includes('temporarily unavailable')
+    ) {
+        return true;
+    }
+
+    return false;
 }
 
 /**
- * Lightweight token estimation.
- * Approximation: 1 token ~= 4 characters.
+ * Checks whether a model is currently in cooldown state.
  */
-function estimateTokenCount(messages: any[]): number {
-    const totalCharacters = JSON.stringify(messages).length;
+function isModelCoolingDown(model: string): boolean {
+    const lastFailure = modelCooldowns.get(model);
 
-    return Math.ceil(totalCharacters / 4);
+    if (!lastFailure) return false;
+
+    return (
+        Date.now() - lastFailure <
+        MODEL_COOLDOWN_MS
+    );
 }
 
 /**
- * Executes a chat completion request with an automatic retry/fallback mechanism.
+ * Marks a model as temporarily unstable.
+ */
+function markModelFailure(model: string) {
+    modelCooldowns.set(model, Date.now());
+}
+
+/**
+ * Executes a chat completion request with safer retry/fallback orchestration.
  * @param messages Array of chat messages
  * @param isVision Whether the request includes an image
  */
@@ -114,9 +119,22 @@ async function callGroqWithFallback(
 ) {
     const models = isVision ? VISION_MODELS : TEXT_MODELS;
 
+    const limitedModels = models.slice(
+        0,
+        MAX_FALLBACK_ATTEMPTS
+    );
+
     let lastError = null;
 
-    for (const model of models) {
+    for (const model of limitedModels) {
+        if (isModelCoolingDown(model)) {
+            console.warn(
+                `Skipping model ${model} due to cooldown`
+            );
+
+            continue;
+        }
+
         try {
             console.log(
                 `Attempting Groq request with model: ${model}`
@@ -143,12 +161,25 @@ async function callGroqWithFallback(
 
             lastError = err;
 
-            // Continue to next model if it's a 404, 400 (decommissioned), or 401
+            /**
+             * Permanent failures should not trigger
+             * cascading retries across providers.
+             */
             if (
-                err?.status === 404 ||
                 err?.status === 400 ||
-                err?.status === 401
+                err?.status === 401 ||
+                err?.status === 403 ||
+                err?.status === 404
             ) {
+                throw err;
+            }
+
+            /**
+             * Only transient/provider instability failures
+             * should trigger provider cooldowns.
+             */
+            if (shouldRetryModel(err)) {
+                markModelFailure(model);
                 continue;
             }
 
@@ -156,7 +187,12 @@ async function callGroqWithFallback(
         }
     }
 
-    throw lastError;
+    throw (
+        lastError ||
+        new Error(
+            'All AI providers are temporarily unavailable.'
+        )
+    );
 }
 
 /**
@@ -211,59 +247,17 @@ export async function POST(req: Request) {
             );
         }
 
-        const body = await req.json();
-
-        /**
-         * Total request payload validation
-         */
-        const requestSize = Buffer.byteLength(
-            JSON.stringify(body),
-            'utf8'
-        );
-
-        if (requestSize > MAX_REQUEST_SIZE_BYTES) {
-            return NextResponse.json(
-                { error: 'Request payload too large' },
-                { status: 413 }
-            );
-        }
-
         const {
             prompt,
             type = 'standard',
             imageBase64,
             classroomId,
             history = [],
-        } = body;
+        } = await req.json();
 
-        /**
-         * Prompt validation
-         */
-        if (prompt && typeof prompt !== 'string') {
-            return NextResponse.json(
-                { error: 'Invalid prompt format' },
-                { status: 400 }
-            );
-        }
-
-        if (
-            prompt &&
-            prompt.length > MAX_MESSAGE_LENGTH
-        ) {
-            return NextResponse.json(
-                {
-                    error:
-                        'Prompt exceeds maximum allowed length',
-                },
-                { status: 400 }
-            );
-        }
-
-        /**
-         * History sanitization & truncation
-         */
-        const sanitizedHistory =
-            sanitizeHistory(history);
+        const conversationHistory = Array.isArray(history)
+            ? history
+            : [];
 
         // 1. AI Moderation Check for Prompts
         if (prompt) {
@@ -288,7 +282,7 @@ export async function POST(req: Request) {
         if (
             !prompt &&
             !imageBase64 &&
-            sanitizedHistory.length === 0
+            conversationHistory.length === 0
         ) {
             return NextResponse.json(
                 { error: 'Message content is required' },
@@ -309,7 +303,7 @@ export async function POST(req: Request) {
         let systemPrompt: string;
 
         const isFollowUp =
-            sanitizedHistory.length > 0;
+            conversationHistory.length > 0;
 
         /**
          * Dynamic Prompt Selection based on 'type' and 'history'
@@ -363,34 +357,6 @@ Use EXACTLY these 3 ## sections:
 Use bold text (e.g. **Step 1:**) for sub-steps inside the sections. Do NOT use any other ## headings.`;
         }
 
-        /**
-         * Context/token estimation
-         */
-        const estimatedTokens =
-            estimateTokenCount([
-                {
-                    role: 'system',
-                    content: systemPrompt,
-                },
-                ...sanitizedHistory,
-                {
-                    role: 'user',
-                    content: prompt || '',
-                },
-            ]);
-
-        if (
-            estimatedTokens > MAX_CONTEXT_TOKENS
-        ) {
-            return NextResponse.json(
-                {
-                    error:
-                        'Conversation is too long. Please start a new session.',
-                },
-                { status: 400 }
-            );
-        }
-
         const isVisionRequest =
             !!imageBase64 && !isFollowUp;
 
@@ -427,9 +393,9 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
             content: systemPrompt,
         });
 
-        // Add sanitized history context
+        // Add conversation history context
         if (isFollowUp) {
-            messages.push(...sanitizedHistory);
+            messages.push(...conversationHistory);
         }
 
         // Add current prompt

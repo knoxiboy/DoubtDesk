@@ -169,8 +169,8 @@ export default function PublicRoomsPage() {
                     />
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 overflow-x-auto pb-1 scrollbar-hide">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-xl text-slate-400 dark:text-zinc-500">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide w-full">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-500 dark:text-slate-500 shrink-0">
                         <SlidersHorizontal className="w-4 h-4" />
                         <span className="text-[11px] font-bold uppercase tracking-wider">Filter:</span>
                     </div>
@@ -196,8 +196,11 @@ export default function PublicRoomsPage() {
                             {f}
                         </button>
                     ))}
+                </div>
 
-                    {filter === "Others" && (
+                <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 w-full">
+                    {/* Custom Filter Input */}
+                    {filter === "Others" ? (
                         <div className="flex items-center gap-2 animate-in slide-in-from-left-4 duration-300">
                             <input 
                                 type="text"
@@ -207,36 +210,40 @@ export default function PublicRoomsPage() {
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') setAppliedCustomFilter(customFilter);
                                 }}
-                                className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-[11px] font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500 transition-all w-36"
+                                className="bg-white dark:bg-slate-900 border border-blue-500/30 rounded-xl px-4 py-2.5 text-[10px] font-bold text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all w-full sm:w-40"
                             />
                             <button 
                                 onClick={() => setAppliedCustomFilter(customFilter)}
-                                className="px-3 py-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
+                                className="px-4 py-2.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-slate-900 dark:hover:text-white border border-blue-500/20 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shrink-0"
                             >
                                 Apply
                             </button>
                         </div>
-                    )}
+                    ) : <div />}
 
-                    <div className="flex items-center gap-2 sm:ml-auto">
-                        <input
-                            type="text"
-                            placeholder="Filter by tag..."
-                            value={tagFilter}
-                            onChange={(e) => setTagFilter(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") fetchDoubts();
-                            }}
-                            className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-[11px] font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500 transition-all w-36"
-                        />
-                        <button
-                            onClick={fetchDoubts}
-                            className="px-3 py-2 bg-slate-50 dark:bg-zinc-900/40 text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
-                        >
-                            Tag
-                        </button>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto md:ml-auto">
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <input
+                                type="text"
+                                placeholder="Filter by tag..."
+                                value={tagFilter}
+                                onChange={(e) => setTagFilter(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") fetchDoubts();
+                                }}
+                                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-[10px] font-bold text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all flex-1 sm:w-40 sm:flex-none"
+                            />
+                            <button
+                                onClick={fetchDoubts}
+                                className="px-4 py-2.5 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:bg-blue-600 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shrink-0"
+                            >
+                                Tag
+                            </button>
+                        </div>
 
-                        <DoubtSortSelect value={sort} onValueChange={updateSort} className="ml-auto" />
+                        <div className="w-full sm:w-auto shrink-0">
+                            <DoubtSortSelect value={sort} onValueChange={updateSort} className="w-full" />
+                        </div>
                     </div>
                 </div>
 

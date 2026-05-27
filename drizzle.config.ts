@@ -1,5 +1,6 @@
-import { defineConfig } from "drizzle-kit";
-import * as dotenv from "dotenv";
+import 'dotenv/config';
+import { defineConfig } from 'drizzle-kit';
+import { getDatabaseUrl } from './configs/database-url';
 
 dotenv.config({ path: ".env.local" });
 

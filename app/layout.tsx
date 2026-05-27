@@ -56,9 +56,9 @@ export const metadata: Metadata = {
     "real-time debugging",
     "classroom analytics",
     "student mentorship",
-    "programming help"
+    "programming help",
   ],
-  
+
   icons: {
     icon: [
       { url: "/favicon.ico" },

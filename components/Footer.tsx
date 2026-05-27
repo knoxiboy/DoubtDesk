@@ -15,6 +15,48 @@ import {
 export default function Footer() {
   const currentYear = new Date().getFullYear();
 
+  const footerSections = [
+    {
+      title: "Platform",
+      links: [
+        { label: "Dashboard", href: "/dashboard" },
+        { label: "Virtual Campus", href: "/rooms" },
+        { label: "AI Solver", href: "/ask-ai" },
+        { label: "Analytics", href: "/dashboard/analytics" },
+      ],
+    },
+    {
+      title: "Resources",
+      links: [
+        { label: "Public Doubts", href: "/public-rooms" },
+        { label: "Bookmarks", href: "/bookmarks" },
+        { label: "Privacy Policy", href: "/privacy-policy" },
+        { label: "Terms of Service", href: "/terms-of-service" },
+        { label: "About", href: "/about" },
+        { label: "FAQs", href: "/faq" },
+      ],
+    },
+    {
+      title: "Community",
+      links: [
+        { label: "GitHub", href: "https://github.com/knoxiboy/DoubtDesk" },
+        { label: "Contributors", href: "/contributors" },
+        {
+          label: "Report Issue",
+          href: "https://github.com/knoxiboy/DoubtDesk/issues",
+        },
+        { label: "Contact", href: "/contact" },
+      ],
+    },
+  ];
+
+  const communityIcons = {
+    GitHub: Github,
+    Contributors: Users,
+    "Report Issue": MessageSquare,
+    Contact: Mail,
+  } as const;
+
   const socialLinks = [
     {
       icon: Linkedin,
@@ -50,9 +92,16 @@ export default function Footer() {
         <div className="flex flex-col lg:flex-row lg:justify-between items-start gap-10 lg:gap-14 pb-10 border-b border-slate-300 dark:border-zinc-900">
           
 
-          <div className="max-w-sm w-full shrink-0">
-            <Link href="/" className="inline-flex items-center gap-3 mb-4 group">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.15)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
+        {/* Top Section */}
+        <div className="flex flex-col lg:flex-row lg:justify-between gap-14 pb-12 border-b border-slate-300 dark:border-white/10">
+          {/* Brand Section */}
+          <div className="max-w-md">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-3 mb-5 group"
+            >
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center shadow-[0_0_15px_rgba(37,99,235,0.2)] transition-all duration-300 group-hover:scale-110 group-hover:rotate-3">
                 <Image
                   src="/logo.png"
                   alt="DoubtDesk logo"
@@ -174,6 +223,55 @@ export default function Footer() {
               </ul>
             </div>
 
+                    return (
+                      <li key={link.label}>
+                        {isExternal ? (
+                          <a
+                            href={link.href}
+                            target={
+                              link.href.startsWith("http")
+                                ? "_blank"
+                                : undefined
+                            }
+                            rel={
+                              link.href.startsWith("http")
+                                ? "noopener noreferrer"
+                                : undefined
+                            }
+                            className="group inline-flex items-center gap-2 text-sm text-slate-600 transition-all duration-300 hover:translate-x-1 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"
+                          >
+                            {isCommunity && Icon ? (
+                              <Icon className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400 opacity-90 transition-transform duration-300 group-hover:translate-x-1" />
+                            )}
+
+                            <span className="relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 group-hover:after:w-full">
+                              {link.label}
+                            </span>
+                          </a>
+                        ) : (
+                          <Link
+                            href={link.href}
+                            className="group inline-flex items-center gap-2 text-sm text-slate-600 transition-all duration-300 hover:translate-x-1 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400"
+                          >
+                            {isCommunity && Icon ? (
+                              <Icon className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 shrink-0 text-blue-500 dark:text-blue-400 opacity-90 transition-transform duration-300 group-hover:translate-x-1" />
+                            )}
+
+                            <span className="relative after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-blue-500 dark:after:bg-blue-400 after:transition-all after:duration-300 group-hover:after:w-full">
+                              {link.label}
+                            </span>
+                          </Link>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -194,9 +292,10 @@ export default function Footer() {
             ))}
           </div>
 
-          <div className="order-1 sm:order-2">
-            <p className="text-xs text-slate-500 dark:text-zinc-500 leading-relaxed font-medium">
-              © {currentYear} DoubtDesk. Built for collaborative AI-powered learning.
+          <div className="text-center md:text-right">
+            <p className="text-sm text-slate-600 dark:text-slate-500">
+              © {currentYear} DoubtDesk. Built for collaborative AI-powered
+              learning.
             </p>
           </div>
 

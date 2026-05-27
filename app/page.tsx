@@ -16,7 +16,10 @@ import {
   Clipboard,
   Activity,
   Users,
+  Keyboard,
 } from "lucide-react";
+
+import { useKeyboardShortcuts } from "@/components/KeyboardShortcutsProvider";
 
 import Link from "next/link";
 import {
@@ -40,6 +43,7 @@ const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const { toggleOpen } = useKeyboardShortcuts();
 
   useEffect(() => {
     const handleScroll = () => {
