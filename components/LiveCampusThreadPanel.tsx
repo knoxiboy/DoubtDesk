@@ -1,66 +1,77 @@
-import React from "react";
+"use client";
 
-// Use IBM Plex Mono or Space Mono via Tailwind font stack or custom font import
-// This panel is styled to blend into the hero grid, with deep navy, sharp corners, thin borders, minimal glow, and subtle blur.
+import React, { useState, useEffect } from "react";
 
 export default function LiveCampusThreadPanel() {
+  const [dots, setDots] = useState("");
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots((prev) => (prev.length >= 3 ? "" : prev + "."));
+    }, 600);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <aside
-      className="w-full max-w-md xl:max-w-[25rem] bg-[#0B1530]/80 border border-white/10 rounded-[0.9rem] shadow-none backdrop-blur-[2.5px] px-7 py-6 flex flex-col gap-5 font-mono text-[15px] text-[#E6ECF7]"
+      className="w-full bg-white/40 dark:bg-black/40 border border-slate-200/80 dark:border-white/10 rounded-[0.9rem] shadow-xl shadow-slate-900/5 dark:shadow-none backdrop-blur-[12px] supports-[backdrop-filter]:backdrop-blur-[12px] px-7 py-6 flex flex-col gap-5 text-[15px] text-slate-700 dark:text-[#E6ECF7] transition-all duration-500 hover:border-blue-400/50 dark:hover:border-[#8BB8FF]/30"
       style={{ fontFamily: 'IBM Plex Mono, Space Mono, ui-monospace, monospace' }}
     >
+      {/* Top Meta Details Row */}
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-xs tracking-widest text-[#AABFFF]/80 font-semibold uppercase">LIVE CAMPUS THREAD</span>
-        <span className="ml-auto flex items-center gap-1 text-xs text-[#8BB8FF] font-medium">
-          <span className="inline-block w-2 h-2 rounded-full bg-[#8BB8FF] animate-pulse" />
+        <span className="text-xs tracking-widest text-slate-500 dark:text-[#AABFFF]/80 font-semibold uppercase">LIVE CAMPUS THREAD</span>
+        <span className="ml-auto flex items-center gap-1.5 text-xs text-blue-600 dark:text-[#8BB8FF] font-medium tracking-wide">
+          <span className="inline-block w-2 h-2 rounded-full bg-blue-500 dark:bg-[#8BB8FF] animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.6)] dark:shadow-[0_0_8px_rgba(139,184,255,0.6)]" />
           live
         </span>
       </div>
-      <div className="flex items-center gap-2 text-[#B6C6E3] text-sm font-semibold">
-        <span>Wave Optics</span>
-        <span className="mx-2 h-1 w-1 rounded-full bg-[#8BB8FF]/60" />
-        <span className="text-[#8BB8FF] font-bold">23 active</span>
+
+      {/* Classroom Status Identifier */}
+      <div className="flex items-center gap-2 text-slate-600 dark:text-[#B6C6E3] text-sm font-semibold">
+        <span className="text-slate-900 dark:text-[#E6ECF7]">Wave Optics</span>
+        <span className="mx-2 h-1 w-1 rounded-full bg-blue-500/30 dark:bg-[#8BB8FF]/60" />
+        <span className="text-blue-600 dark:text-[#8BB8FF] font-bold tracking-wide">23 active</span>
       </div>
-      <blockquote className="relative pl-4 border-l-2 border-[#8BB8FF]/30 text-[#E6ECF7] text-base font-medium leading-snug mb-1">
+
+      {/* Main Blockquote Panel Question */}
+      <blockquote className="relative pl-4 border-l-2 border-blue-500/40 dark:border-[#8BB8FF]/40 text-slate-900 dark:text-[#E6ECF7] text-base font-medium leading-snug mb-1 font-sans tracking-wide">
         Why does destructive interference produce dark fringes?
-        <span className="absolute left-0 top-0 h-full w-0.5 bg-[#8BB8FF]/10 rounded" />
       </blockquote>
-      <div className="flex items-center gap-2 text-xs text-[#AABFFF]/80">
+
+      {/* Metadata Indicators Row */}
+      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-[#AABFFF]/80">
         <span className="relative flex items-center">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#8BB8FF] animate-pulse mr-1" />
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-[#8BB8FF] animate-pulse mr-1.5" />
           AI summary available
         </span>
-        <span className="mx-2 h-1 w-1 rounded-full bg-[#8BB8FF]/30" />
+        <span className="mx-2 h-1 w-1 rounded-full bg-slate-300 dark:bg-[#8BB8FF]/30" />
         <span>12 replies ongoing</span>
       </div>
-      <div className="border-t border-white/7 mt-2 mb-1 opacity-60" />
-      <ul className="flex flex-col gap-1.5 text-xs text-[#B6C6E3] font-mono">
-        <li className="flex items-center gap-2">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#8BB8FF]/60" />
+
+      {/* Clean Native Decorative Rule */}
+      <div className="border-t border-slate-200/60 dark:border-white/5 my-1 w-full" />
+
+      {/* Active Bullet Stream Items */}
+      <ul className="flex flex-col gap-2 text-xs text-slate-600 dark:text-[#B6C6E3]">
+        <li className="flex items-center gap-2.5 transition-colors duration-200 hover:text-slate-900 dark:hover:text-[#E6ECF7]">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500/50 dark:bg-[#8BB8FF]/60 shadow-[0_0_4px_rgba(59,130,246,0.2)] dark:shadow-[0_0_4px_rgba(139,184,255,0.3)]" />
           New DBMS notes uploaded
         </li>
-        <li className="flex items-center gap-2">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#8BB8FF]/60" />
+        <li className="flex items-center gap-2.5 transition-colors duration-200 hover:text-slate-900 dark:hover:text-[#E6ECF7]">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500/50 dark:bg-[#8BB8FF]/60 shadow-[0_0_4px_rgba(59,130,246,0.2)] dark:shadow-[0_0_4px_rgba(139,184,255,0.3)]" />
           CN lecture summarized
         </li>
-        <li className="flex items-center gap-2">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#8BB8FF]/60" />
+        <li className="flex items-center gap-2.5 transition-colors duration-200 hover:text-slate-900 dark:hover:text-[#E6ECF7]">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500/50 dark:bg-[#8BB8FF]/60 shadow-[0_0_4px_rgba(59,130,246,0.2)] dark:shadow-[0_0_4px_rgba(139,184,255,0.3)]" />
           Placement roadmap updated
         </li>
       </ul>
-      <div className="mt-2 flex items-center gap-2 text-xs text-[#8BB8FF]/70 font-mono">
-        <span className="animate-blink inline-block w-2 h-2 rounded-full bg-[#8BB8FF]" />
-        <span className="tracking-widest">_</span>
+
+      {/* Ticker System Terminal Indicator Line */}
+      <div className="mt-2 flex items-center gap-1.5 text-xs text-blue-600/70 dark:text-[#8BB8FF]/70">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-[#8BB8FF] animate-pulse shadow-[0_0_6px_rgba(59,130,246,0.4)] dark:shadow-[0_0_6px_rgba(139,184,255,0.8)]" />
+        <span className="tracking-widest transition-all duration-150">{dots || "_"}</span>
       </div>
-      <style jsx>{`
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.2; }
-        }
-        .animate-blink {
-          animation: blink 1.1s steps(1, end) infinite;
-        }
-      `}</style>
     </aside>
   );
 }
