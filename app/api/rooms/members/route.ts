@@ -6,6 +6,12 @@ import { currentUser } from '@clerk/nextjs/server';
 import { checkUserBlock } from '@/lib/auth-utils';
 import { buildErrorResponse } from '@/lib/error-handler';
 
+const PRIVILEGED_MEMBER_ROLES = new Set(['teacher', 'admin']);
+
+function canViewMemberEmails(role: string) {
+    return PRIVILEGED_MEMBER_ROLES.has(role.toLowerCase());
+}
+
 export async function GET(req: Request) {
     try {
         const user = await currentUser();
@@ -40,6 +46,7 @@ export async function GET(req: Request) {
         // Fetch all members of this classroom
         const members = await db
             .select({
+                id: membershipsTable.id,
                 userEmail: membershipsTable.userEmail,
                 role: membershipsTable.role,
                 joinedAt: membershipsTable.joinedAt,
@@ -47,7 +54,17 @@ export async function GET(req: Request) {
             .from(membershipsTable)
             .where(eq(membershipsTable.classroomId, classroomId));
 
-        return NextResponse.json(members);
+        if (canViewMemberEmails(membership.role)) {
+            return NextResponse.json(members.map(({ id, ...member }) => member));
+        }
+
+        const safeMembers = members.map((member) => ({
+            displayName: `${member.role === 'student' ? 'Student' : 'Member'}_${member.id}`,
+            role: member.role,
+            joinedAt: member.joinedAt,
+        }));
+
+        return NextResponse.json(safeMembers);
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });

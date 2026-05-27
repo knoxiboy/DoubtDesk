@@ -2,8 +2,9 @@
 
 import { useState } from "react"
 import { SignedIn, UserButton, useClerk } from "@clerk/nextjs"
+import { usePathname } from "next/navigation"
 import Sidebar from "@/components/Sidebar"
-import { Menu, LogOut, User } from "lucide-react"
+import { Menu, LogOut, User, Keyboard } from "lucide-react"
 import Link from "next/link"
 import {
     AlertDialog,
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import NotificationBell from "@/components/NotificationBell"
+import { useKeyboardShortcuts } from "@/components/KeyboardShortcutsProvider"
 
 export default function DashboardLayout({
     children,
@@ -27,6 +29,37 @@ export default function DashboardLayout({
     const [showSignOutDialog, setShowSignOutDialog] = useState(false)
 
     const { signOut } = useClerk()
+    const { toggleOpen } = useKeyboardShortcuts()
+
+    const pathname = usePathname()
+    const pageInfo: Record<
+    string,
+    {
+        title: string,
+        description: string
+    }
+    > = {
+        "/dashboard": {
+            title: "Dashboard",
+            description: "Welcome back to DoubtDesk",
+        },
+
+        "/rooms": {
+            title: "Virtual Campus",
+            description:
+            "Collaborate and learn with your campus community",
+        },
+
+        "/public-rooms": {
+            title: "Public Doubts",
+            description:
+                "Explore and solve doubts with the community",
+        },
+    }
+    const currentPage =
+        Object.entries(pageInfo).find(([route]) =>
+            pathname.startsWith(route)
+        )?.[1] || pageInfo["/dashboard"];
 
     const handleSignOut = async () => {
         await signOut({ redirectUrl: "/" })
@@ -57,16 +90,24 @@ export default function DashboardLayout({
 
                             <div className="hidden md:flex flex-col">
                                 <h1 className="text-sm font-semibold tracking-wide text-foreground">
-                                    Dashboard
+                                   {currentPage.title}
                                 </h1>
                                 <p className="text-xs text-muted-foreground">
-                                    Welcome back to DoubtDesk
+                                    {currentPage.description}
                                 </p>
                             </div>
                         </div>
 
                         {/* Right Section */}
                         <div className="flex items-center gap-3 md:gap-4">
+                            <button
+                                onClick={toggleOpen}
+                                className="p-2.5 rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-200 hover:scale-105"
+                                title="Keyboard Shortcuts (?)"
+                                aria-label="Keyboard Shortcuts"
+                            >
+                                <Keyboard className="w-5 h-5" />
+                            </button>
                             <ThemeToggle />
 
                             <SignedIn>

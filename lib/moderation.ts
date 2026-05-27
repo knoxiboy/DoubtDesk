@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { sendWarningEmail, sendBlockEmail } from "./email";
 
 const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY,
+    apiKey: process.env.GROQ_API_KEY || 'dummy_key',
 });
 
 /**

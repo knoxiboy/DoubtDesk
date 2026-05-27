@@ -115,9 +115,23 @@ export async function POST(req: Request) {
             }
         }
 
-        // Security: Check if it's a teacher doubt
+        // Security: Check if it's a teacher doubt and verify classroom membership
         const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId));
-        if (doubt?.type === 'teacher') {
+        
+        if (!doubt) {
+            return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
+
+        if (doubt.classroomId) {
+            const [membership] = await db.select().from(membershipsTable).where(
+                and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, doubt.classroomId))
+            );
+            if (!membership) {
+                return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
+            }
+        }
+
+        if (doubt.type === 'teacher') {
             const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId!));
             if (room && email && room.teacherEmail !== email) {
                 return NextResponse.json({ error: "Only the teacher can reply to this doubt" }, { status: 403 });

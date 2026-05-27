@@ -1,8 +1,5 @@
-<<<<<<< HEAD
-=======
 "use client"
 
->>>>>>> 48c763d (fixed the codes with the suggestions provided)
 import Link from "next/link"
 import {
   Github,

@@ -13,7 +13,7 @@ import { checkUserBlock } from '@/lib/auth-utils';
 import { redisClient } from '@/lib/ratelimit';
 
 const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY,
+    apiKey: process.env.GROQ_API_KEY || 'dummy_key',
 });
 
 function splitTextIntoChunks(text: string, maxLen: number = 200): string[] {

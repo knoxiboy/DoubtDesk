@@ -1,0 +1,71 @@
+# CodeRabbit Configuration for DoubtDesk
+# https://docs.coderabbit.ai/configuration
+
+language: "en-US"
+
+reviews:
+  # Auto-review all PRs
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - "main"
+      - "master"
+
+  # Review profile
+  profile: "chill"
+
+  # What to review
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  # Path-specific instructions
+  path_instructions:
+    - path: "app/api/**"
+      instructions: |
+        Review for:
+        - Missing authentication/authorization checks
+        - Input validation (use Zod schemas)
+        - Rate limiting on sensitive endpoints
+        - Proper error handling and HTTP status codes
+        - No secrets or env vars hardcoded
+
+    - path: "configs/schema.ts"
+      instructions: |
+        Review for:
+        - Missing foreign key constraints
+        - Proper indexes on frequently queried columns
+        - Cascade delete/update rules
+        - No nullable fields that should be required
+
+    - path: "lib/ai/**"
+      instructions: |
+        Review for:
+        - Prompt injection vulnerabilities
+        - Proper fallback handling
+        - Rate limiting and retry logic
+        - No sensitive data sent to AI models
+
+    - path: "**/*.tsx"
+      instructions: |
+        Review for:
+        - Accessibility (aria labels, keyboard navigation)
+        - Missing loading/error states
+        - No hardcoded strings (use constants)
+        - Responsive design considerations
+
+    - path: ".github/workflows/**"
+      instructions: |
+        Review for:
+        - Use of pull_request_target with checkout (security risk)
+        - Pinned action versions
+        - Minimal required permissions
+
+  # Auto-reply to review comments
+  auto_reply: true
+
+chat:
+  auto_reply: true
