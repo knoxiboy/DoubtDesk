@@ -15,6 +15,8 @@ interface AskDoubtProps {
     type?: string;
 }
 
+const MAX_CHARS = 500;
+
 const SUBJECT_KEYWORDS: Record<string, string[]> = {
     Calculus: ["derivative", "integral", "limit", "differentiation", "maxima", "minima"],
     Algebra: ["equation", "polynomial", "matrix", "linear", "quadratic", "factor"],
@@ -56,15 +58,15 @@ const suggestTags = (text: string, subject: string) => {
  */
 export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSuccess, doubtToEdit, classroomId = null, type = 'community' }: AskDoubtProps) {
     const [content, setContent] = useState(doubtToEdit?.content || "");
-    const maxLength = 500;
-    const charCount = content.length;
-    let colorClass = "text-slate-400";
 
-if (charCount >= maxLength) {
-  colorClass = "text-red-500";
-} else if (charCount >= maxLength * 0.8) {
-  colorClass = "text-yellow-400";
-}
+    const charCount = content.length;
+    const isOverLimit = charCount > MAX_CHARS;
+    const isNearLimit = charCount >= MAX_CHARS * 0.8;
+    const charCountColor = isOverLimit || charCount === MAX_CHARS
+        ? "text-red-500"
+        : isNearLimit
+            ? "text-yellow-400"
+            : "text-slate-400";
     const [subject, setSubject] = useState(doubtToEdit?.subject || defaultSubject);
     const [imageUrl, setImageUrl] = useState(doubtToEdit?.imageUrl || "");
     const [fileName, setFileName] = useState(
@@ -216,10 +218,10 @@ if (charCount >= maxLength) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (charCount > maxLength) {
-            toast.error("Character limit exceeded (500)");
+        if (isOverLimit) {
+            toast.error(`Character limit exceeded (${MAX_CHARS})`);
             return;
-            }
+        }
         if ((!content.trim() && !imageUrl) || !subject.trim()) return;
 
         setIsSubmitting(true);
@@ -345,16 +347,17 @@ if (charCount >= maxLength) {
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                                             e.preventDefault();
-                                            if (content.trim() || imageUrl) {
+                                            if (!isOverLimit && (content.trim() || imageUrl)) {
                                                 handleSubmit(e as any);
                                             }
                                         }
                                     }}
+                                    maxLength={MAX_CHARS}
                                     placeholder="Type your question here... (Markdown supported)"
-                                    className="w-full h-32 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all resize-none"
+                                    className={`w-full h-32 bg-slate-100 dark:bg-white/5 border rounded-2xl p-4 text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 transition-all resize-none ${isOverLimit ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : 'border-slate-200 dark:border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20'}`}
                                 />
-                                <p className={`text-xs text-right mt-1 ${colorClass}`}>
-                                    {charCount} / {maxLength}
+                                <p className={`text-xs font-semibold text-right mt-1 transition-colors ${charCountColor}`}>
+                                    {charCount}/{MAX_CHARS}
                                 </p>
                             </>
                         )}
@@ -495,7 +498,7 @@ if (charCount >= maxLength) {
                         </button>
                         <button
                             type="submit"
-                            disabled={isSubmitting || (!content.trim() && !imageUrl) || !subject.trim()}
+                            disabled={isSubmitting || (!content.trim() && !imageUrl) || !subject.trim() || isOverLimit}
                             className="flex-[2] py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}

@@ -135,6 +135,9 @@ Keep commit messages clear, concise, and written in the imperative mood.
 
 ## Pull Request Process
 
+> [!IMPORTANT]
+> **Repository Star Requirement:** Before raising a pull request, you **must star the DoubtDesk repository**. Our automated CI/CD bots will actively check your GitHub account and block/reject your pull request if you haven't starred the repository. 
+
 1. Make sure your branch is up to date with `main`:
 
    ```bash
@@ -183,6 +186,11 @@ Before opening a new issue:
 6. Mention your environment, such as browser, operating system, and Node.js version, if relevant.
 
 For feature requests, describe the use case, the expected behavior, and why the change would help DoubtDesk users.
+
+### Requesting Assignment
+
+If you want to work on an issue, please leave a comment containing the exact phrase `/assign`. 
+Our automated bot will acknowledge your request and notify the maintainers. **Please wait for a maintainer to officially assign the issue to you before you start working on it.**
 
 ## Need Help?
 

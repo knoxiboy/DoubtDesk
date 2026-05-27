@@ -16,6 +16,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { ThemeToggle } from "@/components/ThemeToggle"
+import NotificationBell from "@/components/NotificationBell"
 
 export default function DashboardLayout({
     children,
@@ -70,6 +71,8 @@ export default function DashboardLayout({
 
                             <SignedIn>
                                 <div className="flex items-center gap-3">
+                                    <NotificationBell />
+                                    
                                     <Link
                                         href="/profile"
                                         className="hidden sm:block text-sm font-medium text-muted-foreground hover:text-blue-400 transition-all duration-200"

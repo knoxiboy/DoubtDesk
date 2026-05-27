@@ -1,11 +1,14 @@
 import { db } from "@/configs/db";
-import { bookmarksTable, doubtTagsTable, doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, tagsTable, usersTable } from "@/configs/schema";
+import { bookmarksTable, doubtTagsTable, doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, tagsTable } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
-import { and, eq, desc, inArray, isNull, or, not, sql, ilike } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, not, sql, ilike, SQL } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 import { buildErrorResponse } from "@/lib/error-handler";
+import { checkUserBlock } from "@/lib/auth-utils";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { createDoubtSchema } from "@/lib/validations/doubt";
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
@@ -16,37 +19,27 @@ export async function GET(req: Request) {
     const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
     const type = searchParams.get("type") || 'community';
     const tag = searchParams.get("tag");
+    const sort = searchParams.get("sort") || "newest";
 
     try {
         const user = await currentUser();
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         const email = user.primaryEmailAddress?.emailAddress;
 
-        const { searchParams } = new URL(req.url);
-        const subject = searchParams.get("subject");
-        const userName = searchParams.get("userName");
-        const classroomIdStr = searchParams.get("classroomId");
-        const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
-        const type = searchParams.get("type") || 'community';
-
-        // Security: If classroomId is provided, check membership
         if (classroomId && email) {
-            console.log(`Security Check: Classroom ${classroomId}, User ${email}`);
             const [membership] = await db.select().from(membershipsTable).where(
                 and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, classroomId))
             );
             if (!membership) {
-                console.warn(`Denied access to classroom ${classroomId} for user ${email}`);
                 return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
             }
         } else if (classroomId && !email) {
-            console.warn(`Anonymous user attempting to access classroom ${classroomId}`);
             // For hackathon simplicity, we might allow it if they have the link, 
             // but usually this should be blocked.
         }
 
         let query = db.select().from(doubtsTable);
-        let conditions: any[] = [];
+        let conditions: SQL<unknown>[] = [];
 
         // Base Classroom scoping
         if (classroomId) {
@@ -64,7 +57,7 @@ export async function GET(req: Request) {
         // GLOBAL VISIBILITY FILTER
         // If not the teacher, you can only see 'teacher' doubts if you are the owner
         if (!isTeacher && email) {
-            conditions.push(or(not(eq(doubtsTable.type, 'teacher')), eq(doubtsTable.userEmail, email)));
+            conditions.push(or(not(eq(doubtsTable.type, 'teacher')), eq(doubtsTable.userEmail, email!))!);
         } else if (!isTeacher && !email) {
             // Extreme fallback: if no email, only show non-teacher doubts
             conditions.push(not(eq(doubtsTable.type, 'teacher')));
@@ -80,7 +73,7 @@ export async function GET(req: Request) {
                     ilike(doubtsTable.content, `%${search}%`),
                     ilike(doubtsTable.subject, `%${search}%`),
                     ilike(doubtsTable.userName, `%${search}%`)
-                )
+                )!
             );
         }
 
@@ -93,12 +86,13 @@ export async function GET(req: Request) {
         }
 
         const pageStr = searchParams.get("page");
+        const offsetStr = searchParams.get("offset");
         const limitStr = searchParams.get("limit");
         const page = pageStr ? parseInt(pageStr) : 1;
         const limit = limitStr ? parseInt(limitStr) : 20;
-        const offset = (page - 1) * limit;
+        const offset = offsetStr ? parseInt(offsetStr) : (page - 1) * limit;
 
-        let doubts = await query.where(and(...conditions)).orderBy(desc(doubtsTable.createdAt)).limit(limit).offset(offset);
+        let doubts: any[] = await query.where(and(...conditions));
 
         if (tag && tag !== "All" && doubts.length > 0) {
             const normalizedTag = tag.trim().replace(/\s+/g, " ").toLowerCase();
@@ -114,6 +108,46 @@ export async function GET(req: Request) {
             const taggedDoubtIds = new Set(taggedDoubts.map((row) => row.doubtId));
             doubts = doubts.filter((doubt) => taggedDoubtIds.has(doubt.id));
         }
+
+        if (sort === "unsolved") {
+            doubts = doubts.filter((doubt) => doubt.isSolved === "unsolved");
+        }
+
+        const replyCounts = doubts.length > 0
+            ? await db.select({
+                doubtId: repliesTable.doubtId,
+                count: sql<number>`count(*)`.mapWith(Number)
+            })
+            .from(repliesTable)
+            .groupBy(repliesTable.doubtId)
+            : [];
+
+        const countsMap = Object.fromEntries(replyCounts.map(r => [r.doubtId, r.count]));
+
+        doubts = doubts.map(doubt => ({
+            ...doubt,
+            replyCount: countsMap[doubt.id] || 0
+        }));
+
+        const createdAtValue = (value: unknown) => new Date(value as string).getTime() || 0;
+        const pinnedScore = (value: unknown) => (value ? 1 : 0);
+
+        doubts = doubts.sort((a, b) => {
+            const pinnedDiff = pinnedScore(b.isPinned) - pinnedScore(a.isPinned);
+            if (pinnedDiff !== 0) return pinnedDiff;
+
+            if (sort === "popular") {
+                const likesDiff = (b.likes ?? 0) - (a.likes ?? 0);
+                if (likesDiff !== 0) return likesDiff;
+            } else if (sort === "most-replied") {
+                const repliesDiff = (b.replyCount ?? 0) - (a.replyCount ?? 0);
+                if (repliesDiff !== 0) return repliesDiff;
+            }
+
+            return createdAtValue(b.createdAt) - createdAtValue(a.createdAt);
+        });
+
+        doubts = doubts.slice(offset, offset + limit);
 
         if (userName && doubts.length > 0) {
             const userLikes = await db.select({ doubtId: likesTable.doubtId })
@@ -140,21 +174,6 @@ export async function GET(req: Request) {
                 hasBookmarked: bookmarkedIds.has(doubt.id)
             }));
         }
-
-        // Fetch reply counts using an aggregate query
-        const replyCounts = await db.select({
-            doubtId: repliesTable.doubtId,
-            count: sql<number>`count(*)`.mapWith(Number)
-        })
-        .from(repliesTable)
-        .groupBy(repliesTable.doubtId);
-
-        const countsMap = Object.fromEntries(replyCounts.map(r => [r.doubtId, r.count]));
-
-        doubts = doubts.map(doubt => ({
-            ...doubt,
-            replyCount: countsMap[doubt.id] || 0
-        }));
 
         if (doubts.length > 0) {
             const tagRows = await db.select({
@@ -188,29 +207,30 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
+        const { errorResponse, data } = await parseAndValidateRequest(req, createDoubtSchema);
+        if (errorResponse) return errorResponse;
+        
+        const { userName, subject, content, imageUrl, classroomId, type, tags } = data;
+        const parsedClassroomId = classroomId ? parseInt(classroomId.toString()) : null;
+
         const user = await currentUser();
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         const email = user.primaryEmailAddress?.emailAddress;
         if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
-        // 0. Check if user is blocked
-        const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-        if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
-            const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            const { status, body } = buildErrorResponse(
-                new Error(`Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`)
+        const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
+        if (isBlocked) return blockResponse;
+
+        // Security: Check classroom membership before allowing post
+        if (parsedClassroomId) {
+            const [membership] = await db.select().from(membershipsTable).where(
+                and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, parsedClassroomId))
             );
-            return NextResponse.json(body, { status });
+            if (!membership) {
+                return NextResponse.json({ error: "Access denied: You are not a member of this classroom" }, { status: 403 });
+            }
         }
-
-        const { userName, subject, content, imageUrl, classroomId, type = 'community', tags = [] } = await req.json();
-        const parsedClassroomId = classroomId ? parseInt(classroomId.toString()) : null;
-
-        if (!userName || !subject || (!content?.trim() && !imageUrl)) {
-            return NextResponse.json({ error: "Missing required fields (provide text or image)" }, { status: 400 });
-        }
-
         // 1. AI Moderation Check
         if (content) {
             const moderation = await moderateContent(content);
@@ -240,7 +260,7 @@ export async function POST(req: Request) {
                 .filter(Boolean)
         )).slice(0, 8);
 
-        const savedTags: any[] = [];
+        const savedTags: (typeof tagsTable.$inferSelect)[] = [];
         for (const normalizedName of normalizedTags) {
             const [existingTag] = await db.select().from(tagsTable).where(and(
                 eq(tagsTable.normalizedName, normalizedName),
@@ -264,8 +284,8 @@ export async function POST(req: Request) {
         }
 
         return NextResponse.json({ ...newDoubt, tags: savedTags });
-    } catch (error: any) {
-        console.error("Error saving doubt:", error);
-        return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 });
+    } catch (error) {
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }

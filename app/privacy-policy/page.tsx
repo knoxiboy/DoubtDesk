@@ -7,6 +7,11 @@ import {
   Mail,
 } from "lucide-react";
 
+export const metadata = {
+  title: "Privacy Policy",
+  description: "Understand how DoubtDesk collects, stores, and protects your data.",
+};
+
 export default function PrivacyPolicyPage() {
   const sections = [
     {

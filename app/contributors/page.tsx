@@ -41,6 +41,11 @@ const stats = [
   },
 ];
 
+export const metadata = {
+  title: "Contributors",
+  description: "Meet the open-source contributors who build and maintain DoubtDesk.",
+};
+
 export default async function ContributorsPage() {
   const contributors = await getContributors();
 

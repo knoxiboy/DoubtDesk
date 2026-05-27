@@ -1,0 +1,28 @@
+name: Issue Assigned Handler
+
+on:
+  issues:
+    types: [assigned]
+
+jobs:
+  remove_approval_label:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Remove needs-maintainer-approval
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'needs-maintainer-approval'
+              });
+              console.log("Removed needs-maintainer-approval label.");
+            } catch (e) {
+              console.log("Label already removed or not present.");
+            }

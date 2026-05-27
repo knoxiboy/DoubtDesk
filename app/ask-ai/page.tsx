@@ -4,8 +4,9 @@ import { useState, useRef } from 'react';
 import {
     Send, Zap, BookOpen, Lightbulb, Loader2, RefreshCcw,
     ImagePlus, X, Type, Camera, ListOrdered, Brain, CheckCircle2, AlertCircle,
-    MessageSquare
+    MessageSquare, ChevronLeft
 } from 'lucide-react';
+import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -248,6 +249,17 @@ export default function AskAIPage() {
                 </header>
 
                 <div className="max-w-[900px] mx-auto w-full px-4 sm:px-8 py-8 pb-6 space-y-6">
+
+                    {/* ── Breadcrumb Navigation ── */}
+                    <div className="flex items-center gap-3 mb-2">
+                        <Link href="/" className="flex items-center gap-1.5 text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-black uppercase tracking-widest w-fit shrink-0">
+                            <ChevronLeft className="w-4 h-4" /> Home
+                        </Link>
+                        <span className="text-slate-300 dark:text-slate-700 font-bold">•</span>
+                        <Link href="/rooms" className="text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-black uppercase tracking-widest w-fit shrink-0">
+                            Classrooms
+                        </Link>
+                    </div>
 
                     {/* ── Page Header ── */}
                     <div className="space-y-3">

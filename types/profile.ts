@@ -58,6 +58,7 @@ export interface ProfileUser {
     imageUrl: string;
     joinDate: string;
     emailNotificationsEnabled?: boolean;
+    notificationPreference?: "instant" | "daily" | "weekly" | "none";
     createdAt: string;
 }
 
@@ -67,6 +68,17 @@ export interface ProfileStats {
     totalReplies: number;
     helpfulVotes: number;
     classroomsCount: number;
+}
+
+/** Activity stats fetched from the new stats endpoint. */
+export interface ActivityStats {
+    totalDoubts: number;
+    totalReplies: number;
+    totalLikesReceived: number;
+    totalReplyUpvotes: number;
+    doubtsSolved: number;
+    memberSince: string;
+    mostActiveSubject: string | null;
 }
 
 /** The user's recent activity, grouped by type. */
@@ -82,3 +94,6 @@ export interface ProfileData {
     stats: ProfileStats;
     activities: ProfileActivities;
 }
+
+/** Combined stats shape for the UI */
+export interface CombinedStats extends ProfileStats, ActivityStats {}

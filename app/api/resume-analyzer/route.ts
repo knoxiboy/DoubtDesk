@@ -9,17 +9,52 @@ import { checkUserBlock } from "@/lib/auth-utils";
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse-fork");
 
+const MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024;
+const SUPPORTED_RESUME_MIME_TYPES = new Set(["application/pdf"]);
+
+function isUploadedFile(value: FormDataEntryValue | null): value is File {
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        "arrayBuffer" in value &&
+        "size" in value &&
+        "type" in value &&
+        "name" in value
+    );
+}
+
+function validateResumeFile(file: File) {
+    if (!SUPPORTED_RESUME_MIME_TYPES.has(file.type)) {
+        return "Only PDF resume files are supported";
+    }
+
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+        return "Only PDF resume files are supported";
+    }
+
+    if (file.size > MAX_RESUME_SIZE_BYTES) {
+        return "Resume file must be 5MB or smaller";
+    }
+
+    return null;
+}
+
 // Forced Refresh: 2026-02-09T06:05:00Z
 export async function POST(req: NextRequest) {
     try {
         const formData = await req.formData();
-        const file = formData.get("resume") as File;
+        const file = formData.get("resume");
         const jobDescription = formData.get("jobDescription") as string || "";
         const fieldOfInterest = formData.get("fieldOfInterest") as string || "";
         const targetRole = formData.get("targetRole") as string || "";
 
-        if (!file) {
+        if (!isUploadedFile(file)) {
             return NextResponse.json({ error: "Resume file is required" }, { status: 400 });
+        }
+
+        const validationError = validateResumeFile(file);
+        if (validationError) {
+            return NextResponse.json({ error: validationError }, { status: 400 });
         }
 
         const user = await currentUser();
@@ -39,7 +74,9 @@ export async function POST(req: NextRequest) {
             resumeText = data.text;
         } catch (parseError: any) {
             console.error("PDF Parsing Error:", parseError);
-            throw new Error(`PDF Extraction failed: ${parseError.message}`);
+            return NextResponse.json({
+                error: "Unable to read the uploaded PDF. Please upload a valid text-based PDF resume."
+            }, { status: 400 });
         }
 
         if (!resumeText || resumeText.trim().length === 0) {
@@ -158,8 +195,7 @@ ${resumeText}
             response: error.response?.data
         });
         return NextResponse.json({
-            error: error.message || "Failed to analyze resume",
-            detail: error.response?.data || error.stack
+            error: "Failed to analyze resume. Please try again later."
         }, { status: 500 });
     }
 }

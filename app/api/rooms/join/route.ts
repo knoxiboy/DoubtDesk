@@ -5,9 +5,16 @@ import { eq, and } from 'drizzle-orm';
 import { currentUser } from '@clerk/nextjs/server';
 import { checkUserBlock } from '@/lib/auth-utils';
 import { buildErrorResponse } from '@/lib/error-handler';
+import { parseAndValidateRequest } from '@/lib/validations/validate';
+import { joinClassroomSchema } from '@/lib/validations/classroom';
 
 export async function POST(req: Request) {
     try {
+        const { errorResponse, data } = await parseAndValidateRequest(req, joinClassroomSchema);
+        if (errorResponse) return errorResponse;
+
+        const { inviteCode } = data;
+
         const user = await currentUser();
         if (!user || !user.primaryEmailAddress?.emailAddress) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -16,14 +23,8 @@ export async function POST(req: Request) {
         const email = user.primaryEmailAddress.emailAddress;
 
         // 0. Check if user is blocked
-        const { isBlocked, errorResponse } = await checkUserBlock(email);
-        if (isBlocked) return errorResponse;
-
-        const { inviteCode } = await req.json();
-
-        if (!inviteCode) {
-            return NextResponse.json({ error: 'Invite code is required' }, { status: 400 });
-        }
+        const { isBlocked, errorResponse: blockErrorResponse } = await checkUserBlock(email);
+        if (isBlocked) return blockErrorResponse;
 
         // 1. Find the classroom by invite code
         const [classroom] = await db

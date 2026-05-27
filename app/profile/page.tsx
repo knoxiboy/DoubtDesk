@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, MessageSquare, BookOpen, Users, ThumbsUp, ArrowLeft, RefreshCw, AlertTriangle, Mail, Loader2, Bell } from "lucide-react";
+import { CalendarDays, MessageSquare, BookOpen, Users, ThumbsUp, ArrowLeft, RefreshCw, AlertTriangle, Mail, Loader2, Bell, CheckCircle2, TrendingUp, Target, Heart } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import type { ProfileData, ProfileDoubt, ProfileReply, ProfileClassroom } from "@/types/profile";
+import type { ProfileData, ProfileDoubt, ProfileReply, ProfileClassroom, ActivityStats } from "@/types/profile";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 /** Skeleton placeholder that mirrors the profile page layout. */
@@ -34,12 +35,12 @@ function ProfileSkeleton() {
             </div>
 
             {/* Stats skeleton */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                {Array.from({ length: 4 }).map((_, i) => (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+                {Array.from({ length: 9 }).map((_, i) => (
                     <div key={i} className="rounded-xl border border-slate-800 bg-white/50 dark:bg-slate-900/50 p-6 flex flex-col items-center gap-2">
                         <div className="w-8 h-8 bg-slate-50 dark:bg-slate-800 rounded" />
-                        <div className="h-7 w-10 bg-slate-50 dark:bg-slate-800 rounded" />
-                        <div className="h-4 w-20 bg-slate-800/70 rounded" />
+                        <div className="h-7 w-16 bg-slate-50 dark:bg-slate-800 rounded" />
+                        <div className="h-4 w-24 bg-slate-800/70 rounded" />
                     </div>
                 ))}
             </div>
@@ -87,24 +88,58 @@ export default function ProfilePage() {
     const { isLoaded, userId } = useAuth();
     const router = useRouter();
     const [profileData, setProfileData] = useState<ProfileData | null>(null);
+    const [activityStats, setActivityStats] = useState<ActivityStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
+    const [notificationPreference, setNotificationPreference] = useState<"instant" | "daily" | "weekly" | "none">("instant");
     const [isSavingPref, setIsSavingPref] = useState(false);
+
+    const handlePrefChange = async (value: "instant" | "daily" | "weekly" | "none") => {
+        if (isSavingPref) return;
+        setIsSavingPref(true);
+        try {
+            const res = await fetch("/api/profile", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ notificationPreference: value }),
+            });
+            if (res.ok) {
+                setNotificationPreference(value);
+                setEmailNotificationsEnabled(value !== "none");
+                toast.success("Notification preferences updated!");
+            } else {
+                toast.error("Failed to update preferences");
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Error updating preferences");
+        } finally {
+            setIsSavingPref(false);
+        }
+    };
 
     const fetchProfile = () => {
         setLoading(true);
         setError(null);
 
-        fetch("/api/profile")
-            .then((res) => {
+        Promise.all([
+            fetch("/api/profile").then((res) => {
                 if (!res.ok) throw new Error(`Failed to load profile (${res.status})`);
                 return res.json();
+            }),
+            fetch("/api/profile/stats").then((res) => {
+                if (!res.ok) throw new Error(`Failed to load stats (${res.status})`);
+                return res.json();
             })
-            .then((data: ProfileData) => {
-                if (data.user) {
-                    setProfileData(data);
-                    setEmailNotificationsEnabled(data.user.emailNotificationsEnabled ?? true);
+        ])
+            .then(([profileRes, statsRes]: [ProfileData, { success: boolean, stats: ActivityStats }]) => {
+                if (profileRes.user && statsRes.success) {
+                    setProfileData(profileRes);
+                    setActivityStats(statsRes.stats);
+                    setEmailNotificationsEnabled(profileRes.user.emailNotificationsEnabled ?? true);
                 } else {
                     setError("Profile data is unavailable. Please try again.");
                 }
@@ -128,6 +163,17 @@ export default function ProfilePage() {
         fetchProfile();
     }, [isLoaded, userId, router]);
 
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const searchParams = new URLSearchParams(window.location.search);
+            if (searchParams.get("unsubscribed") === "true") {
+                toast.success("Successfully unsubscribed from email notifications!");
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, document.title, newUrl);
+            }
+        }
+    }, []);
+
     if (!isLoaded || loading) {
         return <ProfileSkeleton />;
     }
@@ -136,7 +182,7 @@ export default function ProfilePage() {
         return <ErrorState message={error} onRetry={fetchProfile} />;
     }
 
-    if (!profileData?.user) {
+    if (!profileData?.user || !activityStats) {
         return (
             <ErrorState
                 message="We couldn't find your profile data. Please try again later."
@@ -179,10 +225,10 @@ export default function ProfilePage() {
                     </div>
                 </div>
 
-                {/* Email Notification Settings Switch */}
-                <div className="flex items-center gap-4 bg-slate-950/40 border border-slate-800/80 rounded-xl p-4 md:self-center shadow-inner">
+                {/* Email Notification Settings Select */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-slate-950/40 border border-slate-800/80 rounded-xl p-4 md:self-center shadow-inner min-w-[280px] sm:min-w-[380px] w-full sm:w-auto">
                     <div className="flex flex-col max-w-[240px]">
-                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 font-medium">
                             <Mail className="w-4 h-4 text-purple-400" />
                             Email Alerts
                         </span>
@@ -190,75 +236,95 @@ export default function ProfilePage() {
                             Get notified when someone replies to your doubts.
                         </span>
                     </div>
-                    <button
-                        onClick={async () => {
-                            if (isSavingPref) return;
-                            setIsSavingPref(true);
-                            const newValue = !emailNotificationsEnabled;
-                            try {
-                                const res = await fetch("/api/profile", {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({ emailNotificationsEnabled: newValue }),
-                                });
-                                if (res.ok) {
-                                    setEmailNotificationsEnabled(newValue);
-                                    toast.success(newValue ? "Email notifications enabled!" : "Email notifications disabled!");
-                                } else {
-                                    toast.error("Failed to update preferences");
-                                }
-                            } catch (error) {
-                                console.error(error);
-                                toast.error("Error updating preferences");
-                            } finally {
-                                setIsSavingPref(false);
-                            }
-                        }}
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${ emailNotificationsEnabled ? "bg-purple-600" : "bg-slate-700" } ${isSavingPref ? "opacity-50 pointer-events-none" : ""}`}
-                    >
-                        <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out flex items-center justify-center ${ emailNotificationsEnabled ? "translate-x-5" : "translate-x-0" }`}
+                    <div className="w-full sm:w-auto sm:ml-auto">
+                        <Select
+                            value={notificationPreference}
+                            onValueChange={handlePrefChange}
+                            disabled={isSavingPref}
                         >
-                            {isSavingPref ? (
-                                <Loader2 className="w-3 h-3 text-slate-600 animate-spin" />
-                            ) : emailNotificationsEnabled ? (
-                                <Bell className="w-3 h-3 text-purple-600" />
-                            ) : null}
-                        </span>
-                    </button>
+                            <SelectTrigger className="w-full sm:w-[160px] border-slate-700 bg-slate-900/60 dark:text-slate-200 focus:ring-purple-500">
+                                <SelectValue placeholder="Select frequency" />
+                            </SelectTrigger>
+                            <SelectContent className="border-slate-800 bg-slate-905 dark:bg-slate-900 text-slate-200">
+                                <SelectItem value="instant">Instant Alerts</SelectItem>
+                                <SelectItem value="daily">Daily Digest</SelectItem>
+                                <SelectItem value="weekly">Weekly Digest</SelectItem>
+                                <SelectItem value="none">Muted (None)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
             </div>
 
             {/* Stats Section */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                <Card className="bg-blue-500/10 border-blue-500/20 shadow-sm">
-                    <CardContent className="flex flex-col items-center justify-center p-6 text-center">
-                        <MessageSquare className="w-8 h-8 text-blue-400 mb-2 opacity-90" />
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalDoubts}</h3>
-                        <p className="text-sm text-blue-200/70">Doubts Asked</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8" aria-label="Profile Statistics">
+                <Card className="bg-blue-500/10 border-blue-500/20 shadow-sm hover:bg-blue-500/20 transition-colors">
+                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                        <MessageSquare className="w-8 h-8 text-blue-400 mb-2 opacity-90" aria-hidden="true" />
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalDoubts || 0}</h3>
+                        <p className="text-sm text-blue-800 dark:text-blue-200/70">Doubts Asked</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-indigo-500/10 border-indigo-500/20 shadow-sm">
-                    <CardContent className="flex flex-col items-center justify-center p-6 text-center">
-                        <BookOpen className="w-8 h-8 text-indigo-400 mb-2 opacity-90" />
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalReplies}</h3>
-                        <p className="text-sm text-indigo-200/70">Replies Given</p>
+                <Card className="bg-indigo-500/10 border-indigo-500/20 shadow-sm hover:bg-indigo-500/20 transition-colors">
+                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                        <BookOpen className="w-8 h-8 text-indigo-400 mb-2 opacity-90" aria-hidden="true" />
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.totalReplies || 0}</h3>
+                        <p className="text-sm text-indigo-800 dark:text-indigo-200/70">Replies Given</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-emerald-500/10 border-emerald-500/20 shadow-sm">
-                    <CardContent className="flex flex-col items-center justify-center p-6 text-center">
-                        <ThumbsUp className="w-8 h-8 text-emerald-400 mb-2 opacity-90" />
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.helpfulVotes}</h3>
-                        <p className="text-sm text-emerald-200/70">Helpful Votes</p>
+                <Card className="bg-emerald-500/10 border-emerald-500/20 shadow-sm hover:bg-emerald-500/20 transition-colors">
+                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                        <ThumbsUp className="w-8 h-8 text-emerald-400 mb-2 opacity-90" aria-hidden="true" />
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.helpfulVotes || 0}</h3>
+                        <p className="text-sm text-emerald-800 dark:text-emerald-200/70">Helpful Votes</p>
                     </CardContent>
                 </Card>
-                <Card className="bg-purple-500/10 border-purple-500/20 shadow-sm">
-                    <CardContent className="flex flex-col items-center justify-center p-6 text-center">
-                        <Users className="w-8 h-8 text-purple-400 mb-2 opacity-90" />
-                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.classroomsCount}</h3>
-                        <p className="text-sm text-purple-200/70">Classrooms</p>
+                <Card className="bg-purple-500/10 border-purple-500/20 shadow-sm hover:bg-purple-500/20 transition-colors">
+                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                        <Users className="w-8 h-8 text-purple-400 mb-2 opacity-90" aria-hidden="true" />
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{stats.classroomsCount || 0}</h3>
+                        <p className="text-sm text-purple-800 dark:text-purple-200/70">Classrooms</p>
+                    </CardContent>
+                </Card>
+                
+                {/* New Activity Stats */}
+                <Card className="bg-rose-500/10 border-rose-500/20 shadow-sm hover:bg-rose-500/20 transition-colors">
+                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                        <Heart className="w-8 h-8 text-rose-400 mb-2 opacity-90" aria-hidden="true" />
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{activityStats.totalLikesReceived || 0}</h3>
+                        <p className="text-sm text-rose-800 dark:text-rose-200/70">Likes Received</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-amber-500/10 border-amber-500/20 shadow-sm hover:bg-amber-500/20 transition-colors">
+                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                        <TrendingUp className="w-8 h-8 text-amber-400 mb-2 opacity-90" aria-hidden="true" />
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{activityStats.totalReplyUpvotes || 0}</h3>
+                        <p className="text-sm text-amber-800 dark:text-amber-200/70">Reply Upvotes</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-green-500/10 border-green-500/20 shadow-sm hover:bg-green-500/20 transition-colors">
+                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                        <CheckCircle2 className="w-8 h-8 text-green-400 mb-2 opacity-90" aria-hidden="true" />
+                        <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{activityStats.doubtsSolved || 0}</h3>
+                        <p className="text-sm text-green-800 dark:text-green-200/70">Doubts Solved</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-cyan-500/10 border-cyan-500/20 shadow-sm hover:bg-cyan-500/20 transition-colors">
+                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full w-full overflow-hidden">
+                        <Target className="w-8 h-8 text-cyan-400 mb-2 opacity-90" aria-hidden="true" />
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white truncate w-full max-w-full px-2" title={activityStats.mostActiveSubject || "None"}>
+                            {activityStats.mostActiveSubject || "No activity"}
+                        </h3>
+                        <p className="text-sm text-cyan-800 dark:text-cyan-200/70 mt-1">Active Subject</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-slate-500/10 border-slate-500/20 shadow-sm hover:bg-slate-500/20 transition-colors lg:col-start-2 lg:col-span-2">
+                    <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
+                        <CalendarDays className="w-8 h-8 text-slate-400 mb-2 opacity-90" aria-hidden="true" />
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                            {activityStats.memberSince ? format(new Date(activityStats.memberSince), "MMM yyyy") : "Unknown"}
+                        </h3>
+                        <p className="text-sm text-slate-800 dark:text-slate-200/70 mt-1">Member Since</p>
                     </CardContent>
                 </Card>
             </div>

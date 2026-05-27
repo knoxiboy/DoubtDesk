@@ -8,6 +8,13 @@
       "when": 1779121992842,
       "tag": "0000_bitter_tyger_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779525663345,
+      "tag": "0001_aspiring_warhawk",
+      "breakpoints": true
     }
   ]
 }

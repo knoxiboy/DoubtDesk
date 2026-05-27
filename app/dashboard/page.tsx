@@ -9,7 +9,7 @@ import {
     BarChart, Bar, Cell, AreaChart, Area, Tooltip, XAxis, YAxis, ResponsiveContainer 
 } from "recharts"
 import { Skeleton } from "@/components/ui/skeleton"
-
+import RecommendedClassrooms from "@/components/RecommendedClassrooms";
 type AnalyticsData = {
     trendingDoubts: any[];
     mostAskedTopics: any[];
@@ -356,6 +356,11 @@ export default function Dashboard() {
 
                 </div>
 
+            </div>
+       
+            {/* Recommended Classrooms */}
+            <div className="relative z-10">
+                <RecommendedClassrooms />
             </div>
         </div>
     )

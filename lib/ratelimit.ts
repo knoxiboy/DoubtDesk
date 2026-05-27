@@ -8,6 +8,8 @@ import { Redis } from "@upstash/redis";
 let aiLimiter: any;
 let generalLimiter: any;
 let emailNotificationLimiter: any;
+let videoLimiter: any;
+let redisClient: any;
 
 const isRedisConfigured = 
   process.env.UPSTASH_REDIS_REST_URL && 
@@ -39,6 +41,16 @@ if (isRedisConfigured) {
     analytics: true,
     prefix: "ratelimit:email_notify",
   });
+
+  // Video Generation: Stricter limit (3 videos per hour)
+  videoLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(3, "1 h"),
+    analytics: true,
+    prefix: "ratelimit:video",
+  });
+
+  redisClient = redis;
 } else {
   // Simple in-memory fallback for local development
   // Note: This won't be perfectly accurate in distributed environments but works for local testing
@@ -69,6 +81,20 @@ if (isRedisConfigured) {
   aiLimiter = createMockLimiter(10, 60 * 1000);
   generalLimiter = createMockLimiter(30, 60 * 1000);
   emailNotificationLimiter = createMockLimiter(1, 5 * 60 * 1000); // 1 per 5 mins
+  videoLimiter = createMockLimiter(3, 60 * 60 * 1000); // 3 per hour
+
+  // Provide a mock redis client for locks
+  redisClient = {
+    setnx: async (key: string, value: any) => {
+      if (memoryMap.has(key)) return 0;
+      memoryMap.set(key, { count: 1, reset: Date.now() + 5 * 60 * 1000 });
+      return 1;
+    },
+    del: async (key: string) => {
+      memoryMap.delete(key);
+      return 1;
+    }
+  };
 }
 
-export { aiLimiter, generalLimiter, emailNotificationLimiter };
+export { aiLimiter, generalLimiter, emailNotificationLimiter, videoLimiter, redisClient };
