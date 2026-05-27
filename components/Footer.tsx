@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+=======
+"use client"
+
+>>>>>>> 48c763d (fixed the codes with the suggestions provided)
 import Link from "next/link"
 import {
   Github,
@@ -72,7 +77,7 @@ const socialLinks = [
 ]
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
+  const currentYear = new Date().getFullYear()
 
   return (
     <footer className="relative overflow-hidden border-t border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950 transition-colors duration-300">
@@ -153,18 +158,22 @@ export default function Footer() {
 
         <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            {socialLinks.map((social) => (
-              <a
-                key={social.label}
-                href={social.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={social.ariaLabel ?? social.label}
-                className={`group p-3 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-400 transition-all duration-300 hover:bg-slate-200 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:-translate-y-1 hover:scale-110 ${social.hoverColor}`}
-              >
-                <social.icon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
-              </a>
-            ))}
+            {socialLinks.map((social) => {
+              const isExternalLink = social.href.startsWith("http")
+
+              return (
+                <a
+                  key={social.label}
+                  href={social.href}
+                  target={isExternalLink ? "_blank" : undefined}
+                  rel={isExternalLink ? "noopener noreferrer" : undefined}
+                  aria-label={social.ariaLabel ?? social.label}
+                  className={`group p-3 rounded-xl border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-400 transition-all duration-300 hover:bg-slate-200 dark:hover:bg-white/10 hover:border-slate-400 dark:hover:border-white/20 hover:-translate-y-1 hover:scale-110 ${social.hoverColor}`}
+                >
+                  <social.icon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
+                </a>
+              )
+            })}
           </div>
 
           <div className="text-center md:text-right">
