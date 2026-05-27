@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState } from "react"
+import React, { createContext, useContext, useState, useEffect } from "react"
 import { useHotkeys } from "react-hotkeys-hook"
 import {
     Dialog,
@@ -10,6 +10,9 @@ import {
     DialogDescription,
 } from "@/components/ui/dialog"
 import { Kbd } from "@/components/ui/kbd"
+
+import { useTheme } from "next-themes"
+import { useUser } from "@clerk/nextjs"
 
 interface KeyboardShortcutsContextType {
     isOpen: boolean
@@ -29,20 +32,53 @@ export function useKeyboardShortcuts() {
 
 export function KeyboardShortcutsProvider({ children }: { children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false)
+    const { setTheme, resolvedTheme } = useTheme()
+    const { isSignedIn } = useUser()
 
     const toggleOpen = () => setIsOpen((prev) => !prev)
 
-    useHotkeys("?", (e) => {
-        e.preventDefault()
-        toggleOpen()
-    }, {
-        enableOnFormTags: false,
-    })
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const activeEl = document.activeElement
+            const isEditable = activeEl && (
+                activeEl.tagName === 'INPUT' ||
+                activeEl.tagName === 'TEXTAREA' ||
+                activeEl.tagName === 'SELECT' ||
+                activeEl.hasAttribute('contenteditable') ||
+                activeEl.getAttribute('contenteditable') === 'true'
+            )
+
+            if (isEditable) return
+
+            if (e.key === "?") {
+                e.preventDefault()
+                setIsOpen((prev) => !prev)
+            }
+        }
+
+        window.addEventListener("keydown", handleKeyDown)
+        return () => window.removeEventListener("keydown", handleKeyDown)
+    }, [])
 
     useHotkeys("esc", () => {
         setIsOpen(false)
     }, {
         enabled: isOpen,
+    })
+
+    useHotkeys("t", (e) => {
+        e.preventDefault()
+        const nextTheme = resolvedTheme === "dark" ? "light" : "dark"
+        setTheme(nextTheme)
+        if (isSignedIn) {
+            fetch("/api/user/preferences", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ themePreference: nextTheme }),
+            }).catch(() => {})
+        }
+    }, {
+        enableOnFormTags: false,
     })
 
     return (
@@ -56,15 +92,14 @@ export function KeyboardShortcutsProvider({ children }: { children: React.ReactN
 function KeyboardShortcutsHelp({ isOpen, onOpenChange }: { isOpen: boolean, onOpenChange: (open: boolean) => void }) {
     const shortcuts = [
         { key: "Ctrl/Cmd + K", description: "Open global search" },
-        { key: "N", description: "New doubt (on classroom page)" },
-        { key: "Ctrl/Cmd + Enter", description: "Submit doubt/reply form" },
         { key: "Escape", description: "Close modals/dialogs" },
+        { key: "T", description: "Toggle color theme" },
         { key: "?", description: "Show keyboard shortcuts help" },
     ]
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px] bg-[#0f172a] border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-[2rem]">
+            <DialogContent className="sm:max-w-[425px] bg-white dark:bg-[#0f172a] border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-[2rem]">
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-black uppercase italic tracking-tight">Keyboard <span className="text-blue-500">Shortcuts</span></DialogTitle>
                     <DialogDescription className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-[10px]">

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useHotkeys } from "react-hotkeys-hook";
 import { useAppUser } from "../../provider";
 import {
     Brain,
@@ -129,13 +128,6 @@ export default function ClassroomPage() {
             setSize(size + 1);
         }
     }, [inView, isReachingEnd, isLoadingMore]);
-
-    useHotkeys("n", (e) => {
-        e.preventDefault();
-        setIsAskModalOpen(true);
-    }, {
-        enableOnFormTags: false,
-    });
 
     useEffect(() => {
         initialFetch();

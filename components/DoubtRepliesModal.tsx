@@ -739,12 +739,6 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     ref={solutionTextareaRef}
                                     value={solutionContent}
                                     onChange={(e) => setSolutionContent(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                                            e.preventDefault();
-                                            handlePostOrUpdate();
-                                        }
-                                    }}
                                     placeholder="Explain your solution clearly and step-by-step..."
                                     className="w-full h-40 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[1.5rem] p-5 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none font-medium leading-relaxed placeholder:text-slate-600 shadow-inner"
                                 />
@@ -862,12 +856,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                             onChange={(e) => setChatText(e.target.value)}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
-                                                    if (e.ctrlKey || e.metaKey) {
-                                                        e.preventDefault();
-                                                        handlePost('comment');
-                                                    } else {
-                                                        handlePost('comment');
-                                                    }
+                                                    handlePost('comment');
                                                 }
                                             }}
                                             placeholder="Ask for clarification or chat with peers..."

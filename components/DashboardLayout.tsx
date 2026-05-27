@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { SignedIn, UserButton, useClerk } from "@clerk/nextjs"
 import Sidebar from "@/components/Sidebar"
-import { Menu, LogOut, User } from "lucide-react"
+import { Menu, LogOut, User, Keyboard } from "lucide-react"
 import Link from "next/link"
 import {
     AlertDialog,
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import NotificationBell from "@/components/NotificationBell"
+import { useKeyboardShortcuts } from "@/components/KeyboardShortcutsProvider"
 
 export default function DashboardLayout({
     children,
@@ -27,6 +28,7 @@ export default function DashboardLayout({
     const [showSignOutDialog, setShowSignOutDialog] = useState(false)
 
     const { signOut } = useClerk()
+    const { toggleOpen } = useKeyboardShortcuts()
 
     const handleSignOut = async () => {
         await signOut({ redirectUrl: "/" })
@@ -67,6 +69,14 @@ export default function DashboardLayout({
 
                         {/* Right Section */}
                         <div className="flex items-center gap-3 md:gap-4">
+                            <button
+                                onClick={toggleOpen}
+                                className="p-2.5 rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-200 hover:scale-105"
+                                title="Keyboard Shortcuts (?)"
+                                aria-label="Keyboard Shortcuts"
+                            >
+                                <Keyboard className="w-5 h-5" />
+                            </button>
                             <ThemeToggle />
 
                             <SignedIn>

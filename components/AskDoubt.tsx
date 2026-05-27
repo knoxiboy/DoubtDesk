@@ -344,14 +344,6 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                     ref={contentTextareaRef}
                                     value={content}
                                     onChange={(e) => setContent(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                                            e.preventDefault();
-                                            if (!isOverLimit && (content.trim() || imageUrl)) {
-                                                handleSubmit(e as any);
-                                            }
-                                        }
-                                    }}
                                     maxLength={MAX_CHARS}
                                     placeholder="Type your question here... (Markdown supported)"
                                     className={`w-full h-32 bg-slate-100 dark:bg-white/5 border rounded-2xl p-4 text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 transition-all resize-none ${isOverLimit ? 'border-red-500/50 focus:border-red-500/50 focus:ring-red-500/20' : 'border-slate-200 dark:border-white/10 focus:border-blue-500/50 focus:ring-blue-500/20'}`}
