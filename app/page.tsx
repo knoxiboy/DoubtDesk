@@ -6,7 +6,6 @@ import {
   SignedOut,
   useClerk,
   UserButton,
-
 } from "@clerk/nextjs";
 
 import {
@@ -86,6 +85,7 @@ export default function Home() {
       icon: Users,
     },
   ];
+
   const howItWorks = [
     {
       title: "Join or create a classroom",
@@ -124,101 +124,21 @@ export default function Home() {
   };
 
   return (
-    <div className={`${inter.className} min-h-screen bg-background text-foreground flex flex-col selection:bg-[#5E8CFF]/30 transition-colors duration-300`}>
-      {/* Navbar */}
-      <header className="sticky inset-x-0 top-0 z-50 bg-background/88 supports-[backdrop-filter]:bg-background/72 backdrop-blur-xl overflow-visible transition-colors duration-300">
-        <div className="absolute inset-x-0 bottom-0 h-px bg-border shadow-[0_0_10px_rgba(139,184,255,0.18)]" />
-        <div className="max-w-7xl mx-auto h-16 sm:h-20 flex items-center justify-between px-4 sm:px-6 md:px-[clamp(24px,5vw,64px)]">
-          <Link href="/" className="flex items-center gap-1 sm:gap-2 hover:opacity-90 transition-opacity shrink-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-[0_0_20px_rgba(94,140,255,0.25)] ring-1 ring-[#AABFFF]/35">
-              <img src="/logo.png" alt="DoubtDesk logo" className="h-5 w-5 object-contain" />
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground transition-colors drop-shadow-[0_0_10px_rgba(170,191,255,0.15)]">
-              DoubtDesk
-            </h1>
-          </Link>
-
-          <div className="hidden sm:flex items-center gap-3">
-            <button
-            onClick={()=> {
-              document.getElementById("features")
-              ?.scrollIntoView({ behavior:"smooth"});
-            }}
-              className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-600 dark:hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)]"
-            >
-              Features
-            </button>
-            <button
-              onClick={()=> {
-              document.getElementById("how-it-works")
-              ?.scrollIntoView({ behavior:"smooth"});
-            }}
-              className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-600 dark:hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)] "
-            >
-              How It Works
-            </button>
-            <button
-              onClick={()=> {
-              document.getElementById("testimonials")
-              ?.scrollIntoView({ behavior:"smooth"});
-            }}
-              className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-400 transition-all duration-300 hover:text-blue-600 dark:hover:text-[#AABFFF] hover:drop-shadow-[0_0_8px_rgba(170,191,255,0.2)]"
-            >
-              Testimonial
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-4">
-            <ThemeToggle />
-            <SignedOut>
-              <Link href="/sign-in">
-                <button className="px-5 py-2.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-xl text-sm font-semibold border border-slate-200 dark:border-white/10 transition-all hover:shadow-[0_0_16px_rgba(255,255,255,0.08)]">
-                  Sign In
-                </button>
-              </Link>
-
-              <Link href="/sign-up">
-                <button className="px-5 py-2.5 bg-[#5E8CFF] hover:bg-[#8BB8FF] text-white rounded-xl text-sm font-semibold shadow-[0_0_14px_rgba(94,140,255,0.28)] transition-all">
-                  Join DoubtDesk
-                </button>
-              </Link>
-            </SignedOut>
-            <SignedIn>
-              <div className="flex items-center gap-4">
-                <Link href="/rooms" className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
-                  Classrooms
-                </Link>
-                <Link href="/profile" className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">
-                  Profile
-                </Link>
-                <UserButton
-                  afterSignOutUrl="/"
-                  appearance={{
-                    elements: {
-                      userButtonAvatarBox: "w-10 h-10 border border-white/20 shadow-sm"
-                    }
-                  }}
-                />
-              </div>
-            </SignedIn>
-          </div>
-        </div>
-      </header>
-
+    <div className={`${inter.className} min-h-screen bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-50 flex flex-col selection:bg-blue-500/30 dark:selection:bg-[#5E8CFF]/30 transition-colors duration-500 overflow-x-hidden`}>
       {/* Logout Confirmation Dialog */}
       <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
-        <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white">
+        <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl animate-in fade-in-50 zoom-in-95 duration-200">
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to sign out?</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
+            <AlertDialogDescription className="text-slate-500 dark:text-slate-400">
               You will need to log in again to access your classroom insights and doubt-solving history.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-white/10">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all duration-200">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleSignOut}
-              className="bg-red-600 hover:bg-red-700 text-white border-none"
+              className="bg-red-600 hover:bg-red-700 text-white border-none rounded-xl transition-all duration-200"
             >
               Sign Out
             </AlertDialogAction>
@@ -227,101 +147,108 @@ export default function Home() {
       </AlertDialog>
 
       {/* Hero Section */}
-      <main className="flex-1 pt-[128px] relative overflow-hidden scroll-smooth">
+      <main className="flex-1 relative overflow-hidden scroll-smooth">
         <div className="absolute inset-0 z-0 pointer-events-none">
           <ShapeGrid
             speed={0.45}
             squareSize={42}
             direction="diagonal"
-            borderColor="rgba(125, 162, 255, 0.08)"
-            hoverFillColor="rgba(125, 162, 255, 0.14)"
+            borderColor="rgba(143, 172, 243, 0.2)"
+            hoverFillColor="rgba(182, 201, 248, 0.08)"
             shape="square"
             hoverTrailAmount={5}
-            className="opacity-60"
+            className="opacity-100 dark:opacity-60"
           />
-          <div className="absolute inset-0 bg-[#020617]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_26%_24%,rgba(125,162,255,0.16),transparent_28%),radial-gradient(circle_at_72%_42%,rgba(170,191,255,0.08),transparent_26%),linear-gradient(to_bottom,rgba(2,6,23,0.08),rgba(2,6,23,0.22))]" />
-          <div className="absolute inset-0 opacity-[0.04] [background-image:linear-gradient(rgba(255,255,255,0.8)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.8)_1px,transparent_1px)] [background-size:28px_28px]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-blue-50/30 via-transparent to-transparent dark:from-transparent" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.08),transparent_35%),radial-gradient(circle_at_70%_60%,rgba(99,102,241,0.05),transparent_40%)] dark:bg-[radial-gradient(circle_at_26%_24%,rgba(125,162,255,0.12),transparent_28%),radial-gradient(circle_at_72%_42%,rgba(170,191,255,0.05),transparent_26%)]" />
         </div>
-        <section className="px-6 pb-12 relative z-10 pt-3 md:pt-6">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[1.08fr_0.92fr] gap-12 xl:gap-16 items-start">
-            <div className="text-left pt-2 sm:pt-4 xl:pt-10">
-              <h2 className="max-w-[11ch] text-4xl sm:text-5xl lg:text-6xl xl:text-[4.5rem] font-black text-[#F3F6FF] tracking-[-0.04em] leading-[0.96] mb-7 sm:mb-8">
+
+        <section className="px-4 sm:px-6 lg:px-20 pt-32 pb-20 relative z-10">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-12 xl:gap-16 items-center">
+            <div className="text-center xl:text-left space-y-8 animate-in fade-in slide-in-from-left-6 duration-700 ease-out">
+              
+              {/* Primary Header Typography */}
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.05] max-w-xl sm:max-w-2xl mx-auto xl:mx-0 transition-colors duration-300">
                 Empower <br />
                 Your Learning <br />
-                with{' '}
-                <span className={`${staatliches.className} uppercase tracking-[0.05em] bg-gradient-to-r from-[#8BB8FF] to-[#AABFFF] bg-clip-text text-transparent`}>
+                with{" "}
+                <span className={`${staatliches.className} uppercase tracking-[0.04em] bg-gradient-to-r from-blue-600 via-indigo-500 to-blue-600 dark:from-[#8BB8FF] dark:to-[#AABFFF] bg-clip-text text-transparent bg-[size:200%_auto] animate-[shine_5s_linear_infinite]`}>
                   Collaborative AI.
                 </span>
               </h2>
 
-              <div className="max-w-xl mb-10 sm:mb-11">
-                <div className={`${staatliches.className} mb-3 text-sm tracking-[0.18em] text-[#94A3B8] uppercase`}>
+              {/* Description Subtext Stack */}
+              <div className="space-y-2 max-w-md sm:max-w-xl mx-auto xl:mx-0 transition-all duration-300">
+                <div className={`${staatliches.className} text-xs tracking-[0.15em] text-blue-600 dark:text-blue-400 uppercase font-medium`}>
                   Collaborative classrooms
                 </div>
-                <p className="max-w-[28rem] text-lg sm:text-xl text-[#94A3B8] leading-[1.75]">
+                <p className="text-base sm:text-lg text-slate-500 dark:text-zinc-400 leading-relaxed transition-colors duration-300">
                   A live student collaboration system for doubts, notes, and shared progress across campus groups.
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
+              {/* Call to Action Button Core Wrappers */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center xl:justify-start gap-4 transition-all duration-300 max-w-md sm:max-w-none mx-auto xl:mx-0">
                 <SignedIn>
                   <Link href="/rooms" className="w-full sm:w-auto">
-                    <button className="group min-w-[15rem] px-8 py-7.5 bg-white text-slate-950 rounded-[1.15rem] text-base font-bold border border-slate-200/80 shadow-[0_10px_24px_rgba(15,23,42,0.08)] hover:bg-slate-100 hover:border-slate-300 transition-all w-full flex items-center justify-center gap-2">
-                      <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>Open Classroom</span>
-                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    <button className="group w-full sm:w-auto px-8 py-4 bg-slate-900 text-white dark:bg-white dark:text-black hover:bg-slate-800 dark:hover:bg-zinc-100 rounded-2xl text-base font-bold shadow-xl shadow-slate-950/10 dark:shadow-none transition-all duration-300 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]">
+                      <span className={`${staatliches.className} uppercase tracking-[0.06em] text-lg`}>Open Classroom</span>
+                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform duration-300" />
                     </button>
                   </Link>
                 </SignedIn>
+                
                 <SignedOut>
                   <Link href="/sign-up" className="w-full sm:w-auto">
-                    <button className="group min-w-[15rem] px-8 py-4.5 bg-white text-slate-950 rounded-[1.15rem] text-base font-bold border border-slate-200/80 shadow-[0_10px_24px_rgba(15,23,42,0.08)] hover:bg-slate-100 hover:border-slate-300 transition-all w-full sm:w-auto flex items-center justify-center gap-2">
-                      <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>Open Classroom</span>
-                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    <button className="group w-full sm:w-auto px-8 py-4 bg-slate-900 text-white dark:bg-white dark:text-black hover:bg-slate-800 dark:hover:bg-zinc-100 rounded-2xl text-base font-bold shadow-xl shadow-slate-950/10 dark:shadow-none transition-all duration-300 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]">
+                      <span className={`${staatliches.className} uppercase tracking-[0.06em] text-lg`}>Open Classroom</span>
+                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform duration-300" />
                     </button>
                   </Link>
                 </SignedOut>
               </div>
             </div>
 
-            <div className="flex items-center justify-center xl:justify-end xl:pt-16">
-              {/* Replace or enhance the right-side card with the new Live Campus Thread panel */}
-              <LiveCampusThreadPanel />
+            {/* Right Live Panel Graphic Column */}
+            <div className="flex items-center justify-center xl:justify-end w-full pt-4 xl:pt-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200 ease-out fill-mode-both">
+              <div className="w-full max-w-md xl:max-w-full transition-transform duration-500 hover:scale-[1.01] rounded-[0.9rem]">
+                <LiveCampusThreadPanel />
+              </div>
             </div>
-
           </div>
         </section>
 
-        <section id="features" className="scroll-mt-24 px-6 py-16 md:py-20 relative z-10">
-          <div className="absolute inset-x-0 top-10 h-40 bg-gradient-to-r from-blue-500/10 via-transparent to-purple-500/10 blur-3xl pointer-events-none" />
-          <div className="max-w-7xl mx-auto">
-            <div className="max-w-3xl mx-auto text-center">
-              <div className={`${staatliches.className} mb-4 text-sm tracking-[0.16em] text-blue-700 dark:text-[#AABFFF]/70 uppercase`}>
+        {/* Features Section */}
+        <section id="features" className="scroll-mt-20 px-4 sm:px-6 lg:px-8 py-20 relative z-10 border-t border-slate-200/60 dark:border-slate-900 bg-slate-100/40 dark:bg-black/20 transition-colors duration-500">
+          <div className="max-w-7xl mx-auto space-y-16">
+            <div className="max-w-3xl mx-auto text-center space-y-4">
+              <div className={`${staatliches.className} text-sm tracking-[0.14em] text-blue-600 dark:text-blue-400 uppercase`}>
                 Features
               </div>
-              <h3 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 dark:text-[#F2F5FF] tracking-tight leading-tight">
+              <h3 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight leading-tight transition-colors duration-300">
                 Everything your classroom needs to solve doubts, stay aligned, and move faster.
               </h3>
-              <p className="mt-5 text-base sm:text-lg text-slate-700 dark:text-slate-300/85 leading-8">
+              <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed transition-colors duration-300">
                 Built for modern study teams, DoubtDesk blends AI-powered doubt solving, shared resources, and smart classroom flows into a single polished platform.
               </p>
             </div>
 
-            <div className="mt-12 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-              {features.map((feature) => {
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {features.map((feature, i) => {
                 const Icon = feature.icon;
                 return (
                   <div
                     key={feature.title}
-                    className="group relative overflow-hidden rounded-[2rem] border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] p-6 shadow-2xl shadow-slate-950/10 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-100 dark:hover:bg-white/[0.06]"
+                    style={{ animationDelay: `${i * 100}ms` }}
+                    className="group relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 p-6 shadow-sm shadow-slate-200/50 dark:shadow-none backdrop-blur-md transition-all duration-500 hover:-translate-y-2 hover:border-blue-400 dark:hover:border-zinc-700 hover:shadow-xl hover:shadow-blue-500/5 dark:hover:bg-zinc-900/70 animate-in fade-in slide-in-from-bottom-6 fill-mode-both flex flex-col items-center text-center"
                   >
-                    <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-blue-500/10 dark:bg-[#5E8CFF]/10 text-blue-600 dark:text-[#8BB8FF] shadow-[0_0_18px_rgba(94,140,255,0.18)] transition-colors duration-300 group-hover:bg-blue-500/15 dark:group-hover:bg-[#5E8CFF]/15">
-                      <Icon className="h-6 w-6" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 shadow-inner transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white dark:group-hover:bg-blue-500 group-hover:rotate-6">
+                      <Icon className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
                     </div>
-                    <h4 className="mt-6 text-xl font-semibold text-slate-900 dark:text-[#F2F5FF] tracking-tight">
+                    <h4 className="mt-5 text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight transition-colors duration-300">
                       {feature.title}
                     </h4>
-                    <p className="mt-3 text-sm leading-7 text-slate-700 dark:text-slate-300/80">
+                    <p className="mt-2.5 text-sm leading-relaxed text-slate-600 dark:text-zinc-400 transition-colors duration-300">
                       {feature.description}
                     </p>
                   </div>
@@ -330,134 +257,118 @@ export default function Home() {
             </div>
           </div>
         </section>
-        {/* How It Works */}
-        <section id="how-it-works" className="scroll-mt-24 px-6 py-20 relative z-10">
-          <div className="max-w-7xl mx-auto text-center">
 
-            <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-[#F2F5FF]">
-              How it works
-            </h3>
+        {/* How It Works Section */}
+        <section id="how-it-works" className="scroll-mt-20 px-4 sm:px-6 lg:px-8 py-20 relative z-10 border-t border-slate-200/60 dark:border-zinc-900 transition-colors duration-500">
+          <div className="max-w-7xl mx-auto space-y-16">
+            <div className="text-center space-y-3">
+              <div className={`${staatliches.className} text-sm tracking-[0.14em] text-blue-600 dark:text-blue-400 uppercase`}>
+                Process
+              </div>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight transition-colors duration-300">
+                How it works
+              </h3>
+              <p className="text-base text-slate-600 dark:text-zinc-400 max-w-md mx-auto transition-colors duration-300">
+                Simple flow from doubt → solution → understanding
+              </p>
+            </div>
 
-            <p className="mt-4 text-slate-700 dark:text-slate-300/80">
-              Simple flow from doubt → solution → understanding
-            </p>
-
-            <div className="mt-12 grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-3 gap-8 relative">
+              {/* Desktop Connecting Line decoration */}
+              <div className="hidden md:block absolute top-12 left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-blue-100 via-indigo-100 to-blue-100 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900 -z-10 transition-colors duration-300" />
+              
               {howItWorks.map((step, index) => (
                 <div
                   key={step.title}
-                  className="p-6 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] backdrop-blur-xl hover:bg-slate-100 dark:hover:bg-white/[0.06] transition"
+                  style={{ animationDelay: `${index * 150}ms` }}
+                  className="p-6 rounded-3xl border border-slate-200/80 dark:border-zinc-900 bg-white dark:bg-zinc-950/40 backdrop-blur-sm hover:border-blue-400 dark:hover:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-900/40 transition-all duration-500 flex flex-col items-center text-center space-y-4 group shadow-sm dark:shadow-none hover:shadow-lg hover:-translate-y-1 animate-in fade-in slide-in-from-bottom-6 fill-mode-both"
                 >
-                  <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[#5E8CFF] text-white flex items-center justify-center font-bold shadow-[0_0_18px_rgba(94,140,255,0.45)] ring-1 ring-[#8BB8FF]/40">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 dark:bg-blue-500 text-white text-lg font-bold shadow-md shadow-blue-500/20 dark:shadow-blue-500/10 transition-all duration-500 group-hover:scale-110 group-hover:bg-indigo-600 dark:group-hover:bg-indigo-500">
                     {index + 1}
                   </div>
-
-                  <h4 className="text-lg font-semibold text-slate-900 dark:text-[#F2F5FF]">
+                  <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight transition-colors duration-300">
                     {step.title}
                   </h4>
-
-                  <p className="mt-2 text-sm text-slate-700 dark:text-slate-300/80">
+                  <p className="text-sm leading-relaxed text-slate-600 dark:text-zinc-400 transition-colors duration-300">
                     {step.description}
                   </p>
                 </div>
               ))}
             </div>
-
           </div>
         </section>
-        {/* Testimonials */}
-        <section id="testimonials" className="scroll-mt-24 px-6 py-20 relative z-10">
-          <div className="max-w-7xl mx-auto text-center">
-            <div className={`${staatliches.className} mb-4 text-sm tracking-[0.16em] text-blue-700 dark:text-[#AABFFF]/70 uppercase`}>
-              Testimonials
+
+        {/* Testimonials Section */}
+        <section id="testimonials" className="scroll-mt-20 px-4 sm:px-6 lg:px-8 py-20 relative z-10 border-t border-slate-200/60 dark:border-zinc-900 bg-slate-100/40 dark:bg-black/20 transition-colors duration-500">
+          <div className="max-w-7xl mx-auto space-y-16">
+            <div className="text-center space-y-3">
+              <div className={`${staatliches.className} text-sm tracking-[0.14em] text-blue-600 dark:text-blue-400 uppercase`}>
+                Testimonials
+              </div>
+              <h3 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight transition-colors duration-300">
+                What students say
+              </h3>
+              <p className="text-base text-slate-600 dark:text-zinc-400 max-w-md mx-auto transition-colors duration-300">
+                Real feedback from learners and educators
+              </p>
             </div>
-            <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-[#F2F5FF]">
-              What students say
-            </h3>
 
-            <p className="mt-4 text-slate-700 dark:text-slate-300/80">
-              Real feedback from learners and educators
-            </p>
-
-            <div className="mt-12 grid md:grid-cols-3 gap-6 text-left">
-              {testimonials.map((t) => (
+            <div className="grid md:grid-cols-3 gap-6">
+              {testimonials.map((t, index) => (
                 <div
                   key={t.name}
-                  className="p-6 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.03] backdrop-blur-xl hover:bg-slate-100 dark:hover:bg-white/[0.06] transition"
+                  style={{ animationDelay: `${index * 200}ms` }}
+                  className="p-6 rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 backdrop-blur-md hover:border-blue-400 dark:hover:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-900/60 transition-all duration-500 flex flex-col justify-between shadow-sm dark:shadow-none hover:shadow-xl hover:-translate-y-1 animate-in fade-in slide-in-from-bottom-6 fill-mode-both"
                 >
-                  <p className="text-slate-700 dark:text-slate-300/80 text-sm leading-7">
+                  <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed italic transition-colors duration-300">
                     “{t.text}”
                   </p>
 
-                  <div className="mt-5">
-                    <div className="text-slate-900 dark:text-[#F2F5FF] font-semibold">
+                  <div className="mt-6 pt-4 border-t border-slate-100 dark:border-zinc-800/60 flex flex-col">
+                    <div className="text-slate-950 dark:text-slate-100 font-bold tracking-tight transition-colors duration-300">
                       {t.name}
                     </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                    <div className="text-xs font-medium text-slate-400 dark:text-zinc-500 mt-0.5 transition-colors duration-300">
                       {t.role}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-
           </div>
         </section>
       </main>
-      {/*Here's Your Previous Footer. I have just commented it in case */}
+
       {/* Scroll to Top Button */}
       {scrollProgress > 5 && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-8 right-8 z-50 w-14 h-14 flex items-center justify-center"
+          className="fixed bottom-6 right-6 z-50 w-12 h-12 flex items-center justify-center group active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
           aria-label="Scroll to top"
         >
-          <svg className="absolute top-0 left-0 w-14 h-14 -rotate-90" viewBox="0 0 56 56">
+          <svg className="absolute top-0 left-0 w-12 h-12 -rotate-90" viewBox="0 0 56 56">
             <circle
               cx="28" cy="28" r="24"
               fill="none"
-              stroke="rgba(94,140,255,0.15)"
-              strokeWidth="3"
+              stroke="rgba(94,140,255,0.12)"
+              strokeWidth="4"
             />
             <circle
               cx="28" cy="28" r="24"
               fill="none"
               stroke="#5E8CFF"
-              strokeWidth="3"
+              strokeWidth="4"
               strokeLinecap="round"
               strokeDasharray={`${2 * Math.PI * 24}`}
               strokeDashoffset={`${2 * Math.PI * 24 * (1 - scrollProgress / 100)}`}
               className="transition-all duration-150"
             />
           </svg>
-          <div className="w-10 h-10 rounded-full bg-slate-900/80 backdrop-blur-sm border border-white/10 flex items-center justify-center text-white hover:bg-slate-800 transition-colors">
-            ↑
+          <div className="w-8 h-8 rounded-full bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 flex items-center justify-center text-slate-700 dark:text-zinc-300 font-bold text-sm shadow-sm transition-colors group-hover:bg-slate-50 dark:group-hover:bg-zinc-900 group-hover:text-blue-600 dark:group-hover:text-white">
+            &uarr;
           </div>
         </button>
       )}
-      {/* Footer
-      <footer className="border-t border-slate-200 dark:border-white/5 bg-white/50 dark:bg-slate-950/50 py-5">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-slate-500 dark:text-slate-500">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center text-slate-900 dark:text-white font-bold text-sm">D</div>
-            <span className="font-bold text-slate-900 dark:text-white">DoubtDesk</span>
-          </div>
-          <p className="text-sm">© 2026 DoubtDesk. Engineered for Excellence.</p>
-          <div className="flex items-center gap-6">
-            <a href="mailto:divysaxena2402@gmail.com" className="hover:text-blue-400 transition-colors" title="Email">
-              <Mail className="w-5 h-5" />
-            </a>
-            <a href="https://linkedin.com/in/divyasaxena24/" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors" title="LinkedIn">
-              <Linkedin className="w-5 h-5" />
-            </a>
-            <a href="https://github.com/divysaxena24" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors" title="GitHub">
-              <Github className="w-5 h-5" />
-            </a>
-          </div>
-          <div className="flex gap-6 text-sm">
-          </div>
-        </div>
-      </footer> */}
     </div>
   );
 }
