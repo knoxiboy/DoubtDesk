@@ -23,7 +23,6 @@ export default function PublicRoomsPage() {
     const [appliedTagFilter, setAppliedTagFilter] = useState("");
     const [statusFilter, setStatusFilter] = useState<'all' | 'unsolved' | 'in-progress' | 'solved'>('all');
 
-    // Debounced search query
     const [searchVal, setSearchVal] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -83,7 +82,7 @@ export default function PublicRoomsPage() {
 
     const fetchDoubts = async () => {
         setAppliedTagFilter(tagFilter);
-        mutate(); // Trigger SWR re-validation
+        mutate();
     };
 
     const { data, isLoading, size, setSize, mutate } = useSWRInfinite(getKey, fetcher, {
@@ -108,7 +107,6 @@ export default function PublicRoomsPage() {
         }
     }, [inView, isReachingEnd, isLoadingMore]);
 
-    // Randomized empty-state messages
     const emptyMessages = [
         { headline: "Every legendary thread", accent: "starts with one question.", sub: "That question could be yours. Post it before someone else does." },
         { headline: "Silence is just", accent: "an unanswered question.", sub: "Someone here knows exactly what you're stuck on. But they're waiting for you to ask." },
@@ -130,52 +128,51 @@ export default function PublicRoomsPage() {
     }, [filter, customFilter]);
 
     useEffect(() => {
-        // Triggers refetch on tab filter changes
         mutate();
     }, [filter, appliedCustomFilter]);
 
     return (
-        <div className="p-4 md:p-8 space-y-6 max-w-[1000px] mx-auto pb-24">
+        <div className="p-4 md:p-8 space-y-8 max-w-5xl mx-auto pb-24 text-slate-900 dark:text-zinc-100 bg-white dark:bg-black min-h-screen transition-colors duration-500 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/10 dark:from-blue-500/5 blur-[120px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0" />
 
             <ScrollToTopButton />
 
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-200 dark:border-white/5">
-                <div className="space-y-1">
-                    <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-slate-900 dark:text-white tracking-tighter uppercase italic">
-                        Public<span className="text-blue-500"> Doubts</span>
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-100 dark:border-zinc-900/60 relative z-10">
+                <div className="space-y-2">
+                    <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight">
+                        Public Doubts
                     </h1>
-                    <p className="text-slate-600 dark:text-slate-400 text-lg font-medium tracking-tight">
-                        Collaborate with student community. <span className="text-blue-400/80 font-bold">Ask, Solve, Learn anonymously.</span>
+                    <p className="text-slate-500 dark:text-zinc-400 text-sm font-medium leading-relaxed max-w-2xl">
+                        Collaborate with student community. <span className="text-blue-600 dark:text-blue-400 font-bold">Ask, Solve, Learn anonymously.</span>
                     </p>
                 </div>
                 <button
                     onClick={() => setIsAskModalOpen(true)}
-                    className="flex items-center justify-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition-all shadow-lg shadow-blue-600/20 active:scale-95"
+                    className="flex items-center gap-3 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-lg shadow-blue-600/10 active:scale-[0.98] shrink-0"
                 >
                     <Plus className="w-5 h-5" />
                     Ask a Doubt
                 </button>
             </header>
 
-            {/* Controls Section: Search & Filters */}
-            <div className="space-y-4">
+            <div className="space-y-4 relative z-10">
                 <div className="relative group">
-                    <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-                        <MessageSquare className="w-5 h-5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
+                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                        <MessageSquare className="w-5 h-5 text-slate-400 dark:text-zinc-600 group-focus-within:text-blue-500 transition-colors" />
                     </div>
                     <input 
                         type="text"
                         placeholder="Search for doubts, subjects, or keywords..."
                         value={searchVal}
                         onChange={(e) => setSearchVal(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] py-5 pl-14 pr-6 text-sm font-medium text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/50 focus:bg-white/[0.08] transition-all shadow-inner"
+                        className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-4 pl-12 pr-6 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all shadow-sm"
                     />
                 </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide w-full">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-500 dark:text-slate-500 shrink-0">
+                <div className="flex flex-wrap items-center gap-3 overflow-x-auto pb-1 scrollbar-hide">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-xl text-slate-400 dark:text-zinc-500">
                         <SlidersHorizontal className="w-4 h-4" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Filter:</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Filter:</span>
                     </div>
                     {["All", "Math", "Science", "Physics", "Chemistry", "Programming", "Others"].map((f) => (
                         <button
@@ -190,20 +187,17 @@ export default function PublicRoomsPage() {
                                     setIsOthersActive(true);
                                 }
                             }}
-                            className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${
+                            className={`px-5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 border shrink-0 ${
                                 filter === f 
-                                ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" 
-                                : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white"
+                                ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/10" 
+                                : "bg-white dark:bg-zinc-950/20 border-slate-200 dark:border-zinc-900 text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-900/40"
                             }`}
                         >
                             {f}
                         </button>
                     ))}
-                </div>
 
-                <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 w-full">
-                    {/* Custom Filter Input */}
-                    {filter === "Others" ? (
+                    {filter === "Others" && (
                         <div className="flex items-center gap-2 animate-in slide-in-from-left-4 duration-300">
                             <input 
                                 type="text"
@@ -213,61 +207,56 @@ export default function PublicRoomsPage() {
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') setAppliedCustomFilter(customFilter);
                                 }}
-                                className="bg-white dark:bg-slate-900 border border-blue-500/30 rounded-xl px-4 py-2.5 text-[10px] font-bold text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all w-full sm:w-40"
+                                className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-[11px] font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500 transition-all w-36"
                             />
                             <button 
                                 onClick={() => setAppliedCustomFilter(customFilter)}
-                                className="px-4 py-2.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-slate-900 dark:hover:text-white border border-blue-500/20 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shrink-0"
+                                className="px-3 py-2 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/20 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
                             >
                                 Apply
                             </button>
                         </div>
-                    ) : <div />}
+                    )}
 
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto md:ml-auto">
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <input
-                                type="text"
-                                placeholder="Filter by tag..."
-                                value={tagFilter}
-                                onChange={(e) => setTagFilter(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") fetchDoubts();
-                                }}
-                                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-[10px] font-bold text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 transition-all flex-1 sm:w-40 sm:flex-none"
-                            />
-                            <button
-                                onClick={fetchDoubts}
-                                className="px-4 py-2.5 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 hover:bg-blue-600 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-white/10 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shrink-0"
-                            >
-                                Tag
-                            </button>
-                        </div>
+                    <div className="flex items-center gap-2 sm:ml-auto">
+                        <input
+                            type="text"
+                            placeholder="Filter by tag..."
+                            value={tagFilter}
+                            onChange={(e) => setTagFilter(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") fetchDoubts();
+                            }}
+                            className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-[11px] font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500 transition-all w-36"
+                        />
+                        <button
+                            onClick={fetchDoubts}
+                            className="px-3 py-2 bg-slate-50 dark:bg-zinc-900/40 text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
+                        >
+                            Tag
+                        </button>
 
-                        <div className="w-full sm:w-auto shrink-0">
-                            <DoubtSortSelect value={sort} onValueChange={updateSort} className="w-full" />
-                        </div>
+                        <DoubtSortSelect value={sort} onValueChange={updateSort} className="ml-auto" />
                     </div>
                 </div>
 
-                {/* Status filter — All / Unsolved / In Progress / Solved */}
                 <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-500 dark:text-slate-500">
-                        <span className="text-[10px] font-black uppercase tracking-widest">Status:</span>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-xl text-slate-400 dark:text-zinc-500">
+                        <span className="text-[11px] font-bold uppercase tracking-wider">Status:</span>
                     </div>
                     {([
-                        { key: 'all',         label: 'All',         active: "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" },
-                        { key: 'unsolved',    label: 'Unsolved',    active: "bg-red-500/10 border-red-500/20 text-red-500" },
-                        { key: 'in-progress', label: 'In Progress', active: "bg-amber-500/10 border-amber-500/20 text-amber-500" },
-                        { key: 'solved',      label: 'Solved',      active: "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" },
+                        { key: 'all',        label: 'All',         active: "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/10" },
+                        { key: 'unsolved',    label: 'Unsolved',    active: "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400" },
+                        { key: 'in-progress', label: 'In Progress', active: "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400" },
+                        { key: 'solved',      label: 'Solved',      active: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" },
                     ] as const).map((s) => (
                         <button
                             key={s.key}
                             onClick={() => setStatusFilter(s.key)}
-                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${
+                            className={`px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 border shrink-0 ${
                                 statusFilter === s.key
                                     ? s.active
-                                    : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white"
+                                    : "bg-white dark:bg-zinc-950/20 border-slate-200 dark:border-zinc-900 text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-900/40"
                             }`}
                         >
                             {s.label}
@@ -277,12 +266,12 @@ export default function PublicRoomsPage() {
             </div>
 
             {isLoading && doubts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">Syncing with community...</p>
+                <div className="flex flex-col items-center justify-center py-20 space-y-4 relative z-10">
+                    <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                    <p className="text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-xs">Syncing with community...</p>
                 </div>
             ) : filteredDoubts.length > 0 ? (
-                <>
+                <div className="relative z-10">
                     <div className="flex flex-col gap-6 lg:gap-8">
                         {filteredDoubts.map((doubt: any, index: number) => (
                             <DoubtCard key={`${doubt.id}-${index}`} doubt={doubt} onUpdate={() => mutate()} />
@@ -291,70 +280,55 @@ export default function PublicRoomsPage() {
                     <div ref={loadMoreRef} className="py-8 flex justify-center">
                         {isLoadingMore && <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />}
                     </div>
-                </>
+                </div>
             ) : doubts.length > 0 ? (
-                // We have doubts, but none match the current status filter.
-                <div className="py-20 text-center space-y-4 bg-white/[0.02] border border-dashed border-slate-200 dark:border-white/10 rounded-[2.5rem]">
-                    <p className="text-slate-500 dark:text-slate-500 font-black uppercase tracking-widest text-xs">
+                <div className="py-20 text-center space-y-4 bg-slate-50/30 dark:bg-zinc-950/10 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl relative z-10">
+                    <p className="text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-xs">
                         No doubts matching this status filter.
                     </p>
                     <button
                         onClick={() => setStatusFilter('all')}
-                        className="px-6 py-2.5 bg-white/5 text-slate-300 hover:bg-blue-600 hover:text-white border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                        className="px-5 py-2 bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 hover:bg-blue-600 hover:text-white border border-slate-200 dark:border-zinc-800 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 shadow-sm"
                     >
                         Show all
                     </button>
                 </div>
             ) : (
-                <div className="relative flex flex-col items-center justify-center py-20 rounded-[3rem] text-center px-6 overflow-hidden border border-slate-200 dark:border-white/5 bg-slate-950/20">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-950/40 via-slate-900/20 to-indigo-950/30 rounded-[3rem]" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent rounded-[3rem]" />
-                    <div className="absolute inset-0 rounded-[3rem] opacity-25"
-                        style={{
-                            backgroundImage: 'radial-gradient(circle, rgba(99,102,241,0.4) 1px, transparent 1px)',
-                            backgroundSize: '28px 28px'
-                        }}
-                    />
-                    <div className="absolute top-8 left-12 w-32 h-32 bg-blue-600/10 rounded-full blur-2xl" />
-                    <div className="absolute bottom-8 right-12 w-40 h-40 bg-indigo-600/10 rounded-full blur-2xl" />
-                    <div className="absolute top-1/2 left-6 w-20 h-20 bg-blue-400/5 rounded-full blur-xl" />
+                <div className="relative flex flex-col items-center justify-center py-20 rounded-2xl text-center px-6 overflow-hidden border border-slate-200 dark:border-zinc-900 bg-slate-50/30 dark:bg-zinc-950/10 shadow-inner z-10">
+                    <div className="absolute top-8 left-12 w-32 h-32 bg-blue-600/5 rounded-full blur-2xl" />
+                    <div className="absolute bottom-8 right-12 w-40 h-40 bg-indigo-600/5 rounded-full blur-2xl" />
 
-                    <div className="relative mb-8 z-10">
+                    <div className="relative mb-6">
                         {searchQuery ? (
-                            <div className="w-24 h-24 bg-blue-600/10 rounded-[2.5rem] flex items-center justify-center mb-4 border border-blue-500/10 shadow-2xl shadow-blue-600/5">
-                                <MessageSquare className="w-12 h-12 text-slate-700" />
+                            <div className="w-20 h-20 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-4 border border-blue-500/20 shadow-sm">
+                                <MessageSquare className="w-10 h-10 text-blue-500" />
                             </div>
                         ) : (
-                            <svg width="140" height="120" viewBox="0 0 140 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <ellipse cx="70" cy="110" rx="45" ry="6" fill="rgba(59,130,246,0.15)" />
-                                <rect x="48" y="22" width="68" height="46" rx="12" fill="rgba(99,102,241,0.15)" stroke="rgba(99,102,241,0.3)" strokeWidth="1"/>
-                                <polygon points="100,62 112,72 104,62" fill="rgba(99,102,241,0.15)" stroke="rgba(99,102,241,0.3)" strokeWidth="1"/>
-                                <rect x="18" y="10" width="76" height="52" rx="14" fill="rgba(59,130,246,0.18)" stroke="rgba(59,130,246,0.4)" strokeWidth="1.2"/>
-                                <polygon points="30,57 18,72 38,57" fill="rgba(59,130,246,0.18)" stroke="rgba(59,130,246,0.4)" strokeWidth="1.2"/>
-                                <rect x="30" y="24" width="40" height="4" rx="2" fill="rgba(147,197,253,0.6)"/>
-                                <rect x="30" y="34" width="52" height="4" rx="2" fill="rgba(147,197,253,0.35)"/>
-                                <rect x="30" y="44" width="30" height="4" rx="2" fill="rgba(147,197,253,0.25)"/>
-                                <g opacity="0.7">
-                                    <line x1="118" y1="14" x2="118" y2="22" stroke="rgba(167,139,250,0.8)" strokeWidth="1.5" strokeLinecap="round"/>
-                                    <line x1="114" y1="18" x2="122" y2="18" stroke="rgba(167,139,250,0.8)" strokeWidth="1.5" strokeLinecap="round"/>
+                            <svg width="120" height="100" viewBox="0 0 140 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <ellipse cx="70" cy="110" rx="45" ry="6" fill="rgba(59,130,246,0.1)" />
+                                <rect x="48" y="22" width="68" height="46" rx="12" fill="rgba(139,92,246,0.1)" stroke="rgba(139,92,246,0.25)" strokeWidth="1"/>
+                                <polygon points="100,62 112,72 104,62" fill="rgba(139,92,246,0.1)" stroke="rgba(139,92,246,0.25)" strokeWidth="1"/>
+                                <rect x="18" y="10" width="76" height="52" rx="14" fill="rgba(59,130,246,0.12)" stroke="rgba(59,130,246,0.3)" strokeWidth="1.2"/>
+                                <polygon points="30,57 18,72 38,57" fill="rgba(59,130,246,0.12)" stroke="rgba(59,130,246,0.3)" strokeWidth="1.2"/>
+                                <rect x="30" y="24" width="40" height="4" rx="2" fill="rgba(59,130,246,0.4)"/>
+                                <rect x="30" y="34" width="52" height="4" rx="2" fill="rgba(59,130,246,0.2)"/>
+                                <rect x="30" y="44" width="30" height="4" rx="2" fill="rgba(59,130,246,0.15)"/>
+                                <g opacity="0.6">
+                                    <line x1="118" y1="14" x2="118" y2="22" stroke="rgba(139,92,246,0.6)" strokeWidth="1.5" strokeLinecap="round"/>
+                                    <line x1="114" y1="18" x2="122" y2="18" stroke="rgba(139,92,246,0.6)" strokeWidth="1.5" strokeLinecap="round"/>
                                 </g>
-                                <g opacity="0.5">
-                                    <line x1="128" y1="30" x2="128" y2="35" stroke="rgba(167,139,250,0.6)" strokeWidth="1" strokeLinecap="round"/>
-                                    <line x1="125.5" y1="32.5" x2="130.5" y2="32.5" stroke="rgba(167,139,250,0.6)" strokeWidth="1" strokeLinecap="round"/>
-                                </g>
-                                <circle cx="12" cy="35" r="2.5" fill="rgba(59,130,246,0.3)"/>
-                                <circle cx="8" cy="55" r="1.5" fill="rgba(99,102,241,0.25)"/>
-                                <circle cx="130" cy="55" r="2" fill="rgba(59,130,246,0.25)"/>
+                                <circle cx="12" cy="35" r="2" fill="rgba(59,130,246,0.2)"/>
+                                <circle cx="130" cy="55" r="2" fill="rgba(59,130,246,0.2)"/>
                             </svg>
                         )}
                     </div>
 
-                    <div className="relative z-10 space-y-3 mb-8">
-                        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter leading-tight">
+                    <div className="relative space-y-2 mb-6">
+                        <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                             {searchQuery ? "No matching doubts" : randomMessage.headline}{" "}
-                            <span className="text-blue-400">{searchQuery ? "" : randomMessage.accent}</span>
+                            <span className="text-blue-600 dark:text-blue-400">{searchQuery ? "" : randomMessage.accent}</span>
                         </h2>
-                        <p className="text-slate-600 dark:text-slate-400 max-w-sm mx-auto text-sm leading-relaxed">
+                        <p className="text-slate-500 dark:text-zinc-400 max-w-sm mx-auto text-xs font-medium leading-relaxed">
                             {searchQuery 
                                 ? `We couldn't find any doubts matching "${searchQuery}". Try a different keyword or subject.`
                                 : filter === "All"
@@ -363,24 +337,24 @@ export default function PublicRoomsPage() {
                         </p>
                     </div>
 
-                    <div className="relative z-10 flex flex-col items-center gap-3">
+                    <div className="relative flex flex-col items-center gap-3">
                         {searchQuery ? (
                             <button
                                 onClick={() => setSearchVal("")}
-                                className="group flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition-all duration-200 shadow-lg shadow-blue-600/30 active:scale-95"
+                                className="flex items-center gap-3 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98]"
                             >
                                 Clear Search
                             </button>
                         ) : (
                             <button
                                 onClick={() => setIsAskModalOpen(true)}
-                                className="group flex items-center gap-3 px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition-all duration-200 shadow-lg shadow-blue-600/30 active:scale-95"
+                                className="group flex items-center gap-3 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98]"
                             >
                                 <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
                                 Be the first to ask
                             </button>
                         )}
-                        <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest">Anonymous · No login needed</p>
+                        <p className="text-slate-400 dark:text-zinc-500 text-[10px] font-bold uppercase tracking-wider">Anonymous · No login needed</p>
                     </div>
                 </div>
             )}

@@ -1,20 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams, useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { useAppUser } from "../../provider";
 import {
     Brain,
     MessageSquare,
     TrendingUp,
     Users,
-    Settings,
     Plus,
     Loader2,
     Sparkles,
     ChevronLeft,
     School,
-    GraduationCap,
     Copy,
     Check,
     Calendar,
@@ -29,11 +28,11 @@ import {
     Target,
     Search,
     Trophy,
-    Medal
+    Medal,
+    GraduationCap
 } from "lucide-react";
 import AskDoubt from "@/components/AskDoubt";
 import DoubtCard from "@/components/DoubtCard";
-import Dashboard from "@/app/dashboard/page"; // We can reuse or adapt the Analytics view
 import AskAIView from "../../../components/AskAIView";
 import ExportButton from "@/components/ExportButton";
 import DoubtSortSelect, { DoubtSortValue } from "@/components/DoubtSortSelect";
@@ -97,7 +96,7 @@ export default function ClassroomPage() {
     };
 
     const getKey = (pageIndex: number, previousPageData: any[]) => {
-        if (previousPageData && !previousPageData.length) return null; // reached the end
+        if (previousPageData && !previousPageData.length) return null;
         if (activeTab === 'insights') return null;
         const params = new URLSearchParams({
             classroomId: String(id),
@@ -113,7 +112,7 @@ export default function ClassroomPage() {
         return `/api/doubts?${params.toString()}`;
     };
 
-    const { data, error, isLoading: doubtsLoading, size, setSize, mutate } = useSWRInfinite(getKey, fetcher, {
+    const { data, isLoading: doubtsLoading, size, setSize, mutate } = useSWRInfinite(getKey, fetcher, {
         revalidateFirstPage: false
     });
 
@@ -128,6 +127,13 @@ export default function ClassroomPage() {
             setSize(size + 1);
         }
     }, [inView, isReachingEnd, isLoadingMore]);
+
+    useHotkeys("n", (e) => {
+        e.preventDefault();
+        setIsAskModalOpen(true);
+    }, {
+        enableOnFormTags: false,
+    });
 
     useEffect(() => {
         initialFetch();
@@ -151,20 +157,7 @@ export default function ClassroomPage() {
         }
     };
 
-    const fetchClassroom = async () => {
-        // This is now handled by initialFetch, but keeping a simplified version for refresh if needed
-        try {
-            const res = await fetch(`/api/rooms/${id}`);
-            const data = await res.json();
-            if (res.ok) setClassroom(data);
-        } catch (err) {
-            console.error("Error refreshing classroom:", err);
-        }
-    };
-
     useEffect(() => {
-        // SWR will handle refetching automatically when the key changes.
-        // We can still call mutate() if we want to force a refresh.
         mutate();
     }, [activeTab, tagFilter, searchQuery, subjectFilter]);
 
@@ -183,8 +176,8 @@ export default function ClassroomPage() {
 
     if (loading) {
         return (
-            <div className="h-[calc(100vh-80px)] flex items-center justify-center">
-                <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+            <div className="h-[calc(100vh-80px)] flex items-center justify-center bg-white dark:bg-black transition-colors duration-500">
+                <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
             </div>
         );
     }
@@ -192,21 +185,20 @@ export default function ClassroomPage() {
     if (!classroom) return null;
 
     return (
-        <div className="relative overflow-hidden">
-            {/* Header / Banner */}
-            <div className="relative z-10 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 pt-4 sm:pt-6 pb-4 sm:pb-6 px-4 sm:px-6 md:px-12 overflow-hidden">
-                <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/5 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3" />
+        <div className="min-h-screen bg-white dark:bg-black text-slate-900 dark:text-zinc-100 transition-colors duration-500 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/10 dark:from-blue-500/5 blur-[120px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0" />
 
-                <div className="max-w-7xl mx-auto relative z-10">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div className="sticky top-0 z-40 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-slate-100 dark:border-zinc-900/60 pt-4 sm:pt-6 pb-4 sm:pb-6 px-4 sm:px-6 md:px-12">
+                <div className="max-w-7xl mx-auto relative z-10 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <button
                             onClick={() => router.push("/rooms")}
-                            className="flex items-center gap-2 text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-black uppercase tracking-widest w-fit shrink-0"
+                            className="flex items-center gap-2 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-bold uppercase tracking-wider w-fit shrink-0"
                         >
                             <ChevronLeft className="w-4 h-4" /> Back to Campus
                         </button>
 
-                        <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
+                        <div className="flex items-center gap-3 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
                             <ExportButton 
                                 classroomId={String(id)} 
                                 classroomName={classroom?.name || ""} 
@@ -214,34 +206,33 @@ export default function ClassroomPage() {
                             />
                             <button
                                 onClick={() => setIsCodeModalOpen(true)}
-                                className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-all shadow-inner shrink-0"
+                                className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:text-slate-900 dark:hover:text-white transition-all duration-300 shadow-sm shrink-0"
                             >
-                                <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Class Code
+                                <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /> Class Code
                             </button>
                         </div>
                     </div>
 
-                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mt-4 min-w-0">
+                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 min-w-0">
                         <div className="space-y-4 min-w-0">
                             <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-                                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl font-black italic shrink-0">
-                                    {classroom.name.charAt(0)}
+                                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl flex items-center justify-center text-xl sm:text-2xl font-black shrink-0 shadow-md shadow-blue-500/10">
+                                    {classroom.name.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase italic tracking-tighter truncate sm:overflow-visible sm:whitespace-normal">
+                                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight truncate">
                                         {classroom.name}
                                     </h1>
-                                    <div className="flex items-center gap-2 sm:gap-4 flex-wrap text-slate-600 dark:text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2">
+                                    <div className="flex items-center gap-2 sm:gap-4 flex-wrap text-slate-400 dark:text-zinc-500 text-[11px] font-bold uppercase tracking-wider mt-1">
                                         <span className="flex items-center gap-1.5"><School className="w-3.5 h-3.5 shrink-0" /> {classroom.university}</span>
                                         <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 shrink-0" /> {classroom.year}</span>
-                                        <span className="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/10">{classroom.role}</span>
+                                        <span className="flex items-center gap-1.5 bg-slate-50 dark:bg-zinc-900 px-2 py-0.5 rounded-md border border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400">{classroom.role}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Navigation Tabs */}
-                        <div className="flex items-center gap-3 overflow-x-auto whitespace-nowrap scroll-smooth pb-2 scrollbar-hide w-full xl:w-auto max-w-full">
+                        <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 scrollbar-hide w-full xl:w-auto max-w-full">
                             {[
                                 { id: "ask-ai", label: "Ask AI", icon: Brain },
                                 { id: "community", label: "Community", icon: MessageSquare },
@@ -251,7 +242,7 @@ export default function ClassroomPage() {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 whitespace-nowrap ${ activeTab === tab.id ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" : "bg-white/5 border-white/10 text-slate-400 hover:bg-white/10 hover:text-white" }`}
+                                    className={`flex items-center gap-2.5 px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 border shrink-0 whitespace-nowrap ${ activeTab === tab.id ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-600/10" : "bg-white dark:bg-zinc-950/20 border-slate-200 dark:border-zinc-900 text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-900/40" }`}
                                 >
                                     <tab.icon className="w-4 h-4 shrink-0" /> {tab.label}
                                 </button>
@@ -261,18 +252,17 @@ export default function ClassroomPage() {
                 </div>
             </div>
 
-            {/* Content Area */}
-            <div className="max-w-7xl mx-auto px-4 md:px-12 pb-2 flex justify-end">
+            <div className="max-w-7xl mx-auto px-4 md:px-12 pb-2 flex justify-end relative z-10 mt-6">
                 {activeTab !== "ask-ai" && activeTab !== "insights" && (
                     <DoubtSortSelect value={sort} onValueChange={updateSort} />
                 )}
             </div>
 
-            <div className="max-w-7xl mx-auto p-4 md:py-8 md:px-12">
+            <div className="max-w-7xl mx-auto p-4 md:py-6 md:px-12 relative z-10">
                 {activeTab === "ask-ai" && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-10">
-                        <div className="space-y-8">
-                            <h2 className="text-2xl font-black uppercase italic tracking-tight text-center">ASK <span className="text-blue-500">AI Teacher</span></h2>
+                        <div className="space-y-6">
+                            <h2 className="text-xl font-bold tracking-tight text-center">ASK <span className="text-blue-600 dark:text-blue-400">AI Teacher</span></h2>
                             <div className="max-w-3xl mx-auto">
                                 <AskAIView 
                                     classroomId={Number(id)} 
@@ -282,20 +272,17 @@ export default function ClassroomPage() {
                             </div>
                         </div>
 
-                        {/* Recent AI Queries List */}
-                        <div className="space-y-8">
-                            <div className="flex items-center gap-6">
-                                <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent"></div>
-                                <div className="flex flex-col items-center">
-                                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-500/60 bg-blue-500/5 px-6 py-2 rounded-full border border-blue-500/10">Neural Resolve History</h3>
-                                </div>
-                                <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent"></div>
+                        <div className="space-y-6">
+                            <div className="flex items-center gap-4">
+                                <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-800 to-transparent"></div>
+                                <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 bg-slate-50 dark:bg-zinc-900 px-4 py-1.5 rounded-full border border-slate-200 dark:border-zinc-800">Neural Resolve History</h3>
+                                <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-800 to-transparent"></div>
                             </div>
 
                             {doubtsLoading ? (
-                                <div className="flex justify-center p-12"><Loader2 className="w-6 h-6 text-blue-500 animate-spin" /></div>
+                                <div className="flex justify-center p-12"><Loader2 className="w-5 h-5 text-purple-500 animate-spin" /></div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {Array.isArray(doubts) && doubts.filter((d: any) => d.type === 'ai').map((doubt: any) => (
                                         <DoubtCard
                                             key={doubt.id}
@@ -309,7 +296,7 @@ export default function ClassroomPage() {
                                         />
                                     ))}
                                     {Array.isArray(doubts) && doubts.filter((d: any) => d.type === 'ai').length === 0 && (
-                                        <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-xs font-bold uppercase tracking-widest opacity-30">
+                                        <div className="col-span-full py-12 text-center text-slate-400 dark:text-zinc-600 text-xs font-semibold uppercase tracking-wider">
                                             No resolved AI queries in this classroom yet.
                                         </div>
                                     )}
@@ -320,67 +307,65 @@ export default function ClassroomPage() {
                 )}
 
                 {activeTab === "community" && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-12">
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 bg-white/[0.02] border border-slate-200 dark:border-white/5 p-4 rounded-[2rem]">
-                            <h2 className="text-2xl font-black uppercase italic tracking-tight px-4">Classroom <span className="text-blue-500">Board</span></h2>
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 p-4 rounded-xl shadow-sm">
+                            <h2 className="text-lg font-bold tracking-tight px-2">Classroom Board</h2>
 
-                            <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-950/50 p-1.5 rounded-2xl border border-slate-200 dark:border-white/5">
+                            <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800">
                                 <button
                                     onClick={() => setDoubtFilter('unsolved')}
-                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${ doubtFilter === 'unsolved' ? "bg-red-500/10 text-red-500 border border-red-500/20" : "text-slate-500 hover:text-white" }`}
+                                    className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${ doubtFilter === 'unsolved' ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200" }`}
                                 >
                                     Unsolved
                                 </button>
                                 <button
                                     onClick={() => setDoubtFilter('in-progress')}
-                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${ doubtFilter === 'in-progress' ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : "text-slate-500 hover:text-white" }`}
+                                    className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${ doubtFilter === 'in-progress' ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200" }`}
                                 >
                                     In Progress
                                 </button>
                                 <button
                                     onClick={() => setDoubtFilter('solved')}
-                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${ doubtFilter === 'solved' ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "text-slate-500 hover:text-white" }`}
+                                    className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${ doubtFilter === 'solved' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200" }`}
                                 >
                                     Resolved
                                 </button>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
                                 <input
                                     type="text"
                                     value={tagFilter}
                                     onChange={(e) => setTagFilter(e.target.value)}
                                     placeholder="Filter tag"
-                                    className="w-32 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-[10px] font-bold text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50"
+                                    className="w-full sm:w-32 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/50"
                                 />
                                 {tagFilter && (
                                     <button
                                         onClick={() => setTagFilter("")}
-                                        className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                        className="text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                                     >
                                         Clear
                                     </button>
                                 )}
+                                <button
+                                    onClick={() => setIsAskModalOpen(true)}
+                                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-md shadow-blue-600/10 flex items-center gap-2 shrink-0"
+                                >
+                                    <Plus className="w-4 h-4" /> New Post
+                                </button>
                             </div>
-
-                            <button
-                                onClick={() => setIsAskModalOpen(true)}
-                                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center gap-2 shrink-0"
-                            >
-                                <Plus className="w-4 h-4" /> New Post
-                            </button>
                         </div>
 
-                        {/* Search and Subject Filters */}
                         <div className="flex flex-col md:flex-row items-center gap-4">
                             <div className="relative flex-1 w-full group">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-zinc-600 group-focus-within:text-blue-500 transition-colors" />
                                 <input 
                                     type="text"
                                     placeholder="Search classroom board..."
                                     value={searchVal}
                                     onChange={(e) => setSearchVal(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-11 pr-4 text-[11px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/50 transition-all shadow-inner"
+                                    className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-3 pl-11 pr-4 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all"
                                 />
                             </div>
                             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide w-full md:w-auto">
@@ -388,10 +373,10 @@ export default function ClassroomPage() {
                                     <button
                                         key={s}
                                         onClick={() => setSubjectFilter(s)}
-                                        className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${
+                                        className={`px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all border shrink-0 ${
                                             subjectFilter === s 
-                                            ? "bg-blue-600/20 border-blue-500/50 text-blue-400" 
-                                            : "bg-white/5 border-white/10 text-slate-500 hover:bg-white/10 hover:text-white"
+                                            ? "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400" 
+                                            : "bg-white dark:bg-zinc-950/20 border-slate-200 dark:border-zinc-900 text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-900/40"
                                         }`}
                                     >
                                         {s}
@@ -402,18 +387,18 @@ export default function ClassroomPage() {
 
                         {doubtsLoading ? (
                             <div className="h-[300px] flex items-center justify-center">
-                                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                                <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
                             </div>
                         ) : doubts.length === 0 ? (
-                            <div className="py-24 text-center space-y-6 bg-slate-100 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[3rem] animate-in fade-in duration-500">
-                                <div className="w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-2 border border-white/5">
-                                    <MessageSquare className="w-10 h-10 text-slate-700 mx-auto" />
+                            <div className="py-20 text-center space-y-4 bg-slate-50/30 dark:bg-zinc-950/10 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl">
+                                <div className="w-16 h-16 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-sm">
+                                    <MessageSquare className="w-7 h-7 text-slate-400 dark:text-zinc-600" />
                                 </div>
-                                <div className="space-y-2">
-                                    <h3 className="text-xl font-black uppercase italic tracking-tight text-slate-900 dark:text-white">
+                                <div className="space-y-1">
+                                    <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
                                         {searchQuery ? "No matching doubts" : "No community posts yet."}
                                     </h3>
-                                    <p className="text-slate-500 font-medium text-xs max-w-xs mx-auto leading-relaxed">
+                                    <p className="text-slate-500 dark:text-zinc-400 text-xs font-medium max-w-sm mx-auto leading-relaxed">
                                         {searchQuery 
                                             ? `We couldn't find anything for "${searchQuery}" in this classroom.` 
                                             : "Be the first to start a discussion or ask a question to your classmates."}
@@ -422,29 +407,29 @@ export default function ClassroomPage() {
                                 {searchQuery ? (
                                     <button 
                                         onClick={() => setSearchVal("")}
-                                        className="px-8 py-3 bg-white/5 hover:bg-slate-200 dark:hover:bg-white text-slate-500 hover:text-slate-950 dark:hover:text-slate-950 border border-slate-200 dark:border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all mx-auto block"
+                                        className="px-5 py-2 bg-white dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-200 dark:border-zinc-800 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 mx-auto block shadow-sm"
                                     >
                                         Clear Search
                                     </button>
                                 ) : (
-                                    <button onClick={() => setIsAskModalOpen(true)} className="text-blue-500 font-black uppercase tracking-widest text-[10px] hover:underline underline-offset-4 mx-auto block">Be the first to ask</button>
+                                    <button onClick={() => setIsAskModalOpen(true)} className="text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider text-xs hover:underline underline-offset-4 mx-auto block transition-all">Be the first to ask</button>
                                 )}
                             </div>
                         ) : (
                             <div className="space-y-8 animate-in fade-in duration-500">
                                 {doubtFilter === 'unsolved' && (
-                                    <div className="space-y-8">
+                                    <div className="space-y-6">
                                         <div className="flex items-center gap-4">
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red-500/20 to-transparent"></div>
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-red-500/60 bg-red-500/5 px-4 py-1.5 rounded-full border border-red-500/10">Unsolved Queries</h3>
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red-500/20 to-transparent"></div>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
+                                            <h3 className="text-[11px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-500/5 px-4 py-1.5 rounded-full border border-red-500/10">Unsolved Queries</h3>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "unsolved" || (!d.isSolved)).map((doubt: any) => (
                                                 <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
-                                             ))}
+                                            ))}
                                             {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "unsolved" || (!d.isSolved)).length === 0) && (
-                                                <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
+                                                <div className="col-span-full py-12 text-center text-slate-400 dark:text-zinc-600 text-xs font-semibold uppercase tracking-wider opacity-60">
                                                     No unsolved queries in this category.
                                                 </div>
                                             )}
@@ -452,18 +437,18 @@ export default function ClassroomPage() {
                                     </div>
                                 )}
                                 {doubtFilter === 'in-progress' && (
-                                    <div className="space-y-8">
+                                    <div className="space-y-6">
                                         <div className="flex items-center gap-4">
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"></div>
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-500/60 bg-amber-500/5 px-4 py-1.5 rounded-full border border-amber-500/10">In Progress</h3>
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"></div>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
+                                            <h3 className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/5 px-4 py-1.5 rounded-full border border-amber-500/10">In Progress</h3>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "in-progress").map((doubt: any) => (
                                                 <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
-                                             ))}
+                                            ))}
                                             {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "in-progress").length === 0) && (
-                                                <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
+                                                <div className="col-span-full py-12 text-center text-slate-400 dark:text-zinc-600 text-xs font-semibold uppercase tracking-wider opacity-60">
                                                     No doubts in progress right now.
                                                 </div>
                                             )}
@@ -471,18 +456,18 @@ export default function ClassroomPage() {
                                     </div>
                                 )}
                                 {doubtFilter === 'solved' && (
-                                    <div className="space-y-8">
+                                    <div className="space-y-6">
                                         <div className="flex items-center gap-4">
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500/60 bg-emerald-500/5 px-4 py-1.5 rounded-full border border-emerald-500/10">Resolved & Validated</h3>
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
+                                            <h3 className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 px-4 py-1.5 rounded-full border border-emerald-500/10">Resolved & Validated</h3>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "solved").map((doubt: any) => (
                                                 <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
                                             ))}
                                             {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "solved").length === 0) && (
-                                                <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
+                                                <div className="col-span-full py-12 text-center text-slate-400 dark:text-zinc-600 text-xs font-semibold uppercase tracking-wider opacity-60">
                                                     No resolved queries yet.
                                                 </div>
                                             )}
@@ -495,71 +480,69 @@ export default function ClassroomPage() {
                 )}
 
                 {activeTab === "teacher-doubts" && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-12">
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 bg-white/[0.02] border border-slate-200 dark:border-white/5 p-4 rounded-[2rem]">
-                            <h2 className="text-2xl font-black uppercase italic tracking-tight px-4">
-                                {classroom?.role === 'teacher' ? <><span className="text-purple-500">Students</span> Doubts</> : <>Direct <span className="text-purple-500">Teacher Doubts</span></>}
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 p-4 rounded-xl shadow-sm">
+                            <h2 className="text-lg font-bold tracking-tight px-2">
+                                {classroom?.role === 'teacher' ? <>Students Doubts</> : <>Direct Teacher Doubts</>}
                             </h2>
 
-                            <div className="flex items-center gap-2 bg-white/50 dark:bg-slate-950/50 p-1.5 rounded-2xl border border-slate-200 dark:border-white/5">
+                            <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800">
                                 <button
                                     onClick={() => setDoubtFilter('unsolved')}
-                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${ doubtFilter === 'unsolved' ? "bg-red-500/10 text-red-500 border border-red-500/20" : "text-slate-500 hover:text-white" }`}
+                                    className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${ doubtFilter === 'unsolved' ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200" }`}
                                 >
                                     Unsolved
                                 </button>
                                 <button
                                     onClick={() => setDoubtFilter('in-progress')}
-                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${ doubtFilter === 'in-progress' ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : "text-slate-500 hover:text-white" }`}
+                                    className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${ doubtFilter === 'in-progress' ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200" }`}
                                 >
                                     In Progress
                                 </button>
                                 <button
                                     onClick={() => setDoubtFilter('solved')}
-                                    className={`px-6 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${ doubtFilter === 'solved' ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "text-slate-500 hover:text-white" }`}
+                                    className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${ doubtFilter === 'solved' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200" }`}
                                 >
                                     Resolved
                                 </button>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
                                 <input
                                     type="text"
                                     value={tagFilter}
                                     onChange={(e) => setTagFilter(e.target.value)}
                                     placeholder="Filter tag"
-                                    className="w-32 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2.5 text-[10px] font-bold text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500/50"
+                                    className="w-full sm:w-32 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/50"
                                 />
                                 {tagFilter && (
                                     <button
                                         onClick={() => setTagFilter("")}
-                                        className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                                        className="text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                                     >
                                         Clear
                                     </button>
                                 )}
+                                {classroom?.role !== 'teacher' && (
+                                    <button
+                                        onClick={() => setIsAskModalOpen(true)}
+                                        className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-md shadow-purple-600/10 flex items-center gap-2 shrink-0"
+                                    >
+                                        <Plus className="w-4 h-4" /> Ask Teacher
+                                    </button>
+                                )}
                             </div>
-
-                            {classroom?.role !== 'teacher' && (
-                                <button
-                                    onClick={() => setIsAskModalOpen(true)}
-                                    className="px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all flex items-center gap-2 shrink-0"
-                                >
-                                    <Plus className="w-4 h-4" /> Ask Teacher
-                                </button>
-                            )}
                         </div>
 
-                        {/* Search and Subject Filters */}
                         <div className="flex flex-col md:flex-row items-center gap-4">
                             <div className="relative flex-1 w-full group">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-purple-500 transition-colors" />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-zinc-600 group-focus-within:text-purple-500 transition-colors" />
                                 <input 
                                     type="text"
                                     placeholder="Search teacher queries..."
                                     value={searchVal}
                                     onChange={(e) => setSearchVal(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-11 pr-4 text-[11px] font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-purple-500/50 transition-all shadow-inner"
+                                    className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-3 pl-11 pr-4 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/50 transition-all"
                                 />
                             </div>
                             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide w-full md:w-auto">
@@ -567,10 +550,10 @@ export default function ClassroomPage() {
                                     <button
                                         key={s}
                                         onClick={() => setSubjectFilter(s)}
-                                        className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border shrink-0 ${
+                                        className={`px-4 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all border shrink-0 ${
                                             subjectFilter === s 
-                                            ? "bg-purple-600/20 border-purple-500/50 text-purple-400" 
-                                            : "bg-white/5 border-white/10 text-slate-500 hover:bg-white/10 hover:text-white"
+                                            ? "bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400" 
+                                            : "bg-white dark:bg-zinc-950/20 border-slate-200 dark:border-zinc-900 text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-900/40"
                                         }`}
                                     >
                                         {s}
@@ -581,29 +564,29 @@ export default function ClassroomPage() {
 
                         {doubtsLoading ? (
                             <div className="h-[300px] flex items-center justify-center">
-                                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                                <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
                             </div>
                         ) : (
                             <div className="space-y-8 animate-in fade-in duration-500">
                                 {doubtFilter === 'unsolved' && (
-                                    <div className="space-y-8">
+                                    <div className="space-y-6">
                                         <div className="flex items-center gap-4">
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red-500/20 to-transparent"></div>
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-red-500/60 bg-red-500/5 px-4 py-1.5 rounded-full border border-red-500/10">Unsolved Doubts</h3>
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-red-500/20 to-transparent"></div>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
+                                            <h3 className="text-[11px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-500/5 px-4 py-1.5 rounded-full border border-red-500/10">Unsolved Doubts</h3>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "unsolved" || (!d.isSolved)).map((doubt: any) => (
                                                 <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
                                             ))}
                                             {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "unsolved" || (!d.isSolved)).length === 0) && (
-                                                <div className="col-span-full py-24 text-center space-y-4 bg-slate-100 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[2.5rem]">
-                                                    <GraduationCap className="w-12 h-12 text-slate-700 mx-auto" />
-                                                    <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">
+                                                <div className="col-span-full py-20 text-center space-y-4 bg-slate-50/30 dark:bg-zinc-950/10 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm">
+                                                    <GraduationCap className="w-12 h-12 text-slate-400 dark:text-zinc-600 mx-auto" />
+                                                    <p className="text-slate-500 dark:text-zinc-400 font-semibold text-xs uppercase tracking-wider">
                                                         {classroom?.role === 'teacher' ? "No unsolved doubts from students." : "No unsolved teacher doubts."}
                                                     </p>
                                                     {classroom?.role !== 'teacher' && (
-                                                        <button onClick={() => setIsAskModalOpen(true)} className="text-purple-500 font-black uppercase tracking-widest text-[10px] hover:underline underline-offset-4">Send the first query</button>
+                                                        <button onClick={() => setIsAskModalOpen(true)} className="text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider text-xs hover:underline underline-offset-4">Send the first query</button>
                                                     )}
                                                 </div>
                                             )}
@@ -611,18 +594,18 @@ export default function ClassroomPage() {
                                     </div>
                                 )}
                                 {doubtFilter === 'in-progress' && (
-                                    <div className="space-y-8">
+                                    <div className="space-y-6">
                                         <div className="flex items-center gap-4">
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"></div>
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-500/60 bg-amber-500/5 px-4 py-1.5 rounded-full border border-amber-500/10">In Progress</h3>
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-amber-500/20 to-transparent"></div>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r vom-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
+                                            <h3 className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/5 px-4 py-1.5 rounded-full border border-amber-500/10">In Progress</h3>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r vom-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "in-progress").map((doubt: any) => (
                                                 <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
                                             ))}
                                             {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "in-progress").length === 0) && (
-                                                <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
+                                                <div className="col-span-full py-12 text-center text-slate-400 dark:text-zinc-600 text-xs font-semibold uppercase tracking-wider opacity-60">
                                                     No teacher doubts in progress right now.
                                                 </div>
                                             )}
@@ -630,18 +613,18 @@ export default function ClassroomPage() {
                                     </div>
                                 )}
                                 {doubtFilter === 'solved' && (
-                                    <div className="space-y-8">
+                                    <div className="space-y-6">
                                         <div className="flex items-center gap-4">
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-emerald-500/60 bg-emerald-500/5 px-4 py-1.5 rounded-full border border-emerald-500/10">Teacher Resolved</h3>
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r vom-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
+                                            <h3 className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 px-4 py-1.5 rounded-full border border-emerald-500/10">Teacher Resolved</h3>
+                                            <div className="h-[1px] flex-1 bg-gradient-to-r vom-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
                                         </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             {Array.isArray(doubts) && doubts.filter((d: any) => d.isSolved === "solved").map((doubt: any) => (
                                                 <DoubtCard key={doubt.id} doubt={doubt} role={classroom?.role} onUpdate={() => mutate()} />
                                             ))}
                                             {(!Array.isArray(doubts) || doubts.filter((d: any) => d.isSolved === "solved").length === 0) && (
-                                                <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
+                                                <div className="col-span-full py-12 text-center text-slate-400 dark:text-zinc-600 text-xs font-semibold uppercase tracking-wider opacity-60">
                                                     No resolved queries yet.
                                                 </div>
                                             )}
@@ -655,14 +638,13 @@ export default function ClassroomPage() {
 
                 {activeTab === "insights" && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                         {/* We can pass classroomId to the dashboard view */}
                          <ClassroomInsightsView classroomId={Number(id)} role={classroom?.role} />
                     </div>
                 )}
 
                 {activeTab !== 'insights' && (
                     <div ref={loadMoreRef} className="py-8 flex justify-center">
-                        {isLoadingMore && <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />}
+                        {isLoadingMore && <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />}
                     </div>
                 )}
             </div>
@@ -683,35 +665,33 @@ export default function ClassroomPage() {
 
             {/* CLASS CODE MODAL */}
             {isCodeModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80 animate-in fade-in duration-300">
-                    <div className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-md rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 relative overflow-hidden">
-                         <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl bg-white/60 dark:bg-black/60 animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-900 w-full max-w-sm rounded-2xl p-6 md:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-slate-900 dark:text-zinc-100">
                          <div className="flex items-center justify-between">
-                            <div className="space-y-1">
-                                <h2 className="text-2xl font-black uppercase tracking-tighter">Access <span className="text-blue-500">Key</span></h2>
-                                <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-[9px]">Invite your students</p>
+                            <div className="space-y-0.5">
+                                <h2 className="text-xl font-bold tracking-tight">Access Key</h2>
+                                <p className="text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[10px]">Invite your students</p>
                             </div>
                             <button
                                 onClick={() => setIsCodeModalOpen(false)}
-                                className="p-2 text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                                className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-white transition-colors"
                                 aria-label="Close modal"
                             >
                                 <Plus className="w-5 h-5 rotate-45" />
                             </button>
                         </div>
 
-                        <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 relative group overflow-hidden">
-                            <div className="absolute inset-0 bg-blue-600/5 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <code className="text-3xl sm:text-4xl font-black text-blue-400 tracking-[0.2em] relative z-10 text-center sm:text-left">{classroom?.inviteCode}</code>
+                        <div className="bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between gap-4 relative group overflow-hidden shadow-inner">
+                            <code className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-wider relative z-10">{classroom?.inviteCode}</code>
 
                             <button
                                 onClick={copyCode}
-                                className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] relative z-10"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98] relative z-10"
                             >
                                 {copied ? (
-                                    <><Check className="w-4 h-4 text-slate-900 dark:text-white" /> Copied!</>
+                                    <><Check className="w-3.5 h-3.5" /> Copied!</>
                                 ) : (
-                                    <><Copy className="w-4 h-4 text-slate-900 dark:text-white" /> Copy Code</>
+                                    <><Copy className="w-3.5 h-3.5" /> Copy Key</>
                                 )}
                             </button>
                         </div>
@@ -722,7 +702,6 @@ export default function ClassroomPage() {
     );
 }
 
-// Simple implementations for sub-views or we can extract them later
 function ClassroomInsightsView({ classroomId, role }: { classroomId: number, role?: string }) {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -731,7 +710,7 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
 
     const fetchData = () => {
         setLoading(true);
-        fetch(`/api/analytics?classroomId=${classroomId}`)
+        fetch(`/api/analytics?classroomId={classroomId}`)
             .then(res => res.json())
             .then(d => {
                 setData(d);
@@ -743,78 +722,74 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
         fetchData();
     }, [classroomId]);
 
-    if (loading) return <div className="flex justify-center p-20"><Loader2 className="w-8 h-8 text-blue-500 animate-spin" /></div>;
+    if (loading) return <div className="flex justify-center p-20"><Loader2 className="w-6 h-6 text-purple-500 animate-spin" /></div>;
 
-    const solvedCount = data?.solvedStats.find((s: any) => s.status === 'solved')?.count || 0;
-    const unsolvedCount = data?.solvedStats.find((s: any) => s.status !== 'solved')?.count || 0;
+    const solvedCount = data?.solvedStats?.find((s: any) => s.status === 'solved')?.count || 0;
+    const unsolvedCount = data?.solvedStats?.find((s: any) => s.status !== 'solved')?.count || 0;
     const totalDoubtStats = Number(solvedCount) + Number(unsolvedCount);
     const solvedPercentage = totalDoubtStats > 0 ? (Number(solvedCount) / totalDoubtStats) * 100 : 0;
 
     return (
         <div className="space-y-10 animate-in fade-in duration-700">
-            {/* AI Learning Mentor for Students */}
             {!isTeacher && (
                 <PersonalMentorView classroomId={classroomId} />
             )}
 
-            {/* Header with Refresh */}
             <div className="flex items-center justify-between px-2">
-                <div className="space-y-1">
-                    <h2 className="text-3xl font-black uppercase italic tracking-tighter">Live Classroom <span className="text-blue-500">Pulse</span></h2>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-500">Real-time pedagogical analytics & student engagement</p>
+                <div className="space-y-0.5">
+                    <h2 className="text-xl font-bold tracking-tight">Live Classroom Pulse</h2>
+                    <p className="text-xs text-slate-400 dark:text-zinc-500 font-medium">Real-time pedagogical analytics & student engagement</p>
                 </div>
                 <button
                     onClick={fetchData}
                     disabled={loading}
-                    className="flex items-center gap-2 px-6 py-3 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-white/10 hover:text-blue-400 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                 >
-                    <Activity className={`w-3.5 h-3.5 ${loading ? 'animate-pulse text-blue-500' : 'group-hover:rotate-12'} transition-all`} />
+                    <Activity className={`w-3.5 h-3.5 ${loading ? 'animate-pulse text-purple-500' : ''}`} />
                     {loading ? 'Analyzing...' : 'Refresh Data'}
                 </button>
             </div>
 
-            {/* 1. Executive Summary Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {[
-                    { label: "Active Students", value: data?.engagement?.totalStudents || 0, icon: Users, color: "blue" },
-                    { label: "Total Queries", value: data?.engagement?.totalDoubts || 0, icon: MessageSquare, color: "purple" },
-                    { label: "Community Wisdom", value: data?.engagement?.totalReplies || 0, icon: Activity, color: "emerald" },
+                    { label: "Active Students", value: data?.engagement?.totalStudents || 0, icon: Users, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10", border: "border-slate-200 dark:border-zinc-900" },
+                    { label: "Total Queries", value: data?.engagement?.totalDoubts || 0, icon: MessageSquare, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-500/10", border: "border-slate-200 dark:border-zinc-900" },
+                    { label: "Community Wisdom", value: data?.engagement?.totalReplies || 0, icon: Activity, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10", border: "border-slate-200 dark:border-zinc-900" },
                 ].map((stat, i) => (
-                    <div key={i} className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-8 flex items-center justify-between group hover:bg-white/[0.07] transition-all">
+                    <div key={i} className={`bg-white/50 dark:bg-zinc-950/30 border ${stat.border} rounded-2xl p-6 backdrop-blur-md flex items-center justify-between hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-slate-200/5 dark:shadow-none group`}>
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-500 mb-1">{stat.label}</p>
-                            <h4 className="text-4xl font-black italic tracking-tighter">{stat.value}</h4>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mb-0.5">{stat.label}</p>
+                            <h4 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">{stat.value}</h4>
                         </div>
-                        <div className={`w-14 h-14 rounded-2xl bg-${stat.color}-500/10 flex items-center justify-center border border-${stat.color}-500/20 group-hover:scale-110 transition-transform`}>
-                            <stat.icon className={`w-6 h-6 text-${stat.color}-500`} />
+                        <div className={`p-3.5 ${stat.bg} rounded-xl`}>
+                            <stat.icon className={`w-5 h-5 ${stat.color}`} />
                         </div>
                     </div>
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12">
-                {/* 2. Difficulty Heatmap / Most Confusing Topics */}
-                <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-10 space-y-6 sm:space-y-8">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-lg sm:text-xl font-black uppercase italic tracking-tight flex items-center gap-2 sm:gap-3">
-                            <Layers className="w-5 h-5 text-orange-500" /> Topic Difficulty Heatmap
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-white/50 dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 backdrop-blur-xl flex flex-col justify-between shadow-xl shadow-slate-200/5 dark:shadow-none">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider flex items-center gap-2">
+                            <Layers className="w-4 h-4 text-orange-500" /> Topic Difficulty Heatmap
                         </h3>
-                        <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-500 tracking-widest">By Doubt Volume</span>
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">By Doubt Volume</span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {data?.mostAskedTopics.map((topic: any, i: number) => {
+                    <div className="grid grid-cols-2 gap-4">
+                        {data?.mostAskedTopics?.map((topic: any, i: number) => {
                             const intensity = Math.min(Number(topic.count) * 10, 100);
                             return (
-                                <div key={i} className="p-4 rounded-2xl border border-slate-200 dark:border-white/5 relative overflow-hidden group">
+                                <div key={i} className="p-4 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 relative overflow-hidden shadow-sm">
                                     <div
-                                        className="absolute inset-0 bg-red-500 transition-opacity duration-500 pointer-events-none"
+                                        className="absolute inset-0 bg-red-500 pointer-events-none"
                                         style={{ opacity: intensity / 300 }}
                                     />
-                                    <div className="relative z-10 space-y-2">
-                                        <p className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">{topic.subject}</p>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-[9px] font-black text-slate-500 dark:text-slate-500 uppercase tracking-widest">{topic.count} Doubts</span>
-                                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${ topic.severity === 'High' ? 'bg-red-500/20 text-red-500' : topic.severity === 'Medium' ? 'bg-orange-500/20 text-orange-500' : 'bg-emerald-500/20 text-emerald-500' }`}>
+                                    <div className="relative z-10 space-y-1">
+                                        <p className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">{topic.subject}</p>
+                                        <div className="flex items-center justify-between pt-1">
+                                            <span className="text-[10px] font-medium text-slate-400 dark:text-zinc-500">{topic.count} Doubts</span>
+                                            <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${ topic.severity === 'High' ? 'bg-red-500/10 text-red-600 dark:text-red-400' : topic.severity === 'Medium' ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' }`}>
                                                 {topic.severity}
                                             </span>
                                         </div>
@@ -825,80 +800,85 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                     </div>
                 </div>
 
-                {/* 3. Resolved vs Unresolved Doubts */}
-                <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-10 space-y-6 sm:space-y-10">
-                    <h3 className="text-lg sm:text-xl font-black uppercase italic tracking-tight flex items-center gap-2 sm:gap-3">
-                        <PieChart className="w-5 h-5 text-emerald-500" /> Resolution Pulse
+                <div className="bg-white/50 dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 backdrop-blur-xl flex flex-col justify-between shadow-xl shadow-slate-200/5 dark:shadow-none">
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider flex items-center gap-2 mb-4">
+                        <PieChart className="w-4 h-4 text-emerald-500" /> Resolution Pulse
                     </h3>
-                    <div className="flex flex-col items-center justify-center py-4 space-y-6 sm:space-y-8">
-                        <div className="relative w-48 h-48 flex items-center justify-center">
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-8 py-2">
+                        <div className="relative w-36 h-36 flex items-center justify-center shrink-0">
                             <svg className="w-full h-full transform -rotate-90">
-                                <circle cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/5" />
+                                <circle cx="72" cy="72" r="64" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-100 dark:text-zinc-900" />
                                 <circle
-                                    cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent"
-                                    strokeDasharray={2 * Math.PI * 80}
-                                    strokeDashoffset={2 * Math.PI * 80 * (1 - solvedPercentage / 100)}
+                                    cx="72"
+                                    cy="72"
+                                    r="64"
+                                    stroke="currentColor"
+                                    strokeWidth="10"
+                                    fill="transparent"
+                                    strokeDasharray={2 * Math.PI * 64}
+                                    strokeDashoffset={2 * Math.PI * 64 * (1 - solvedPercentage / 100)}
                                     strokeLinecap="round"
                                     className="text-emerald-500 transition-all duration-1000"
                                 />
                             </svg>
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-4xl font-black italic tracking-tighter">{Math.round(solvedPercentage)}%</span>
-                                <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-500 tracking-widest">Resolved</span>
+                                <span className="text-2xl font-black tracking-tight">{Math.round(solvedPercentage)}%</span>
+                                <span className="text-[9px] font-bold uppercase text-slate-400 dark:text-zinc-500 tracking-wider">Resolved</span>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-12 w-full max-w-xs">
-                           <div className="text-center">
-                                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Solved</p>
-                                <p className="text-2xl font-black italic">{solvedCount}</p>
-                           </div>
-                           <div className="text-center">
-                                <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">Unsolved</p>
-                                <p className="text-2xl font-black italic">{unsolvedCount}</p>
-                           </div>
+                        <div className="flex flex-col gap-4 font-semibold text-sm w-full sm:w-auto">
+                            <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                                <div>
+                                    <p className="text-xs font-bold text-slate-800 dark:text-zinc-200">Solved Doubts</p>
+                                    <p className="text-slate-400 dark:text-zinc-500 text-[11px] mt-0.5">{solvedCount} queries</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 rounded-full bg-red-500" />
+                                <div>
+                                    <p className="text-xs font-bold text-slate-800 dark:text-zinc-200">Unsolved Doubts</p>
+                                    <p className="text-slate-400 dark:text-zinc-500 text-[11px] mt-0.5">{unsolvedCount} queries</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Top Contributors Leaderboard */}
-            <div className="bg-gradient-to-br from-amber-500/5 via-white/5 to-yellow-500/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-10 space-y-6 sm:space-y-8 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 blur-[100px] rounded-full translate-x-1/3 -translate-y-1/3 group-hover:bg-amber-500/10 transition-all duration-700" />
-                <div className="flex items-center justify-between relative z-10">
-                    <h3 className="text-lg sm:text-xl font-black uppercase italic tracking-tight flex items-center gap-2 sm:gap-3">
-                        <Trophy className="w-5 h-5 text-amber-400" /> Top Contributors
-                    </h3>
-                    <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-500 tracking-widest">Community Heroes</span>
-                </div>
+            <div className="bg-white/50 dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 rounded-2xl p-6 space-y-6 shadow-sm backdrop-blur-sm">
+                <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider flex items-center gap-2 border-b border-slate-100 dark:border-zinc-900 pb-4">
+                    <Trophy className="w-4 h-4 text-amber-500" /> Top Contributors
+                </h3>
                 {data?.topContributors && data.topContributors.length > 0 ? (
-                    <div className="space-y-3 relative z-10">
+                    <div className="grid gap-3">
                         {(() => {
                             const rankStyles = [
-                                { bg: 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20', border: 'border-amber-500/30', text: 'text-amber-400', icon: <Trophy className="w-5 h-5 text-amber-400" />, glow: 'shadow-lg shadow-amber-500/10' },
-                                { bg: 'bg-gradient-to-r from-slate-300/10 to-slate-400/10', border: 'border-slate-400/20', text: 'text-slate-300', icon: <Medal className="w-5 h-5 text-slate-700 dark:text-slate-300" />, glow: '' },
-                                { bg: 'bg-gradient-to-r from-orange-700/10 to-orange-600/10', border: 'border-orange-700/20', text: 'text-orange-400', icon: <Medal className="w-5 h-5 text-orange-400" />, glow: '' },
+                                { bg: 'bg-purple-500/[0.04] dark:bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-600 dark:text-purple-400', icon: <Trophy className="w-4 h-4 text-amber-500" /> },
+                                { bg: 'bg-slate-50/50 dark:bg-zinc-900/40', border: 'border-slate-200/60 dark:border-zinc-800/60', text: 'text-slate-500 dark:text-zinc-400', icon: <Medal className="w-4 h-4 text-slate-400 dark:text-zinc-400" /> },
+                                { bg: 'bg-slate-50/50 dark:bg-zinc-900/40', border: 'border-slate-200/60 dark:border-zinc-800/60', text: 'text-slate-500 dark:text-zinc-400', icon: <Medal className="w-4 h-4 text-orange-600 dark:text-orange-400" /> },
                             ];
                             return data.topContributors.map((contributor: any, i: number) => {
-                                const style = rankStyles[i] || { bg: 'bg-white/5', border: 'border-white/10', text: 'text-slate-400', icon: null, glow: '' };
+                                const style = rankStyles[i] || { bg: 'bg-slate-50/30 dark:bg-zinc-900/20', border: 'border-slate-100 dark:border-zinc-900', text: 'text-slate-400 dark:text-zinc-500', icon: null };
                                 return (
                                     <div
                                         key={`${contributor.name}-${i}`}
-                                        className={`flex items-center gap-4 sm:gap-5 ${style.bg} border ${style.border} rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:scale-[1.01] transition-all duration-300 ${style.glow}`}
+                                        className={`flex items-center gap-4 ${style.bg} border ${style.border} rounded-xl p-4 hover:scale-[1.005] transition-all duration-300 shadow-sm`}
                                     >
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${i < 3 ? style.bg : 'bg-white/10'} border ${style.border}`}>
-                                            {style.icon || <span className={`text-sm font-black ${style.text}`}>{i + 1}</span>}
+                                        <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 flex items-center justify-center shrink-0">
+                                            {style.icon || <span className="text-xs font-bold text-slate-400">{i + 1}</span>}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className={`text-sm font-black uppercase tracking-tight truncate ${i === 0 ? 'text-amber-300' : 'text-white'}`}>
+                                            <p className="text-xs font-bold truncate text-slate-900 dark:text-white uppercase tracking-wider">
                                                 {contributor.name}
                                             </p>
-                                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500 mt-0.5">
+                                            <p className="text-[10px] font-semibold text-slate-400 dark:text-zinc-500 mt-0.5">
                                                 {i === 0 ? '👑 Top Helper' : i === 1 ? '🥈 Rising Star' : i === 2 ? '🥉 Consistent' : `Rank #${i + 1}`}
                                             </p>
                                         </div>
                                         <div className="text-right shrink-0">
-                                            <p className={`text-2xl font-black italic tracking-tighter ${style.text}`}>{contributor.replyCount}</p>
-                                            <p className="text-[8px] font-black uppercase tracking-widest text-slate-600">Replies</p>
+                                            <p className="text-lg font-black text-purple-600 dark:text-purple-400 tracking-tight">{contributor.replyCount}</p>
+                                            <p className="text-[9px] font-bold uppercase text-slate-400 dark:text-zinc-500 tracking-wider">Replies</p>
                                         </div>
                                     </div>
                                 );
@@ -906,71 +886,66 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                         })()}
                     </div>
                 ) : (
-                    <div className="py-12 text-center space-y-3 relative z-10">
-                        <Trophy className="w-10 h-10 text-slate-700 mx-auto" />
-                        <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">No community replies yet. Be the first to help!</p>
+                    <div className="py-8 text-center space-y-2">
+                        <Trophy className="w-8 h-8 text-slate-300 dark:text-zinc-700 mx-auto" />
+                        <p className="text-slate-400 dark:text-zinc-500 font-semibold text-xs uppercase tracking-wider">No community replies yet. Be the first to help!</p>
                     </div>
                 )}
             </div>
 
-            {/* 4. Peak Doubt Time Heatmap */}
-            <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-10 space-y-6 sm:space-y-8">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <h3 className="text-lg sm:text-xl font-black uppercase italic tracking-tight flex items-center gap-2 sm:gap-3">
-                        <Clock className="w-5 h-5 text-purple-500" /> Peak Activity Timeline
+            <div className="bg-white/50 dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 backdrop-blur-xl shadow-xl shadow-slate-200/5 dark:shadow-none space-y-6">
+                <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-purple-500" /> Peak Activity Timeline
                     </h3>
                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                        <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-500 tracking-widest">Student Activity Hours</span>
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">Student Activity Hours</span>
                     </div>
                 </div>
-                <div className="overflow-x-auto pb-4 w-full scrollbar-hide">
-                    <div className="grid grid-cols-24 gap-1 h-32 items-end pt-4 min-w-[600px]">
-                        {Array.from({ length: 24 }).map((_, hour) => {
-                            const activity = data?.peakTime.find((p: any) => p.hour === hour)?.count || 0;
-                            const heightPercentage = Math.min((activity / 10) * 100, 100);
-                            return (
-                                <div key={hour} className="group relative flex flex-col items-center gap-2">
-                                    <div
-                                        className="w-full bg-gradient-to-t from-purple-600 to-blue-400 rounded-t-md hover:from-white hover:to-white transition-all duration-500"
-                                        style={{ height: `${Math.max(heightPercentage, 2)}%` }}
-                                    />
-                                    <span className="text-[7px] font-black text-slate-600 uppercase group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-                                        {hour}h
-                                    </span>
-                                    {/* Tooltip */}
-                                    <div className="absolute bottom-full mb-2 bg-white text-[#020617] p-2 rounded-lg text-[8px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                                        {activity} Doubts @ {hour}:00
-                                    </div>
+                <div className="grid grid-cols-24 gap-1 h-24 items-end pt-2">
+                    {Array.from({ length: 24 }).map((_, hour) => {
+                        const activity = data?.peakTime?.find((p: any) => p.hour === hour)?.count || 0;
+                        const heightPercentage = Math.min((activity / 10) * 100, 100);
+                        return (
+                            <div key={hour} className="group relative flex flex-col items-center h-full justify-end gap-1.5">
+                                <div
+                                    className="w-full bg-purple-500/80 dark:bg-purple-500/60 rounded-t-sm group-hover:bg-purple-600 transition-all duration-300"
+                                    style={{ height: `${Math.max(heightPercentage, 4)}%` }}
+                                />
+                                <span className="text-[8px] font-bold text-slate-400 dark:text-zinc-600">
+                                    {hour}
+                                </span>
+                                <div className="absolute bottom-full mb-1 bg-zinc-900 text-white px-2 py-1 rounded text-[9px] font-semibold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-30">
+                                    {activity} Doubts @ {hour}:00
                                 </div>
-                            );
-                        })}
-                    </div>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
-            {/* 5. AI Teaching Suggestions */}
-            <div className="space-y-8">
-                <h3 className="text-xl font-black uppercase italic tracking-tight flex items-center gap-3 px-2 mt-12 pb-4">
-                    <Zap className="w-5 h-5 text-yellow-400" /> AI Pedagogical Insights
+            <div className="space-y-4">
+                <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider flex items-center gap-2 px-2 mt-8">
+                    <Zap className="w-4 h-4 text-yellow-500" /> AI Pedagogical Insights
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {data?.mostAskedTopics.filter((t: any) => t.severity !== 'Low').length > 0 ? (
-                        data?.mostAskedTopics.filter((t: any) => t.severity !== 'Low').map((topic: any, i: number) => (
-                            <div key={i} className="bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 flex flex-col sm:flex-row items-start gap-4 sm:gap-6 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 p-4 border-l border-b border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded-bl-3xl">
-                                    <Lightbulb className="w-5 h-5 text-yellow-400" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {data?.mostAskedTopics?.filter((t: any) => t.severity !== 'Low').length > 0 ? (
+                        data?.mostAskedTopics?.filter((t: any) => t.severity !== 'Low').map((topic: any, i: number) => (
+                            <div key={i} className="bg-purple-500/[0.02] border border-slate-200 dark:border-zinc-900 rounded-2xl p-6 flex items-start gap-4 relative overflow-hidden shadow-sm backdrop-blur-sm">
+                                <div className="absolute top-0 right-0 p-3 bg-slate-50 dark:bg-zinc-900 border-l border-b border-slate-100 dark:border-zinc-800 rounded-bl-xl shadow-inner">
+                                    <Lightbulb className="w-4 h-4 text-yellow-500" />
                                 </div>
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${ topic.severity === 'High' ? 'bg-red-500/20 text-red-500' : 'bg-orange-500/20 text-orange-500' }`}>
-                                    <AlertTriangle className="w-6 h-6" />
+                                <div className={`p-2.5 rounded-xl flex items-center justify-center shrink-0 ${ topic.severity === 'High' ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-orange-500/10 text-orange-600 dark:text-orange-400' }`}>
+                                    <AlertTriangle className="w-5 h-5" />
                                 </div>
-                                <div className="space-y-3 min-w-0">
-                                    <h4 className="text-lg font-black uppercase italic tracking-tight">{topic.subject} struggle detected</h4>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                                <div className="space-y-2 flex-1 pr-4">
+                                    <h4 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">{topic.subject} struggle detected</h4>
+                                    <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed font-medium">
                                         {topic.suggestion}
                                     </p>
-                                    <div className="pt-2">
-                                        <button className="text-[9px] font-black uppercase tracking-widest text-blue-400 flex items-center gap-2 hover:gap-3 transition-all">
+                                    <div className="pt-1">
+                                        <button className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1 hover:gap-2 transition-all duration-300">
                                             Prepare Revision Materials <ArrowRight className="w-3 h-3" />
                                         </button>
                                     </div>
@@ -978,9 +953,9 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                             </div>
                         ))
                     ) : (
-                        <div className="col-span-full py-16 text-center bg-slate-100 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] space-y-4">
-                            <Sparkles className="w-10 h-10 text-emerald-500 mx-auto" />
-                            <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">Curriculum looks healthy. No major Concept blockers detected.</p>
+                        <div className="col-span-full py-12 text-center bg-slate-50/30 dark:bg-zinc-950/10 border border-dashed border-slate-200 dark:border-zinc-900 rounded-2xl space-y-2">
+                            <Sparkles className="w-8 h-8 text-emerald-500 mx-auto" />
+                            <p className="text-slate-400 dark:text-zinc-500 font-semibold text-xs uppercase tracking-wider">Curriculum looks healthy. No major Concept blockers detected.</p>
                         </div>
                     )}
                 </div>
@@ -1004,71 +979,62 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
     }, [classroomId]);
 
     if (loading) return (
-        <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-12 text-center">
-            <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">Consulting AI Learning Mentor...</p>
+        <div className="bg-slate-50/50 dark:bg-zinc-950/10 border border-slate-200 dark:border-zinc-900 rounded-2xl p-8 text-center shadow-inner">
+            <Loader2 className="w-6 h-6 text-purple-500 animate-spin mx-auto mb-2" />
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">Consulting AI Learning Mentor...</p>
         </div>
     );
 
     if (!personalData?.isEngaged) return (
-        <div className="bg-gradient-to-br from-blue-600/5 to-purple-600/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-12 text-center space-y-4">
-            <Sparkles className="w-12 h-12 text-blue-500/30 mx-auto" />
-            <h3 className="text-xl font-black uppercase italic tracking-tight text-white/80">Unlock Your <span className="text-blue-500">AI Mentor</span></h3>
-            <p className="text-sm text-slate-500 dark:text-slate-500 max-w-md mx-auto leading-relaxed font-medium">
+        <div className="bg-purple-500/[0.01] border border-dashed border-slate-200 dark:border-zinc-900 rounded-2xl p-8 text-center space-y-2 shadow-sm backdrop-blur-sm">
+            <Sparkles className="w-8 h-8 text-purple-500/30 mx-auto animate-pulse" />
+            <h3 className="text-lg font-bold text-slate-800 dark:text-zinc-300 tracking-tight">Unlock Your AI Mentor</h3>
+            <p className="text-xs text-slate-400 dark:text-zinc-500 max-w-sm mx-auto leading-relaxed font-medium">
                 {personalData?.message || "Ask more doubts to unlock personalized AI Weak Topic Detection!"}
             </p>
         </div>
     );
 
     return (
-        <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-1000">
-            {/* AI Learning Mentor Header */}
-            <div className="bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-blue-600/20 p-[1px] rounded-[1.5rem] sm:rounded-[3rem] shadow-2xl">
-                <div className="bg-slate-950/40 backdrop-blur-xl rounded-[1.4rem] sm:rounded-[2.9rem] p-5 sm:p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-8 overflow-hidden relative">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/10 blur-[100px] rounded-full -ml-32 -mb-32"></div>
-
+        <div className="space-y-6 animate-in slide-in-from-bottom-8 duration-1000">
+            <div className="bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-purple-500/10 p-[1px] rounded-2xl shadow-xl shadow-slate-100/50 dark:shadow-none">
+                <div className="bg-white/80 dark:bg-zinc-950/40 backdrop-blur-xl rounded-[15px] p-6 flex flex-col sm:flex-row items-center gap-6 overflow-hidden relative">
                     <div className="relative shrink-0">
-                        <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-[2rem] flex items-center justify-center shadow-2xl relative z-10 group">
-                            <Brain className="w-12 h-12 text-slate-900 dark:text-white group-hover:scale-110 transition-transform duration-500" />
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg relative z-10">
+                            <Brain className="w-8 h-8 text-white" />
                         </div>
-                        <div className="absolute -top-4 -right-4 bg-emerald-500 text-slate-900 dark:text-white text-[8px] font-black uppercase px-3 py-1.5 rounded-full border-4 border-slate-950 shadow-xl z-20 animate-bounce">Live Mentor</div>
                     </div>
-                    <div className="space-y-4 flex-1 text-center md:text-left relative z-10">
-                        <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 px-3 py-1 rounded-full mb-2">
-                            <Sparkles className="w-3 h-3 text-blue-400" />
-                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Personalized Strategy</span>
+                    <div className="space-y-2 flex-1 text-center sm:text-left relative z-10 w-full min-w-0">
+                        <div className="inline-flex items-center gap-1.5 bg-purple-500/10 border border-purple-500/20 px-2.5 py-0.5 rounded-full mb-1">
+                            <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                            <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Personalized Strategy</span>
                         </div>
-                        <h3 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter">Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Learning Mentor</span> Insight</h3>
-                        <p className="text-base sm:text-lg text-slate-700 dark:text-slate-300 font-medium leading-relaxed italic border-l-2 border-blue-500/30 pl-4 sm:pl-6 py-2 text-left">
-                           "{personalData.insight}"
+                        <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Your Learning Mentor Insight</h3>
+                        <p className="text-sm text-slate-600 dark:text-zinc-300 font-medium leading-relaxed italic border-l-2 border-purple-500/30 pl-4 py-1 text-left">
+                            &ldquo;{personalData.insight}&nbsp;&rdquo;
                         </p>
                     </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Weak Topics */}
-                <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
                     <div className="flex items-center justify-between px-2">
-                        <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-500 flex items-center gap-3">
+                        <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 flex items-center gap-2">
                             <Target className="w-4 h-4 text-red-500" /> Improvement Targets
                         </h4>
-                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">High Priority</span>
+                        <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">High Priority</span>
                     </div>
                     <div className="grid gap-4">
                         {personalData.weakTopics.map((topic: any, i: number) => (
-                            <div key={i} className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 hover:bg-slate-200 dark:hover:bg-white/[0.08] transition-all group relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 relative z-10">
-                                    <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white italic tracking-tight">{topic.topic}</span>
-                                    <div className="flex flex-col items-start sm:items-end">
-                                        <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20`}>
-                                            {topic.confidence} Strength Signal
-                                        </span>
-                                    </div>
+                            <div key={i} className="bg-white dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 rounded-2xl p-5 hover:bg-slate-50 dark:hover:bg-zinc-900/40 transition-all duration-300 group shadow-sm flex flex-col gap-2">
+                                <div className="flex items-center justify-between gap-4">
+                                    <span className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{topic.topic}</span>
+                                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-md bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 shrink-0">
+                                        {topic.confidence} Signal
+                                    </span>
                                 </div>
-                                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium leading-relaxed relative z-10">
+                                <p className="text-xs text-slate-500 dark:text-zinc-400 font-medium leading-relaxed">
                                     {topic.reason}
                                 </p>
                             </div>
@@ -1076,40 +1042,37 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
                     </div>
                 </div>
 
-                {/* Recommendations */}
-                <div className="space-y-6">
-                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-500 px-2 flex items-center gap-3">
+                <div className="space-y-4">
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-2 flex items-center gap-2">
                         <Zap className="w-4 h-4 text-emerald-500" /> Actionable Recommendations
                     </h4>
-                    <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-8 space-y-8 relative overflow-hidden group">
-                        <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-emerald-500/10 blur-[100px] rounded-full group-hover:bg-emerald-500/20 transition-all"></div>
-
-                        <div className="space-y-6 relative z-10">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/20">
-                                    <Zap className="w-4 h-4 text-emerald-500" />
+                    <div className="bg-emerald-500/[0.01] border border-slate-200 dark:border-zinc-900 rounded-2xl p-6 space-y-6 shadow-sm backdrop-blur-sm">
+                        <div className="space-y-2 relative z-10">
+                            <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shadow-sm">
+                                    <Zap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                                 </div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Quick Concept Refresh</p>
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Quick Concept Refresh</p>
                             </div>
-                            <p className="text-base text-slate-700 dark:text-slate-300 leading-relaxed font-bold italic">"{personalData.recommendations.conceptExplainer}"</p>
+                            <p className="text-sm text-slate-700 dark:text-zinc-300 leading-relaxed font-bold italic">&ldquo;{personalData.recommendations.conceptExplainer}&nbsp;&rdquo;</p>
                         </div>
 
-                        <div className="h-[1px] bg-emerald-500/10 w-full relative z-10" />
+                        <div className="h-[1px] bg-slate-100 dark:bg-zinc-900 w-full relative z-10" />
 
-                        <div className="space-y-6 relative z-10">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-500/20">
-                                    <Activity className="w-4 h-4 text-blue-500" />
+                        <div className="space-y-4 relative z-10">
+                            <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center border border-blue-500/20 shadow-sm">
+                                    <Activity className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                                 </div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-blue-500">Recommended Challenges</p>
+                                <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">Recommended Challenges</p>
                             </div>
                             <div className="grid gap-3">
                                 {personalData.recommendations.practiceQuestions.map((q: string, i: number) => (
-                                    <div key={i} className="flex items-center gap-4 bg-white/50 dark:bg-slate-950/50 p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-white/5 hover:border-emerald-500/30 transition-all cursor-default">
-                                        <div className="w-6 h-6 rounded-lg bg-emerald-600/20 flex items-center justify-center shrink-0">
-                                            <span className="text-[10px] font-black text-emerald-500">{i+1}</span>
+                                    <div key={i} className="flex items-center gap-3 bg-white dark:bg-zinc-900 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 hover:border-emerald-500/30 transition-all duration-300 shadow-sm">
+                                        <div className="w-5 h-5 rounded-md bg-emerald-500/10 flex items-center justify-center shrink-0">
+                                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">{i+1}</span>
                                         </div>
-                                        <p className="text-sm text-slate-700 dark:text-slate-300 font-black tracking-tight">{q}</p>
+                                        <p className="text-xs font-semibold text-slate-700 dark:text-zinc-300 tracking-tight">{q}</p>
                                     </div>
                                 ))}
                             </div>
