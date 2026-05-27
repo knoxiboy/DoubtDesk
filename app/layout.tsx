@@ -1,19 +1,17 @@
 import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
 import "./globals.css";
-import {
-  ClerkProvider,
-} from '@clerk/nextjs'
+import { ClerkProvider } from '@clerk/nextjs';
 import { Provider } from "./provider";
+import { ThemeProvider } from "next-themes";
 import Footer from "@/components/Footer";
-
-
+import Header from "@/components/Header";
 
 const AppFont = DM_Sans({
   weight: ['400', '500', '700'],
   subsets: ['latin'],
   variable: '--font-app',
-})
+});
 
 const DEFAULT_SITE_URL = "https://doubt-desk-seven.vercel.app";
 
@@ -103,9 +101,9 @@ export const metadata: Metadata = {
       "max-snippet": -1,
       "max-image-preview": "large",
       "max-video-preview": -1,
-      },
     },
-  };
+  },
+};
 
 export default function RootLayout({
   children,
@@ -116,12 +114,17 @@ export default function RootLayout({
     <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA"}>
       <html lang="en" suppressHydrationWarning>
         <body
-          className={`${AppFont.className} scroll-smooth`}
+          className={`${AppFont.className} min-h-screen flex flex-col scroll-smooth bg-white dark:bg-black text-slate-900 dark:text-slate-50 transition-colors duration-500`}
         >
-          <Provider>
-            {children}
-            <Footer/>
-          </Provider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="doubtdesk-theme">
+            <Provider>
+              <Header />
+              <main className="flex-1">
+                {children}
+              </main>
+              <Footer />
+            </Provider>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

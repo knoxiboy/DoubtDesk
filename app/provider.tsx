@@ -23,7 +23,6 @@ type UserContextType = {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-// change this if your route is different
 const USER_ENDPOINT = "/api/user";
 
 import SessionTracker from "@/components/auth/SessionTracker";
@@ -31,7 +30,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { KeyboardShortcutsProvider } from "@/components/KeyboardShortcutsProvider";
 import { CommandMenu } from "@/components/CommandMenu";
-import { ThemeProvider, useTheme } from "next-themes";
+import { useTheme } from "next-themes";
 import { FullScreenSpinner } from "../components/FullScreenSpinner";
 
 function ThemedToaster() {
@@ -141,21 +140,18 @@ export function Provider({ children }: { children: React.ReactNode }) {
 
     return (
         <UserContext.Provider value={{ appUser, setAppUser, loading, refresh }}>
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="doubtdesk-theme">
-                <Suspense fallback={null}>
-                    <NavigationEvents onChange={() => setIsNavigating(false)} />
-                </Suspense>
-                <KeyboardShortcutsProvider>
-                    <SessionTracker />
+            <Suspense fallback={null}>
+                <NavigationEvents onChange={() => setIsNavigating(false)} />
+            </Suspense>
+            <KeyboardShortcutsProvider>
+                <SessionTracker />
 
-                    {/* 🌀 This catches client-side clicks instantly! */}
-                    {isNavigating && <FullScreenSpinner />}
+                {isNavigating && <FullScreenSpinner />}
 
-                    {children}
-                    <CommandMenu />
-                    <ThemedToaster />
-                </KeyboardShortcutsProvider>
-            </ThemeProvider>
+                {children}
+                <CommandMenu />
+                <ThemedToaster />
+            </KeyboardShortcutsProvider>
         </UserContext.Provider>
     );
 }
