@@ -542,11 +542,11 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/60 dark:bg-slate-950/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="p-8 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-white/[0.02]">
+                <div className="p-5 sm:p-8 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-white/[0.02]">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-blue-600/20 flex items-center justify-center border border-blue-500/20">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-600/20 flex items-center justify-center shrink-0 border border-blue-500/20">
                             <MessageSquare className="w-6 h-6 text-blue-500" />
                         </div>
                         <div>
@@ -566,7 +566,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
                 {/* Tab Navigation - Hidden for 'Ask Teacher' Doubts */}
                 {doubt.type !== 'teacher' && (
-                    <div className="px-8 border-b border-slate-200 dark:border-white/5 flex gap-8 h-14 bg-white/[0.01]">
+                    <div className="px-5 sm:px-8 border-b border-slate-200 dark:border-white/5 flex gap-6 sm:gap-8 h-14 bg-white/[0.01] overflow-x-auto whitespace-nowrap scrollbar-hide">
                         <button
                             onClick={() => setActiveTab('all')}
                             className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${ activeTab === 'all' ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300' }`}
@@ -601,7 +601,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 )}
 
                 {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-white/50 dark:bg-slate-900/50">
+                <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-4 sm:space-y-6 bg-white/50 dark:bg-slate-900/50">
                     {isLoading ? (
                         <div className="h-full flex flex-col items-center justify-center gap-4">
                             <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
@@ -681,9 +681,9 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
                 {/* Hybrid Input Area */}
                 {(doubt.type !== 'teacher' || isTeacher || isDoubtOwner) && (
-                    <div className="p-8 bg-white/[0.02] border-t border-slate-200 dark:border-white/5 solution-form-area">
+                    <div className="p-5 sm:p-8 bg-white/[0.02] border-t border-slate-200 dark:border-white/5 solution-form-area">
                     {showSolutionForm ? (
-                        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 bg-white/[0.03] p-8 rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-2xl relative overflow-y-auto max-h-[60vh] group/form custom-scrollbar">
+                        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 bg-white/[0.03] p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-2xl relative overflow-y-auto max-h-[60vh] group/form custom-scrollbar">
                             {/* Decorative Background Blur */}
                             <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
 
@@ -739,12 +739,6 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     ref={solutionTextareaRef}
                                     value={solutionContent}
                                     onChange={(e) => setSolutionContent(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                                            e.preventDefault();
-                                            handlePostOrUpdate();
-                                        }
-                                    }}
                                     placeholder="Explain your solution clearly and step-by-step..."
                                     className="w-full h-40 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[1.5rem] p-5 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none font-medium leading-relaxed placeholder:text-slate-600 shadow-inner"
                                 />
@@ -839,17 +833,17 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             </div>
                         </div>
                     ) : (
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full">
                             {(doubt.isSolved !== "solved" && (doubt.type !== 'teacher' || isTeacher)) && (
                                 <button
                                     onClick={() => setShowSolutionForm(true)}
-                                    className="px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all group flex items-center gap-2 active:scale-95 shrink-0 shadow-lg shadow-emerald-600/20"
+                                    className="px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all group flex items-center justify-center gap-2 active:scale-95 shrink-0 shadow-lg shadow-emerald-600/20"
                                 >
                                     <PlusCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
                                     <span className="text-[10px] font-black uppercase tracking-widest">Post Solution</span>
                                 </button>
                             )}
-                            <div className="flex-1 flex flex-col gap-2">
+                            <div className="flex-1 flex flex-col gap-2 w-full">
                                 {isChatPreviewMode ? (
                                     <div className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 px-6 text-slate-900 dark:text-white text-sm min-h-[54px] max-h-32 overflow-y-auto">
                                         <MarkdownRenderer content={chatText || "*Nothing to preview*"} />
@@ -862,12 +856,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                             onChange={(e) => setChatText(e.target.value)}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
-                                                    if (e.ctrlKey || e.metaKey) {
-                                                        e.preventDefault();
-                                                        handlePost('comment');
-                                                    } else {
-                                                        handlePost('comment');
-                                                    }
+                                                    handlePost('comment');
                                                 }
                                             }}
                                             placeholder="Ask for clarification or chat with peers..."

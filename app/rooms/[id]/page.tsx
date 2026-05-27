@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useHotkeys } from "react-hotkeys-hook";
 import { useAppUser } from "../../provider";
 import {
     Brain,
@@ -130,13 +129,6 @@ export default function ClassroomPage() {
         }
     }, [inView, isReachingEnd, isLoadingMore]);
 
-    useHotkeys("n", (e) => {
-        e.preventDefault();
-        setIsAskModalOpen(true);
-    }, {
-        enableOnFormTags: false,
-    });
-
     useEffect(() => {
         initialFetch();
     }, [id]);
@@ -202,7 +194,7 @@ export default function ClassroomPage() {
     return (
         <div className="relative overflow-hidden">
             {/* Header / Banner */}
-            <div className="sticky top-0 z-50 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 pt-4 sm:pt-6 pb-4 sm:pb-6 px-4 sm:px-6 md:px-12 relative overflow-hidden">
+            <div className="relative z-10 bg-white/80 dark:bg-[#020617]/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/5 pt-4 sm:pt-6 pb-4 sm:pb-6 px-4 sm:px-6 md:px-12 overflow-hidden">
                 <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/5 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3" />
 
                 <div className="max-w-7xl mx-auto relative z-10">
@@ -691,8 +683,8 @@ export default function ClassroomPage() {
 
             {/* CLASS CODE MODAL */}
             {isCodeModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80 animate-in fade-in duration-300">
-                    <div className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-md rounded-[2.5rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 relative overflow-hidden">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-xl bg-white/80 dark:bg-[#020617]/80 animate-in fade-in duration-300">
+                    <div className="bg-[#0f172a] border border-slate-200 dark:border-white/10 w-full max-w-md rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 relative overflow-hidden">
                          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
                          <div className="flex items-center justify-between">
                             <div className="space-y-1">
@@ -708,13 +700,13 @@ export default function ClassroomPage() {
                             </button>
                         </div>
 
-                        <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-6 flex items-center justify-between gap-6 relative group overflow-hidden">
+                        <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 relative group overflow-hidden">
                             <div className="absolute inset-0 bg-blue-600/5 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <code className="text-4xl font-black text-blue-400 tracking-[0.2em] relative z-10">{classroom?.inviteCode}</code>
+                            <code className="text-3xl sm:text-4xl font-black text-blue-400 tracking-[0.2em] relative z-10 text-center sm:text-left">{classroom?.inviteCode}</code>
 
                             <button
                                 onClick={copyCode}
-                                className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] relative z-10"
+                                className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98] relative z-10"
                             >
                                 {copied ? (
                                     <><Check className="w-4 h-4 text-slate-900 dark:text-white" /> Copied!</>
@@ -788,28 +780,28 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                     { label: "Total Queries", value: data?.engagement?.totalDoubts || 0, icon: MessageSquare, color: "purple" },
                     { label: "Community Wisdom", value: data?.engagement?.totalReplies || 0, icon: Activity, color: "emerald" },
                 ].map((stat, i) => (
-                    <div key={i} className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2rem] p-8 flex items-center justify-between group hover:bg-white/[0.07] transition-all">
+                    <div key={i} className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-8 flex items-center justify-between group hover:bg-white/[0.07] transition-all">
                         <div>
                             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-500 mb-1">{stat.label}</p>
                             <h4 className="text-4xl font-black italic tracking-tighter">{stat.value}</h4>
                         </div>
-                        <div className={`w-14 h-14 rounded-2xl bg- ${stat.color} -500/10 flex items-center justify-center border border- ${stat.color} -500/20 group-hover:scale-110 transition-transform`}>
-                            <stat.icon className={`w-6 h-6 text- ${stat.color} -500`} />
+                        <div className={`w-14 h-14 rounded-2xl bg-${stat.color}-500/10 flex items-center justify-center border border-${stat.color}-500/20 group-hover:scale-110 transition-transform`}>
+                            <stat.icon className={`w-6 h-6 text-${stat.color}-500`} />
                         </div>
                     </div>
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-12">
                 {/* 2. Difficulty Heatmap / Most Confusing Topics */}
-                <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[3rem] p-10 space-y-8">
+                <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-10 space-y-6 sm:space-y-8">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-xl font-black uppercase italic tracking-tight flex items-center gap-3">
+                        <h3 className="text-lg sm:text-xl font-black uppercase italic tracking-tight flex items-center gap-2 sm:gap-3">
                             <Layers className="w-5 h-5 text-orange-500" /> Topic Difficulty Heatmap
                         </h3>
                         <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-500 tracking-widest">By Doubt Volume</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {data?.mostAskedTopics.map((topic: any, i: number) => {
                             const intensity = Math.min(Number(topic.count) * 10, 100);
                             return (
@@ -834,11 +826,11 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                 </div>
 
                 {/* 3. Resolved vs Unresolved Doubts */}
-                <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[3rem] p-10 space-y-10">
-                    <h3 className="text-xl font-black uppercase italic tracking-tight flex items-center gap-3">
+                <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-10 space-y-6 sm:space-y-10">
+                    <h3 className="text-lg sm:text-xl font-black uppercase italic tracking-tight flex items-center gap-2 sm:gap-3">
                         <PieChart className="w-5 h-5 text-emerald-500" /> Resolution Pulse
                     </h3>
-                    <div className="flex flex-col items-center justify-center py-4 space-y-8">
+                    <div className="flex flex-col items-center justify-center py-4 space-y-6 sm:space-y-8">
                         <div className="relative w-48 h-48 flex items-center justify-center">
                             <svg className="w-full h-full transform -rotate-90">
                                 <circle cx="96" cy="96" r="80" stroke="currentColor" strokeWidth="12" fill="transparent" className="text-white/5" />
@@ -870,10 +862,10 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
             </div>
 
             {/* Top Contributors Leaderboard */}
-            <div className="bg-gradient-to-br from-amber-500/5 via-white/5 to-yellow-500/5 border border-slate-200 dark:border-white/10 rounded-[3rem] p-10 space-y-8 relative overflow-hidden group">
+            <div className="bg-gradient-to-br from-amber-500/5 via-white/5 to-yellow-500/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-10 space-y-6 sm:space-y-8 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 blur-[100px] rounded-full translate-x-1/3 -translate-y-1/3 group-hover:bg-amber-500/10 transition-all duration-700" />
                 <div className="flex items-center justify-between relative z-10">
-                    <h3 className="text-xl font-black uppercase italic tracking-tight flex items-center gap-3">
+                    <h3 className="text-lg sm:text-xl font-black uppercase italic tracking-tight flex items-center gap-2 sm:gap-3">
                         <Trophy className="w-5 h-5 text-amber-400" /> Top Contributors
                     </h3>
                     <span className="text-[10px] font-black uppercase text-slate-500 dark:text-slate-500 tracking-widest">Community Heroes</span>
@@ -891,7 +883,7 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                                 return (
                                     <div
                                         key={`${contributor.name}-${i}`}
-                                        className={`flex items-center gap-5 ${style.bg} border ${style.border} rounded-2xl p-5 hover:scale-[1.01] transition-all duration-300 ${style.glow}`}
+                                        className={`flex items-center gap-4 sm:gap-5 ${style.bg} border ${style.border} rounded-xl sm:rounded-2xl p-4 sm:p-5 hover:scale-[1.01] transition-all duration-300 ${style.glow}`}
                                     >
                                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${i < 3 ? style.bg : 'bg-white/10'} border ${style.border}`}>
                                             {style.icon || <span className={`text-sm font-black ${style.text}`}>{i + 1}</span>}
@@ -922,9 +914,9 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
             </div>
 
             {/* 4. Peak Doubt Time Heatmap */}
-            <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[3rem] p-10 space-y-8">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-black uppercase italic tracking-tight flex items-center gap-3">
+            <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-10 space-y-6 sm:space-y-8">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h3 className="text-lg sm:text-xl font-black uppercase italic tracking-tight flex items-center gap-2 sm:gap-3">
                         <Clock className="w-5 h-5 text-purple-500" /> Peak Activity Timeline
                     </h3>
                     <div className="flex items-center gap-2">
@@ -932,26 +924,28 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                         <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-500 tracking-widest">Student Activity Hours</span>
                     </div>
                 </div>
-                <div className="grid grid-cols-24 gap-1 h-32 items-end pt-4">
-                    {Array.from({ length: 24 }).map((_, hour) => {
-                        const activity = data?.peakTime.find((p: any) => p.hour === hour)?.count || 0;
-                        const heightPercentage = Math.min((activity / 10) * 100, 100);
-                        return (
-                            <div key={hour} className="group relative flex flex-col items-center gap-2">
-                                <div
-                                    className="w-full bg-gradient-to-t from-purple-600 to-blue-400 rounded-t-md hover:from-white hover:to-white transition-all duration-500"
-                                    style={{ height: `${Math.max(heightPercentage, 2)}%` }}
-                                />
-                                <span className="text-[7px] font-black text-slate-600 uppercase group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-                                    {hour}h
-                                </span>
-                                {/* Tooltip */}
-                                <div className="absolute bottom-full mb-2 bg-white text-[#020617] p-2 rounded-lg text-[8px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                                    {activity} Doubts @ {hour}:00
+                <div className="overflow-x-auto pb-4 w-full scrollbar-hide">
+                    <div className="grid grid-cols-24 gap-1 h-32 items-end pt-4 min-w-[600px]">
+                        {Array.from({ length: 24 }).map((_, hour) => {
+                            const activity = data?.peakTime.find((p: any) => p.hour === hour)?.count || 0;
+                            const heightPercentage = Math.min((activity / 10) * 100, 100);
+                            return (
+                                <div key={hour} className="group relative flex flex-col items-center gap-2">
+                                    <div
+                                        className="w-full bg-gradient-to-t from-purple-600 to-blue-400 rounded-t-md hover:from-white hover:to-white transition-all duration-500"
+                                        style={{ height: `${Math.max(heightPercentage, 2)}%` }}
+                                    />
+                                    <span className="text-[7px] font-black text-slate-600 uppercase group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                                        {hour}h
+                                    </span>
+                                    {/* Tooltip */}
+                                    <div className="absolute bottom-full mb-2 bg-white text-[#020617] p-2 rounded-lg text-[8px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                                        {activity} Doubts @ {hour}:00
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
 
@@ -963,14 +957,14 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {data?.mostAskedTopics.filter((t: any) => t.severity !== 'Low').length > 0 ? (
                         data?.mostAskedTopics.filter((t: any) => t.severity !== 'Low').map((topic: any, i: number) => (
-                            <div key={i} className="bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 flex items-start gap-6 relative overflow-hidden group">
+                            <div key={i} className="bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 flex flex-col sm:flex-row items-start gap-4 sm:gap-6 relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 p-4 border-l border-b border-slate-200 dark:border-white/5 bg-slate-100 dark:bg-white/5 rounded-bl-3xl">
                                     <Lightbulb className="w-5 h-5 text-yellow-400" />
                                 </div>
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${ topic.severity === 'High' ? 'bg-red-500/20 text-red-500' : 'bg-orange-500/20 text-orange-500' }`}>
                                     <AlertTriangle className="w-6 h-6" />
                                 </div>
-                                <div className="space-y-3">
+                                <div className="space-y-3 min-w-0">
                                     <h4 className="text-lg font-black uppercase italic tracking-tight">{topic.subject} struggle detected</h4>
                                     <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
                                         {topic.suggestion}
@@ -984,7 +978,7 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                             </div>
                         ))
                     ) : (
-                        <div className="col-span-full py-16 text-center bg-slate-100 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[3rem] space-y-4">
+                        <div className="col-span-full py-16 text-center bg-slate-100 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] space-y-4">
                             <Sparkles className="w-10 h-10 text-emerald-500 mx-auto" />
                             <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">Curriculum looks healthy. No major Concept blockers detected.</p>
                         </div>
@@ -1010,14 +1004,14 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
     }, [classroomId]);
 
     if (loading) return (
-        <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[3rem] p-12 text-center">
+        <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-12 text-center">
             <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">Consulting AI Learning Mentor...</p>
         </div>
     );
 
     if (!personalData?.isEngaged) return (
-        <div className="bg-gradient-to-br from-blue-600/5 to-purple-600/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[3rem] p-12 text-center space-y-4">
+        <div className="bg-gradient-to-br from-blue-600/5 to-purple-600/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[3rem] p-6 sm:p-12 text-center space-y-4">
             <Sparkles className="w-12 h-12 text-blue-500/30 mx-auto" />
             <h3 className="text-xl font-black uppercase italic tracking-tight text-white/80">Unlock Your <span className="text-blue-500">AI Mentor</span></h3>
             <p className="text-sm text-slate-500 dark:text-slate-500 max-w-md mx-auto leading-relaxed font-medium">
@@ -1029,8 +1023,8 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
     return (
         <div className="space-y-8 animate-in slide-in-from-bottom-8 duration-1000">
             {/* AI Learning Mentor Header */}
-            <div className="bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-blue-600/20 p-[1px] rounded-[3rem] shadow-2xl">
-                <div className="bg-slate-950/40 backdrop-blur-xl rounded-[2.9rem] p-6 md:p-10 flex flex-col md:flex-row items-center gap-8 overflow-hidden relative">
+            <div className="bg-gradient-to-r from-blue-600/20 via-purple-600/20 to-blue-600/20 p-[1px] rounded-[1.5rem] sm:rounded-[3rem] shadow-2xl">
+                <div className="bg-slate-950/40 backdrop-blur-xl rounded-[1.4rem] sm:rounded-[2.9rem] p-5 sm:p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 md:gap-8 overflow-hidden relative">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 blur-[100px] rounded-full -mr-32 -mt-32"></div>
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/10 blur-[100px] rounded-full -ml-32 -mb-32"></div>
 
@@ -1045,8 +1039,8 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
                             <Sparkles className="w-3 h-3 text-blue-400" />
                             <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Personalized Strategy</span>
                         </div>
-                        <h3 className="text-3xl font-black uppercase italic tracking-tighter">Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Learning Mentor</span> Insight</h3>
-                        <p className="text-lg text-slate-700 dark:text-slate-300 font-medium leading-relaxed italic border-l-2 border-blue-500/30 pl-6 py-2">
+                        <h3 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter">Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Learning Mentor</span> Insight</h3>
+                        <p className="text-base sm:text-lg text-slate-700 dark:text-slate-300 font-medium leading-relaxed italic border-l-2 border-blue-500/30 pl-4 sm:pl-6 py-2 text-left">
                            "{personalData.insight}"
                         </p>
                     </div>
@@ -1064,11 +1058,11 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
                     </div>
                     <div className="grid gap-4">
                         {personalData.weakTopics.map((topic: any, i: number) => (
-                            <div key={i} className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[2rem] p-6 hover:bg-slate-200 dark:hover:bg-white/[0.08] transition-all group relative overflow-hidden">
+                            <div key={i} className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 hover:bg-slate-200 dark:hover:bg-white/[0.08] transition-all group relative overflow-hidden">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                <div className="flex items-center justify-between mb-4 relative z-10">
-                                    <span className="text-xl font-black text-slate-900 dark:text-white italic tracking-tight">{topic.topic}</span>
-                                    <div className="flex flex-col items-end">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 relative z-10">
+                                    <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white italic tracking-tight">{topic.topic}</span>
+                                    <div className="flex flex-col items-start sm:items-end">
                                         <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20`}>
                                             {topic.confidence} Strength Signal
                                         </span>
@@ -1087,7 +1081,7 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
                     <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 dark:text-slate-500 px-2 flex items-center gap-3">
                         <Zap className="w-4 h-4 text-emerald-500" /> Actionable Recommendations
                     </h4>
-                    <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-[3rem] p-8 space-y-8 relative overflow-hidden group">
+                    <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-[1.5rem] sm:rounded-[3rem] p-5 sm:p-8 space-y-8 relative overflow-hidden group">
                         <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-emerald-500/10 blur-[100px] rounded-full group-hover:bg-emerald-500/20 transition-all"></div>
 
                         <div className="space-y-6 relative z-10">
@@ -1111,7 +1105,7 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
                             </div>
                             <div className="grid gap-3">
                                 {personalData.recommendations.practiceQuestions.map((q: string, i: number) => (
-                                    <div key={i} className="flex items-center gap-4 bg-white/50 dark:bg-slate-950/50 p-5 rounded-2xl border border-slate-200 dark:border-white/5 hover:border-emerald-500/30 transition-all cursor-default">
+                                    <div key={i} className="flex items-center gap-4 bg-white/50 dark:bg-slate-950/50 p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-white/5 hover:border-emerald-500/30 transition-all cursor-default">
                                         <div className="w-6 h-6 rounded-lg bg-emerald-600/20 flex items-center justify-center shrink-0">
                                             <span className="text-[10px] font-black text-emerald-500">{i+1}</span>
                                         </div>

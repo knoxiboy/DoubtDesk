@@ -21,6 +21,8 @@ import {
   X,
 } from "lucide-react";
 
+import { useKeyboardShortcuts } from "@/components/KeyboardShortcutsProvider";
+
 import Link from "next/link";
 import {
   AlertDialog,
