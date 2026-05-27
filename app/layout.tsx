@@ -6,6 +6,7 @@ import {
 } from '@clerk/nextjs'
 import { Provider } from "./provider";
 import Footer from "@/components/Footer";
+import ScrollToTop from "@/components/ScrollToTop";
 
 
 
@@ -121,6 +122,7 @@ export default function RootLayout({
           <Provider>
             {children}
             <Footer/>
+            <ScrollToTop/>
           </Provider>
         </body>
       </html>
