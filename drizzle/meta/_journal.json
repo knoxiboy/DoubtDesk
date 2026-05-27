@@ -15,6 +15,13 @@
       "when": 1779525663345,
       "tag": "0001_aspiring_warhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779870440438,
+      "tag": "0002_overjoyed_captain_flint",
+      "breakpoints": true
     }
   ]
 }
