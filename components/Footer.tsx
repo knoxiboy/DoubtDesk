@@ -76,7 +76,7 @@ export default function Footer() {
       label: "Send the DoubtDesk team an email",
       hoverColor: "hover:text-purple-500 dark:hover:text-purple-400",
     },
-  ];
+  ]
 
   return (
     <footer
@@ -84,17 +84,13 @@ export default function Footer() {
       className="relative overflow-hidden border-t border-slate-200 dark:border-zinc-900 bg-gradient-to-b from-slate-100 via-white to-slate-100 dark:from-black dark:via-black dark:to-zinc-950 transition-colors duration-500"
     >
       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-transparent to-purple-500/10 dark:from-blue-600/5 dark:to-purple-600/5 pointer-events-none" />
-      <div className="absolute top-0 left-1/4 w-72 h-72 bg-blue-500/10 dark:bg-blue-500/5 blur-3xl rounded-full pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-purple-500/10 dark:bg-purple-500/5 blur-3xl rounded-full pointer-events-none" />
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 lg:pt-12 pb-6" >
-        
-        <div className="flex flex-col lg:flex-row lg:justify-between items-start gap-10 lg:gap-14 pb-10 border-b border-slate-300 dark:border-zinc-900">
-          
+      <div className="absolute top-0 left-1/4 w-72 h-72 bg-blue-500/10 dark:bg-blue-500/10 blur-3xl rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-purple-500/10 dark:bg-purple-500/10 blur-3xl rounded-full pointer-events-none" />
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
         {/* Top Section */}
         <div className="flex flex-col lg:flex-row lg:justify-between gap-14 pb-12 border-b border-slate-300 dark:border-white/10">
+
           {/* Brand Section */}
           <div className="max-w-md">
             <Link
@@ -110,118 +106,39 @@ export default function Footer() {
                   className="object-cover"
                 />
               </div>
-              <span className="text-xl font-bold text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 tracking-tight transition-colors duration-300">
+              <span className="text-2xl font-bold text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 tracking-tight transition-colors duration-300">
                 DoubtDesk
               </span>
             </Link>
-            <p className="text-xs sm:text-sm leading-relaxed text-slate-600 dark:text-zinc-400">
-              Simplifying classroom doubt solving with AI-powered collaboration, smart discussions, and interactive virtual learning spaces.
+            <p className="text-sm leading-7 text-slate-600 dark:text-slate-400">
+              Simplifying classroom doubt solving with AI-powered collaboration,
+              smart discussions, and interactive virtual learning spaces.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-8 sm:gap-10 w-full lg:max-w-2xl">
-            
-            <div className="flex flex-col gap-4">
-              <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-slate-900 dark:text-zinc-200">
-                Platform
-              </h4>
-              <ul className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-zinc-400">
-                <li>
-                  <Link href="/" className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
-                    <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>Home</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/rooms" className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
-                    <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>Classrooms</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/ask-ai" className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
-                    <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>AI Solver</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/public-rooms" className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
-                    <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>Public Rooms</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/dashboard" className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
-                    <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>Dashboard</span>
-                  </Link>
-                </li>
-              </ul>
-            </div>
+          <div
+            role="navigation"
+            aria-label="Footer navigation links"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-12"
+          >
+            {footerSections.map((section) => (
+              <div key={section.title}>
+                <h4 className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-900 dark:text-white mb-5">
+                  {section.title}
+                </h4>
+                <ul className="space-y-4">
+                  {section.links.map((link) => {
+                    const isExternal =
+                      link.href.startsWith("http") ||
+                      link.href.startsWith("mailto:");
 
-            <div className="flex flex-col gap-4">
-              <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-slate-900 dark:text-zinc-200">
-                Resources
-              </h4>
-              <ul className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-zinc-400">
-                <li>
-                  <Link href="/bookmarks" className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
-                    <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>Bookmarks</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/faq" className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
-                    <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>Help Center FAQ</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contact" className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
-                    <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>Contact</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms-of-service" className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
-                    <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>Terms of Service</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/privacy-policy" className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
-                    <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    <span>Privacy Policy</span>
-                  </Link>
-                </li>
-              </ul>
-            </div>
+                    const isCommunity = section.title === "Community";
 
-            <div className="flex flex-col gap-4 col-span-2 md:col-span-1">
-              <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-slate-900 dark:text-zinc-200">
-                Community
-              </h4>
-              <ul className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-zinc-400">
-                <li>
-                  <Link href="/about" className="group flex items-center gap-2 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
-                    <Users className="w-4 h-4 text-blue-500 shrink-0" />
-                    <span>About</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contributors" className="group flex items-center gap-2 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
-                    <Users className="w-4 h-4 text-blue-500 shrink-0" />
-                    <span>Contributors</span>
-                  </Link>
-                </li>
-                <li>
-                  <a href="https://github.com/knoxiboy/DoubtDesk/issues" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-2 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
-                    <MessageSquare className="w-4 h-4 text-blue-500 shrink-0" />
-                    <span>Report Tracker</span>
-                  </a>
-                </li>
-              </ul>
-            </div>
+                    const Icon = isCommunity
+                      ? communityIcons[
+                          link.label as keyof typeof communityIcons
+                        ]
+                      : null;
 
                     return (
                       <li key={link.label}>

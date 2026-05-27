@@ -23,32 +23,32 @@ export default function Page() {
         appearance={{
           baseTheme: isDark ? dark : undefined,
           elements: {
-            card: isDark
-              ? "bg-zinc-950 border border-zinc-900 shadow-2xl rounded-2xl"
-              : "bg-white border border-slate-200 shadow-xl rounded-2xl",
+            card:
+              theme === "dark"
+                ? "bg-[#020617] border border-white/10 shadow-2xl rounded-3xl"
+                : "bg-white border border-slate-200 shadow-2xl rounded-3xl",
 
-            headerTitle: isDark ? "text-white" : "text-slate-900",
-            headerSubtitle: isDark ? "text-zinc-400" : "text-slate-500",
-            formFieldLabel: isDark ? "text-zinc-300" : "text-slate-700",
-            
-            formFieldInput: isDark
-              ? "bg-zinc-900 border-zinc-800 text-white focus:border-zinc-700 focus:ring-0"
-              : "bg-white border-slate-200 text-slate-900 focus:border-slate-400 focus:ring-0",
+            headerTitle:
+              theme === "dark"
+                ? "text-white"
+                : "text-slate-900",
 
-            formFieldInputShowHideButton: isDark
-              ? "text-zinc-400 hover:text-white"
-              : "text-slate-400 hover:text-slate-900",
+            headerSubtitle:
+              theme === "dark" ? "text-slate-400" : "text-slate-500",
 
-            socialButtonsBlockButton: isDark
-              ? "bg-zinc-900 border-zinc-800 text-white hover:bg-zinc-800"
-              : "bg-slate-50 border-slate-200 text-slate-900 hover:bg-slate-100",
+            formFieldLabel:
+              theme === "dark" ? "text-slate-300" : "text-slate-700",
 
-            formButtonPrimary: isDark
-              ? "bg-white text-black hover:bg-zinc-200"
-              : "bg-slate-900 text-white hover:bg-slate-800",
+            formFieldInput:
+              theme === "dark"
+                ? "bg-white/5 border-white/10 text-white"
+                : "bg-white border-slate-300 text-slate-900",
 
-            footerActionText: isDark ? "text-zinc-400" : "text-slate-500",
-            footerActionLink: isDark ? "text-blue-400" : "text-blue-600",
+            footerActionText:
+              theme === "dark" ? "text-slate-400" : "text-slate-500",
+
+            footerActionLink:
+              theme === "dark" ? "text-blue-400" : "text-blue-600",
           },
         }}
       />

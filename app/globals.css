@@ -77,8 +77,22 @@ body {
   min-height: 100%;
 }
 
-:where(html, body, main, header, aside, section, div, button, a, input, textarea) {
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, box-shadow;
+:where(
+  html,
+  body,
+  main,
+  header,
+  aside,
+  section,
+  div,
+  button,
+  a,
+  input,
+  textarea
+) {
+  transition-property:
+    color, background-color, border-color, text-decoration-color, fill, stroke,
+    box-shadow;
   transition-duration: 200ms;
   transition-timing-function: ease;
 }
@@ -120,4 +134,13 @@ body {
 
 .markdown-renderer pre {
   margin: 0 !important;
+}
+/* Hide Clerk development mode "Configure your application" widget */
+button[aria-label="Keyless prompt"] {
+  display: none !important;
+}
+
+/* Hide wrapper containing the keyless prompt */
+#clerk-components > div:has(button[aria-label="Keyless prompt"]) {
+  display: none !important;
 }
