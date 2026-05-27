@@ -190,6 +190,7 @@ export const doubtsTable = pgTable("doubts", {
     solvedReplyId: integer(),                       // ID of the specific reply that solved it
     type: varchar({ length: 20 }).default("community"),    // 'ai', 'community', 'teacher'
     isPinned: boolean().default(false),
+    priority: varchar({ length: 20 }).default("medium"),
     createdAt: timestamp().defaultNow().notNull(),
 }, (table) => {
     return {

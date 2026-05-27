@@ -68,6 +68,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
             ? "text-yellow-400"
             : "text-slate-400";
     const [subject, setSubject] = useState(doubtToEdit?.subject || defaultSubject);
+    const [priority, setPriority] = useState(doubtToEdit?.priority || "medium");
     const [imageUrl, setImageUrl] = useState(doubtToEdit?.imageUrl || "");
     const [fileName, setFileName] = useState(
         doubtToEdit?.imageUrl ? (doubtToEdit.imageUrl.startsWith("data:application/pdf") ? "Attached Document.pdf" : "Existing Image") : ""
@@ -228,9 +229,9 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
         try {
             const url = doubtToEdit ? `/api/doubts/action/${doubtToEdit.id}` : "/api/doubts";
             const method = doubtToEdit ? "PATCH" : "POST";
-            const body = doubtToEdit 
-                ? { action: "edit", content, subject, imageUrl, tags }
-                : { userName, subject, content, imageUrl, classroomId, type, tags };
+            const body = doubtToEdit
+  ? { action: "edit", content, subject, imageUrl, tags, priority }
+  : { userName, subject, content, imageUrl, classroomId, type, tags, priority };
 
             const res = await fetch(url, {
                 method,
@@ -314,6 +315,21 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                             </div>
                         )}
                     </div>
+                    <div className="space-y-2">
+  <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">
+    Priority
+  </label>
+
+  <select
+    value={priority}
+    onChange={(e) => setPriority(e.target.value)}
+    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm outline-none"
+  >
+    <option value="low">Low Priority</option>
+    <option value="medium">Medium Priority</option>
+    <option value="high">High Priority</option>
+  </select>
+</div>
 
                     <div className="space-y-2">
                         <div className="flex items-center justify-between px-1">

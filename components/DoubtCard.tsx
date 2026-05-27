@@ -139,8 +139,13 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
 
     return (
         <>
-            <div className="group bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-8 hover:border-blue-500/30 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/5 flex flex-col h-full relative overflow-hidden">
-                {/* Background Glow */}
+<div
+  className={`group bg-white/50 dark:bg-slate-900/50 border rounded-[2.5rem] p-8 transition-all duration-300 ${
+    doubt.priority === "high" && doubt.isSolved !== "solved"
+      ? "border-red-500/40 shadow-[0_0_30px_rgba(239,68,68,0.15)]"
+      : "border-slate-200 dark:border-white/5 hover:border-blue-500/20"
+  }`}
+>                {/* Background Glow */}
                 <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/5 blur-[100px] rounded-full group-hover:bg-blue-600/10 transition-all duration-500"></div>
 
                 {/* Header */}
@@ -192,6 +197,24 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                                 <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">Unsolved</span>
                             </div>
                         )}
+
+                <div className={`px-3 py-1 rounded-full flex items-center gap-1.5 border ${
+  doubt.priority === "high"
+    ? "bg-red-500/10 border-red-500/20"
+    : doubt.priority === "low"
+    ? "bg-green-500/10 border-green-500/20"
+    : "bg-yellow-500/10 border-yellow-500/20"
+}`}>
+  <span className={`text-[9px] font-black uppercase tracking-widest ${
+    doubt.priority === "high"
+      ? "text-red-500"
+      : doubt.priority === "low"
+      ? "text-green-500"
+      : "text-yellow-500"
+  }`}>
+    {doubt.priority || "medium"} Priority
+  </span>
+</div>
                         <div className="px-3 py-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
                             <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{doubt.subject}</span>
                         </div>

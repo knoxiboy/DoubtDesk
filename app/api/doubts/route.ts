@@ -210,7 +210,7 @@ export async function POST(req: Request) {
         const { errorResponse, data } = await parseAndValidateRequest(req, createDoubtSchema);
         if (errorResponse) return errorResponse;
         
-        const { userName, subject, content, imageUrl, classroomId, type, tags } = data;
+       const { userName, subject, content, imageUrl, classroomId, type, tags, priority } = data;
         const parsedClassroomId = classroomId ? parseInt(classroomId.toString()) : null;
 
         const user = await currentUser();
@@ -244,15 +244,16 @@ export async function POST(req: Request) {
         const subTopic = await categorizeDoubt(content || "", subject, imageUrl);
 
         const [newDoubt] = await db.insert(doubtsTable).values({
-            userName,
-            userEmail: email,
-            subject,
-            subTopic,
-            content,
-            imageUrl,
-            classroomId: parsedClassroomId,
-            type
-        }).returning();
+    userName,
+    userEmail: email,
+    subject,
+    subTopic,
+    content,
+    imageUrl,
+    classroomId: parsedClassroomId,
+    type,
+    priority: priority || "medium",
+}).returning();
 
         const normalizedTags: string[] = Array.from(new Set(
             (Array.isArray(tags) ? tags : [])

@@ -4,6 +4,7 @@ import { MessageSquare, Loader2, ChevronDown } from "lucide-react";
 import DoubtCard from "@/components/DoubtCard";
 import useSWRInfinite from "swr/infinite";
 import ScrollToTopButton from "./ScrollToTopButton";
+import { useEffect, useMemo, useState } from "react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -60,6 +61,7 @@ export default function InfiniteDoubtFeed({
     });
 
     const doubts = data ? data.flatMap((page) => page?.doubts ?? []) : [];
+    const [filter, setFilter] = useState("all");
     const isEmpty = data?.[0]?.doubts?.length === 0 || data?.[0]?.error !== undefined;
     const isReachingEnd = isEmpty || (data && !data[data.length - 1]?.pagination?.hasMore);
     const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
@@ -88,12 +90,57 @@ export default function InfiniteDoubtFeed({
             </div>
         );
     }
+    const priorityOrder: Record<string, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
+const sortedDoubts = [...doubts].sort(
+  (a, b) =>
+    (priorityOrder[a.priority] ?? 1) -
+    (priorityOrder[b.priority] ?? 1)
+);
+
+const filteredDoubts = sortedDoubts.filter((doubt) => {
+  if (filter === "high") return doubt.priority === "high";
+
+  if (filter === "unresolved")
+    return doubt.isSolved !== "solved";
+
+  if (filter === "in-progress")
+    return doubt.isSolved === "in-progress";
+
+  return true;
+});
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <ScrollToTopButton />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {doubts.map((doubt: any, index: number) => (
+
+                <div className="flex flex-wrap gap-2 mb-6">
+  {[
+    { label: "All", value: "all" },
+    { label: "High Priority", value: "high" },
+    { label: "Unresolved", value: "unresolved" },
+    { label: "In Progress", value: "in-progress" },
+  ].map((item) => (
+    <button
+      key={item.value}
+      onClick={() => setFilter(item.value)}
+      className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${
+        filter === item.value
+          ? "bg-blue-600 text-white"
+          : "bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-slate-300"
+      }`}
+    >
+      {item.label}
+    </button>
+  ))}
+</div>
+                
+                {filteredDoubts.map((doubt: any, index: number) => (
                     <DoubtCard
                         key={`${doubt.id}-${index}`}
                         doubt={doubt}
