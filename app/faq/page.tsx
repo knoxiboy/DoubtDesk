@@ -10,6 +10,9 @@ import {
   Users,
   BookOpen,
   Wrench,
+  Search,
+  MessageCircleQuestion,
+  ArrowLeft,
 } from "lucide-react";
 
 const faqSections = [
@@ -29,7 +32,6 @@ const faqSections = [
       },
     ],
   },
-
   {
     category: "AI Solver Features",
     icon: Bot,
@@ -46,7 +48,6 @@ const faqSections = [
       },
     ],
   },
-
   {
     category: "Classroom Usage",
     icon: Users,
@@ -63,7 +64,6 @@ const faqSections = [
       },
     ],
   },
-
   {
     category: "Platform Features",
     icon: BookOpen,
@@ -80,7 +80,6 @@ const faqSections = [
       },
     ],
   },
-
   {
     category: "Troubleshooting & Safety",
     icon: Wrench,
@@ -101,210 +100,123 @@ const faqSections = [
 
 export default function FAQPage() {
   const [openIndex, setOpenIndex] = useState<string | null>(null);
-    const [search, setSearch] = useState("");
+  const [search, setSearch] = useState("");
+
   const toggleFAQ = (id: string) => {
     setOpenIndex(openIndex === id ? null : id);
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white">
-
-      {/* Background Glow */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-
-        <div className="absolute top-0 left-0 h-[400px] w-[400px] rounded-full bg-blue-500/10 blur-3xl" />
-
-        <div className="absolute bottom-0 right-0 h-[350px] w-[350px] rounded-full bg-cyan-500/10 blur-3xl" />
-
-        <div className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/5 blur-3xl" />
+    <div className="relative min-h-screen bg-white dark:bg-black text-slate-900 dark:text-zinc-100 transition-colors duration-500">
+      
+      {/* Immersive Background Ambient Lighting */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute -top-[200px] left-1/2 -translate-x-1/2 h-[500px] w-full max-w-7xl bg-gradient-to-b from-blue-500/10 dark:from-blue-500/[0.03] to-transparent blur-3xl" />
       </div>
 
-      <div className="relative z-10 mx-auto max-w-5xl px-6 py-20">
-
-        {/* Back to Home Button */}
-        <div className="mb-8 flex justify-start">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-blue-700"
-          >
-            ← Back to Home
-          </Link>
-        </div>
-
-        {/* Hero */}
-        <div className="mb-16 text-center">
-
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-4 py-1.5 text-sm text-blue-300 backdrop-blur-sm">
-            <HelpCircle className="h-4 w-4" />
-            Help Center & Guidance
+      <div className="relative z-10 mx-auto max-w-3xl px-4 sm:px-6 py-16 md:py-24 flex flex-col gap-16">
+        {/* Hero Headers Section */}
+        <div className="text-center space-y-4 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/5 dark:bg-blue-500/10 px-3.5 py-1 text-xs font-semibold tracking-wider uppercase text-blue-600 dark:text-blue-400">
+            <HelpCircle className="h-3.5 w-3.5" />
+            Help Center
           </div>
-
-          <h1 className="mb-6 bg-gradient-to-r from-white via-blue-200 to-cyan-300 bg-clip-text text-5xl font-black tracking-tight text-transparent md:text-6xl">
-            Frequently Asked Questions
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
+            Frequently Asked{" "}
+            <span className="bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-500 dark:from-blue-400 dark:via-cyan-300 dark:to-indigo-400 bg-clip-text text-transparent">
+              Questions
+            </span>
           </h1>
-
-          <p className="mx-auto max-w-3xl text-lg leading-8 text-slate-300">
-            Find answers to common questions about classrooms, AI solving,
-            authentication, moderation, analytics, and platform usage across
-            DoubtDesk.
+          <p className="text-sm sm:text-base text-slate-500 dark:text-zinc-400 leading-relaxed">
+            Find quick answers regarding virtual classrooms, smart analytics dashboards, and AI tools across your workspace.
           </p>
         </div>
-
-        {/* Search Bar */}
-        <div className="mb-14">
-
-          <div className="relative mx-auto max-w-2xl">
-
+        <div className="max-w-xl w-full mx-auto relative z-20 animate-in fade-in scale-in duration-500">
+          <div className="relative flex items-center group">
+            <Search className="absolute left-4 h-5 w-5 text-slate-400 dark:text-zinc-600 transition-colors duration-300 group-focus-within:text-blue-500" />
             <input
-            type="text"
-            placeholder="Search questions..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="
-                w-full
-                rounded-2xl
-                border
-                border-white/10
-                bg-white/[0.04]
-                px-6
-                py-4
-                text-white
-                placeholder:text-slate-400
-                backdrop-blur-xl
-                outline-none
-                transition-all
-                duration-300
-
-                focus:border-blue-500/40
-                focus:ring-2
-                focus:ring-blue-500/20
-            "
+              type="text"
+              placeholder="Search parameters or questions..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 dark:border-zinc-900 bg-slate-50 dark:bg-zinc-950/30 pl-12 pr-4 py-3.5 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 outline-none transition-all duration-300 focus:border-blue-500/40 dark:focus:border-blue-500/20 focus:bg-white dark:focus:bg-black"
             />
           </div>
         </div>
 
-        {/* FAQ Sections */}
-        <div className="space-y-10">
-
+        {/* Clean Stack FAQ Grid Pipeline */}
+        <div className="space-y-16 relative z-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
           {faqSections.map((section, sectionIndex) => {
             const SectionIcon = section.icon;
+            const filteredFaqs = section.faqs.filter((faq) =>
+              faq.question.toLowerCase().includes(search.toLowerCase())
+            );
+
+            if (filteredFaqs.length === 0) return null;
 
             return (
-              <div key={sectionIndex}>
-
-                {/* Category Header */}
-                <div className="mb-5 flex items-center gap-3">
-
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-500/10 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 shadow-lg shadow-blue-500/10">
-                    <SectionIcon className="h-5 w-5 text-blue-300" />
-                  </div>
-
-                  <h2 className="text-2xl font-bold text-white">
+              <div key={sectionIndex} className="space-y-4">
+                
+                {/* Structural Section Header Title */}
+                <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100 dark:border-zinc-900">
+                  <SectionIcon className="h-4 w-4 text-blue-600 dark:text-blue-400/80" />
+                  <h2 className="text-base font-bold tracking-wide uppercase text-slate-800 dark:text-zinc-400">
                     {section.category}
                   </h2>
                 </div>
 
-                {/* FAQ Items */}
-                <div className="space-y-4">
-
-                  {section.faqs
-                    .filter((faq) =>
-                        faq.question.toLowerCase().includes(search.toLowerCase())
-                    )
-                    .map((faq, faqIndex) => {
+                {/* Clean Borderless FAQ List Wrapper */}
+                <div className="divide-y divide-slate-100 dark:divide-zinc-900/60">
+                  {filteredFaqs.map((faq, faqIndex) => {
                     const id = `${sectionIndex}-${faqIndex}`;
                     const isOpen = openIndex === id;
 
                     return (
-                      <div
-                        key={faqIndex}
-                        className="
-                          group
-                          overflow-hidden
-                          rounded-3xl
-                          border
-                          border-white/10
-                          bg-white/[0.03]
-                          backdrop-blur-xl
-                          transition-all
-                          duration-300
-
-                          hover:border-blue-500/30
-                        "
-                      >
-
+                      <div key={faqIndex} className="group transition-colors duration-200">
                         <button
                           onClick={() => toggleFAQ(id)}
-                          className="
-                            flex
-                            w-full
-                            items-center
-                            justify-between
-                            gap-4
-                            px-6
-                            py-5
-                            text-left
-                          "
+                          className="flex w-full items-center justify-between gap-4 py-4 text-left outline-none"
                         >
-                          <span className="text-lg font-semibold text-white">
+                          <span className="text-[15px] sm:text-[16px] font-medium text-slate-800 dark:text-zinc-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
                             {faq.question}
                           </span>
-
-                          <ChevronDown
-                            className={`
-                              h-5
-                              w-5
-                              text-blue-300
-                              transition-transform
-                              duration-300
-                              ${isOpen ? "rotate-180" : ""}
-                            `}
-                          />
+                          <ChevronDown className={`h-4 w-4 text-slate-400 dark:text-zinc-600 transition-transform duration-300 shrink-0 ${isOpen ? "rotate-180 text-blue-500 dark:text-blue-400" : ""}`} />
                         </button>
 
+                        {/* Dropdown Answer Block */}
                         <div
-                          className={`
-                            grid
-                            transition-all
-                            duration-300
-
-                            ${
-                              isOpen
-                                ? "grid-rows-[1fr] opacity-100"
-                                : "grid-rows-[0fr] opacity-0"
-                            }
-                          `}
+                          className={`grid transition-all duration-300 ease-in-out ${
+                            isOpen ? "grid-rows-[1fr] opacity-100 mb-4" : "grid-rows-[0fr] opacity-0"
+                          }`}
                         >
                           <div className="overflow-hidden">
-
-                            <div className="border-t border-white/10 px-6 py-5 text-slate-300 leading-8">
+                            <p className="text-[14px] sm:text-[15px] text-slate-500 dark:text-zinc-400 leading-relaxed pr-6">
                               {faq.answer}
-                            </div>
-
+                            </p>
                           </div>
                         </div>
+
                       </div>
                     );
                   })}
                 </div>
+
               </div>
             );
           })}
         </div>
 
-        {/* Bottom Card */}
-        <div className="mt-16 rounded-3xl border border-blue-500/10 bg-blue-500/[0.03] p-8 text-center backdrop-blur-xl">
-
-          <h3 className="mb-3 text-2xl font-bold text-white">
-            Still Need Help?
+        {/* Minimal Bottom CTA Panel Card */}
+        <div className="mt-4 rounded-2xl border border-slate-100 dark:border-zinc-900 bg-slate-50/50 dark:bg-zinc-950/20 p-8 text-center backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <MessageCircleQuestion className="h-6 w-6 text-blue-500 dark:text-blue-400 mx-auto mb-3" />
+          <h3 className="mb-1 text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+            Still need assistance?
           </h3>
-
-          <p className="mx-auto max-w-2xl leading-7 text-slate-300">
-            If your question is not answered here, you can ask directly inside
-            the community board or use the AI Solver for instant academic
-            assistance.
+          <p className="mx-auto max-w-lg text-xs sm:text-sm text-slate-500 dark:text-zinc-400 leading-relaxed">
+            If your question isn&apos;t addressed here, submit your query directly to the live classroom streams or launch an instant AI query session.
           </p>
         </div>
+
       </div>
     </div>
   );

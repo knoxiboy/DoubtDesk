@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     Send, Zap, BookOpen, Lightbulb, Loader2, RefreshCcw,
     ImagePlus, X, Type, Camera, ListOrdered, Brain, CheckCircle2, AlertCircle,
     MessageSquare, ChevronLeft
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
 import Sidebar from '@/components/Sidebar';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -67,6 +69,16 @@ export default function AskAIPage() {
     const [errorCode, setErrorCode] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
+    const router = useRouter();
+    const { isLoaded, isSignedIn } = useAuth();
+
+    useEffect(() => {
+        if (!isLoaded) return;
+
+        if (!isSignedIn) {
+            router.push('/sign-in');
+        }
+    }, [isLoaded, isSignedIn, router]);
 
     const scrollToBottom = () => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -99,7 +111,6 @@ export default function AskAIPage() {
         if (isFollowUp) {
             setMessages(newMessages);
             setFollowUpPrompt('');
-            // Small delay to allow state update before scroll
             setTimeout(scrollToBottom, 100);
         }
 
@@ -135,6 +146,38 @@ export default function AskAIPage() {
     const canSubmit = inputMode === 'text' ? prompt.trim().length > 0 : !!imageBase64;
     const followUpInputRef = useRef<HTMLInputElement>(null);
 
+    if (!isLoaded) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-black text-slate-900 dark:text-white transition-colors duration-500 px-4">
+                <div className="max-w-md w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-black/95 p-8 shadow-2xl shadow-slate-900/10 text-center">
+                    <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-cyan-500" />
+                    <h2 className="text-2xl font-black mb-2">Checking your session...</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">Just one moment while we securely verify your DoubtDesk account.</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!isSignedIn) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-black text-slate-900 dark:text-white transition-colors duration-500 px-4">
+                <div className="max-w-md w-full rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-black/95 p-8 shadow-2xl shadow-slate-900/10 text-center">
+                    <Zap className="mx-auto mb-4 h-12 w-12 text-cyan-500" />
+                    <h2 className="text-3xl font-black mb-3">Sign in to use DoubtDesk AI</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+                        This solver is reserved for authenticated students and teachers. Sign in to continue with smart homework help, image solving, and step-by-step explanations.
+                    </p>
+                    <Link
+                        href="/sign-in"
+                        className="inline-flex items-center justify-center rounded-2xl bg-cyan-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-cyan-500"
+                    >
+                        Sign in now
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
     const handleStepFollowUp = (stepNum: string, stepLabel: string) => {
         setActiveStepContext({ num: stepNum, label: stepLabel });
         setFollowUpPrompt(`Can you explain this step in more detail?`);
@@ -145,7 +188,6 @@ export default function AskAIPage() {
     };
 
     const markdownComponents: any = {
-        // Step labels: full-width block row with numbered pill + accent border
         strong: ({ children }: any) => {
             const text = String(children);
             const isStepLabel = /^Step\s+\d+/i.test(text);
@@ -170,46 +212,39 @@ export default function AskAIPage() {
             return <strong className="text-slate-900 dark:text-white font-bold">{children}</strong>;
         },
 
-        // Paragraphs: left-aligned, proper spacing
         p: ({ children }: any) => (
             <p className="text-slate-700 dark:text-slate-300 leading-[1.9] font-medium my-3 text-[15px] pl-0">{children}</p>
         ),
 
-        // List items
         li: ({ children }: any) => (
             <li className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium my-1.5 text-[15px]">{children}</li>
         ),
 
-        // Ordered list — indent cleanly
         ol: ({ children }: any) => (
             <ol className="list-decimal list-outside ml-6 mt-2 mb-4 space-y-2">{children}</ol>
         ),
 
-        // Unordered list
         ul: ({ children }: any) => (
             <ul className="list-disc list-outside ml-6 mt-2 mb-4 space-y-2">{children}</ul>
         ),
 
-        // Block math: left-aligned in a styled container
         div: ({ className, children, ...props }: any) => {
             if (className?.includes('math-display')) {
                 return (
-                    <div className="my-4 pl-4 border-l-2 border-cyan-500/40 bg-white/50 dark:bg-slate-950/50 rounded-r-xl py-4 pr-4 overflow-x-auto">
+                    <div className="my-4 pl-4 border-l-2 border-cyan-500/40 bg-white/50 dark:bg-black/50 rounded-r-xl py-4 pr-4 overflow-x-auto">
                         <div className={className} {...props}>{children}</div>
                     </div>
                 );
             }
             return <div className={className} {...props}>{children}</div>;
         },
-
-        // Tables — beautifully styled
         table: ({ children }: any) => (
             <div className="my-5 overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/8 shadow-lg">
                 <table className="w-full text-sm text-left">{children}</table>
             </div>
         ),
         thead: ({ children }: any) => (
-            <thead className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-white/8">{children}</thead>
+            <thead className="bg-slate-50/80 dark:bg-black/80 border-b border-slate-200 dark:border-white/8">{children}</thead>
         ),
         tbody: ({ children }: any) => (
             <tbody className="divide-y divide-white/5">{children}</tbody>
@@ -224,7 +259,6 @@ export default function AskAIPage() {
             <td className="px-4 py-3 text-slate-700 dark:text-slate-300 font-medium text-[14px] [&_.katex]:text-slate-900 dark:[&_.katex]:text-white">{children}</td>
         ),
 
-        // Blockquote — highlighted note
         blockquote: ({ children }: any) => (
             <blockquote className="my-4 pl-4 border-l-4 border-yellow-500/50 bg-yellow-500/5 rounded-r-xl py-3 pr-4 text-yellow-200/80 italic text-[14px]">
                 {children}
@@ -233,12 +267,11 @@ export default function AskAIPage() {
     };
 
     return (
-        <div className="flex min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white min-w-0">
+        <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-white dark:from-slate-950 dark:via-slate-900 dark:to-[#020617] text-slate-900 dark:text-white min-w-0 transition-colors duration-500">
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
             <main className="flex-1 flex flex-col min-w-0">
-                {/* Mobile Header */}
-                <header className="flex lg:hidden items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl sticky top-0 z-20">
+                <header className="flex lg:hidden items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-black/80 backdrop-blur-xl sticky top-0 z-20">
                     <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg" aria-label="Open sidebar">
                         <div className="w-5 h-0.5 bg-white mb-1 rounded" /><div className="w-5 h-0.5 bg-white mb-1 rounded" /><div className="w-5 h-0.5 bg-white rounded" />
                     </button>
@@ -250,8 +283,7 @@ export default function AskAIPage() {
 
                 <div className="max-w-[900px] mx-auto w-full px-4 sm:px-8 py-8 pb-6 space-y-6">
 
-                    {/* ── Breadcrumb Navigation ── */}
-                    <div className="flex items-center gap-3 mb-2">
+                    <div className="flex(items-center gap-3 mb-2">
                         <Link href="/" className="flex items-center gap-1.5 text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-black uppercase tracking-widest w-fit shrink-0">
                             <ChevronLeft className="w-4 h-4" /> Home
                         </Link>
@@ -261,23 +293,35 @@ export default function AskAIPage() {
                         </Link>
                     </div>
 
-                    {/* ── Page Header ── */}
-                    <div className="space-y-3">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[11px] font-black uppercase tracking-widest">
-                            <Zap className="w-3 h-3" /> Powered by Groq AI
+                    <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 dark:border-white/10 bg-white/90 dark:bg-black/90 shadow-2xl shadow-slate-900/10 dark:shadow-black/30 p-8 sm:p-10">
+                        <div className="pointer-events-none absolute inset-x-0 top-0 h-44 bg-gradient-to-r from-cyan-300/30 via-blue-200/20 to-violet-300/20 blur-3xl opacity-60 dark:from-cyan-500/15 dark:via-blue-500/10 dark:to-violet-500/10" />
+                        <div className="relative space-y-4">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-500 text-[11px] font-black uppercase tracking-widest">
+                                <Zap className="w-3 h-3" /> Powered by Groq AI
+                            </div>
+                            <h1 className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
+                                AI Instant <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Doubt Solver</span>
+                            </h1>
+                            <p className="text-slate-600 dark:text-slate-400 text-base max-w-2xl leading-relaxed">
+                                Type your doubt or upload a photo of your question. Get fast, clear academic help built for DoubtDesk students and teachers.
+                            </p>
+                            <div className="grid gap-3 sm:grid-cols-3">
+                                {[
+                                    { label: 'Step-by-step', desc: 'Follow every logic move', color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-200' },
+                                    { label: 'Image to answer', desc: 'Upload problem photos', color: 'bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-200' },
+                                    { label: 'Smart follow-ups', desc: 'Ask more about any step', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200' },
+                                ].map((item) => (
+                                    <div key={item.label} className={`rounded-3xl border border-slate-200 dark:border-slate-800 p-4 ${item.color}`}>
+                                        <p className="text-sm font-bold">{item.label}</p>
+                                        <p className="text-xs mt-1 text-slate-600 dark:text-slate-300">{item.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <h1 className="text-4xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tighter">
-                            AI Instant <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Doubt Solver</span>
-                        </h1>
-                        <p className="text-slate-600 dark:text-slate-400 text-base max-w-lg leading-relaxed">
-                            Type your doubt or upload a photo of your question. Get structured, step-by-step explanations instantly.
-                        </p>
                     </div>
 
-                    {/* ── Input Card ── */}
-                    <div className="bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-white/8 rounded-3xl overflow-hidden shadow-2xl">
+                    <div className="bg-white/60 dark:bg-black/60 border border-slate-200 dark:border-white/8 rounded-3xl overflow-hidden shadow-2xl">
 
-                        {/* Mode Tabs */}
                         <div className="flex border-b border-slate-200 dark:border-white/5">
                             <button
                                 onClick={() => { setInputMode('text'); setImageBase64(null); }}
@@ -303,10 +347,10 @@ export default function AskAIPage() {
                                         onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAskAI(); }}
                                         placeholder="e.g. How do I solve x² - 5x + 6 = 0?   (Ctrl+Enter to submit)"
                                         rows={4}
-                                        className="w-full bg-white/60 dark:bg-slate-950/60 border border-slate-200 dark:border-white/8 rounded-2xl px-5 py-4 text-slate-900 dark:text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition-all resize-none font-medium text-[15px] leading-relaxed"
+                                        className="w-full bg-white/60 dark:bg-black/60 border border-slate-200 dark:border-white/8 rounded-2xl px-5 py-4 text-slate-900 dark:text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition-all resize-none font-medium text-[15px] leading-relaxed"
                                         disabled={isLoading}
                                     />
-                                    {/* Example Pills */}
+                                    
                                     <div className="flex flex-wrap gap-2">
                                         {EXAMPLE_PROMPTS.map((ex) => (
                                             <button
@@ -336,7 +380,7 @@ export default function AskAIPage() {
                                             </div>
                                         </button>
                                     ) : (
-                                        <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950">
+                                        <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-black">
                                             <img src={imageBase64} alt="Uploaded question" className="w-full max-h-64 object-contain" />
                                             <button
                                                 onClick={() => { setImageBase64(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
@@ -350,21 +394,21 @@ export default function AskAIPage() {
                                             </div>
                                         </div>
                                     )}
-                                    {/* Optional extra context for image mode */}
+                                    
                                     {imageBase64 && (
                                         <textarea
                                             value={prompt}
                                             onChange={(e) => setPrompt(e.target.value)}
                                             placeholder="Optional: Add context or a specific question about this image..."
                                             rows={2}
-                                            className="w-full bg-white/60 dark:bg-slate-950/60 border border-slate-200 dark:border-white/8 rounded-2xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/40 transition-all resize-none text-sm"
+                                            className="w-full bg-white/60 dark:bg-black/60 border border-slate-200 dark:border-white/8 rounded-2xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/40 transition-all resize-none text-sm"
                                             disabled={isLoading}
                                         />
                                     )}
                                 </>
                             )}
 
-                            {/* Submit Row */}
+                            
                             <div className="flex justify-end pt-1">
                                 <button
                                     onClick={() => handleAskAI('standard')}
@@ -387,7 +431,7 @@ export default function AskAIPage() {
                         </div>
                     </div>
 
-                    {/* ── Error ── */}
+                    
                     {errorMsg && (
                         <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
                             <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
@@ -396,7 +440,7 @@ export default function AskAIPage() {
                                     {errorCode === "IMAGE_QUALITY_LOW" ? "Image quality issue" : "Oops! Something went wrong"}
                                 </p>
                                 <p className="text-red-400/70 text-xs mt-1">
-                                    {(() => {       {/* Map technical errors to user-friendly messages */}
+                                    {(() => {       
                                         const error = errorMsg.toLowerCase();
 
                                         if (errorCode === "IMAGE_QUALITY_LOW") {
@@ -440,12 +484,11 @@ export default function AskAIPage() {
                         </div>
                     )}
 
-                    {/* ── Answer Sections & Chat ── */}
+                    
                     {messages.length > 0 && (
                         <div className="space-y-6 pb-16">
                             {messages.map((msg, msgIdx) => {
                                 if (msg.role === 'user' && msgIdx > 0) {
-                                    // Render follow-up user message
                                     return (
                                         <div key={msgIdx} className="flex justify-end animate-in slide-in-from-right-4 duration-300">
                                             <div className="max-w-[80%] bg-cyan-600 text-white px-5 py-3 rounded-2xl rounded-tr-none shadow-lg text-sm font-medium">
@@ -467,7 +510,7 @@ export default function AskAIPage() {
                                                     return (
                                                         <div
                                                             key={`${msgIdx}-${idx}`}
-                                                            className="bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-white/8 rounded-3xl overflow-hidden shadow-lg"
+                                                            className="bg-white/60 dark:bg-black/60 border border-slate-200 dark:border-white/8 rounded-3xl overflow-hidden shadow-lg"
                                                         >
                                                             <div className={`flex items-center gap-3 px-6 py-4 border-b border-slate-200 dark:border-white/5 ${meta ? '' : 'bg-white/3'}`}>
                                                                 {meta && (
@@ -495,8 +538,7 @@ export default function AskAIPage() {
                                                     );
                                                 })
                                             ) : (
-                                                // Non-structured (follow-up) response
-                                                <div className="bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-white/8 rounded-3xl overflow-hidden shadow-lg p-6">
+                                                <div className="bg-white/60 dark:bg-black/60 border border-slate-200 dark:border-white/8 rounded-3xl overflow-hidden shadow-lg p-6">
                                                     <ReactMarkdown
                                                         remarkPlugins={[remarkMath, remarkGfm]}
                                                         rehypePlugins={[rehypeKatex]}
@@ -514,9 +556,9 @@ export default function AskAIPage() {
 
                             <div ref={chatEndRef} />
 
-                            {/* ── Follow-up Input ── */}
+                            
                             {!isLoading && (
-                                <div className="bg-white/60 dark:bg-slate-900/60 border border-t-[3px] border-t-cyan-500/30 border-slate-200 dark:border-white/8 rounded-3xl p-4 shadow-2xl sticky bottom-4 z-10 backdrop-blur-xl transition-all">
+                                <div className="bg-white/60 dark:bg-black/60 border border-t-[3px] border-t-cyan-500/30 border-slate-200 dark:border-white/8 rounded-3xl p-4 shadow-2xl sticky bottom-4 z-10 backdrop-blur-xl transition-all">
                                     {activeStepContext && (
                                         <div className="flex items-center gap-2 mb-3 px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 w-fit animate-in slide-in-from-left-2 duration-300">
                                             <div className="w-5 h-5 rounded-full bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-[10px] font-black text-cyan-400">
@@ -541,7 +583,7 @@ export default function AskAIPage() {
                                                 onChange={(e) => setFollowUpPrompt(e.target.value)}
                                                 onKeyDown={(e) => { if (e.key === 'Enter') handleAskAI('standard', true); }}
                                                 placeholder={activeStepContext ? "Ask about this step..." : "Ask a follow-up about any step..."}
-                                                className="w-full bg-white/60 dark:bg-slate-950/60 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all font-medium"
+                                                className="w-full bg-white/60 dark:bg-black/60 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all font-medium"
                                             />
                                         </div>
                                         <button
@@ -557,7 +599,7 @@ export default function AskAIPage() {
                                 </div>
                             )}
 
-                            {/* ── Skeleton for follow-ups ── */}
+                            
                             {isLoading && (
                                 <div className="flex items-start gap-4 animate-pulse">
                                     <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/5 shrink-0" />
@@ -569,9 +611,9 @@ export default function AskAIPage() {
                                 </div>
                             )}
 
-                            {/* ── Extra Options (Only after first response) ── */}
+                            
                             {!isLoading && messages.length === 2 && currentType === 'standard' && (
-                                <div className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                <div className="bg-white/40 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
                                     <div>
                                         <p className="text-slate-900 dark:text-white font-bold text-sm">Need a different take?</p>
                                         <p className="text-slate-500 dark:text-slate-500 text-xs mt-0.5">Get the same answer in another style</p>
@@ -617,7 +659,7 @@ export default function AskAIPage() {
                         </div>
                     )}
 
-                    {/* ── Empty / Welcome State ── */}
+                    
                     {messages.length === 0 && !isLoading && !errorMsg && (
                         <div className="text-center py-10 space-y-3">
                             <div className="w-20 h-20 mx-auto bg-gradient-to-br from-cyan-500/20 to-blue-600/20 rounded-3xl flex items-center justify-center border border-cyan-500/20 shadow-2xl shadow-cyan-500/10">
@@ -633,7 +675,7 @@ export default function AskAIPage() {
                                     { icon: <Brain className="w-5 h-5" />, label: 'Simplified', desc: 'Easy to understand' },
                                     { icon: <CheckCircle2 className="w-5 h-5" />, label: 'Final Answer', desc: 'Direct answer highlighted' },
                                 ].map((f) => (
-                                    <div key={f.label} className="bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-center">
+                                    <div key={f.label} className="bg-white/40 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-center">
                                         <div className="w-10 h-10 mx-auto bg-slate-100 dark:bg-white/5 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 mb-3">{f.icon}</div>
                                         <p className="text-slate-900 dark:text-white font-bold text-sm">{f.label}</p>
                                         <p className="text-slate-500 dark:text-slate-500 text-xs mt-1">{f.desc}</p>
