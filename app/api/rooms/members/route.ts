@@ -27,7 +27,7 @@ export async function GET(req: Request) {
 
         const classroomId = Number(classroomIdStr);
         const page = Math.max(Number(searchParams.get('page')) || 1, 1);
-        const limit = Math.min(Number(searchParams.get('limit')) || 20, 100);
+        const limit = Math.min(Math.max(Number(searchParams.get('limit')) || 20, 1), 100);
         const offset = (page - 1) * limit;
         
         // Security: Check if requesting user is a member of this classroom
