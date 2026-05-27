@@ -17,7 +17,10 @@ import {
   Clipboard,
   Activity,
   Users,
+  Keyboard,
 } from "lucide-react";
+
+import { useKeyboardShortcuts } from "@/components/KeyboardShortcutsProvider";
 
 import Link from "next/link";
 import {
@@ -160,6 +163,14 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            <button
+              onClick={toggleOpen}
+              className="p-2.5 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white transition-all duration-200"
+              title="Keyboard Shortcuts (?)"
+              aria-label="Keyboard Shortcuts"
+            >
+              <Keyboard className="w-5 h-5" />
+            </button>
             <ThemeToggle />
             <SignedOut>
               <Link href="/sign-in">

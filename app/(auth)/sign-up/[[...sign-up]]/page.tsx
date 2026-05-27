@@ -33,14 +33,10 @@ export default function Page() {
                 : "text-slate-900",
 
             headerSubtitle:
-              theme === "dark"
-                ? "text-slate-400"
-                : "text-slate-500",
+              theme === "dark" ? "text-slate-400" : "text-slate-500",
 
             formFieldLabel:
-              theme === "dark"
-                ? "text-slate-300"
-                : "text-slate-700",
+              theme === "dark" ? "text-slate-300" : "text-slate-700",
 
             formFieldInput:
               theme === "dark"
@@ -48,14 +44,10 @@ export default function Page() {
                 : "bg-white border-slate-300 text-slate-900",
 
             footerActionText:
-              theme === "dark"
-                ? "text-slate-400"
-                : "text-slate-500",
+              theme === "dark" ? "text-slate-400" : "text-slate-500",
 
             footerActionLink:
-              theme === "dark"
-                ? "text-blue-400"
-                : "text-blue-600",
+              theme === "dark" ? "text-blue-400" : "text-blue-600",
           },
         }}
       />

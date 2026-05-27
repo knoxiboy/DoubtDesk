@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import { neon } from '@neondatabase/serverless';
+import { getDatabaseUrl } from '../configs/database-url';
 
-const sql = neon(process.env.NEXT_PUBLIC_NEON_DB_CONNECTION_STRING!);
+const sql = neon(getDatabaseUrl());
 
 async function main() {
     try {

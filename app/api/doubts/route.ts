@@ -132,7 +132,7 @@ export async function GET(req: Request) {
         const createdAtValue = (value: unknown) => new Date(value as string).getTime() || 0;
         const pinnedScore = (value: unknown) => (value ? 1 : 0);
 
-        doubts = doubts.sort((a, b) => {
+        doubts = (doubts as any[]).sort((a: any, b: any) => {
             const pinnedDiff = pinnedScore(b.isPinned) - pinnedScore(a.isPinned);
             if (pinnedDiff !== 0) return pinnedDiff;
 
@@ -147,7 +147,7 @@ export async function GET(req: Request) {
             return createdAtValue(b.createdAt) - createdAtValue(a.createdAt);
         });
 
-        doubts = doubts.slice(offset, offset + limit);
+        doubts = (doubts as any[]).slice(offset, offset + limit);
 
         if (userName && doubts.length > 0) {
             const userLikes = await db.select({ doubtId: likesTable.doubtId })

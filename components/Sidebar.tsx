@@ -9,12 +9,14 @@ import {
     Bookmark,
     MessageSquare,
     Zap,
-    BarChart3
+    BarChart3,
+    Keyboard
 } from 'lucide-react'
 
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
 import { useAppUser } from '@/app/provider'
+import { useKeyboardShortcuts } from '@/components/KeyboardShortcutsProvider'
 
 const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
@@ -30,6 +32,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     const pathname = usePathname()
     const { appUser } = useAppUser()
+    const { toggleOpen } = useKeyboardShortcuts()
 
     const linkClasses = (isActive: boolean) =>
         `
@@ -243,6 +246,23 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
                     {/* Footer */}
                     <div className="p-5 border-t border-border/60 bg-muted/20 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-muted-foreground">
+                                Shortcuts
+                            </span>
+                            <button
+                                onClick={() => {
+                                    onClose()
+                                    toggleOpen()
+                                }}
+                                className="p-2 rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-all duration-200"
+                                title="Keyboard Shortcuts (?)"
+                                aria-label="Keyboard Shortcuts"
+                            >
+                                <Keyboard className="w-4 h-4" />
+                            </button>
+                        </div>
+
                         <div className="flex items-center justify-between">
                             <span className="text-xs font-semibold text-muted-foreground">
                                 Theme
