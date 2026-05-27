@@ -264,8 +264,8 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/60 dark:bg-slate-950/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-                <div className="p-8 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-white/[0.02]">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] w-full max-w-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="p-5 sm:p-8 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-white/[0.02]">
                     <div>
                         <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase italic">
                             {doubtToEdit ? "Edit" : "Ask"} {type === 'teacher' ? <span className="text-purple-500">Teacher</span> : <span className="text-blue-500">Doubt</span>}
@@ -283,7 +283,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[80vh] overflow-y-auto">
+                <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-4 sm:space-y-6 max-h-[80vh] overflow-y-auto">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-500 px-1">Subject / Topic</label>
                         <input
