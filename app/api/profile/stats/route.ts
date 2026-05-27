@@ -21,19 +21,19 @@ export async function GET(req: Request) {
 
         const stats = await getProfileStats(email, name);
 
-        const rawJoinDate = stats.userCreatedAt || (clerkUser?.createdAt ? new Date(clerkUser.createdAt) : new Date());
+        const rawJoinDate = stats?.userCreatedAt || (clerkUser?.createdAt ? new Date(clerkUser.createdAt) : new Date());
         const memberSince = rawJoinDate instanceof Date ? rawJoinDate.toISOString() : new Date(rawJoinDate).toISOString();
 
         return NextResponse.json({
             success: true,
             stats: {
-                totalDoubts: stats.totalDoubts,
-                totalReplies: stats.totalReplies,
-                totalLikesReceived: stats.totalLikesReceived,
-                totalReplyUpvotes: stats.totalReplyUpvotes,
-                doubtsSolved: stats.doubtsSolved,
+                totalDoubts: stats?.totalDoubts || 0,
+                totalReplies: stats?.totalReplies || 0,
+                totalLikesReceived: stats?.totalLikesReceived || 0,
+                totalReplyUpvotes: stats?.totalReplyUpvotes || 0,
+                doubtsSolved: stats?.doubtsSolved || 0,
                 memberSince,
-                mostActiveSubject: stats.mostActiveSubject,
+                mostActiveSubject: stats?.mostActiveSubject || "No activity",
             }
         });
 

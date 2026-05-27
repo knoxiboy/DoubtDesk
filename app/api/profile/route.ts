@@ -31,9 +31,11 @@ export async function GET(req: Request) {
 
         const dbUser = dbUserResults[0];
 
-        const classroomIds = memberships.map((m) => m.classroomId);
-        let classrooms: ProfileClassroom[] = [];
+        const classroomIds = memberships
+            .map((m) => m.classroomId)
+            .filter((id): id is number => id !== null && id !== undefined);
 
+        let classrooms: ProfileClassroom[] = [];
         if (classroomIds.length > 0) {
             classrooms = await db
                 .select()
@@ -41,9 +43,9 @@ export async function GET(req: Request) {
                 .where(inArray(classroomsTable.id, classroomIds));
         }
 
-        const totalDoubts = doubts.length;
-        const totalReplies = replies.length;
-        const helpfulVotes = doubts.reduce((acc, doubt) => acc + (doubt.likes || 0), 0);
+        const totalDoubts = doubts?.length || 0;
+        const totalReplies = replies?.length || 0;
+        const helpfulVotes = doubts ? doubts.reduce((acc, doubt) => acc + (doubt.likes || 0), 0) : 0;
 
         const rawJoinDate = dbUser?.createdAt || (clerkUser?.createdAt ? new Date(clerkUser.createdAt) : new Date());
         const joinDate = rawJoinDate instanceof Date ? rawJoinDate.toISOString() : new Date(rawJoinDate).toISOString();
@@ -69,16 +71,16 @@ export async function GET(req: Request) {
                 totalDoubts,
                 totalReplies,
                 helpfulVotes,
-                classroomsCount: memberships.length,
+                classroomsCount: memberships?.length || 0,
             },
             activities: {
-                doubts,
-                replies,
-                classrooms,
+                doubts: doubts || [],
+                replies: replies || [],
+                classrooms: classrooms || [],
             },
         });
     } catch (error: any) {
-        console.error("Profile API Error:", error);
+        console.error("Profile API Error Log:", error);
         return NextResponse.json(
             { error: error?.message || "Internal Server Error" },
             { status: 500 }
@@ -102,16 +104,16 @@ export async function POST(req: NextRequest) {
 
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
 
-        const { emailNotificationsEnabled, notificationPreference } = await req.json();
+        const body = await req.json();
+        const { emailNotificationsEnabled, notificationPreference } = body;
 
         const updateData: Record<string, any> = {};
 
         if (typeof emailNotificationsEnabled === "boolean") {
             updateData.emailNotificationsEnabled = emailNotificationsEnabled;
-            // Sync notificationPreference if turning email notifications completely off/on
             if (!emailNotificationsEnabled) {
                 updateData.notificationPreference = "none";
-            } else if (dbUser?.notificationPreference === "none") {
+            } else if (dbUser?.notificationPreference === "none" || notificationPreference === undefined) {
                 updateData.notificationPreference = "instant";
             }
         }
@@ -133,7 +135,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "No fields to update" }, { status: 400 });
         }
 
-        // Update the user preference in DB
         const updated = await db.update(usersTable)
             .set(updateData)
             .where(eq(usersTable.email, email))

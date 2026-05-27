@@ -6,7 +6,7 @@ export async function getProfileStats(email: string, userName: string) {
     const doubtQuery = db.select({
         totalDoubts: count(doubtsTable.id),
         totalLikesReceived: sum(doubtsTable.likes).mapWith(Number),
-        doubtsSolved: sql<number>`SUM(CASE WHEN ${doubtsTable.isSolved} = 'solved' THEN 1 ELSE 0 END)`.mapWith(Number),
+        doubtsSolved: sql<number>`coalesce(sum(case when ${doubtsTable.isSolved} = 'solved' then 1 else 0 end), 0)`.mapWith(Number),
     }).from(doubtsTable).where(eq(doubtsTable.userEmail, email));
 
     const replyQuery = db.select({
