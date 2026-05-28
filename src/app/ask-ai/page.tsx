@@ -267,10 +267,10 @@ export default function AskAIPage() {
     };
 
     return (
-        <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-white dark:from-slate-950 dark:via-slate-900 dark:to-[#020617] text-slate-900 dark:text-white min-w-0 transition-colors duration-500">
+        <div className="flex h-screen bg-gradient-to-br from-slate-50 via-cyan-50 to-white dark:from-slate-950 dark:via-slate-900 dark:to-[#020617] text-slate-900 dark:text-white min-w-0 overflow-hidden transition-colors duration-500">
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-            <main className="flex-1 flex flex-col min-w-0">
+            <main className="flex-1 flex flex-col min-w-0 min-h-0">
                 <header className="flex lg:hidden items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-black/80 backdrop-blur-xl sticky top-0 z-20">
                     <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg" aria-label="Open sidebar">
                         <div className="w-5 h-0.5 bg-white mb-1 rounded" /><div className="w-5 h-0.5 bg-white mb-1 rounded" /><div className="w-5 h-0.5 bg-white rounded" />
@@ -281,10 +281,10 @@ export default function AskAIPage() {
                     <span className="font-bold text-slate-900 dark:text-white">Ask AI Solver</span>
                 </header>
 
-                <div className="flex-1 overflow-y-auto scroll-smooth scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                <div className="flex-1 min-h-0 overflow-y-auto scroll-smooth scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
                     <div className="max-w-[900px] mx-auto w-full px-4 sm:px-8 py-8 pb-6 space-y-6">
 
-                    <div className="flex(items-center gap-3 mb-2">
+                    <div className="flex items-center gap-3 mb-2">
                         <Link href="/" className="flex items-center gap-1.5 text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-black uppercase tracking-widest w-fit shrink-0">
                             <ChevronLeft className="w-4 h-4" /> Home
                         </Link>
