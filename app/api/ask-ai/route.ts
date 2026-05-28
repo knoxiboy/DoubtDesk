@@ -67,14 +67,15 @@ function isUnclearVisionReply(reply: string) {
 /**
  * Determines whether a provider/model failure should trigger fallback retries.
  */
-function shouldRetryModel(err: any): boolean {
+function shouldRetryModel(err: unknown): boolean {
+    const error = err as { status?: number; message?: string };
     const retryableStatuses = [429, 500, 502, 503, 504];
 
-    if (retryableStatuses.includes(err?.status)) {
+    if (error?.status && retryableStatuses.includes(error.status)) {
         return true;
     }
 
-    const message = err?.message?.toLowerCase?.() || '';
+    const message = error?.message?.toLowerCase?.() || "";
 
     if (
         message.includes('timeout') ||
@@ -114,8 +115,8 @@ function markModelFailure(model: string) {
  * @param isVision Whether the request includes an image
  */
 async function callGroqWithFallback(
-    messages: any[],
-    isVision: boolean
+    messages: Groq.Chat.Completions.ChatCompletionMessageParam[],
+    isVision: boolean,
 ) {
     const models = isVision ? VISION_MODELS : TEXT_MODELS;
 
@@ -153,11 +154,9 @@ async function callGroqWithFallback(
                 completion,
                 modelUsed: model,
             };
-        } catch (err: any) {
-            console.warn(
-                `Model ${model} failed:`,
-                err?.message
-            );
+        } catch (err: unknown) {
+            const error = err as { status?: number; message?: string };
+            console.warn(`Model ${model} failed:`, error?.message);
 
             lastError = err;
 
@@ -166,10 +165,10 @@ async function callGroqWithFallback(
              * cascading retries across providers.
              */
             if (
-                err?.status === 400 ||
-                err?.status === 401 ||
-                err?.status === 403 ||
-                err?.status === 404
+                error?.status === 400 ||
+                error?.status === 401 ||
+                error?.status === 403 ||
+                error?.status === 404
             ) {
                 throw err;
             }
@@ -360,7 +359,7 @@ Use bold text (e.g. **Step 1:**) for sub-steps inside the sections. Do NOT use a
         const isVisionRequest =
             !!imageBase64 && !isFollowUp;
 
-        let userMessageContent: any;
+        let userMessageContent: Groq.Chat.Completions.ChatCompletionMessageParam["content"];
 
         if (isVisionRequest) {
             const visionInstruction = `Analyze the image. Follow these strict rules:
@@ -386,7 +385,7 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
             userMessageContent = prompt;
         }
 
-        const messages: any[] = [];
+        const messages: Groq.Chat.Completions.ChatCompletionMessageParam[] = [];
 
         messages.push({
             role: 'system',
@@ -512,7 +511,7 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
             subject,
             model: modelUsed,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error(
             'Error in Groq API Flow:',
             error
@@ -520,8 +519,8 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
 
         return NextResponse.json(
             {
-                error:
-                    error?.message ||
+                error: error instanceof Error ?
+                    error.message :
                     'The AI service is currently overloaded or experiencing issues. Please try again in 30 seconds.',
             },
             { status: 500 }

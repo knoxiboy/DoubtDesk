@@ -78,10 +78,11 @@ Write a professional cover letter based on these details.
 
         return NextResponse.json({ coverLetter });
 
-    } catch (error: any) {
-        console.error("Cover Letter Generation Error:", error.response?.data || error.message);
+    } catch (error: unknown) {
+        const err = error as { response?: { data?: unknown }; message?: string };
+        console.error("Cover Letter Generation Error:", err.response?.data || err.message);
         return NextResponse.json({
-            error: error.message || "Failed to generate cover letter",
+            error: err.message || "Failed to generate cover letter",
         }, { status: 500 });
     }
 }

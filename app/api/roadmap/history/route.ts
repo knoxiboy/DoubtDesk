@@ -31,11 +31,11 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json(parsedHistory);
 
-    } catch (error: any) {
-        console.error("Fetch History Error:", error.message);
+    } catch (error: unknown) {
+        console.error("Fetch History Error:", error instanceof Error ? error.message : error);
         return NextResponse.json({
             error: "Failed to fetch roadmap history",
-            details: error.message
+            details: error instanceof Error ? error.message : "Unknown error"
         }, { status: 500 });
     }
 }
@@ -70,8 +70,8 @@ export async function DELETE(req: NextRequest) {
             .execute();
 
         return NextResponse.json({ message: "Roadmap deleted successfully" });
-    } catch (error: any) {
-        console.error("Delete Roadmap Error:", error.message);
+    } catch (error: unknown) {
+        console.error("Delete Roadmap Error:", error instanceof Error ? error.message : error);
         return NextResponse.json({ error: "Failed to delete roadmap" }, { status: 500 });
     }
 }

@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
             .orderBy(chatHistoryTable.createdAt);
 
         return NextResponse.json(messages);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Fetch Public Chat Error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }

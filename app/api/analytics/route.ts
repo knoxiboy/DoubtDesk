@@ -196,7 +196,7 @@ export async function GET(req: Request) {
             topContributors: topContributors.map(c => ({ name: c.name, replyCount: Number(c.replyCount) }))
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error fetching analytics:', error);
         return NextResponse.json({
             trendingDoubts: [],

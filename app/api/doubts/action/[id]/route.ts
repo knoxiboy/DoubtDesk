@@ -6,6 +6,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { updateDoubtActionSchema } from "@/lib/validations/doubt";
 import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubtStatus";
+import type { Tag } from "@/types";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -183,7 +184,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
             await db.delete(doubtTagsTable).where(eq(doubtTagsTable.doubtId, doubtId));
 
-            const savedTags: any[] = [];
+            const savedTags: Tag[] = [];
             for (const normalizedName of normalizedTags) {
                 const [existingTag] = await db.select().from(tagsTable).where(and(
                     eq(tagsTable.normalizedName, normalizedName),

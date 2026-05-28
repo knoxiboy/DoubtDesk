@@ -81,7 +81,7 @@ export async function GET(req: Request) {
             ...result
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Personal Analytics Error:", error);
         return NextResponse.json({ error: "Failed to generate personal insights" }, { status: 500 });
     }

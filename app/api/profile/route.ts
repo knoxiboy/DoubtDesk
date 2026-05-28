@@ -77,10 +77,10 @@ export async function GET(req: Request) {
                 classrooms,
             },
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Profile API Error:", error);
         return NextResponse.json(
-            { error: error?.message || "Internal Server Error" },
+            { error: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }
@@ -104,7 +104,10 @@ export async function POST(req: NextRequest) {
 
         const { emailNotificationsEnabled, notificationPreference } = await req.json();
 
-        const updateData: Record<string, any> = {};
+        const updateData:  {
+            emailNotificationsEnabled?: boolean;
+            notificationPreference?: "instant" | "daily" | "weekly" | "none";
+        } = {};
 
         if (typeof emailNotificationsEnabled === "boolean") {
             updateData.emailNotificationsEnabled = emailNotificationsEnabled;
@@ -140,10 +143,10 @@ export async function POST(req: NextRequest) {
             .returning();
 
         return NextResponse.json({ success: true, user: updated[0] });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Profile preference update error:", error);
         return NextResponse.json(
-            { error: error?.message || "Server error" },
+            { error: error instanceof Error ? error.message : "Server error" },
             { status: 500 }
         );
     }

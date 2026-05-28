@@ -48,12 +48,12 @@ export async function GET(req: Request) {
             message: "Successfully seeded dummy notifications for the current user." 
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error seeding notifications:", error);
         return NextResponse.json({ 
             error: "Failed to seed notifications", 
-            details: error?.message || String(error),
-            stack: error?.stack
+            details: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
         }, { status: 500 });
     }
 }
