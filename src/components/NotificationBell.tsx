@@ -5,6 +5,7 @@ import { Bell, Check, Loader2 } from "lucide-react"
 import useSWR from "swr"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@clerk/nextjs"
 import {
     Popover,
     PopoverContent,
@@ -20,25 +21,47 @@ interface Notification extends NotificationRecord {
     createdAt: string;
 }
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json())
+const fetcher = async (url: string) => {
+    const res = await fetch(url)
+    const data = await res.json()
+
+    if (!res.ok) {
+        throw new Error(data?.error || "Failed to fetch notifications")
+    }
+
+    return data
+}
 
 export default function NotificationBell() {
     const [isOpen, setIsOpen] = useState(false)
+    const [hasPollingError, setHasPollingError] = useState(false)
     const router = useRouter()
+    const { isLoaded, isSignedIn } = useAuth()
+    const canLoadNotifications = isLoaded && isSignedIn
 
-    const { data, error, mutate } = useSWR('/api/notifications', fetcher, {
-        refreshInterval: 30000,
+    const { data, error, mutate } = useSWR(canLoadNotifications ? '/api/notifications' : null, fetcher, {
+        refreshInterval: hasPollingError ? 120000 : 30000,
+        shouldRetryOnError: false,
+        onError: () => setHasPollingError(true),
+        onSuccess: () => setHasPollingError(false),
     })
 
     const unreadCount = data?.unreadCount || 0
     const notifications: Notification[] = data?.notifications || []
-    const isLoading = !data && !error
+    const isLoading = canLoadNotifications && !data && !error
 
     useEffect(() => {
+        if (!canLoadNotifications) {
+            setHasPollingError(false)
+            return
+        }
+
         const source = new EventSource('/api/notifications/stream')
+        let streamErrorCount = 0
 
         source.addEventListener('notification', (event) => {
             const payload = JSON.parse((event as MessageEvent).data) as Notification
+            streamErrorCount = 0
 
             toast(payload.title, {
                 description: payload.message,
@@ -76,14 +99,22 @@ export default function NotificationBell() {
             }, false)
         })
 
+        source.onopen = () => {
+            streamErrorCount = 0
+        }
+
         source.onerror = () => {
-            // Keep the browser's built-in retry behavior active.
+            streamErrorCount += 1
+
+            if (streamErrorCount >= 3) {
+                source.close()
+            }
         }
 
         return () => {
             source.close()
         }
-    }, [mutate, router])
+    }, [canLoadNotifications, mutate, router])
 
     const markAsRead = async (id: number) => {
         // Optimistic update
