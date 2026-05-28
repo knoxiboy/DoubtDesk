@@ -1,19 +1,13 @@
 // app/api/karma/route.ts
-// GET  /api/karma?email=...   → fetch user's karma score, level, badges
-// POST /api/karma             → award / deduct karma points
-
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { usersTable, karmaTransactionsTable, userBadgesTable, badgeDefinitionsTable } from "@/configs/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { checkAndAwardBadges } from "@/lib/karma-utils";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
-// ── Karma level thresholds ────────────────────────────────────────────────────
-// Level 1: 0–99   → Newbie
-// Level 2: 100–299 → Contributor
-// Level 3: 300–699 → Scholar
-// Level 4: 700–1499 → Expert
-// Level 5: 1500+  → Legend
+// ── KARMA LEVEL THRESHOLDS ────────────────────────────────────────────────────
 export const KARMA_LEVELS = [
     { level: 1, label: "Newbie",      minKarma: 0,    icon: "🌱" },
     { level: 2, label: "Contributor", minKarma: 100,  icon: "⚡" },
@@ -22,7 +16,7 @@ export const KARMA_LEVELS = [
     { level: 5, label: "Legend",      minKarma: 1500, icon: "🏆" },
 ];
 
-// Karma points per event type
+// Karma point metrics per event definition
 export const KARMA_POINTS: Record<string, number> = {
     answer_upvoted:       +10,
     answer_accepted:      +25,
@@ -31,19 +25,17 @@ export const KARMA_POINTS: Record<string, number> = {
     streak_bonus:         +5,
 };
 
-function computeLevel(karma: number): number {
-    let level = 1;
-    for (const tier of KARMA_LEVELS) {
-        if (karma >= tier.minKarma) level = tier.level;
-    }
-    return level;
-}
-
-// ── GET /api/karma?email=xxx ──────────────────────────────────────────────────
+// ── GET /api/karma ────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
-    const email = req.nextUrl.searchParams.get("email");
+    const session = await getServerSession(authOptions);
+    let email = session?.user?.email;
+
     if (!email) {
-        return NextResponse.json({ error: "email is required" }, { status: 400 });
+        email = req.nextUrl.searchParams.get("email") || "";
+    }
+
+    if (!email) {
+        return NextResponse.json({ error: "Unauthorized: Missing identity reference." }, { status: 401 });
     }
 
     const [user] = await db
@@ -57,10 +49,9 @@ export async function GET(req: NextRequest) {
         .limit(1);
 
     if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
+        return NextResponse.json({ error: "User profile not found." }, { status: 404 });
     }
 
-    // Fetch earned badges with definition info
     const earnedBadges = await db
         .select({
             badgeId:     badgeDefinitionsTable.id,
@@ -75,7 +66,6 @@ export async function GET(req: NextRequest) {
         .where(eq(userBadgesTable.userEmail, email))
         .orderBy(desc(userBadgesTable.awardedAt));
 
-    // Recent karma history (last 10 events)
     const recentHistory = await db
         .select()
         .from(karmaTransactionsTable)
@@ -97,58 +87,107 @@ export async function GET(req: NextRequest) {
 }
 
 // ── POST /api/karma ───────────────────────────────────────────────────────────
-// Body: { userEmail, eventType, replyId?, doubtId?, note? }
 export async function POST(req: NextRequest) {
-    const body = await req.json();
-    const { userEmail, eventType, replyId, doubtId, note } = body;
+    try {
+        const body = await req.json();
+        const { userEmail, eventType, replyId, doubtId, note } = body;
 
-    if (!userEmail || !eventType) {
-        return NextResponse.json({ error: "userEmail and eventType are required" }, { status: 400 });
+        if (!eventType) {
+            return NextResponse.json({ error: "Missing required parameter: eventType" }, { status: 400 });
+        }
+
+        const points = KARMA_POINTS[eventType];
+        if (points === undefined) {
+            return NextResponse.json({ error: `Unknown eventType context: ${eventType}` }, { status: 400 });
+        }
+
+        // ── 1. SECURE PRIVILEGE BOUNDARY VERIFICATION ────────────────────────
+        const authHeader = req.headers.get("authorization");
+        const systemToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
+        const isInternalServiceCall = systemToken === process.env.CRON_SECRET && process.env.CRON_SECRET !== undefined;
+
+        if (!isInternalServiceCall) {
+            return NextResponse.json({ 
+                error: "Forbidden: Client-side score adjustments are completely disabled to prevent system exploitation." 
+            }, { status: 403 });
+        }
+
+        if (!userEmail) {
+            return NextResponse.json({ error: "Missing target userEmail for system-level mutation" }, { status: 400 });
+        }
+
+        // ── 2. TRANSACTION MUTATION MANAGEMENT ───────────────────────────────────
+        // FIX: Wrap all mutation procedures within an explicit database-level transaction.
+        // If anything fails or throws an integrity error, the whole execution rolls back cleanly.
+        const result = await db.transaction(async (tx) => {
+            const targetScoreSql = sql`${usersTable.karmaScore} + ${points}`;
+            const atomicLevelCaseSql = sql`CASE 
+                WHEN ${targetScoreSql} >= 1500 THEN 5
+                WHEN ${targetScoreSql} >= 700  THEN 4
+                WHEN ${targetScoreSql} >= 300  THEN 3
+                WHEN ${targetScoreSql} >= 100  THEN 2
+                ELSE 1
+            END`;
+
+            // A. Execute User Table Update
+            const [updatedUser] = await tx
+                .update(usersTable)
+                .set({
+                    karmaScore: targetScoreSql,
+                    karmaLevel: atomicLevelCaseSql,
+                })
+                .where(eq(usersTable.email, userEmail))
+                .returning({ 
+                    karmaScore: usersTable.karmaScore,
+                    karmaLevel: usersTable.karmaLevel 
+                });
+
+            // If the user profile isn't found, we throw an explicit error string to auto-rollback the transaction context
+            if (!updatedUser) {
+                throw new Error("USER_NOT_FOUND");
+            }
+
+            // B. Execute Audit Ledger Entry
+            await tx.insert(karmaTransactionsTable).values({
+                userEmail: userEmail,
+                points,
+                eventType,
+                replyId:  replyId  ?? null,
+                doubtId:  doubtId  ?? null,
+                note:     note     ?? "System mutation processed via secure worker node",
+            });
+
+            return updatedUser;
+        });
+
+        // Run badge updates outside the heavy database transaction window to free pool locks
+        const newBadges = await checkAndAwardBadges(userEmail);
+
+        return NextResponse.json({
+            success:      true,
+            karmaScore:   result.karmaScore,
+            karmaLevel:   result.karmaLevel,
+            pointsAwarded: points,
+            newBadges,
+        });
+
+    } catch (error: any) {
+        // Intercept explicit missing profile lookups safely 
+        if (error instanceof Error && error.message === "USER_NOT_FOUND") {
+            return NextResponse.json({ error: "Target user profile was not found inside the dataset." }, { status: 404 });
+        }
+
+        // Intercept structural foreign key violations cleanly (e.g., bad replyId or doubtId format)
+        if (error?.code === "23503") {
+            return NextResponse.json({ 
+                error: "Data Integrity Failure: Associated reference values do not exist in parent tables." 
+            }, { status: 400 });
+        }
+        
+        console.error("CRITICAL: Karma mutation endpoint exception:", error);
+        return NextResponse.json(
+            { error: "Internal Server Error", details: error instanceof Error ? error.message : "Database failure" }, 
+            { status: 500 }
+        );
     }
-
-    const points = KARMA_POINTS[eventType];
-    if (points === undefined) {
-        return NextResponse.json({ error: `Unknown eventType: ${eventType}` }, { status: 400 });
-    }
-
-    // 1. Insert transaction record
-    await db.insert(karmaTransactionsTable).values({
-        userEmail,
-        points,
-        eventType,
-        replyId:  replyId  ?? null,
-        doubtId:  doubtId  ?? null,
-        note:     note     ?? null,
-    });
-
-    // 2. Update user's karmaScore atomically, then recompute level
-    const [updated] = await db
-        .update(usersTable)
-        .set({
-            karmaScore: sql`${usersTable.karmaScore} + ${points}`,
-        })
-        .where(eq(usersTable.email, userEmail))
-        .returning({ karmaScore: usersTable.karmaScore });
-
-    if (!updated) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const newLevel = computeLevel(updated.karmaScore);
-
-    await db
-        .update(usersTable)
-        .set({ karmaLevel: newLevel })
-        .where(eq(usersTable.email, userEmail));
-
-    // 3. Check if any badges should be awarded (async helper)
-    const newBadges = await checkAndAwardBadges(userEmail);
-
-    return NextResponse.json({
-        success:      true,
-        karmaScore:   updated.karmaScore,
-        karmaLevel:   newLevel,
-        pointsAwarded: points,
-        newBadges,
-    });
 }

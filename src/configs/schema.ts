@@ -1,3 +1,4 @@
+// configs/schema.ts
 import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
@@ -19,7 +20,8 @@ export const usersTable = pgTable("users", {
     // ── Karma System ──────────────────────────────────────────────────────────
     karmaScore: integer().default(0).notNull(),         // total reputation points
     karmaLevel: integer().default(1).notNull(),          // 1 = Newbie … 5 = Legend
-    lastActiveDate: timestamp(),                         // for streak tracking
+    lastActiveDate: timestamp(),                         // Keep for general login tracking if needed
+    lastContributionAt: timestamp(),                     // FIX: For genuine streak tracking (real user actions)
     currentStreak: integer().default(0).notNull(),       // consecutive active days
     // ─────────────────────────────────────────────────────────────────────────
     createdAt: timestamp().defaultNow().notNull(),
@@ -230,7 +232,7 @@ export const replyLikesTable = pgTable("reply_likes", {
     replyIdFk: foreignKey({
         columns: [table.replyId],
         foreignColumns: [repliesTable.id],
-    }).onDelete("cascade"),
+        }).onDelete("cascade"),
     userNameReplyUnique: unique("reply_likes_userName_replyId_unique").on(table.userName, table.replyId),
 }));
 
@@ -312,30 +314,13 @@ export const pendingNotificationsTable = pgTable("pending_notifications", {
 //  KARMA SYSTEM TABLES
 // ═══════════════════════════════════════════════════════════════════
 
-/**
- * karmaTransactionsTable
- * Every karma event is recorded here (audit trail + source of truth).
- *
- * eventType values and their points:
- *   "answer_upvoted"        → +10
- *   "answer_accepted"       → +25
- *   "spam_report_accepted"  → -15
- *   "answer_downvoted"      → -2
- *   "streak_bonus"          → +5  (awarded by inngest daily job)
- */
 export const karmaTransactionsTable = pgTable("karma_transactions", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    // user who RECEIVES the karma change
     userEmail: varchar({ length: 255 }).notNull(),
-    // karma delta — positive or negative integer
     points: integer().notNull(),
-    // machine-readable event type (see values above)
     eventType: varchar({ length: 50 }).notNull(),
-    // optional: which reply triggered this event
     replyId: integer(),
-    // optional: which doubt the reply belongs to
     doubtId: integer(),
-    // human-readable note e.g. "Answer upvoted by Student_X7Y"
     note: text(),
     createdAt: timestamp().defaultNow().notNull(),
 }, (table) => ({
@@ -355,42 +340,20 @@ export const karmaTransactionsTable = pgTable("karma_transactions", {
     }).onDelete("set null"),
 }));
 
-/**
- * badgeDefinitionsTable
- * Stores the master list of all possible badges.
- * Seed this table once (or manage via admin panel).
- *
- * condition JSON shape examples:
- *   { "type": "subject_answers", "subject": "math", "count": 10 }
- *   { "type": "streak_days", "days": 3 }
- *   { "type": "karma_milestone", "karma": 100 }
- *   { "type": "accepted_answers", "count": 5 }
- */
 export const badgeDefinitionsTable = pgTable("badge_definitions", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    // unique slug e.g. "math_wizard", "helper_streak_3"
     slug: varchar({ length: 80 }).notNull().unique(),
-    // display name e.g. "Math Wizard 🧙‍♂️"
     name: varchar({ length: 120 }).notNull(),
-    // short description shown in UI
     description: text().notNull(),
-    // emoji or icon identifier
     icon: varchar({ length: 10 }).notNull(),
-    // JSON: criteria that must be met to earn the badge
     condition: text().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
 });
 
-/**
- * userBadgesTable
- * Records which users have earned which badges and when.
- * One row per (user, badge) — duplicates prevented by unique constraint.
- */
 export const userBadgesTable = pgTable("user_badges", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     userEmail: varchar({ length: 255 }).notNull(),
     badgeId: integer().notNull(),
-    // the karma / action count snapshot at the moment of award
     awardedAt: timestamp().defaultNow().notNull(),
 }, (table) => ({
     userEmailIndex: index("user_badge_userEmail_idx").on(table.userEmail),
@@ -403,6 +366,5 @@ export const userBadgesTable = pgTable("user_badges", {
         columns: [table.badgeId],
         foreignColumns: [badgeDefinitionsTable.id],
     }).onDelete("cascade"),
-    // a user can only earn each badge once
     uniqueUserBadge: unique("user_badges_userEmail_badgeId_unique").on(table.userEmail, table.badgeId),
 }));

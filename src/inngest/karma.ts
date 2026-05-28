@@ -1,36 +1,86 @@
 // inngest/karma.ts
-// Background jobs for the Karma system.
-//
-// Jobs defined here:
-//   1. onAnswerUpvoted     → triggered when a reply gets an upvote
-//   2. onAnswerAccepted    → triggered when a doubt is marked solved
-//   3. onSpamAccepted      → triggered when a spam report is accepted
-//   4. dailyStreakProcessor → runs every night at midnight to update streaks
-
-import { inngest } from "./client"; // re-use your existing Inngest client
+import { inngest } from "./client"; 
 import { db } from "@/configs/db";
-import { usersTable } from "@/configs/schema";
-import { updateStreak } from "@/lib/karma-utils";
+import { usersTable, karmaTransactionsTable } from "@/configs/schema";
+import { eq, sql, isNotNull } from "drizzle-orm"; 
+import { checkAndAwardBadges } from "@/lib/karma-utils";
 
-// Helper: call the karma award API internally
-async function awardKarma(payload: {
+// Karma points definitions inside worker
+const KARMA_POINTS: Record<string, number> = {
+    answer_upvoted:       +10,
+    answer_accepted:      +25,
+    spam_report_accepted: -15,
+    answer_downvoted:     -2,
+    streak_bonus:         +5,
+};
+
+// ── Secure Helper: Transactional Database Mutations ──────────────────────────
+async function executeKarmaTransaction(payload: {
     userEmail: string;
     eventType: string;
     replyId?: number;
     doubtId?: number;
     note?: string;
 }) {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    await fetch(`${baseUrl}/api/karma`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-    });
+    const { userEmail, eventType, replyId, doubtId, note } = payload;
+    const points = KARMA_POINTS[eventType];
+    
+    if (points === undefined) {
+        throw new Error(`[FAIL-FAST] Unknown or unmapped eventType provided: ${eventType}`);
+    }
+
+    try {
+        await db.transaction(async (tx) => {
+            const targetScoreSql = sql`${usersTable.karmaScore} + ${points}`;
+            const atomicLevelCaseSql = sql`CASE 
+                WHEN ${targetScoreSql} >= 1500 THEN 5
+                WHEN ${targetScoreSql} >= 700  THEN 4
+                WHEN ${targetScoreSql} >= 300  THEN 3
+                WHEN ${targetScoreSql} >= 100  THEN 2
+                ELSE 1
+            END`;
+
+            const [updatedUser] = await tx
+                .update(usersTable)
+                .set({
+                    karmaScore: targetScoreSql,
+                    karmaLevel: atomicLevelCaseSql,
+                })
+                .where(eq(usersTable.email, userEmail))
+                .returning({ email: usersTable.email });
+
+            if (!updatedUser) {
+                throw new Error("USER_NOT_FOUND");
+            }
+
+            await tx.insert(karmaTransactionsTable).values({
+                userEmail,
+                points,
+                eventType,
+                replyId: replyId ?? null,
+                doubtId: doubtId ?? null,
+                note: note ?? "Background event mutation processed",
+            });
+        });
+
+        await checkAndAwardBadges(userEmail);
+
+    } catch (error: any) {
+        if (error instanceof Error && error.message === "USER_NOT_FOUND") {
+            console.error(`[CRITICAL] Aborting job worker. User target ${userEmail} does not exist in dataset.`);
+            throw error;
+        }
+        if (error?.code === "23503") {
+            const fkError = new Error(`[DATA INTEGRITY FAILURE] Foreign key violation for event ${eventType}.`);
+            console.error(fkError.message, error);
+            throw fkError;
+        }
+        console.error(`[CRITICAL] Background job processor failed for user ${userEmail}:`, error);
+        throw error;
+    }
 }
 
 // ── 1. Answer Upvoted (+10 karma) ─────────────────────────────────────────────
-// Trigger this from your reply upvote API route:
-//   await inngest.send({ name: "karma/answer.upvoted", data: { replyAuthorEmail, replyId, doubtId } })
 export const onAnswerUpvoted = inngest.createFunction(
     { id: "karma-answer-upvoted" },
     { event: "karma/answer.upvoted" },
@@ -41,7 +91,7 @@ export const onAnswerUpvoted = inngest.createFunction(
             doubtId: number;
         };
 
-        await awardKarma({
+        await executeKarmaTransaction({
             userEmail: replyAuthorEmail,
             eventType: "answer_upvoted",
             replyId,
@@ -49,24 +99,23 @@ export const onAnswerUpvoted = inngest.createFunction(
             note: "Answer received an upvote",
         });
 
-        return { awarded: true, userEmail: replyAuthorEmail };
+        return { success: true, userEmail: replyAuthorEmail };
     }
 );
 
 // ── 2. Answer Accepted (+25 karma) ───────────────────────────────────────────
-// Trigger from your "mark solved" API route:
-//   await inngest.send({ name: "karma/answer.accepted", data: { replyAuthorEmail, replyId, doubtId } })
 export const onAnswerAccepted = inngest.createFunction(
     { id: "karma-answer-accepted" },
     { event: "karma/answer.accepted" },
     async ({ event }) => {
         const { replyAuthorEmail, replyId, doubtId } = event.data as {
             replyAuthorEmail: string;
+            replyAuthorEmail: string;
             replyId: number;
             doubtId: number;
         };
 
-        await awardKarma({
+        await executeKarmaTransaction({
             userEmail: replyAuthorEmail,
             eventType: "answer_accepted",
             replyId,
@@ -74,13 +123,11 @@ export const onAnswerAccepted = inngest.createFunction(
             note: "Answer marked as accepted solution",
         });
 
-        return { awarded: true, userEmail: replyAuthorEmail };
+        return { success: true, userEmail: replyAuthorEmail };
     }
 );
 
 // ── 3. Spam Report Accepted (-15 karma) ──────────────────────────────────────
-// Trigger from your moderation workflow:
-//   await inngest.send({ name: "karma/spam.accepted", data: { offenderEmail, replyId, doubtId } })
 export const onSpamAccepted = inngest.createFunction(
     { id: "karma-spam-accepted" },
     { event: "karma/spam.accepted" },
@@ -91,7 +138,7 @@ export const onSpamAccepted = inngest.createFunction(
             doubtId?: number;
         };
 
-        await awardKarma({
+        await executeKarmaTransaction({
             userEmail: offenderEmail,
             eventType: "spam_report_accepted",
             replyId,
@@ -99,43 +146,84 @@ export const onSpamAccepted = inngest.createFunction(
             note: "Spam/abuse report accepted against your answer",
         });
 
-        return { penalised: true, userEmail: offenderEmail };
+        return { success: true, userEmail: offenderEmail };
     }
 );
 
-// ── 4. Daily Streak Processor ─────────────────────────────────────────────────
-// Runs every day at midnight (UTC) — cron: "0 0 * * *"
-// Processes every user to update streaks and award streak karma.
+// ── 4. Daily Streak Processor (Corrected Activity & Predicate Filters) ────────
 export const dailyStreakProcessor = inngest.createFunction(
     {
         id:          "karma-daily-streak",
-        concurrency: { limit: 10 }, // process 10 users in parallel
+        concurrency: { limit: 10 }, 
     },
     { cron: "0 0 * * *" },
     async () => {
-        // Fetch all user emails (only users who have ever been active)
+        // FIX: Replaced CTE logic with a proper boolean predicate checking if lastActiveDate IS NOT NULL
         const users = await db
-            .select({ email: usersTable.email })
+            .select({ 
+                email: usersTable.email,
+                currentStreak: usersTable.currentStreak,
+                lastActiveDate: usersTable.lastActiveDate,
+            })
             .from(usersTable)
-            .where(
-                // only process users who have logged in at least once
-                // (lastActiveDate is not null)
-                // Using raw SQL since Drizzle's isNotNull helper may vary by version
-                db.$with("active").as(
-                    db.select().from(usersTable)
-                )
-            );
+            .where(isNotNull(usersTable.lastActiveDate));
 
         let processed = 0;
+        let failures = 0;
+
+        const now = new Date();
+        // Establish standard midnight boundary for the day that just STARTED
+        const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const oneDayMs = 24 * 60 * 60 * 1000;
+
         for (const user of users) {
             try {
-                await updateStreak(user.email);
-                processed++;
+                if (!user.email || !user.lastActiveDate) continue;
+
+                const activeTimestamp = new Date(user.lastActiveDate).getTime();
+                
+                // Calculate difference relative to today's midnight mark
+                const daysDiff = Math.floor((todayMidnight - activeTimestamp) / oneDayMs);
+
+                // CRITICAL TIMING FIX: At 00:00 AM:
+                // daysDiff === 0 means they interacted in the last day that just ended. Increment streak!
+                if (daysDiff === 0) {
+                    const updatedStreakValue = user.currentStreak + 1;
+
+                    await db
+                        .update(usersTable)
+                        .set({ currentStreak: updatedStreakValue })
+                        .where(eq(usersTable.email, user.email));
+
+                    await executeKarmaTransaction({
+                        userEmail: user.email,
+                        eventType: "streak_bonus",
+                        note: `Daily activity milestone hit! Streak grew to ${updatedStreakValue} days.`,
+                    });
+                    processed++;
+
+                } else if (daysDiff >= 2) {
+                    // daysDiff >= 2 means their last interaction was over 48 hours ago. Reset to 0!
+                    await db
+                        .update(usersTable)
+                        .set({ currentStreak: 0 })
+                        .where(eq(usersTable.email, user.email));
+                    processed++;
+                }
+                
+                // Note: If daysDiff === 1, it means their last activity timestamp is from an earlier session 
+                // but still within a safe trailing 24-48 hour window. We let them ride safely.
+
             } catch (err) {
-                console.error(`[karma-streak] failed for ${user.email}:`, err);
+                failures++;
+                console.error(`[karma-streak] Streak update failed for target ${user.email}:`, err);
             }
         }
 
-        return { processed };
+        if (users.length > 0 && processed === 0) {
+            throw new Error(`[CRITICAL] Streak processing failed across all evaluated users.`);
+        }
+
+        return { processed, failures };
     }
 );

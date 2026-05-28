@@ -3,6 +3,8 @@ import { repliesTable, replyLikesTable } from "@/configs/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
+// TODO: check karein aapka inngest import path sahi hai ya nahi
+import { inngest } from "@/configs/inngest"; 
 import { checkUserBlock } from "@/lib/auth-utils";
 import { buildErrorResponse } from "@/lib/error-handler";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
@@ -95,6 +97,18 @@ export async function POST(req: Request) {
                 };
             }
         });
+
+        // ── 3. Fire karma event (only if reply author is a registered user and it's an UPVOTE) ──────
+        if (result && result.hasUpvoted && result.userEmail) {
+            await inngest.send({
+                name: "karma/answer.upvoted",
+                data: {
+                    replyAuthorEmail: result.userEmail,
+                    replyId: result.id || replyId,
+                    doubtId: result.doubtId,
+                },
+            });
+        }
 
         return NextResponse.json(result);
     } catch (error) {

@@ -1,77 +1,136 @@
 // app/api/doubts/[id]/upvote/route.ts
-// POST /api/doubts/[id]/upvote
-// Body: { replyId: number, userName: string }
-//
-// What this does:
-//   1. Inserts a row in reply_likes (prevents duplicate upvotes)
-//   2. Increments reply.upvotes count
-//   3. Fires inngest event → karma/answer.upvoted (+10 karma for reply author)
-
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { repliesTable, replyLikesTable } from "@/configs/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm"; // FIX: Imported 'and' for multi-column matching
 import { inngest } from "@/inngest/client";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(
     req: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
-    const doubtId = parseInt(params.id);
-    if (isNaN(doubtId)) {
-        return NextResponse.json({ error: "Invalid doubt id" }, { status: 400 });
-    }
-
-    const body = await req.json();
-    const { replyId, userName } = body as { replyId: number; userName: string };
-
-    if (!replyId || !userName) {
-        return NextResponse.json(
-            { error: "replyId and userName are required" },
-            { status: 400 }
-        );
-    }
-
-    // ── 1. Prevent duplicate upvotes ─────────────────────────────────────────
-    // replyLikesTable already has a unique constraint on (userName, replyId)
-    // so if user already upvoted, the insert will throw a unique violation.
     try {
-        await db.insert(replyLikesTable).values({ userName, replyId });
-    } catch {
+        // ── 1. SERVER-SIDE AUTHENTICATION GUARD ──────────────────────────────
+        const session = await getServerSession(authOptions);
+        if (!session || !session.user?.email) {
+            return NextResponse.json({ error: "Unauthorized! Please log in first." }, { status: 401 });
+        }
+        const loggedInUserEmail = session.user.email;
+
+        // ── 2. NEXT.JS 15 ASYNC PARAMS RESOLUTION ────────────────────────────
+        const { id } = await params;
+        const doubtId = parseInt(id);
+        
+        if (isNaN(doubtId)) {
+            return NextResponse.json({ error: "Invalid doubt id" }, { status: 400 });
+        }
+
+        const body = await req.json();
+        const { replyId } = body as { replyId: number };
+
+        if (!replyId) {
+            return NextResponse.json({ error: "replyId is required" }, { status: 400 });
+        }
+
+        // ── 3. DATA INTEGRITY CHECK (THREAD VALIDATION) ──────────────────────
+        const [targetReply] = await db
+            .select({ 
+                userEmail: repliesTable.userEmail,
+                doubtId: repliesTable.doubtId 
+            })
+            .from(repliesTable)
+            .where(eq(repliesTable.id, replyId))
+            .limit(1);
+
+        if (!targetReply) {
+            return NextResponse.json({ error: "Reply not found" }, { status: 404 });
+        }
+
+        if (targetReply.doubtId !== doubtId) {
+            return NextResponse.json({ 
+                error: "Integrity Error: The provided reply does not belong to this doubt thread." 
+            }, { status: 400 });
+        }
+
+        if (targetReply.userEmail === loggedInUserEmail) {
+            return NextResponse.json({ error: "Forbidden: You cannot upvote your own answer." }, { status: 403 });
+        }
+
+        // ── 4. PREVENT DUPLICATE UPVOTES & ISOLATE OPERATIONAL FAILURES ──────
+        try {
+            await db.insert(replyLikesTable).values({ 
+                userEmail: loggedInUserEmail,
+                replyId 
+            });
+        } catch (error: any) {
+            if (error?.code === "23505") {
+                return NextResponse.json(
+                    { error: "You have already upvoted this answer" },
+                    { status: 409 }
+                );
+            }
+            if (error?.code === "23503") {
+                return NextResponse.json(
+                    { error: "Data Integrity Failure: The target reply references a record that no longer exists." },
+                    { status: 400 }
+                );
+            }
+            throw error;
+        }
+
+        // ── 5. BOUND ATOMIC COUNTER INCREMENT ────────────────────────────────
+        // FIX: The query is now hard-bound to both replyId AND route doubtId.
+        // This stops malicious/accidental URL spoofing entirely at the database level.
+        const [updatedReply] = await db
+            .update(repliesTable)
+            .set({ upvotes: sql`${repliesTable.upvotes} + 1` })
+            .where(
+                and(
+                    eq(repliesTable.id, replyId),
+                    eq(repliesTable.doubtId, doubtId)
+                )
+            )
+            .returning({
+                upvotes: repliesTable.upvotes,
+                userEmail: repliesTable.userEmail,
+                doubtId: repliesTable.doubtId, // Verified from row
+            });
+
+        // Double check that a row was actually matched and mutated
+        if (!updatedReply) {
+            return NextResponse.json({ 
+                error: "Integrity Error: Counter increment rejected. Thread validation failed at database write." 
+            }, { status: 400 });
+        }
+
+        // ── 6. DISPATCH BACKGROUND SYSTEM EVENT VIA INNGEST ─────────────────
+        if (updatedReply.userEmail) {
+            await inngest.send({
+                name: "karma/answer.upvoted",
+                data: {
+                    replyAuthorEmail: updatedReply.userEmail,
+                    replyId,
+                    doubtId: updatedReply.doubtId, // FIX: Using verified database state instead of route parameter variable
+                },
+            });
+        }
+
+        return NextResponse.json({ 
+            success: true, 
+            message: "Upvote tracked successfully", 
+            currentUpvotes: updatedReply.upvotes ?? 0 
+        });
+
+    } catch (error) {
+        console.error("CRITICAL: Upvote endpoint execution exception:", error);
         return NextResponse.json(
-            { error: "You have already upvoted this answer" },
-            { status: 409 }
+            { 
+                error: "Internal Server Error", 
+                details: error instanceof Error ? error.message : "Database connection or structural query exception" 
+            }, 
+            { status: 500 }
         );
     }
-
-    // ── 2. Increment upvotes counter on the reply ────────────────────────────
-    const [updatedReply] = await db
-        .update(repliesTable)
-        .set({ upvotes: sql`${repliesTable.upvotes} + 1` })
-        .where(eq(repliesTable.id, replyId))
-        .returning({
-            upvotes:   repliesTable.upvotes,
-            userEmail: repliesTable.userEmail,
-        });
-
-    if (!updatedReply) {
-        return NextResponse.json({ error: "Reply not found" }, { status: 404 });
-    }
-
-    // ── 3. Fire karma event (only if reply author is a registered user) ──────
-    if (updatedReply.userEmail) {
-        await inngest.send({
-            name: "karma/answer.upvoted",
-            data: {
-                replyAuthorEmail: updatedReply.userEmail,
-                replyId,
-                doubtId,
-            },
-        });
-    }
-
-    return NextResponse.json({
-        success: true,
-        upvotes: updatedReply.upvotes,
-    });
 }

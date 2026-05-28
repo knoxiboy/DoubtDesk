@@ -1,8 +1,4 @@
 // lib/karma-utils.ts
-// Helper functions for the Karma system:
-//   - checkAndAwardBadges  → run after every karma event
-//   - updateStreak         → run daily via inngest job
-
 import { db } from "@/configs/db";
 import {
     usersTable,
@@ -12,7 +8,7 @@ import {
     userBadgesTable,
     karmaTransactionsTable,
 } from "@/configs/schema";
-import { eq, and, count, sql } from "drizzle-orm";
+import { eq, and, count, countDistinct, sql } from "drizzle-orm";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -29,11 +25,10 @@ interface BadgeCondition {
     karma?:   number;
 }
 
-// ── checkAndAwardBadges ───────────────────────────────────────────────────────
+// ── checkAndAwardBadges (Thread-Safe Upsert Flow) ───────────────────────────────
 /**
  * Evaluate ALL badge definitions against the user's current stats.
- * Awards any badge the user has earned but not yet received.
- * Returns an array of newly awarded badge slugs (empty if none).
+ * Safe from concurrent execution side-effects using native Upsert/Conflict fallback capture.
  */
 export async function checkAndAwardBadges(userEmail: string): Promise<string[]> {
     // Fetch all badge definitions
@@ -67,7 +62,7 @@ export async function checkAndAwardBadges(userEmail: string): Promise<string[]> 
 
     const totalReplies = totalRepliesRow?.total ?? 0;
 
-    // Count accepted answers (doubts where solvedReplyId matches a reply by this user)
+    // Count accepted answers
     const [acceptedRow] = await db
         .select({ total: count() })
         .from(doubtsTable)
@@ -79,14 +74,13 @@ export async function checkAndAwardBadges(userEmail: string): Promise<string[]> 
     const newlyAwarded: string[] = [];
 
     for (const badge of allBadges) {
-        // Skip if user already earned this badge
         if (earnedIds.has(badge.id)) continue;
 
         let condition: BadgeCondition;
         try {
             condition = JSON.parse(badge.condition) as BadgeCondition;
         } catch {
-            continue; // malformed condition — skip
+            continue; // Skip malformed JSON
         }
 
         let earned = false;
@@ -109,9 +103,8 @@ export async function checkAndAwardBadges(userEmail: string): Promise<string[]> 
                 break;
 
             case "subject_answers": {
-                // Count how many doubts in this subject the user has answered
                 const [subjectRow] = await db
-                    .select({ total: count() })
+                    .select({ total: countDistinct(repliesTable.doubtId) })
                     .from(repliesTable)
                     .innerJoin(doubtsTable, eq(repliesTable.doubtId, doubtsTable.id))
                     .where(
@@ -129,24 +122,27 @@ export async function checkAndAwardBadges(userEmail: string): Promise<string[]> 
         }
 
         if (earned) {
-            await db.insert(userBadgesTable).values({
-                userEmail,
-                badgeId: badge.id,
-            });
-            newlyAwarded.push(badge.slug);
+            const [insertedRow] = await db
+                .insert(userBadgesTable)
+                .values({
+                    userEmail,
+                    badgeId: badge.id,
+                })
+                .onConflictDoNothing({ 
+                    target: [userBadgesTable.userEmail, userBadgesTable.badgeId] 
+                })
+                .returning({ id: userBadgesTable.id });
+
+            if (insertedRow || !earnedIds.has(badge.id)) {
+                newlyAwarded.push(badge.slug);
+            }
         }
     }
 
     return newlyAwarded;
 }
 
-// ── updateStreak ──────────────────────────────────────────────────────────────
-/**
- * Called by the daily inngest job for every active user.
- * - If the user was active yesterday → increment streak, award streak bonus karma
- * - If the user was active today already → do nothing (idempotent)
- * - If the user missed a day → reset streak to 0
- */
+// ── updateStreak (Recalculates Level Position Automatically) ─────────────────
 export async function updateStreak(userEmail: string): Promise<void> {
     const [user] = await db
         .select({
@@ -157,56 +153,56 @@ export async function updateStreak(userEmail: string): Promise<void> {
         .where(eq(usersTable.email, userEmail))
         .limit(1);
 
-    if (!user) return;
+    if (!user || !user.lastActiveDate) return;
 
-    const now      = new Date();
-    const today    = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const lastDate = user.lastActiveDate
-        ? new Date(
-            user.lastActiveDate.getFullYear(),
-            user.lastActiveDate.getMonth(),
-            user.lastActiveDate.getDate()
-          )
-        : null;
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const oneDayMs = 24 * 60 * 60 * 1000;
 
-    const daysDiff = lastDate
-        ? Math.floor((today.getTime() - lastDate.getTime()) / 86_400_000)
-        : null;
+    const activeTimestamp = new Date(user.lastActiveDate).getTime();
+    const daysDiff = Math.floor((todayMidnight - activeTimestamp) / oneDayMs);
 
-    let newStreak = user.currentStreak;
+    if (daysDiff === 0) {
+        const nextStreakVal = user.currentStreak + 1;
 
-    if (daysDiff === null || daysDiff > 1) {
-        // Never active before, or missed at least one day → reset
-        newStreak = 1;
-    } else if (daysDiff === 1) {
-        // Active yesterday → extend streak
-        newStreak = user.currentStreak + 1;
+        await db.transaction(async (tx) => {
+            // Compute the target score inline to resolve level scaling factors
+            const nextScoreSql = sql`${usersTable.karmaScore} + 5`;
 
-        // Award streak bonus karma (+5 per active day)
-        await db.insert(karmaTransactionsTable).values({
-            userEmail,
-            points:    5,
-            eventType: "streak_bonus",
-            note:      `Day ${newStreak} streak bonus`,
+            // FIX: Recompute tier level thresholds instantly during the same write lock sequence
+            const atomicLevelCaseSql = sql`CASE 
+                WHEN ${nextScoreSql} >= 1500 THEN 5
+                WHEN ${nextScoreSql} >= 700  THEN 4
+                WHEN ${nextScoreSql} >= 300  THEN 3
+                WHEN ${nextScoreSql} >= 100  THEN 2
+                ELSE 1
+            END`;
+
+            await tx
+                .update(usersTable)
+                .set({ 
+                    karmaScore: nextScoreSql,
+                    karmaLevel: atomicLevelCaseSql, // Synchronized Level updates
+                    currentStreak: nextStreakVal 
+                })
+                .where(eq(usersTable.email, userEmail));
+
+            await tx.insert(karmaTransactionsTable).values({
+                userEmail,
+                points:     5,
+                eventType: "streak_bonus",
+                note:       `Day ${nextStreakVal} streak milestone bonus applied.`,
+            });
         });
 
-        await db
-            .update(usersTable)
-            .set({ karmaScore: sql`${usersTable.karmaScore} + 5` })
-            .where(eq(usersTable.email, userEmail));
-    } else {
-        // daysDiff === 0 → already updated today, do nothing
-        return;
+        await checkAndAwardBadges(userEmail);
+
+    } else if (daysDiff >= 2) {
+        if (user.currentStreak > 0) {
+            await db
+                .update(usersTable)
+                .set({ currentStreak: 0 })
+                .where(eq(usersTable.email, userEmail));
+        }
     }
-
-    await db
-        .update(usersTable)
-        .set({
-            currentStreak:  newStreak,
-            lastActiveDate: now,
-        })
-        .where(eq(usersTable.email, userEmail));
-
-    // Check for new streak-related badges
-    await checkAndAwardBadges(userEmail);
 }
