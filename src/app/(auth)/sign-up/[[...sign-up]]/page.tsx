@@ -10,22 +10,26 @@ export default function Page() {
   const isDark = resolvedTheme === "dark";
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black p-4 gap-6 transition-colors duration-500">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-black p-4 relative overflow-hidden transition-colors duration-500">
+      {/* Decorative Aurora Gradients */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[300px] bg-gradient-to-b from-blue-500/10 dark:from-blue-500/5 to-transparent blur-3xl pointer-events-none z-0" />
+      
+      <div className="relative z-10 gap-6 w-full max-w-md">
+    <div className="relative">
       
       <Link
         href="/"
-        className="text-sm font-medium text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+        className="absolute top-6 left-8 z-50 text-sm font-medium text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors"
       >
         &larr; Back to Home
       </Link>
-
       <SignUp
         appearance={{
           baseTheme: isDark ? dark : undefined,
           elements: {
             card: isDark
-              ? "bg-zinc-950 border border-zinc-900 shadow-2xl rounded-2xl"
-              : "bg-white border border-slate-200 shadow-xl rounded-2xl",
+              ? "bg-zinc-950 border border-zinc-900 shadow-2xl rounded-2xl pt-16 pb-8 px-8"
+              : "bg-white border border-slate-200 shadow-xl rounded-2xl pt-16 pb-8 px-8",
 
             headerTitle: isDark ? "text-white" : "text-slate-900",
             headerSubtitle: isDark ? "text-zinc-400" : "text-slate-500",
@@ -52,6 +56,8 @@ export default function Page() {
           },
         }}
       />
+    </div>
+    </div>
     </div>
   );
 }

@@ -17,16 +17,17 @@ export default function SignInPage() {
       
       <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-md">
         {/* Navigation Action */}
+        
+        <div className="w-full shadow-2xl shadow-slate-200/50 dark:shadow-none animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* Auth Interface */}
         <Link 
           href="/" 
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white transition-colors duration-200 self-start ml-2 group"
+          className="absolute top-6 left-10 z-50 inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white transition-colors duration-200 self-start ml-2 group"
         >
           <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
           Back to Home
         </Link>
         
-        {/* Auth Interface */}
-        <div className="w-full shadow-2xl shadow-slate-200/50 dark:shadow-none animate-in fade-in slide-in-from-bottom-4 duration-500">
           <SignIn
             appearance={{
               baseTheme: isDark ? dark : undefined,
@@ -36,8 +37,8 @@ export default function SignInPage() {
                 
                 card:
                   isDark
-                    ? "bg-black border border-zinc-900 shadow-none rounded-3xl w-full p-8 overflow-hidden"
-                    : "bg-white border border-slate-200/80 rounded-3xl w-full p-8 overflow-hidden",
+                    ? "bg-black border border-zinc-900 shadow-none rounded-3xl w-full pt-16 pb-8 px-8 overflow-hidden"
+                    : "bg-white border border-slate-200/80 rounded-3xl w-full pt-16 pb-8 px-8 overflow-hidden",
 
                 headerTitle:
                   isDark ? "text-white font-bold tracking-tight" : "text-slate-900 font-bold tracking-tight",
