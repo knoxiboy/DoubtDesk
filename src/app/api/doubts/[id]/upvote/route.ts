@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { repliesTable, replyLikesTable } from "@/configs/schema";
-import { eq, and, sql } from "drizzle-orm"; // FIX: Imported 'and' for multi-column matching
+import { eq, and, sql } from "drizzle-orm"; 
 import { inngest } from "@/inngest/client";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -14,10 +14,13 @@ export async function POST(
     try {
         // ── 1. SERVER-SIDE AUTHENTICATION GUARD ──────────────────────────────
         const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
-            return NextResponse.json({ error: "Unauthorized! Please log in first." }, { status: 401 });
+        if (!session || !session.user?.email || !session.user?.name) {
+            return NextResponse.json({ 
+                error: "Unauthorized! Missing active session profile properties." 
+            }, { status: 401 });
         }
         const loggedInUserEmail = session.user.email;
+        const loggedInUserName = session.user.name; // FIX: Extracted username for composite tracking identities
 
         // ── 2. NEXT.JS 15 ASYNC PARAMS RESOLUTION ────────────────────────────
         const { id } = await params;
@@ -58,13 +61,38 @@ export async function POST(
             return NextResponse.json({ error: "Forbidden: You cannot upvote your own answer." }, { status: 403 });
         }
 
-        // ── 4. PREVENT DUPLICATE UPVOTES & ISOLATE OPERATIONAL FAILURES ──────
+        // ── 4 & 5. ATOMIC TRANSACTION: INSERT LIKE & INCREMENT COUNTER ───────
+        let updatedReply;
+
         try {
-            await db.insert(replyLikesTable).values({ 
-                userEmail: loggedInUserEmail,
-                replyId 
+            updatedReply = await db.transaction(async (tx) => {
+                
+                // A. FIX: Insert into userName field instead of userEmail to satisfy the schema's index signature 
+                await tx.insert(replyLikesTable).values({ 
+                    userName: loggedInUserName,
+                    replyId 
+                });
+
+                // B. Bound atomic counter increment linked tightly to the validated thread mapping
+                const [result] = await tx
+                    .update(repliesTable)
+                    .set({ upvotes: sql`${repliesTable.upvotes} + 1` })
+                    .where(
+                        and(
+                            eq(repliesTable.id, replyId),
+                            eq(repliesTable.doubtId, doubtId)
+                        )
+                    )
+                    .returning({
+                        upvotes: repliesTable.upvotes,
+                        userEmail: repliesTable.userEmail,
+                        doubtId: repliesTable.doubtId,
+                    });
+
+                return result;
             });
         } catch (error: any) {
+            // Trap unique-constraint violation codes cleanly
             if (error?.code === "23505") {
                 return NextResponse.json(
                     { error: "You have already upvoted this answer" },
@@ -80,25 +108,6 @@ export async function POST(
             throw error;
         }
 
-        // ── 5. BOUND ATOMIC COUNTER INCREMENT ────────────────────────────────
-        // FIX: The query is now hard-bound to both replyId AND route doubtId.
-        // This stops malicious/accidental URL spoofing entirely at the database level.
-        const [updatedReply] = await db
-            .update(repliesTable)
-            .set({ upvotes: sql`${repliesTable.upvotes} + 1` })
-            .where(
-                and(
-                    eq(repliesTable.id, replyId),
-                    eq(repliesTable.doubtId, doubtId)
-                )
-            )
-            .returning({
-                upvotes: repliesTable.upvotes,
-                userEmail: repliesTable.userEmail,
-                doubtId: repliesTable.doubtId, // Verified from row
-            });
-
-        // Double check that a row was actually matched and mutated
         if (!updatedReply) {
             return NextResponse.json({ 
                 error: "Integrity Error: Counter increment rejected. Thread validation failed at database write." 
@@ -112,7 +121,7 @@ export async function POST(
                 data: {
                     replyAuthorEmail: updatedReply.userEmail,
                     replyId,
-                    doubtId: updatedReply.doubtId, // FIX: Using verified database state instead of route parameter variable
+                    doubtId: updatedReply.doubtId,
                 },
             });
         }

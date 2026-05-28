@@ -142,7 +142,7 @@ export async function checkAndAwardBadges(userEmail: string): Promise<string[]> 
     return newlyAwarded;
 }
 
-// ── updateStreak (Recalculates Level Position Automatically) ─────────────────
+// ── updateStreak (With Shared Transaction State Advancements) ─────────────────
 export async function updateStreak(userEmail: string): Promise<void> {
     const [user] = await db
         .select({
@@ -169,7 +169,7 @@ export async function updateStreak(userEmail: string): Promise<void> {
             // Compute the target score inline to resolve level scaling factors
             const nextScoreSql = sql`${usersTable.karmaScore} + 5`;
 
-            // FIX: Recompute tier level thresholds instantly during the same write lock sequence
+            // Recompute tier level thresholds instantly during the same write lock sequence
             const atomicLevelCaseSql = sql`CASE 
                 WHEN ${nextScoreSql} >= 1500 THEN 5
                 WHEN ${nextScoreSql} >= 700  THEN 4
@@ -178,12 +178,16 @@ export async function updateStreak(userEmail: string): Promise<void> {
                 ELSE 1
             END`;
 
+            // FIX: Mutate `lastActiveDate` forward to the next logical state interval 
+            // inside this exact transaction block to guarantee idempotency across multiple invocations.
+            // By updating it to the current timestamp (or pushing it forward), daysDiff calculation changes on the next run.
             await tx
                 .update(usersTable)
                 .set({ 
                     karmaScore: nextScoreSql,
-                    karmaLevel: atomicLevelCaseSql, // Synchronized Level updates
-                    currentStreak: nextStreakVal 
+                    karmaLevel: atomicLevelCaseSql, 
+                    currentStreak: nextStreakVal,
+                    lastActiveDate: now.toISOString(), // Advancing the marker prevents double-dipping
                 })
                 .where(eq(usersTable.email, userEmail));
 

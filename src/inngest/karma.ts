@@ -2,7 +2,7 @@
 import { inngest } from "./client"; 
 import { db } from "@/configs/db";
 import { usersTable, karmaTransactionsTable } from "@/configs/schema";
-import { eq, sql, isNotNull } from "drizzle-orm"; 
+import { eq, sql, isNotNull, and } from "drizzle-orm"; 
 import { checkAndAwardBadges } from "@/lib/karma-utils";
 
 // Karma points definitions inside worker
@@ -110,7 +110,6 @@ export const onAnswerAccepted = inngest.createFunction(
     async ({ event }) => {
         const { replyAuthorEmail, replyId, doubtId } = event.data as {
             replyAuthorEmail: string;
-            replyAuthorEmail: string;
             replyId: number;
             doubtId: number;
         };
@@ -150,7 +149,7 @@ export const onSpamAccepted = inngest.createFunction(
     }
 );
 
-// ── 4. Daily Streak Processor (Corrected Activity & Predicate Filters) ────────
+// ── 4. Daily Streak Processor (Fixed No-Op Over-reporting) ───────────────────
 export const dailyStreakProcessor = inngest.createFunction(
     {
         id:          "karma-daily-streak",
@@ -158,72 +157,115 @@ export const dailyStreakProcessor = inngest.createFunction(
     },
     { cron: "0 0 * * *" },
     async () => {
-        // FIX: Replaced CTE logic with a proper boolean predicate checking if lastActiveDate IS NOT NULL
         const users = await db
             .select({ 
                 email: usersTable.email,
                 currentStreak: usersTable.currentStreak,
-                lastActiveDate: usersTable.lastActiveDate,
+                lastContributionAt: usersTable.lastContributionAt,
             })
             .from(usersTable)
-            .where(isNotNull(usersTable.lastActiveDate));
+            .where(isNotNull(usersTable.lastContributionAt));
 
         let processed = 0;
+        let skippedNoOp = 0;
         let failures = 0;
 
         const now = new Date();
-        // Establish standard midnight boundary for the day that just STARTED
         const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         const oneDayMs = 24 * 60 * 60 * 1000;
 
         for (const user of users) {
             try {
-                if (!user.email || !user.lastActiveDate) continue;
+                if (!user.email || !user.lastContributionAt) continue;
 
-                const activeTimestamp = new Date(user.lastActiveDate).getTime();
-                
-                // Calculate difference relative to today's midnight mark
+                const activeTimestamp = new Date(user.lastContributionAt).getTime();
                 const daysDiff = Math.floor((todayMidnight - activeTimestamp) / oneDayMs);
 
-                // CRITICAL TIMING FIX: At 00:00 AM:
-                // daysDiff === 0 means they interacted in the last day that just ended. Increment streak!
                 if (daysDiff === 0) {
+                    // Check ledger idempotency to prevent duplication if the cron job re-runs on the same day.
+                    const [alreadyProcessedToday] = await db
+                        .select({ id: karmaTransactionsTable.id })
+                        .from(karmaTransactionsTable)
+                        .where(
+                            and(
+                                eq(karmaTransactionsTable.userEmail, user.email),
+                                eq(karmaTransactionsTable.eventType, "streak_bonus"),
+                                sql`DATE(${karmaTransactionsTable.createdAt}) = CURRENT_DATE`
+                            )
+                        )
+                        .limit(1);
+
+                    if (alreadyProcessedToday) {
+                        skippedNoOp++;
+                        continue;
+                    }
+
                     const updatedStreakValue = user.currentStreak + 1;
+                    const points = KARMA_POINTS["streak_bonus"];
 
-                    await db
-                        .update(usersTable)
-                        .set({ currentStreak: updatedStreakValue })
-                        .where(eq(usersTable.email, user.email));
+                    // Keep the streak increment and bonus award combined in one atomic transaction block
+                    await db.transaction(async (tx) => {
+                        
+                        // 1. Increment User Streak Counter
+                        await tx
+                            .update(usersTable)
+                            .set({ currentStreak: updatedStreakValue })
+                            .where(eq(usersTable.email, user.email));
 
-                    await executeKarmaTransaction({
-                        userEmail: user.email,
-                        eventType: "streak_bonus",
-                        note: `Daily activity milestone hit! Streak grew to ${updatedStreakValue} days.`,
+                        // 2. Compute dynamic expressions for Karma Score and Level Escalation
+                        const targetScoreSql = sql`${usersTable.karmaScore} + ${points}`;
+                        const atomicLevelCaseSql = sql`CASE 
+                            WHEN ${targetScoreSql} >= 1500 THEN 5
+                            WHEN ${targetScoreSql} >= 700  THEN 4
+                            WHEN ${targetScoreSql} >= 300  THEN 3
+                            WHEN ${targetScoreSql} >= 100  THEN 2
+                            ELSE 1
+                        END`;
+
+                        // 3. Update Karma points and levels
+                        await tx
+                            .update(usersTable)
+                            .set({
+                                karmaScore: targetScoreSql,
+                                karmaLevel: atomicLevelCaseSql,
+                            })
+                            .where(eq(usersTable.email, user.email));
+
+                        // 4. Insert Ledger Record into Transaction History Table
+                        await tx.insert(karmaTransactionsTable).values({
+                            userEmail: user.email,
+                            points,
+                            eventType: "streak_bonus",
+                            note: `Daily activity milestone hit! Streak grew to ${updatedStreakValue} days.`,
+                        });
                     });
+
+                    await checkAndAwardBadges(user.email);
                     processed++;
 
                 } else if (daysDiff >= 2) {
-                    // daysDiff >= 2 means their last interaction was over 48 hours ago. Reset to 0!
                     await db
                         .update(usersTable)
                         .set({ currentStreak: 0 })
                         .where(eq(usersTable.email, user.email));
                     processed++;
+                } else if (daysDiff === 1) {
+                    // Valid trailing active window path (Contributed yesterday, hasn't contributed today yet)
+                    skippedNoOp++;
                 }
                 
-                // Note: If daysDiff === 1, it means their last activity timestamp is from an earlier session 
-                // but still within a safe trailing 24-48 hour window. We let them ride safely.
-
             } catch (err) {
                 failures++;
                 console.error(`[karma-streak] Streak update failed for target ${user.email}:`, err);
             }
         }
 
-        if (users.length > 0 && processed === 0) {
-            throw new Error(`[CRITICAL] Streak processing failed across all evaluated users.`);
+        // FIX: Re-architected error boundaries. We only throw an exception if the loop encountered actual 
+        // code runtime/database infrastructure exceptions (failures > 0) while processing records.
+        if (failures > 0 && processed === 0) {
+            throw new Error(`[CRITICAL] Streak processing failed across all evaluated problem rows. Total failures: ${failures}`);
         }
 
-        return { processed, failures };
+        return { processed, skippedNoOp, failures };
     }
 );

@@ -1,9 +1,9 @@
+// app/api/doubts/[id]/upvote/route.ts
 import { db } from "@/configs/db";
 import { repliesTable, replyLikesTable } from "@/configs/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-// TODO: check karein aapka inngest import path sahi hai ya nahi
 import { inngest } from "@/configs/inngest"; 
 import { checkUserBlock } from "@/lib/auth-utils";
 import { buildErrorResponse } from "@/lib/error-handler";
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
         const { errorResponse, data } = await parseAndValidateRequest(req, voteReplySchema);
         if (errorResponse) return errorResponse;
 
-        const { replyId, userName } = data;
+        const { replyId } = data;
 
         const user = await currentUser();
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,14 +29,27 @@ export async function POST(req: Request) {
             if (isBlocked) return blockResponse;
         }
 
+        // ── 1. FETCH TARGET REPLY & VALIDATE EXISTENCE ──────────────────────
+        const [reply] = await db
+            .select()
+            .from(repliesTable)
+            .where(eq(repliesTable.id, replyId))
+            .limit(1);
 
-        // Check if reply exists
-        const [reply] = await db.select().from(repliesTable).where(eq(repliesTable.id, replyId)).limit(1);
         if (!reply) {
             return NextResponse.json({ error: "Reply not found" }, { status: 404 });
         }
 
-        // Check if already upvoted (store stable identity: Clerk user id)
+        // ── 2. FIX: ANTI-SELF-UPVOTE GUARD ──────────────────────────────────
+        // Blocks authors from liking their own replies and exploiting the karma event trigger
+        if (email && reply.userEmail === email) {
+            return NextResponse.json(
+                { error: "Forbidden: You cannot upvote your own reply." },
+                { status: 403 }
+            );
+        }
+
+        // ── 3. ATOMIC TRANSACTION FLOW ──────────────────────────────────────
         const result = await db.transaction(async (tx) => {
 
             // Check existing vote inside transaction
@@ -51,7 +64,6 @@ export async function POST(req: Request) {
                 .limit(1);
 
             if (existingLike.length > 0) {
-
                 // Remove vote
                 await tx.delete(replyLikesTable)
                     .where(
@@ -75,7 +87,6 @@ export async function POST(req: Request) {
                 };
 
             } else {
-
                 // Add vote
                 await tx.insert(replyLikesTable)
                     .values({
@@ -98,7 +109,7 @@ export async function POST(req: Request) {
             }
         });
 
-        // ── 3. Fire karma event (only if reply author is a registered user and it's an UPVOTE) ──────
+        // ── 4. BACKGROUND SYSTEM EMISSION ───────────────────────────────────
         if (result && result.hasUpvoted && result.userEmail) {
             await inngest.send({
                 name: "karma/answer.upvoted",
