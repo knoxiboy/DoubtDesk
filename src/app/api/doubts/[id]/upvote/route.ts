@@ -14,13 +14,15 @@ export async function POST(
     try {
         // ── 1. SERVER-SIDE AUTHENTICATION GUARD ──────────────────────────────
         const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email || !session.user?.name) {
+        if (!session || !session.user?.email) {
             return NextResponse.json({ 
                 error: "Unauthorized! Missing active session profile properties." 
             }, { status: 401 });
         }
-        const loggedInUserEmail = session.user.email;
-        const loggedInUserName = session.user.name; // FIX: Extracted username for composite tracking identities
+        
+        // FIX: Normalized actor key to use the stable, unique identifier (email)
+        // instead of the non-unique display name (userName) to align with global vote endpoints.
+        const stableUserIdentifier = session.user.email; 
 
         // ── 2. NEXT.JS 15 ASYNC PARAMS RESOLUTION ────────────────────────────
         const { id } = await params;
@@ -57,7 +59,7 @@ export async function POST(
             }, { status: 400 });
         }
 
-        if (targetReply.userEmail === loggedInUserEmail) {
+        if (targetReply.userEmail === stableUserIdentifier) {
             return NextResponse.json({ error: "Forbidden: You cannot upvote your own answer." }, { status: 403 });
         }
 
@@ -67,9 +69,11 @@ export async function POST(
         try {
             updatedReply = await db.transaction(async (tx) => {
                 
-                // A. FIX: Insert into userName field instead of userEmail to satisfy the schema's index signature 
+                // A. FIX: Standardized column input across all vote handlers to use the stable identifier.
+                // Note: If your Drizzle schema explicitly names the column field `userName`, we map the unique 
+                // email string directly into it to preserve the unique multi-column compound index layout.
                 await tx.insert(replyLikesTable).values({ 
-                    userName: loggedInUserName,
+                    userName: stableUserIdentifier, // Global unique key consistency
                     replyId 
                 });
 
@@ -92,7 +96,7 @@ export async function POST(
                 return result;
             });
         } catch (error: any) {
-            // Trap unique-constraint violation codes cleanly
+            // Trap unique-constraint violation codes cleanly (e.g., PostgreSQL error 23505)
             if (error?.code === "23505") {
                 return NextResponse.json(
                     { error: "You have already upvoted this answer" },
