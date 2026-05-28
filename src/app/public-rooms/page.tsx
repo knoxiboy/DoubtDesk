@@ -35,6 +35,12 @@ export default function PublicRoomsPage() {
         return () => clearTimeout(timer);
     }, [searchVal]);
 
+    useEffect(() => {
+        if (!isSignedIn && filter === "Bookmarked") {
+            setFilter("All");
+        }
+    }, [isSignedIn, filter]);
+
     const sort = (searchParams.get("sort") as DoubtSortValue) || "newest";
 
     const fetcher = (url: string) => fetch(url).then(res => res.json());

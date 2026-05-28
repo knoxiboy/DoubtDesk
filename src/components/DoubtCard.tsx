@@ -271,6 +271,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                 disabled={isBookmarking}
                                 className={`flex items-center justify-center p-3 rounded-2xl transition-all ${ doubt.hasBookmarked ? "bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-lg shadow-purple-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
                                 title={doubt.hasBookmarked ? "Remove bookmark" : "Add to bookmarks"}
+                                aria-label={doubt.hasBookmarked ? "Remove bookmark" : "Add to bookmarks"}
                             >
                                 <Bookmark className={`w-4 h-4 ${isBookmarking ? 'animate-pulse' : ''} ${doubt.hasBookmarked ? 'fill-purple-400' : ''}`} />
                             </button>

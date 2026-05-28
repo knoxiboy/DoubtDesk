@@ -28,6 +28,15 @@ export async function GET(req: Request) {
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         const email = user.primaryEmailAddress?.emailAddress;
 
+        // Fetch user bookmarks once if email is available to avoid redundant queries
+        let bookmarkedIds = new Set<number>();
+        if (email) {
+            const userBookmarks = await db.select({ doubtId: bookmarksTable.doubtId })
+                .from(bookmarksTable)
+                .where(eq(bookmarksTable.userEmail, email));
+            bookmarkedIds = new Set(userBookmarks.map(b => b.doubtId));
+        }
+
         if (classroomId && email) {
             const [membership] = await db.select().from(membershipsTable).where(
                 and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, classroomId))
@@ -87,13 +96,11 @@ export async function GET(req: Request) {
             }
         }
 
-        if (bookmarked && email) {
-            const userBookmarks = await db.select({ doubtId: bookmarksTable.doubtId })
-                .from(bookmarksTable)
-                .where(eq(bookmarksTable.userEmail, email));
-            const bookmarkedIds = userBookmarks.map(b => b.doubtId);
-            if (bookmarkedIds.length > 0) {
-                conditions.push(inArray(doubtsTable.id, bookmarkedIds));
+        if (bookmarked) {
+            if (!email) {
+                conditions.push(eq(doubtsTable.id, -1));
+            } else if (bookmarkedIds.size > 0) {
+                conditions.push(inArray(doubtsTable.id, Array.from(bookmarkedIds)));
             } else {
                 conditions.push(eq(doubtsTable.id, -1));
             }
@@ -177,12 +184,6 @@ export async function GET(req: Request) {
         }
 
         if (email && doubts.length > 0) {
-            const userBookmarks = await db.select({ doubtId: bookmarksTable.doubtId })
-                .from(bookmarksTable)
-                .where(eq(bookmarksTable.userEmail, email));
-
-            const bookmarkedIds = new Set(userBookmarks.map(b => b.doubtId));
-
             doubts = doubts.map(doubt => ({
                 ...doubt,
                 hasBookmarked: bookmarkedIds.has(doubt.id)
