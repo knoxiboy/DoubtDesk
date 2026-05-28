@@ -72,8 +72,9 @@ export async function POST(req: NextRequest) {
         try {
             const data = await pdf(buffer);
             resumeText = data.text;
-        } catch (parseError: any) {
-            console.error("PDF Parsing Error:", parseError);
+        } catch (parseError: unknown) {
+            const error = parseError as { message?: string };
+            console.error("PDF Parsing Error:", error);
             return NextResponse.json({
                 error: "Unable to read the uploaded PDF. Please upload a valid text-based PDF resume."
             }, { status: 400 });
@@ -187,12 +188,16 @@ ${resumeText}
         }
 
         return NextResponse.json(aiOutput);
-
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const err = error as {
+            message?: string;
+            stack?: string;
+            response?: { data?: unknown };
+        };
         console.error("Resume Analysis Error Detail:", {
-            message: error.message,
-            stack: error.stack,
-            response: error.response?.data
+            message: err.message,
+            stack: err.stack,
+            response: err.response?.data,
         });
         return NextResponse.json({
             error: "Failed to analyze resume. Please try again later."

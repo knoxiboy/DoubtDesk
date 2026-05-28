@@ -4,6 +4,7 @@ import { MessageSquare, Loader2, ChevronDown } from "lucide-react";
 import DoubtCard from "@/components/DoubtCard";
 import useSWRInfinite from "swr/infinite";
 import ScrollToTopButton from "./ScrollToTopButton";
+import { Doubt } from "@/types";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -14,7 +15,7 @@ interface InfiniteDoubtFeedProps {
     tag?: string;
     isSolved?: string;
     role?: string;
-    onViewAISolution?: (doubt: any) => void;
+    onViewAISolution?: (doubt: Doubt) => void;
     emptyMessage?: string;
     emptyAction?: () => void;
     emptyActionLabel?: string;
@@ -34,7 +35,6 @@ export default function InfiniteDoubtFeed({
     emptyAction,
     emptyActionLabel
 }: InfiniteDoubtFeedProps) {
-    const getKey = (pageIndex: number, previousPageData: any) => {
     const getKey = ( pageIndex: number, previousPageData: null | { pagination?: { hasMore?: boolean } }) => {
         if (previousPageData && !previousPageData.pagination?.hasMore) return null;
 
@@ -94,7 +94,7 @@ export default function InfiniteDoubtFeed({
         <div className="space-y-8 animate-in fade-in duration-500">
             <ScrollToTopButton />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {doubts.map((doubt: any, index: number) => (
+                {doubts.map((doubt: Doubt, index: number) => (
                     <DoubtCard
                         key={`${doubt.id}-${index}`}
                         doubt={doubt}

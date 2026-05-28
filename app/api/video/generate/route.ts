@@ -12,6 +12,17 @@ import { currentUser } from '@clerk/nextjs/server';
 import { checkUserBlock } from '@/lib/auth-utils';
 import { redisClient } from '@/lib/ratelimit';
 
+interface SceneData {
+    text?: string;
+    title?: string;
+    duration?: number;
+    [key: string]: unknown;
+}
+
+interface EnrichedScene extends SceneData {
+    audioUrl: string;
+}
+
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY || 'dummy_key',
 });
@@ -171,7 +182,7 @@ Return ONLY a JSON object with a "scenes" array.`;
         const host = req.headers.get('host');
         const baseUrl = `${protocol}://${host}`;
 
-        const scenes = await Promise.all(rawScenes.map(async (scene: any, i: number) => {
+        const scenes = await Promise.all(rawScenes.map(async (scene: SceneData, i: number): Promise<EnrichedScene> => {
             const audioPath = path.join(tempDir, `audio-${Date.now()}-${i}.mp3`);
             const narrationText = scene.text || scene.title || "Next step";
             
@@ -202,7 +213,7 @@ Return ONLY a JSON object with a "scenes" array.`;
 
         // Clean up temporary audio files asynchronously after rendering is successful
         Promise.all(
-            scenes.map(async (scene: any) => {
+            scenes.map(async (scene: EnrichedScene) => {
                 try {
                     const fileName = path.basename(scene.audioUrl);
                     const localPath = path.join(tempDir, fileName);
@@ -217,9 +228,9 @@ Return ONLY a JSON object with a "scenes" array.`;
 
         return NextResponse.json({ videoUrl: `/videos/${path.basename(outputLocation)}`, type: videoType });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Video generation failed:', error);
-        return NextResponse.json({ error: error.message || 'Rendering failed' }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Rendering failed" }, { status: 500 });
     } finally {
         if (lockKey) {
             await redisClient.del(lockKey).catch(console.error);

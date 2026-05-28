@@ -89,15 +89,20 @@ Ensure the milestones are distributed logically across the whole period.
 
         return NextResponse.json(aiOutput);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const err = error as {
+            message?: string;
+            stack?: string;
+            response?: { data?: unknown };
+        };
         console.error("Roadmap Generation Error DETAILS:", {
-            message: error.message,
-            response: error.response?.data,
-            stack: error.stack
+            message: err.message,
+            response: err.response?.data,
+            stack: err.stack
         });
         return NextResponse.json({
-            error: error.message || "Failed to generate roadmap",
-            details: error.response?.data || error.message
+            error: err.message || "Failed to generate roadmap",
+            details: err.response?.data || err.message
         }, { status: 500 });
     }
 }

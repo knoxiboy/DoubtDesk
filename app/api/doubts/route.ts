@@ -9,6 +9,7 @@ import { buildErrorResponse } from "@/lib/error-handler";
 import { checkUserBlock } from "@/lib/auth-utils";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createDoubtSchema } from "@/lib/validations/doubt";
+import { DoubtRecord } from "@/types";
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
@@ -92,7 +93,7 @@ export async function GET(req: Request) {
         const limit = limitStr ? parseInt(limitStr) : 20;
         const offset = offsetStr ? parseInt(offsetStr) : (page - 1) * limit;
 
-        let doubts: any[] = await query.where(and(...conditions));
+        let doubts: (DoubtRecord & { replyCount?: number; })[] = await query.where(and(...conditions));
 
         if (tag && tag !== "All" && doubts.length > 0) {
             const normalizedTag = tag.trim().replace(/\s+/g, " ").toLowerCase();
@@ -132,7 +133,7 @@ export async function GET(req: Request) {
         const createdAtValue = (value: unknown) => new Date(value as string).getTime() || 0;
         const pinnedScore = (value: unknown) => (value ? 1 : 0);
 
-        doubts = (doubts as any[]).sort((a: any, b: any) => {
+        doubts = doubts.sort((a, b) => {
             const pinnedDiff = pinnedScore(b.isPinned) - pinnedScore(a.isPinned);
             if (pinnedDiff !== 0) return pinnedDiff;
 
@@ -147,7 +148,7 @@ export async function GET(req: Request) {
             return createdAtValue(b.createdAt) - createdAtValue(a.createdAt);
         });
 
-        doubts = (doubts as any[]).slice(offset, offset + limit);
+        doubts = doubts.slice(offset, offset + limit);
 
         if (userName && doubts.length > 0) {
             const userLikes = await db.select({ doubtId: likesTable.doubtId })

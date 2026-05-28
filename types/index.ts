@@ -205,13 +205,20 @@ export interface Doubt {
     subTopic?: string | null;
     content?: string | null;
     imageUrl?: string | null;
-    likes: number;
+    likes: number | null;
     isSolved: "unsolved" | "in-progress" | "solved";
     solvedReplyId?: number | null;
     type: "ai" | "community" | "teacher";
-    isPinned: boolean;
+    isPinned: boolean | null;
     createdAt: Date | string;
 }
+
+/** Type for a doubt record with simplified fields */
+export type DoubtRecord = {
+    isSolved: string | null;
+    type: string | null;
+} & Omit<Doubt, "isSolved" | "type">;
+
 
 /** Reply to a doubt entity */
 export interface Reply {
@@ -222,9 +229,13 @@ export interface Reply {
     type: "comment" | "solution";
     content?: string | null;
     imageUrl?: string | null;
-    upvotes: number;
+    upvotes: number | null;
     createdAt: Date | string;
 }
+
+export type ReplyRecord = {
+    type: string | null;
+} & Omit<Reply, "type">;
 
 /** Like on a doubt entity */
 export interface Like {
