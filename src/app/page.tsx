@@ -36,59 +36,68 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import ShapeGrid from "@/components/ShapeGrid";
 import { Inter, Staatliches } from "next/font/google";
 import LiveCampusThreadPanel from "@/components/LiveCampusThreadPanel";
+import { scrollToSection } from "@/lib/scroll-to-section";
 
 const inter = Inter({ subsets: ["latin"] });
 const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 
 export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      const docHeight =
-        document.documentElement.scrollHeight - window.innerHeight;
-      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-      setScrollProgress(progress);
+    const scrollFromHash = () => {
+      const hash = window.location.hash.slice(1);
+      if (!hash) return;
+      requestAnimationFrame(() =>
+        scrollToSection(hash, { updateHash: false })
+      );
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    scrollFromHash();
+    window.addEventListener("hashchange", scrollFromHash);
+    return () => window.removeEventListener("hashchange", scrollFromHash);
   }, []);
+
   const { signOut } = useClerk();
 
   const features = [
     {
+      slug: "collaborative-discussions",
       title: "Real-time collaborative discussions",
       description:
         "Share questions, answers, and classroom updates instantly across study groups.",
       icon: MessageCircle,
     },
     {
+      slug: "classroom-management",
       title: "Smart classroom management",
       description:
         "Organize learning spaces, schedules, and teacher workflows with ease.",
       icon: LayoutGrid,
     },
     {
+      slug: "notes-resource-sharing",
       title: "Notes and resource sharing",
       description:
         "Keep study materials, highlights, and shared guides organized in one hub.",
       icon: Clipboard,
     },
     {
+      slug: "learning-roadmaps",
       title: "Learning roadmaps and guidance",
       description:
         "Follow curated study paths that keep learners focused on milestones.",
       icon: Map,
     },
     {
+      slug: "ai-powered-doubt-solving",
       title: "AI-powered doubt solving",
       description:
         "Get instant, context-aware answers to questions with smart AI support.",
       icon: Activity,
     },
     {
+      slug: "study-collaboration",
       title: "Organized study collaboration",
       description:
         "Coordinate projects, peer review, and group work with clear tools and structure.",
@@ -283,14 +292,18 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              id="features-grid"
+              className="grid gap-6 scroll-mt-20 sm:grid-cols-2 lg:grid-cols-3"
+            >
               {features.map((feature, i) => {
                 const Icon = feature.icon;
                 return (
                   <div
-                    key={feature.title}
+                    key={feature.slug}
+                    id={`feature-${feature.slug}`}
                     style={{ animationDelay: `${i * 100}ms` }}
-                    className="group relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 p-6 shadow-sm shadow-slate-200/50 dark:shadow-none backdrop-blur-md transition-all duration-500 hover:-translate-y-2 hover:border-blue-400 dark:hover:border-zinc-700 hover:shadow-xl hover:shadow-blue-500/5 dark:hover:bg-zinc-900/70 animate-in fade-in slide-in-from-bottom-6 fill-mode-both flex flex-col items-center text-center"
+                    className="group relative scroll-mt-20 overflow-hidden rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 p-6 shadow-sm shadow-slate-200/50 dark:shadow-none backdrop-blur-md transition-all duration-500 hover:-translate-y-2 hover:border-blue-400 dark:hover:border-zinc-700 hover:shadow-xl hover:shadow-blue-500/5 dark:hover:bg-zinc-900/70 animate-in fade-in slide-in-from-bottom-6 fill-mode-both flex flex-col items-center text-center"
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 shadow-inner transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white dark:group-hover:bg-blue-500 group-hover:rotate-6">
                       <Icon className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
@@ -398,44 +411,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-
-      {/* Scroll to Top Button */}
-      {scrollProgress > 5 && (
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-6 right-6 z-50 w-12 h-12 flex items-center justify-center group active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
-          aria-label="Scroll to top"
-        >
-          <svg
-            className="absolute top-0 left-0 w-12 h-12 -rotate-90"
-            viewBox="0 0 56 56"
-          >
-            <circle
-              cx="28"
-              cy="28"
-              r="24"
-              fill="none"
-              stroke="rgba(94,140,255,0.12)"
-              strokeWidth="4"
-            />
-            <circle
-              cx="28"
-              cy="28"
-              r="24"
-              fill="none"
-              stroke="#5E8CFF"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeDasharray={`${2 * Math.PI * 24}`}
-              strokeDashoffset={`${2 * Math.PI * 24 * (1 - scrollProgress / 100)}`}
-              className="transition-all duration-150"
-            />
-          </svg>
-          <div className="w-8 h-8 rounded-full bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 flex items-center justify-center text-slate-700 dark:text-zinc-300 font-bold text-sm shadow-sm transition-colors group-hover:bg-slate-50 dark:group-hover:bg-zinc-900 group-hover:text-blue-600 dark:group-hover:text-white">
-            &uarr;
-          </div>
-        </button>
-      )}
     </div>
   );
 }
