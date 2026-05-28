@@ -70,7 +70,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 <div className="w-10 h-10 rounded-xl overflow-hidden relative shadow-md shadow-blue-500/10 bg-slate-50 dark:bg-zinc-900 flex items-center justify-center">
                                     <Image 
                                         src="/logo.png" 
-                                        alt="DoubtDesk Logo" 
+                                        alt="DoubtDesk Official Logo" 
                                         width={40} 
                                         height={40}
                                         className="object-contain dark:brightness-110"
