@@ -233,10 +233,10 @@ export default function AskAIPage() {
     };
 
     return (
-        <div className="flex min-h-screen bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white min-w-0">
+        <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-white min-w-0">
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-            <main className="flex-1 flex flex-col min-w-0">
+            <main className="flex-1 flex min-h-0 flex-col min-w-0 overflow-hidden">
                 {/* Mobile Header */}
                 <header className="flex lg:hidden items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl sticky top-0 z-20">
                     <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg" aria-label="Open sidebar">
@@ -248,7 +248,8 @@ export default function AskAIPage() {
                     <span className="font-bold text-slate-900 dark:text-white">Ask AI Solver</span>
                 </header>
 
-                <div className="max-w-[900px] mx-auto w-full px-4 sm:px-8 py-8 pb-6 space-y-6">
+                <div className="flex-1 overflow-y-auto scroll-smooth scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                    <div className="max-w-[900px] mx-auto w-full px-4 sm:px-8 py-8 pb-6 space-y-6">
 
                     {/* ── Breadcrumb Navigation ── */}
                     <div className="flex items-center gap-3 mb-2">
@@ -320,7 +321,7 @@ export default function AskAIPage() {
                                 </>
                             ) : (
                                 <>
-                                    <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+                                    <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} aria-label="Upload question image" title="Upload question image" />
                                     {!imageBase64 ? (
                                         <button
                                             onClick={() => fileInputRef.current?.click()}
@@ -642,6 +643,7 @@ export default function AskAIPage() {
                         </div>
                     )}
 
+                    </div>
                 </div>
             </main>
         </div>
