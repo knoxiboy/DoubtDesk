@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
@@ -14,14 +14,17 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { appUser } = useAppUser();
-  const pathnameHistoryRef = useRef<string[]>([pathname]);
 
-  // Track navigation within the app to reliably determine if we can go back
+  // Determine if back navigation is possible using browser history
   useEffect(() => {
-    if (pathnameHistoryRef.current[pathnameHistoryRef.current.length - 1] !== pathname) {
-      pathnameHistoryRef.current.push(pathname);
-    }
-    setCanGoBack(pathnameHistoryRef.current.length > 1);
+    setCanGoBack(window.history.length > 1);
+
+    const handlePopState = () => {
+      setCanGoBack(window.history.length > 1);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, [pathname]);
 
   const pageLinks = [
