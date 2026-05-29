@@ -23,7 +23,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"],
+      "@/*": ["./src/*"]
     }
   },
   "include": [
@@ -32,7 +32,7 @@
   "**/*.tsx",
   ".next/types/**/*.ts",
   ".next/dev/types/**/*.ts",
-  "types/**/*.d.ts"
+  "src/types/**/*.d.ts"
 ],
   "exclude": [
     "node_modules"

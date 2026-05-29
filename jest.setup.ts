@@ -82,3 +82,6 @@ jest.mock("react-syntax-highlighter/dist/esm/styles/prism", () => ({
 }));
 jest.mock("remark-math", () => () => {});
 jest.mock("rehype-katex", () => () => {});
+jest.mock("react-hotkeys-hook", () => ({
+    useHotkeys: () => {}
+}));

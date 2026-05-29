@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { db } from "../configs/db";
-import { notificationsTable } from "../configs/schema";
+import { db } from "../src/configs/db";
+import { notificationsTable } from "../src/configs/schema";
 
 async function main() {
     console.log("Testing insert...");

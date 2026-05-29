@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { db } from "../configs/db";
-import { membershipsTable } from "../configs/schema";
+import { db } from "../src/configs/db";
+import { membershipsTable } from "../src/configs/schema";
 import { sql } from "drizzle-orm";
 
 async function main() {

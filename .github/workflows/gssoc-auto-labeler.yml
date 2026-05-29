@@ -6,6 +6,8 @@ on:
   pull_request_target:
     types: [opened, edited, synchronize, reopened]
 
+permissions: {}
+
 jobs:
   label_gssoc:
     runs-on: ubuntu-latest
@@ -244,10 +246,13 @@ jobs:
             }
 
             // ──────────────────────────────────────────
-            // 4. PR-SPECIFIC: Adjust level based on size
+            // 4. PR-SPECIFIC: Size has minimal impact on level
+            // Size is informational only — content & complexity drive the level.
+            // Only extreme size (xxl) can nudge level UP by one tier,
+            // and only when the content score is borderline.
+            // Small/xs size NEVER bumps level down.
             // ──────────────────────────────────────────
             if (isPR) {
-              // Fetch current labels to check size
               const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -257,25 +262,19 @@ jobs:
               const sizeLabel = currentLabels.find(l => l.name.startsWith('size/'));
               if (sizeLabel) {
                 const sizeName = sizeLabel.name;
-                // Large PRs bump difficulty up by one tier
-                // Small PRs can bump down by one tier
-                const currentLevelIdx = ['level:beginner', 'level:intermediate', 'level:advanced', 'level:critical'].indexOf(level);
-                
-                if ((sizeName === 'size/xl' || sizeName === 'size/xxl') && currentLevelIdx < 3) {
-                  // Remove old level, bump up
+                const levels = ['level:beginner', 'level:intermediate', 'level:advanced', 'level:critical'];
+                const currentLevelIdx = levels.indexOf(level);
+
+                // Only xxl PRs with borderline content scores get a nudge up
+                // "borderline" = advanced/critical scores are close (within 1 point)
+                const isBorderline = Math.abs(advancedScore - criticalScore) <= 1;
+                if (sizeName === 'size/xxl' && isBorderline && currentLevelIdx < 3) {
                   const idx = labelsToAdd.indexOf(level);
                   if (idx > -1) labelsToAdd.splice(idx, 1);
-                  const bumped = ['level:beginner', 'level:intermediate', 'level:advanced', 'level:critical'][currentLevelIdx + 1];
-                  labelsToAdd.push(bumped);
-                } else if ((sizeName === 'size/xs' || sizeName === 'size/s') && currentLevelIdx > 0) {
-                  // Only bump down if the type is not security
-                  if (!detectedTypes.some(t => t.label === 'type:security')) {
-                    const idx = labelsToAdd.indexOf(level);
-                    if (idx > -1) labelsToAdd.splice(idx, 1);
-                    const bumped = ['level:beginner', 'level:intermediate', 'level:advanced', 'level:critical'][currentLevelIdx - 1];
-                    labelsToAdd.push(bumped);
-                  }
+                  labelsToAdd.push(levels[currentLevelIdx + 1]);
+                  console.log(`Size xxl nudged level up (borderline content score)`);
                 }
+                // size/xs, size/s, size/m, size/l, size/xl → NO level change
               }
             }
 

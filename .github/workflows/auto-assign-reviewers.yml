@@ -2,7 +2,9 @@ name: Auto-Assign Reviewers
 
 on:
   pull_request_target:
-    types: [opened, ready_for_review, synchronize, reopened]
+    types: [opened, ready_for_review, reopened]
+
+permissions: {}
 
 jobs:
   assign-reviewers:
@@ -11,16 +13,15 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - name: Request review from maintainers
+      - name: Request review from maintainers and Copilot
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const maintainers = ['knoxiboy']; // Add other maintainer usernames here
-            
-            // Assign the author of the PR as the assignee
+            const maintainers = ['knoxiboy'];
             const author = context.payload.pull_request.user.login;
-            
+
+            // Assign PR author as assignee
             await github.rest.issues.addAssignees({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -28,16 +29,42 @@ jobs:
               assignees: [author]
             });
 
+            // Request review from human maintainers (excluding author)
             const reviewersToAssign = maintainers.filter(m => m !== author);
-
             if (reviewersToAssign.length > 0) {
+              try {
+                await github.rest.pulls.requestReviewers({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.issue.number,
+                  reviewers: reviewersToAssign
+                });
+                console.log(`Requested review from: ${reviewersToAssign.join(', ')}`);
+              } catch (e) {
+                console.log('Could not assign human reviewers:', e.message);
+              }
+            }
+
+            // Request review from GitHub Copilot
+            try {
               await github.rest.pulls.requestReviewers({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: context.issue.number,
-                reviewers: reviewersToAssign
+                reviewers: ['copilot']
               });
-              console.log(`Requested review from: ${reviewersToAssign.join(', ')}`);
-            } else {
-              console.log("No valid reviewers to assign (author is the only maintainer listed).");
+              console.log('Requested review from GitHub Copilot');
+            } catch (e) {
+              console.log('Could not request Copilot review (may not be enabled):', e.message);
             }
+
+            // Post a comment tagging CodeRabbit for review
+            const prTitle = context.payload.pull_request.title;
+            const prBody = context.payload.pull_request.body || '';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `@coderabbitai review`
+            });
+            console.log('Requested CodeRabbit review via comment');

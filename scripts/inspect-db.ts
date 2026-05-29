@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { neon } from '@neondatabase/serverless';
-import { getDatabaseUrl } from '../configs/database-url';
+import { getDatabaseUrl } from '../src/configs/database-url';
 
 const sql = neon(getDatabaseUrl());
 

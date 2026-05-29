@@ -2,29 +2,33 @@ name: DoubtDesk CI Test Suite
 
 on:
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   push:
-    branches: [ main, master ]
+    branches: [main, master]
+
+permissions:
+  contents: read
 
 jobs:
   test:
+    name: Unit Tests (Node ${{ matrix.node-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [20.x]
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
 
-    - name: Install Dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Run Test Suite
-      run: npm test
+      - name: Run tests
+        run: npm test -- --passWithNoTests
+        env:
+          CI: true

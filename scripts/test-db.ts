@@ -1,8 +1,8 @@
 import { drizzle } from "drizzle-orm/neon-http";
-import { chatHistoryTable } from "../configs/schema";
+import { chatHistoryTable } from "../src/configs/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import * as dotenv from "dotenv";
-import { getDatabaseUrl } from "../configs/database-url";
+import { getDatabaseUrl } from "../src/configs/database-url";
 dotenv.config();
 
 const db = drizzle(getDatabaseUrl());

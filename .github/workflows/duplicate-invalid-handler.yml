@@ -8,15 +8,18 @@ on:
   issue_comment:
     types: [created]
 
+permissions: {}
+
 jobs:
   handle_command:
     runs-on: ubuntu-latest
     permissions:
       issues: write
       pull-requests: write
-    if: ${{ github.event_name == 'issue_comment' && contains(github.event.comment.body, '/duplicate #') && !github.event.issue.pull_request }}
+    if: github.event_name == 'issue_comment' && contains(github.event.comment.body, '/duplicate #') && !github.event.issue.pull_request
     steps:
       - name: Handle duplicate via comment command
+
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -70,9 +73,10 @@ jobs:
     permissions:
       issues: write
       pull-requests: write
-    if: ${{ (github.event_name == 'issues' || github.event_name == 'pull_request_target') && (github.event.label.name == 'duplicate' || github.event.label.name == 'invalid') }}
+    if: (github.event_name == 'issues' || github.event_name == 'pull_request_target') && (github.event.label.name == 'duplicate' || github.event.label.name == 'invalid')
     steps:
       - name: Handle invalid or duplicate via label
+
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
