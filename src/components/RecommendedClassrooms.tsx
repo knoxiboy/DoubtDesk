@@ -82,7 +82,7 @@ export default function RecommendedClassrooms() {
                     onClick={refreshRecommendations}
                     disabled={refreshing}
                     className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
-                >
+                 aria-label="Interactive button">
                     <RefreshCw
                         className={`h-4 w-4 ${
                             refreshing ? "animate-spin" : ""
@@ -130,7 +130,7 @@ export default function RecommendedClassrooms() {
                                 </div>
                             </div>
 
-                            <button className="rounded-lg bg-black px-4 py-2 text-sm text-white hover:opacity-90">
+                            <button className="rounded-lg bg-black px-4 py-2 text-sm text-white hover:opacity-90" >
                                 Join
                             </button>
                         </div>

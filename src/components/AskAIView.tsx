@@ -343,7 +343,7 @@ const { copied, copy } = useCopyToClipboard();
             onClick={handleGenerateVideo}
             disabled={isVideoLoading}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-slate-900 dark:text-white rounded-xl font-bold uppercase tracking-tighter text-[9px] shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50"
-        >
+         aria-label="Interactive button">
             {isVideoLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3 text-yellow-400 fill-yellow-400" />} {isVideoLoading ? "Generating..." : "Generate Video"}
         </button>
     )}

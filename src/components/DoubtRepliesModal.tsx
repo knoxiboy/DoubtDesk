@@ -920,7 +920,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     onClick={handlePostOrUpdate}
                                     disabled={isPosting || (!solutionContent.trim() && !solutionImage)}
                                     className="px-10 py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] transition-all shadow-xl shadow-emerald-500/20 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-3 active:scale-95 group/submit"
-                                >
+                                 aria-label="Interactive button">
                                     {isPosting ? (
                                         <Loader2 className="w-5 h-5 animate-spin" />
                                     ) : (

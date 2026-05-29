@@ -49,7 +49,7 @@ export default function ExportButton({ classroomId, classroomName, isTeacher }: 
             onClick={handleExport}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:bg-blue-600/10 hover:text-blue-400 hover:border-blue-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-inner"
-        >
+         aria-label="Interactive button">
             {loading ? (
                 <>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />

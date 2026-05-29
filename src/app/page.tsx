@@ -194,7 +194,7 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center xl:justify-start gap-4 transition-all duration-300 max-w-md sm:max-w-none mx-auto xl:mx-0">
                 <SignedIn>
                   <Link href="/rooms" className="w-full sm:w-auto">
-                    <button className="group w-full sm:w-auto px-10 py-5 bg-[#5E8CFF] text-white rounded-2xl text-lg font-bold hover:bg-[#8BB8FF] hover:shadow-[0_0_24px_rgba(94,140,255,0.35)] transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]">
+                    <button className="group w-full sm:w-auto px-10 py-5 bg-[#5E8CFF] text-white rounded-2xl text-lg font-bold hover:bg-[#8BB8FF] hover:shadow-[0_0_24px_rgba(94,140,255,0.35)] transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]" >
                       <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>Open Classroom</span>
                       <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform duration-300" />
                     </button>
@@ -203,7 +203,7 @@ export default function Home() {
                 
                 <SignedOut>
                   <Link href="/sign-up" className="w-full sm:w-auto">
-                    <button className="group w-full sm:w-auto px-10 py-5 bg-white text-slate-950 rounded-2xl text-lg font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]">
+                    <button className="group w-full sm:w-auto px-10 py-5 bg-white text-slate-950 rounded-2xl text-lg font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]" >
                       <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>Open</span>
                       <span>Classroom</span>
                       <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform duration-300" />
@@ -212,7 +212,7 @@ export default function Home() {
                 </SignedOut>
 
                 <Link href="/public-rooms" className="w-full sm:w-auto">
-                  <button className="group w-full sm:w-auto px-10 py-5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-2xl text-lg font-bold border border-slate-200 dark:border-white/10 transition-all hover:shadow-[0_0_20px_rgba(94,140,255,0.15)] flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]">
+                  <button className="group w-full sm:w-auto px-10 py-5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-2xl text-lg font-bold border border-slate-200 dark:border-white/10 transition-all hover:shadow-[0_0_20px_rgba(94,140,255,0.15)] flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]" >
                     <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>Explore Community</span>
                     <Globe className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-[#8BB8FF] group-hover:rotate-12 transition-transform duration-300" />
                   </button>

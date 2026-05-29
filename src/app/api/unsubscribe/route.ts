@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
                     <h1 style="font-size:24px;margin:0 0 12px;">Unsubscribe from email notifications?</h1>
                     <p style="line-height:1.5;color:#cbd5e1;">This will turn off DoubtDesk email notifications for ${escapeHtml(email!)}.</p>
                     <form method="POST" action="${unsubscribeAction}">
-                        <button type="submit" style="border:0;border-radius:8px;background:#4f46e5;color:white;font-weight:700;padding:12px 18px;cursor:pointer;">Unsubscribe</button>
+                        <button type="submit" style="border:0;border-radius:8px;background:#4f46e5;color:white;font-weight:700;padding:12px 18px;cursor:pointer;" >Unsubscribe</button>
                     </form>
                 </main>
             </body>

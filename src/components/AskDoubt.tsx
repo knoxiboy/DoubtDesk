@@ -442,7 +442,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                 onClick={addSuggestedTags}
                                 disabled={!content.trim()}
                                 className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 disabled:opacity-40"
-                            >
+                             aria-label="Interactive button">
                                 <Sparkles className="w-3 h-3" /> Suggest
                             </button>
                         </div>
@@ -564,14 +564,14 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                             type="button"
                             onClick={onClose}
                             className="flex-1 py-4 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-2xl font-bold transition-all border border-slate-200 dark:border-white/5"
-                        >
+                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting || (!content.trim() && !imageUrl) || !subject.trim() || isTooLong || (hasContent && isTooShort)}
                             className="flex-[2] py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
+                         aria-label="Submit">
                             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                             {doubtToEdit ? "Update Doubt" : "Post Doubt"}
                         </button>
