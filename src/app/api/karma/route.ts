@@ -4,8 +4,7 @@ import { db } from "@/configs/db";
 import { usersTable, karmaTransactionsTable, userBadgesTable, badgeDefinitionsTable } from "@/configs/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { checkAndAwardBadges } from "@/lib/karma-utils";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { currentUser } from "@clerk/nextjs/server";
 
 // ── KARMA LEVEL THRESHOLDS ────────────────────────────────────────────────────
 export const KARMA_LEVELS = [
@@ -27,8 +26,8 @@ export const KARMA_POINTS: Record<string, number> = {
 
 // ── GET /api/karma ────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
-    const session = await getServerSession(authOptions);
-    let email = session?.user?.email;
+    const userContext = await currentUser();
+    let email = userContext?.primaryEmailAddress?.emailAddress;
 
     if (!email) {
         email = req.nextUrl.searchParams.get("email") || "";

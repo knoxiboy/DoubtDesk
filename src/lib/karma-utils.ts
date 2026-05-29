@@ -187,7 +187,7 @@ export async function updateStreak(userEmail: string): Promise<void> {
                     karmaScore: nextScoreSql,
                     karmaLevel: atomicLevelCaseSql, 
                     currentStreak: nextStreakVal,
-                    lastActiveDate: now.toISOString(), // Advancing the marker prevents double-dipping
+                    lastActiveDate: now, // Advancing the marker prevents double-dipping
                 })
                 .where(eq(usersTable.email, userEmail));
 

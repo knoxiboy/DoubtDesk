@@ -4,7 +4,7 @@ import { repliesTable, replyLikesTable } from "@/configs/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { inngest } from "@/configs/inngest"; 
+import { inngest } from "@/inngest/client";
 import { checkUserBlock } from "@/lib/auth-utils";
 import { buildErrorResponse } from "@/lib/error-handler";
 import { parseAndValidateRequest } from "@/lib/validations/validate";

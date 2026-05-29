@@ -4,8 +4,7 @@ import { db } from "@/configs/db";
 import { doubtsTable, repliesTable } from "@/configs/schema";
 import { eq, and } from "drizzle-orm";
 import { inngest } from "@/inngest/client";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(
     req: NextRequest,
@@ -13,11 +12,11 @@ export async function POST(
 ) {
     try {
         // ── 1. SERVER-SIDE AUTHENTICATION CHECK ──────────────────────────────
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
+        const user = await currentUser();
+        if (!user || !user.primaryEmailAddress?.emailAddress) {
             return NextResponse.json({ error: "Unauthorized! Please log in first." }, { status: 401 });
         }
-        const loggedInUserEmail = session.user.email;
+        const loggedInUserEmail = user.primaryEmailAddress.emailAddress;
 
         // Next.js 15+ safe params handling
         const resolvedParams = 'then' in params ? await params : params;

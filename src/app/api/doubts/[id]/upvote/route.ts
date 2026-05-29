@@ -4,8 +4,7 @@ import { db } from "@/configs/db";
 import { repliesTable, replyLikesTable } from "@/configs/schema";
 import { eq, and, sql } from "drizzle-orm"; 
 import { inngest } from "@/inngest/client";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(
     req: NextRequest,
@@ -13,8 +12,8 @@ export async function POST(
 ) {
     try {
         // ── 1. SERVER-SIDE AUTHENTICATION GUARD ──────────────────────────────
-        const session = await getServerSession(authOptions);
-        if (!session || !session.user?.email) {
+        const user = await currentUser();
+        if (!user || !user.primaryEmailAddress?.emailAddress) {
             return NextResponse.json({ 
                 error: "Unauthorized! Missing active session profile properties." 
             }, { status: 401 });
@@ -22,7 +21,7 @@ export async function POST(
         
         // FIX: Normalized actor key to use the stable, unique identifier (email)
         // instead of the non-unique display name (userName) to align with global vote endpoints.
-        const stableUserIdentifier = session.user.email; 
+        const stableUserIdentifier = user.primaryEmailAddress.emailAddress; 
 
         // ── 2. NEXT.JS 15 ASYNC PARAMS RESOLUTION ────────────────────────────
         const { id } = await params;
