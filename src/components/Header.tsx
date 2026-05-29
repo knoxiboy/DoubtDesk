@@ -1,20 +1,30 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAppUser } from "@/app/provider";
-import { Menu, X, ChevronRight } from "lucide-react";
+import { Menu, X, ChevronRight, ArrowLeft } from "lucide-react";
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
+  const [canGoBack, setCanGoBack] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const { appUser } = useAppUser();
 
+  useEffect(() => {
+    // Check if browser history is available to go back
+    if (typeof window !== "undefined") {
+      setCanGoBack(window.history.length > 1);
+    }
+  }, []);
+
   const pageLinks = [
+    { href: "#how-it-works", label: "How it works", isScroll: true, scrollId: "how-it-works" },
+    { href: "#testimonials", label: "Testimonials", isScroll: true, scrollId: "testimonials" },
     { href: "/ask-ai", label: "AI Solver" },
     { href: "/public-rooms", label: "Public Rooms" },
     { href: "/faq", label: "FAQ" },
@@ -34,10 +44,30 @@ export default function Header() {
     }
   };
 
+  const handleBackClick = () => {
+    router.back();
+  };
+
   return (
     <header className="sticky inset-x-0 top-0 z-50 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-slate-200 dark:border-zinc-900 transition-colors duration-500">
-      <div className="max-w-7xl mx-auto h-16 sm:h-20 flex items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto h-16 sm:h-20 flex items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
         
+        {/* Back Button - Always on left */}
+        <button
+          onClick={handleBackClick}
+          className={`hidden md:flex items-center justify-center p-2 rounded-xl transition-all duration-300 flex-shrink-0 ${
+            canGoBack
+              ? "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
+              : "text-slate-400 dark:text-zinc-600 opacity-50 cursor-default"
+          }`}
+          disabled={!canGoBack}
+          aria-label="Go back"
+          title="Go back to previous page"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+
+        {/* Logo and Brand */}
         <Link href="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity shrink-0 group relative z-50">
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
             <img src="/logo.png" alt="DoubtDesk logo" className="h-6 w-6 sm:h-7 sm:w-7 object-contain" />
@@ -47,18 +77,30 @@ export default function Header() {
           </h1>
         </Link>
 
-        <div className="hidden md:flex items-center gap-4 flex-wrap">
+        {/* Desktop Navigation Links */}
+        <div className="hidden lg:flex items-center gap-4 flex-wrap">
           {pageLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm font-medium text-slate-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-white transition-colors duration-300"
-            >
-              {link.label}
-            </Link>
+            link.isScroll ? (
+              <button
+                key={link.label}
+                onClick={() => handleScrollNavigation(link.scrollId!)}
+                className="text-sm font-medium text-slate-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-white transition-colors duration-300 cursor-pointer bg-transparent border-0"
+              >
+                {link.label}
+              </button>
+            ) : (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-sm font-medium text-slate-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-white transition-colors duration-300"
+              >
+                {link.label}
+              </Link>
+            )
           ))}
         </div>
 
+        {/* Desktop Right Section */}
         <div className="hidden md:flex items-center gap-4">
           <ThemeToggle />
           
@@ -103,7 +145,8 @@ export default function Header() {
           </SignedIn>
         </div>
 
-        <div className="flex md:hidden items-center gap-3 relative z-50">
+        {/* Mobile Menu Toggle and Theme */}
+        <div className="flex md:hidden items-center gap-3 relative z-50 ml-auto">
           <ThemeToggle />
           <button
             onClick={() => setIsOpen(!isOpen)}
@@ -116,22 +159,54 @@ export default function Header() {
 
       </div>
 
+      {/* Mobile Menu */}
       <div
         className={`fixed inset-0 h-screen w-screen z-40 bg-white dark:bg-black transform transition-transform duration-300 ease-in-out md:hidden flex flex-col pt-24 px-6 pb-8 gap-8 ${
           isOpen ? "translate-y-0" : "-translate-y-full"
         }`}
       >
+        {/* Mobile Back Button */}
+        <div className="flex items-center gap-3 -mt-6">
+          <button
+            onClick={() => {
+              handleBackClick();
+              setIsOpen(false);
+            }}
+            className={`flex items-center justify-center p-2 rounded-xl transition-all duration-300 ${
+              canGoBack
+                ? "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
+                : "text-slate-400 dark:text-zinc-600 opacity-50 cursor-default"
+            }`}
+            disabled={!canGoBack}
+            aria-label="Go back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <span className="text-xs font-medium text-slate-500 dark:text-zinc-500">Back</span>
+        </div>
+
         <nav className="flex flex-col gap-1 w-full" aria-label="Mobile navigation container">
           {pageLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setIsOpen(false)}
-              className="flex items-center justify-between w-full py-4 text-base font-semibold text-slate-800 dark:text-zinc-200 border-b border-slate-100 dark:border-zinc-900/60"
-            >
-              <span>{link.label}</span>
-              <ChevronRight className="h-4 w-4 text-slate-400" />
-            </Link>
+            link.isScroll ? (
+              <button
+                key={link.label}
+                onClick={() => handleScrollNavigation(link.scrollId!)}
+                className="flex items-center justify-between w-full py-4 text-base font-semibold text-slate-800 dark:text-zinc-200 border-b border-slate-100 dark:border-zinc-900/60 bg-transparent border-l-0 border-r-0 border-t-0 hover:bg-slate-50 dark:hover:bg-zinc-900/30 rounded-lg px-2 transition-colors duration-300"
+              >
+                <span>{link.label}</span>
+                <ChevronRight className="h-4 w-4 text-slate-400" />
+              </button>
+            ) : (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-between w-full py-4 text-base font-semibold text-slate-800 dark:text-zinc-200 border-b border-slate-100 dark:border-zinc-900/60"
+              >
+                <span>{link.label}</span>
+                <ChevronRight className="h-4 w-4 text-slate-400" />
+              </Link>
+            )
           ))}
           <Link
             href="/dashboard"
