@@ -9,6 +9,7 @@ import { SignedIn, SignedOut, RedirectToSignIn, useAuth } from "@clerk/nextjs";
 
 const BOOKMARKS_ERROR_MESSAGE = "Could not load your bookmarks.";
 const BOOKMARKS_RETRY_LABEL = "Try Again";
+const BOOKMARKS_RETRY_ARIA_LABEL = "Retry fetching bookmarks";
 
 export default function BookmarksPage() {
   const [bookmarks, setBookmarks] = useState<any[]>([]);
@@ -41,7 +42,6 @@ export default function BookmarksPage() {
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn) {
-      setLoading(false);
       return;
     }
 
@@ -96,6 +96,7 @@ export default function BookmarksPage() {
                 </p>
                 <button
                   onClick={fetchBookmarks}
+                  aria-label={BOOKMARKS_RETRY_ARIA_LABEL}
                   className="px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-lg shadow-red-600/10 active:scale-[0.98]"
                 >
                   {BOOKMARKS_RETRY_LABEL}
