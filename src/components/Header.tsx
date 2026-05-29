@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
@@ -14,17 +14,19 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { appUser } = useAppUser();
+  const pathnameHistoryRef = useRef<string[]>([pathname]);
 
+  // Track navigation within the app to reliably determine if we can go back
   useEffect(() => {
-    // Check if browser history is available to go back
-    if (typeof window !== "undefined") {
-      setCanGoBack(window.history.length > 1);
+    if (pathnameHistoryRef.current[pathnameHistoryRef.current.length - 1] !== pathname) {
+      pathnameHistoryRef.current.push(pathname);
     }
-  }, []);
+    setCanGoBack(pathnameHistoryRef.current.length > 1);
+  }, [pathname]);
 
   const pageLinks = [
-    { href: "#how-it-works", label: "How it works", isScroll: true, scrollId: "how-it-works" },
-    { href: "#testimonials", label: "Testimonials", isScroll: true, scrollId: "testimonials" },
+    { href: "#how-it-works", label: "How it works" },
+    { href: "#testimonials", label: "Testimonials" },
     { href: "/ask-ai", label: "AI Solver" },
     { href: "/public-rooms", label: "Public Rooms" },
     { href: "/faq", label: "FAQ" },
@@ -41,6 +43,13 @@ export default function Header() {
       }
     } else {
       router.push(`/#${targetId}`);
+      // Scroll after navigation completes
+      setTimeout(() => {
+        const element = document.getElementById(targetId);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 100);
     }
   };
 
@@ -78,12 +87,13 @@ export default function Header() {
         </Link>
 
         {/* Desktop Navigation Links */}
-        <div className="hidden lg:flex items-center gap-4 flex-wrap">
-          {pageLinks.map((link) => (
-            link.isScroll ? (
+        <div className="hidden md:flex items-center gap-4 flex-wrap">
+          {pageLinks.map((link) => {
+            const scrollId = link.href.startsWith("#") ? link.href.slice(1) : null;
+            return scrollId ? (
               <button
-                key={link.label}
-                onClick={() => handleScrollNavigation(link.scrollId!)}
+                key={link.href}
+                onClick={() => handleScrollNavigation(scrollId)}
                 className="text-sm font-medium text-slate-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-white transition-colors duration-300 cursor-pointer bg-transparent border-0"
               >
                 {link.label}
@@ -96,8 +106,8 @@ export default function Header() {
               >
                 {link.label}
               </Link>
-            )
-          ))}
+            );
+          })}
         </div>
 
         {/* Desktop Right Section */}
@@ -146,7 +156,7 @@ export default function Header() {
         </div>
 
         {/* Mobile Menu Toggle and Theme */}
-        <div className="flex md:hidden items-center gap-3 relative z-50 ml-auto">
+        <div className="flex lg:hidden items-center gap-3 relative z-50 ml-auto">
           <ThemeToggle />
           <button
             onClick={() => setIsOpen(!isOpen)}
@@ -161,7 +171,7 @@ export default function Header() {
 
       {/* Mobile Menu */}
       <div
-        className={`fixed inset-0 h-screen w-screen z-40 bg-white dark:bg-black transform transition-transform duration-300 ease-in-out md:hidden flex flex-col pt-24 px-6 pb-8 gap-8 ${
+        className={`fixed inset-0 h-screen w-screen z-40 bg-white dark:bg-black transform transition-transform duration-300 ease-in-out lg:hidden flex flex-col pt-24 px-6 pb-8 gap-8 ${
           isOpen ? "translate-y-0" : "-translate-y-full"
         }`}
       >
@@ -186,11 +196,12 @@ export default function Header() {
         </div>
 
         <nav className="flex flex-col gap-1 w-full" aria-label="Mobile navigation container">
-          {pageLinks.map((link) => (
-            link.isScroll ? (
+          {pageLinks.map((link) => {
+            const scrollId = link.href.startsWith("#") ? link.href.slice(1) : null;
+            return scrollId ? (
               <button
-                key={link.label}
-                onClick={() => handleScrollNavigation(link.scrollId!)}
+                key={link.href}
+                onClick={() => handleScrollNavigation(scrollId)}
                 className="flex items-center justify-between w-full py-4 text-base font-semibold text-slate-800 dark:text-zinc-200 border-b border-slate-100 dark:border-zinc-900/60 bg-transparent border-l-0 border-r-0 border-t-0 hover:bg-slate-50 dark:hover:bg-zinc-900/30 rounded-lg px-2 transition-colors duration-300"
               >
                 <span>{link.label}</span>
@@ -206,8 +217,8 @@ export default function Header() {
                 <span>{link.label}</span>
                 <ChevronRight className="h-4 w-4 text-slate-400" />
               </Link>
-            )
-          ))}
+            );
+          })}
           <Link
             href="/dashboard"
             onClick={() => setIsOpen(false)}
