@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, RefreshCw, Users, Flame } from "lucide-react";
+import { AlertCircle, Loader2, RefreshCw, Users, Flame } from "lucide-react";
 
 type Classroom = {
     id: number;
@@ -15,24 +15,29 @@ type Classroom = {
     activityCount: number;
 };
 
+const RECOMMENDATIONS_ERROR_MESSAGE = "Could not load recommendations.";
+const RECOMMENDATIONS_RETRY_LABEL = "Try again";
+
 export default function RecommendedClassrooms() {
     const [classrooms, setClassrooms] = useState<Classroom[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const fetchRecommendations = async () => {
+        setError(null);
         try {
             const res = await fetch("/api/recommendations");
+            const data = await res.json();
 
             if (!res.ok) {
-                throw new Error("Failed to fetch recommendations");
+                throw new Error(data?.error || RECOMMENDATIONS_ERROR_MESSAGE);
             }
-
-            const data = await res.json();
 
             setClassrooms(data.recommendations || []);
         } catch (error) {
             console.error(error);
+            setError(error instanceof Error ? error.message : RECOMMENDATIONS_ERROR_MESSAGE);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -53,6 +58,30 @@ export default function RecommendedClassrooms() {
             <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading recommendations...
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                <div className="flex items-start gap-3">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div className="space-y-3">
+                        <div>
+                            <p className="font-medium">{RECOMMENDATIONS_ERROR_MESSAGE}</p>
+                            <p className="text-red-600/80">{error}</p>
+                        </div>
+                        <button
+                            onClick={refreshRecommendations}
+                            disabled={refreshing}
+                            className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                            {RECOMMENDATIONS_RETRY_LABEL}
+                        </button>
+                    </div>
+                </div>
             </div>
         );
     }
