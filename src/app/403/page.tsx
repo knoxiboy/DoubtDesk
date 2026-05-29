@@ -11,7 +11,7 @@ export default function ForbiddenPage() {
                 You do not have permission to access this page. This area is restricted to administrators only.
             </p>
             <Link href="/dashboard">
-                <Button size="lg">Return to Dashboard</Button>
+                <Button size="lg" aria-label="Return to Dashboard">Return to Dashboard</Button>
             </Link>
         </div>
     );

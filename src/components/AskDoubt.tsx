@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Loader2, Upload, File, Eye, EyeOff, Bold, Italic, Code, List, Tags, Sparkles, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import MarkdownRenderer from "./MarkdownRenderer";
+import { OFFLINE_DOUBT_QUEUED } from "@/lib/copy-constants";
 
 interface AskDoubtProps {
     defaultSubject?: string;
@@ -239,6 +240,34 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
 
         setIsSubmitting(true);
         try {
+            if (typeof navigator !== "undefined" && !navigator.onLine) {
+                if (doubtToEdit) {
+                    toast.error("You cannot edit doubts while offline.");
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                const payload = { userName, subject, content, imageUrl, classroomId, type, tags };
+                const { addToQueue } = await import("@/lib/offline/syncQueue");
+                await addToQueue("/api/doubts", "POST", payload);
+
+                if ("serviceWorker" in navigator && "SyncManager" in window) {
+                    try {
+                        const reg = await navigator.serviceWorker.ready;
+                        await (reg as any).sync.register("doubtDeskSyncQueue");
+                    } catch (syncErr) {
+                        console.warn("Background sync registration failed:", syncErr);
+                    }
+                }
+
+                toast.success(OFFLINE_DOUBT_QUEUED, {
+                    id: "doubt-offline-queued",
+                });
+                onSuccess();
+                setIsSubmitting(false);
+                return;
+            }
+
             const url = doubtToEdit ? `/api/doubts/action/${doubtToEdit.id}` : "/api/doubts";
             const method = doubtToEdit ? "PATCH" : "POST";
             const body = doubtToEdit
@@ -413,7 +442,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                 onClick={addSuggestedTags}
                                 disabled={!content.trim()}
                                 className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 disabled:opacity-40"
-                            >
+                             aria-label="Interactive button">
                                 <Sparkles className="w-3 h-3" /> Suggest
                             </button>
                         </div>
@@ -535,14 +564,14 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                             type="button"
                             onClick={onClose}
                             className="flex-1 py-4 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-2xl font-bold transition-all border border-slate-200 dark:border-white/5"
-                        >
+                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting || (!content.trim() && !imageUrl) || !subject.trim() || isTooLong || (hasContent && isTooShort)}
                             className="flex-[2] py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
+                         aria-label="Submit">
                             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                             {doubtToEdit ? "Update Doubt" : "Post Doubt"}
                         </button>

@@ -694,7 +694,7 @@ export default function ClassroomPage() {
                             <button
                                 onClick={copyCode}
                                 className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98] relative z-10"
-                            >
+                             aria-label="Interactive button">
                                 {copied ? (
                                     <><Check className="w-3.5 h-3.5" /> Copied!</>
                                 ) : (
@@ -751,7 +751,7 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                     onClick={fetchData}
                     disabled={loading}
                     className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:text-purple-600 dark:hover:text-purple-400 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                >
+                 aria-label="Interactive button">
                     <Activity className={`w-3.5 h-3.5 ${loading ? 'animate-pulse text-purple-500' : ''}`} />
                     {loading ? 'Analyzing...' : 'Refresh Data'}
                 </button>
@@ -952,7 +952,7 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
                                         {topic.suggestion}
                                     </p>
                                     <div className="pt-1">
-                                        <button className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1 hover:gap-2 transition-all duration-300">
+                                        <button className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1 hover:gap-2 transition-all duration-300" >
                                             Prepare Revision Materials <ArrowRight className="w-3 h-3" />
                                         </button>
                                     </div>

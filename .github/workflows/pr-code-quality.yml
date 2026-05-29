@@ -5,6 +5,8 @@ on:
     branches: [main, master]
     types: [opened, synchronize, reopened]
 
+permissions: {}
+
 jobs:
   # ─────────────────────────────────────────
   # 1. TypeScript type checking
@@ -12,6 +14,8 @@ jobs:
   typecheck:
     name: TypeScript Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +37,8 @@ jobs:
   lint:
     name: ESLint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +60,8 @@ jobs:
   build:
     name: Build Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       # Dummy env vars so Next.js build doesn't fail on missing secrets
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_placeholder' }}
@@ -211,6 +219,8 @@ jobs:
   dependency-audit:
     name: Dependency Audit
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 

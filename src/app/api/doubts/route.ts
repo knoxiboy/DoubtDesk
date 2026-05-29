@@ -21,6 +21,7 @@ export async function GET(req: Request) {
     const type = searchParams.get("type") || 'community';
     const tag = searchParams.get("tag");
     const sort = searchParams.get("sort") || "newest";
+    const bookmarked = searchParams.get("bookmarked") === "true";
 
     try {
         const user = await currentUser();
@@ -83,6 +84,18 @@ export async function GET(req: Request) {
             // Security/Privacy: AI history is personal
             if (type === 'ai' && email) {
                 conditions.push(eq(doubtsTable.userEmail, email));
+            }
+        }
+
+        if (bookmarked && email) {
+            const userBookmarks = await db.select({ doubtId: bookmarksTable.doubtId })
+                .from(bookmarksTable)
+                .where(eq(bookmarksTable.userEmail, email));
+            const bookmarkedIds = userBookmarks.map(b => b.doubtId);
+            if (bookmarkedIds.length > 0) {
+                conditions.push(inArray(doubtsTable.id, bookmarkedIds));
+            } else {
+                conditions.push(eq(doubtsTable.id, -1));
             }
         }
 
@@ -245,6 +258,15 @@ const doubtType = type ?? 'community';
         // 2. Auto-detect sub-topic using AI
         const subTopic = await categorizeDoubt(content || "", subject, imageUrl);
 
+        let parsedCreatedAt: Date | undefined = undefined;
+        if (data.createdAt) {
+            const d = new Date(data.createdAt);
+            if (isNaN(d.getTime())) {
+                return NextResponse.json({ error: "Invalid createdAt date format" }, { status: 400 });
+            }
+            parsedCreatedAt = d;
+        }
+
         const [newDoubt] = await db.insert(doubtsTable).values({
             userName,
             userEmail: email,
@@ -253,7 +275,8 @@ const doubtType = type ?? 'community';
             content,
             imageUrl,
             classroomId: parsedClassroomId,
-            type
+            type,
+            createdAt: parsedCreatedAt
         }).returning();
 
         if (parsedClassroomId) {

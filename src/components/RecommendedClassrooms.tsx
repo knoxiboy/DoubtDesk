@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, Loader2, RefreshCw, Users, Flame } from "lucide-react";
+import { Loader2, RefreshCw, Users, Flame } from "lucide-react";
 
 type Classroom = {
     id: number;
@@ -15,9 +15,15 @@ type Classroom = {
     activityCount: number;
 };
 
-const RECOMMENDATIONS_ERROR_MESSAGE = "Could not load recommendations.";
-const RECOMMENDATIONS_RETRY_LABEL = "Try again";
-const RECOMMENDATIONS_RETRY_ARIA_LABEL = "Retry loading classroom recommendations";
+const ERROR_MESSAGES = {
+    RECOMMENDATIONS_LOAD_FAILED: "Failed to load recommendations",
+} as const;
+
+const UI_TEXT = {
+    ERROR_HEADING: "Unable to load recommendations.",
+    RETRY_BUTTON: "Try again",
+    RETRY_RECOMMENDATIONS_LABEL: "Retry loading recommendations",
+} as const;
 
 export default function RecommendedClassrooms() {
     const [classrooms, setClassrooms] = useState<Classroom[]>([]);
@@ -32,13 +38,14 @@ export default function RecommendedClassrooms() {
             const data = await res.json();
 
             if (!res.ok) {
-                throw new Error(data?.error || RECOMMENDATIONS_ERROR_MESSAGE);
+                throw new Error(data?.error || ERROR_MESSAGES.RECOMMENDATIONS_LOAD_FAILED);
             }
 
             setClassrooms(data.recommendations || []);
+            setError(null);
         } catch (error) {
             console.error(error);
-            setError(error instanceof Error ? error.message : RECOMMENDATIONS_ERROR_MESSAGE);
+            setError(error instanceof Error ? error.message : ERROR_MESSAGES.RECOMMENDATIONS_LOAD_FAILED);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -65,26 +72,27 @@ export default function RecommendedClassrooms() {
 
     if (error) {
         return (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                <div className="flex items-start gap-3">
-                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                    <div className="space-y-3">
-                        <div>
-                            <p className="font-medium">{RECOMMENDATIONS_ERROR_MESSAGE}</p>
-                            <p className="text-red-600/80">{error}</p>
-                        </div>
-                        <button
-                            onClick={refreshRecommendations}
-                            disabled={refreshing}
-                            aria-disabled={refreshing}
-                            aria-label={refreshing ? "Retrying classroom recommendations" : RECOMMENDATIONS_RETRY_ARIA_LABEL}
-                            className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-                            {RECOMMENDATIONS_RETRY_LABEL}
-                        </button>
-                    </div>
-                </div>
+            <div
+                role="alert"
+                className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"
+            >
+                <p className="font-medium">{UI_TEXT.ERROR_HEADING}</p>
+                <p className="mt-1 text-red-600">{error}</p>
+                <button
+                    onClick={refreshRecommendations}
+                    disabled={refreshing}
+                    aria-disabled={refreshing}
+                    aria-label={refreshing ? "Retrying classroom recommendations" : UI_TEXT.RETRY_RECOMMENDATIONS_LABEL}
+                    className="mt-3 flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    <RefreshCw
+                        aria-hidden="true"
+                        className={`h-4 w-4 ${
+                            refreshing ? "animate-spin" : ""
+                        }`}
+                    />
+                    {UI_TEXT.RETRY_BUTTON}
+                </button>
             </div>
         );
     }
@@ -114,7 +122,7 @@ export default function RecommendedClassrooms() {
                     onClick={refreshRecommendations}
                     disabled={refreshing}
                     className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
-                >
+                 aria-label="Interactive button">
                     <RefreshCw
                         className={`h-4 w-4 ${
                             refreshing ? "animate-spin" : ""
@@ -162,7 +170,7 @@ export default function RecommendedClassrooms() {
                                 </div>
                             </div>
 
-                            <button className="rounded-lg bg-black px-4 py-2 text-sm text-white hover:opacity-90">
+                            <button className="rounded-lg bg-black px-4 py-2 text-sm text-white hover:opacity-90" >
                                 Join
                             </button>
                         </div>
