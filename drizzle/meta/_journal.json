@@ -15,6 +15,34 @@
       "when": 1779525663345,
       "tag": "0001_aspiring_warhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779870440438,
+      "tag": "0002_overjoyed_captain_flint",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780031571662,
+      "tag": "0003_chemical_quasar",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780032095705,
+      "tag": "0004_happy_blue_marvel",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780032370230,
+      "tag": "0005_hot_phantom_reporter",
+      "breakpoints": true
     }
   ]
 }

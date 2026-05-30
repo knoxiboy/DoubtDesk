@@ -49,3 +49,7 @@ next-env.d.ts
 /public/workbox-*.js
 /public/sw.js.map
 /public/workbox-*.js.map
+
+
+/scratch
+
