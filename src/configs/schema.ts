@@ -179,6 +179,14 @@ export const tagsTable = pgTable("tags", {
 }, (table) => ({
     classroomIdIndex: index("tag_classroomId_idx").on(table.classroomId),
     normalizedNameIndex: uniqueIndex("tag_scope_name_idx").on(table.normalizedName, table.classroomId),
+    createdByEmailFk: foreignKey({
+        columns: [table.createdByEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("set null"),
+    classroomIdFk: foreignKey({
+        columns: [table.classroomId],
+        foreignColumns: [classroomsTable.id],
+    }).onDelete("cascade"),
 }));
 
 export const doubtTagsTable = pgTable("doubt_tags", {
@@ -190,6 +198,14 @@ export const doubtTagsTable = pgTable("doubt_tags", {
     doubtIdIndex: index("doubt_tag_doubtId_idx").on(table.doubtId),
     tagIdIndex: index("doubt_tag_tagId_idx").on(table.tagId),
     uniqueDoubtTag: uniqueIndex("doubt_tag_unique_idx").on(table.doubtId, table.tagId),
+    doubtIdFk: foreignKey({
+        columns: [table.doubtId],
+        foreignColumns: [doubtsTable.id],
+    }).onDelete("cascade"),
+    tagIdFk: foreignKey({
+        columns: [table.tagId],
+        foreignColumns: [tagsTable.id],
+    }).onDelete("cascade"),
 }));
 
 export const repliesTable = pgTable("replies", {
@@ -208,6 +224,10 @@ export const repliesTable = pgTable("replies", {
         columns: [table.doubtId],
         foreignColumns: [doubtsTable.id],
     }).onDelete("cascade"),
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("set null"),
 }));
 
 export const likesTable = pgTable("likes", {
@@ -238,13 +258,18 @@ export const replyLikesTable = pgTable("reply_likes", {
 
 export const moderationLogsTable = pgTable("moderation_logs", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userEmail: varchar({ length: 255 }).notNull(),
+    userEmail: varchar({ length: 255 }), // Removed notNull()
     reason: text().notNull(),
     violationType: varchar({ length: 50 }).notNull(),
     contentSnippet: text(),
     status: varchar({ length: 20 }).default("pending").notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-});
+}, (table) => ({
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("set null"),
+}));
 
 export const bookmarksTable = pgTable(
     "bookmarks",

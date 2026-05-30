@@ -7,7 +7,7 @@ import { checkAndAwardBadges } from "@/lib/karma-utils";
 import { currentUser } from "@clerk/nextjs/server";
 
 // ── KARMA LEVEL THRESHOLDS ────────────────────────────────────────────────────
-export const KARMA_LEVELS = [
+const KARMA_LEVELS = [
     { level: 1, label: "Newbie",      minKarma: 0,    icon: "🌱" },
     { level: 2, label: "Contributor", minKarma: 100,  icon: "⚡" },
     { level: 3, label: "Scholar",     minKarma: 300,  icon: "📚" },
@@ -16,7 +16,7 @@ export const KARMA_LEVELS = [
 ];
 
 // Karma point metrics per event definition
-export const KARMA_POINTS: Record<string, number> = {
+const KARMA_POINTS: Record<string, number> = {
     answer_upvoted:       +10,
     answer_accepted:      +25,
     spam_report_accepted: -15,

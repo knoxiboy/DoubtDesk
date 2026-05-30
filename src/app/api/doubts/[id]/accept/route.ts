@@ -8,7 +8,7 @@ import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(
     req: NextRequest,
-    { params }: { params: Promise<{ id: string }> | { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         // ── 1. SERVER-SIDE AUTHENTICATION CHECK ──────────────────────────────
