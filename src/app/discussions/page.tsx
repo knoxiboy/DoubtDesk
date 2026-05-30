@@ -18,6 +18,16 @@ import {
 import CreateThreadModal from "@/app/discussions/CreateThreadModal";
 import DiscussionModal from "@/app/discussions/DiscussionModal";
 
+interface Thread {
+  id: number;
+  title: string;
+  author: string;
+  category: string;
+  replies: number;
+  lastReply: string;
+  description?: string;
+}
+
 const categories = [
   {
     title: "AI Doubts",
@@ -57,7 +67,7 @@ const categories = [
   },
 ];
 
-const initialThreads = [
+const initialThreads: Thread[] = [
   {
     id: 1,
     title: "How do I prepare for DBMS viva effectively?",
@@ -98,13 +108,16 @@ const activityFeed = [
 ];
 
 export default function DiscussionsPage() {
-  const [threadList, setThreadList] = useState(initialThreads);
+  const [threadList, setThreadList] =
+    useState<Thread[]>(initialThreads);
 
   const [createOpen, setCreateOpen] = useState(false);
 
-  const [selectedThread, setSelectedThread] = useState<any>(null);
+  const [selectedThread, setSelectedThread] =
+    useState<Thread | null>(null);
 
-  const [discussionOpen, setDiscussionOpen] = useState(false);
+  const [discussionOpen, setDiscussionOpen] =
+    useState(false);
 
   const scrollToDiscussions = () => {
     document
@@ -112,11 +125,11 @@ export default function DiscussionsPage() {
       ?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleCreateThread = (thread: any) => {
-    setThreadList([thread, ...threadList]);
+  const handleCreateThread = (thread: Thread) => {
+    setThreadList((prev) => [thread, ...prev]);
   };
 
-  const handleOpenThread = (thread: any) => {
+  const handleOpenThread = (thread: Thread) => {
     setSelectedThread(thread);
     setDiscussionOpen(true);
   };
@@ -155,6 +168,8 @@ export default function DiscussionsPage() {
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
 
             <button
+              type="button"
+              aria-label="Browse active discussions"
               onClick={scrollToDiscussions}
               className="group inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_35px_rgba(59,130,246,0.35)] active:scale-[0.98]"
             >
@@ -250,6 +265,8 @@ export default function DiscussionsPage() {
             </div>
 
             <button
+              type="button"
+              aria-label="Create new discussion thread"
               onClick={() => setCreateOpen(true)}
               className="group inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(59,130,246,0.35)] active:scale-[0.98]"
             >
@@ -260,7 +277,7 @@ export default function DiscussionsPage() {
 
           <div className="grid gap-5">
 
-            {threadList.map((thread: any) => (
+            {threadList.map((thread) => (
               <div
                 key={thread.id}
                 className="
@@ -291,6 +308,8 @@ export default function DiscussionsPage() {
                     </div>
 
                     <button
+                      type="button"
+                      aria-label={`Open discussion thread: ${thread.title}`}
                       onClick={() => handleOpenThread(thread)}
                       className="
                       px-4 py-2 rounded-xl
@@ -334,117 +353,90 @@ export default function DiscussionsPage() {
           </div>
         </section>
 
-        {/* Live Activity */}
-        <section className="space-y-10">
+      {/* Guidelines */}
+      <section className="space-y-10">
 
-          <div className="flex items-center gap-3">
-            <Flame className="h-7 w-7 text-orange-500" />
+        <div className="text-center space-y-3">
+          <h2 className="text-4xl font-black tracking-tight">
+            Community Guidelines
+          </h2>
 
-            <h2 className="text-4xl font-black tracking-tight">
-              Live Community Activity
-            </h2>
-          </div>
+          <p className="text-slate-600 dark:text-zinc-400 max-w-2xl mx-auto">
+            Help us maintain a respectful and collaborative academic environment.
+          </p>
+        </div>
 
-          <div className="rounded-3xl border border-slate-200 dark:border-zinc-900 bg-white/70 dark:bg-zinc-950/40 p-8 backdrop-blur-xl hover:border-blue-500/30 transition-all duration-300">
-
-            <div className="space-y-6">
-              {activityFeed.map((activity, index) => (
-                <div
-                  key={index}
-                  className="flex items-start gap-4"
-                >
-                  <div className="mt-1.5 h-3 w-3 rounded-full bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.7)]" />
-
-                  <p className="text-sm sm:text-base text-slate-700 dark:text-zinc-300">
-                    {activity}
-                  </p>
-                </div>
-              ))}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+          {[
+            "Respect every learner",
+            "Keep discussions academic",
+            "Avoid spam or abusive content",
+            "Help peers learn collaboratively",
+          ].map((rule) => (
+            <div
+              key={rule}
+              className="
+              rounded-2xl border border-slate-200 dark:border-zinc-900
+              bg-white/70 dark:bg-zinc-950/40
+              p-5 text-center backdrop-blur-xl
+             hover:border-blue-500/50 dark:hover:border-blue-400/40
+             hover:bg-white dark:hover:bg-zinc-900/60
+              hover:-translate-y-2
+              hover:shadow-[0_10px_40px_rgba(59,130,246,0.12)]
+              dark:hover:shadow-[0_10px_40px_rgba(59,130,246,0.08)]
+             transition-all duration-300">
+              <p className="text-sm font-medium text-slate-700 dark:text-zinc-300">
+                {rule}
+              </p>
             </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="relative overflow-hidden rounded-[2rem] border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 p-10 md:p-14 text-center backdrop-blur-xl hover:shadow-[0_0_60px_rgba(59,130,246,0.12)] transition-all duration-500">
+
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_40%)] pointer-events-none" />
+
+        <div className="relative z-10 space-y-6">
+
+          <h2 className="text-4xl md:text-5xl font-black tracking-tight">
+            Start Your First Discussion
+          </h2>
+
+          <p className="max-w-2xl mx-auto text-slate-600 dark:text-zinc-400">
+            Ask questions, collaborate with peers, and participate in academic conversations powered by the DoubtDesk community.
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-4">
+
+            <button
+              type="button"
+              aria-label="Create discussion thread"
+              onClick={() => setCreateOpen(true)}
+              className="
+              px-6 py-3 rounded-2xl
+              bg-blue-600 hover:bg-blue-700
+              text-white font-semibold
+              transition-all duration-300
+              hover:scale-[1.03]
+              hover:shadow-[0_0_35px_rgba(59,130,246,0.35)]
+              active:scale-[0.98]
+              "
+            >
+              Join Discussions
+            </button>
+
+            <Link
+              href="/sign-up"
+              className="px-6 py-3 rounded-2xl border border-slate-300 dark:border-zinc-800 hover:border-blue-500/40 bg-white/70 dark:bg-zinc-950/40 transition-all duration-300 hover:-translate-y-1"
+            >
+              Create Account
+            </Link>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Guidelines */}
-        <section className="space-y-10">
-
-          <div className="text-center space-y-3">
-            <h2 className="text-4xl font-black tracking-tight">
-              Community Guidelines
-            </h2>
-
-            <p className="text-slate-600 dark:text-zinc-400 max-w-2xl mx-auto">
-              Help us maintain a respectful and collaborative academic environment.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[
-              "Respect every learner",
-              "Keep discussions academic",
-              "Avoid spam or abusive content",
-              "Help peers learn collaboratively",
-            ].map((rule) => (
-              <div
-                key={rule}
-                className="
-                rounded-2xl border border-slate-200 dark:border-zinc-900
-                bg-white/70 dark:bg-zinc-950/40
-                p-5 text-center backdrop-blur-xl
-                hover:border-blue-500/40
-                hover:-translate-y-1
-                hover:bg-white dark:hover:bg-zinc-900/60
-                transition-all duration-300
-                "
-              >
-                <p className="text-sm font-medium text-slate-700 dark:text-zinc-300">
-                  {rule}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="relative overflow-hidden rounded-[2rem] border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 p-10 md:p-14 text-center backdrop-blur-xl hover:shadow-[0_0_60px_rgba(59,130,246,0.12)] transition-all duration-500">
-
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_40%)] pointer-events-none" />
-
-          <div className="relative z-10 space-y-6">
-
-            <h2 className="text-4xl md:text-5xl font-black tracking-tight">
-              Start Your First Discussion
-            </h2>
-
-            <p className="max-w-2xl mx-auto text-slate-600 dark:text-zinc-400">
-              Ask questions, collaborate with peers, and participate in academic conversations powered by the DoubtDesk community.
-            </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-4">
-
-              <button
-                onClick={() => setCreateOpen(true)}
-                className="
-                px-6 py-3 rounded-2xl
-                bg-blue-600 hover:bg-blue-700
-                text-white font-semibold
-                transition-all duration-300
-                hover:scale-[1.03]
-                hover:shadow-[0_0_35px_rgba(59,130,246,0.35)]
-                active:scale-[0.98]
-                "
-              >
-                Join Discussions
-              </button>
-
-              <Link
-                href="/sign-up"
-                className="px-6 py-3 rounded-2xl border border-slate-300 dark:border-zinc-800 hover:border-blue-500/40 bg-white/70 dark:bg-zinc-950/40 transition-all duration-300 hover:-translate-y-1"
-              >
-                Create Account
-              </Link>
-            </div>
-          </div>
-        </section>
       </div>
 
       <CreateThreadModal
