@@ -90,6 +90,7 @@ export default function AdminModerationPage() {
                                     <button
                                         onClick={() => setPage(p => Math.max(1, p - 1))}
                                         disabled={page === 1}
+                                        aria-label="Previous page"
                                         className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
                                     >
                                         Previous
@@ -100,6 +101,7 @@ export default function AdminModerationPage() {
                                     <button
                                         onClick={() => setPage(p => p + 1)}
                                         disabled={page >= Math.ceil(data.pagination.total / data.pagination.limit)}
+                                        aria-label="Next page"
                                         className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
                                     >
                                         Next

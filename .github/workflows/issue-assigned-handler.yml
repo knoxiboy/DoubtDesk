@@ -4,6 +4,8 @@ on:
   issues:
     types: [assigned]
 
+permissions: {}
+
 jobs:
   remove_approval_label:
     runs-on: ubuntu-latest

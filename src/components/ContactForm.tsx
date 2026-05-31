@@ -129,7 +129,7 @@ export default function ContactForm() {
             <button
               type="submit"
               className="px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-lg shadow-blue-600/10 active:scale-[0.98]"
-            >
+             aria-label="Submit">
               Send Message
             </button>
           </div>

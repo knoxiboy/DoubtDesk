@@ -196,7 +196,7 @@ export default function AnalyticsDashboard() {
                         <button
                             onClick={downloadCSV}
                             className="flex items-center justify-center gap-2.5 px-5 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-lg shadow-blue-600/10 active:scale-[0.98] shrink-0"
-                        >
+                         aria-label="Interactive button">
                             <Download className="w-4 h-4" /> Export Report (CSV)
                         </button>
                     )}

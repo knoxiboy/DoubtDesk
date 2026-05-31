@@ -136,7 +136,7 @@ export default function OnboardingPage() {
                             type="submit"
                             disabled={isSubmitting}
                             className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider transition-all duration-300 shadow-lg shadow-blue-600/10 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
-                        >
+                         aria-label="Submit">
                             {isSubmitting ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />
                             ) : (

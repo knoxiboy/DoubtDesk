@@ -1,7 +1,7 @@
 import { db } from "@/configs/db";
 import { bookmarksTable, doubtTagsTable, doubtsTable, likesTable, repliesTable, membershipsTable, classroomsTable, tagsTable } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
-import { and, eq, inArray, isNull, or, not, sql, ilike, SQL } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, not, sql, ilike, desc, getTableColumns } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
@@ -21,6 +21,7 @@ export async function GET(req: Request) {
     const type = searchParams.get("type") || 'community';
     const tag = searchParams.get("tag");
     const sort = searchParams.get("sort") || "newest";
+    const bookmarked = searchParams.get("bookmarked") === "true";
 
     try {
         const user = await currentUser();
@@ -86,6 +87,18 @@ export async function GET(req: Request) {
             }
         }
 
+        if (bookmarked && email) {
+            const userBookmarks = await db.select({ doubtId: bookmarksTable.doubtId })
+                .from(bookmarksTable)
+                .where(eq(bookmarksTable.userEmail, email));
+            const bookmarkedIds = userBookmarks.map(b => b.doubtId);
+            if (bookmarkedIds.length > 0) {
+                conditions.push(inArray(doubtsTable.id, bookmarkedIds));
+            } else {
+                conditions.push(eq(doubtsTable.id, -1));
+            }
+        }
+
         const pageStr = searchParams.get("page");
         const offsetStr = searchParams.get("offset");
         const limitStr = searchParams.get("limit");
@@ -93,62 +106,46 @@ export async function GET(req: Request) {
         const limit = limitStr ? parseInt(limitStr) : 20;
         const offset = offsetStr ? parseInt(offsetStr) : (page - 1) * limit;
 
-        let doubts: any[] = await query.where(and(...conditions));
-
-        if (tag && tag !== "All" && doubts.length > 0) {
+        if (tag && tag !== "All") {
             const normalizedTag = tag.trim().replace(/\s+/g, " ").toLowerCase();
-            const doubtIds = doubts.map((doubt) => doubt.id);
-            const taggedDoubts = await db.select({ doubtId: doubtTagsTable.doubtId })
-                .from(doubtTagsTable)
-                .innerJoin(tagsTable, eq(doubtTagsTable.tagId, tagsTable.id))
-                .where(and(
-                    inArray(doubtTagsTable.doubtId, doubtIds),
-                    eq(tagsTable.normalizedName, normalizedTag)
-                ));
-
-            const taggedDoubtIds = new Set(taggedDoubts.map((row) => row.doubtId));
-            doubts = doubts.filter((doubt) => taggedDoubtIds.has(doubt.id));
+            conditions.push(
+                inArray(
+                    doubtsTable.id,
+                    db.select({ doubtId: doubtTagsTable.doubtId })
+                        .from(doubtTagsTable)
+                        .innerJoin(tagsTable, eq(doubtTagsTable.tagId, tagsTable.id))
+                        .where(eq(tagsTable.normalizedName, normalizedTag))
+                )
+            );
         }
 
         if (sort === "unsolved") {
-            doubts = doubts.filter((doubt) => doubt.isSolved === "unsolved");
+            conditions.push(eq(doubtsTable.isSolved, "unsolved"));
         }
 
-        const replyCounts = doubts.length > 0
-            ? await db.select({
-                doubtId: repliesTable.doubtId,
-                count: sql<number>`count(*)`.mapWith(Number)
-            })
-            .from(repliesTable)
-            .groupBy(repliesTable.doubtId)
-            : [];
+        const replyCountSql = sql<number>`(SELECT count(*) FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id})`.mapWith(Number);
 
-        const countsMap = Object.fromEntries(replyCounts.map(r => [r.doubtId, r.count]));
+        let query = db.select({
+            ...getTableColumns(doubtsTable),
+            replyCount: replyCountSql
+        }).from(doubtsTable);
 
-        doubts = doubts.map(doubt => ({
-            ...doubt,
-            replyCount: countsMap[doubt.id] || 0
-        }));
+        let orderByFields = [];
+        orderByFields.push(desc(doubtsTable.isPinned));
 
-        const createdAtValue = (value: unknown) => new Date(value as string).getTime() || 0;
-        const pinnedScore = (value: unknown) => (value ? 1 : 0);
+        if (sort === "popular") {
+            orderByFields.push(desc(doubtsTable.likes));
+        } else if (sort === "most-replied") {
+            orderByFields.push(desc(replyCountSql));
+        }
+        
+        orderByFields.push(desc(doubtsTable.createdAt));
 
-        doubts = (doubts as any[]).sort((a: any, b: any) => {
-            const pinnedDiff = pinnedScore(b.isPinned) - pinnedScore(a.isPinned);
-            if (pinnedDiff !== 0) return pinnedDiff;
-
-            if (sort === "popular") {
-                const likesDiff = (b.likes ?? 0) - (a.likes ?? 0);
-                if (likesDiff !== 0) return likesDiff;
-            } else if (sort === "most-replied") {
-                const repliesDiff = (b.replyCount ?? 0) - (a.replyCount ?? 0);
-                if (repliesDiff !== 0) return repliesDiff;
-            }
-
-            return createdAtValue(b.createdAt) - createdAtValue(a.createdAt);
-        });
-
-        doubts = (doubts as any[]).slice(offset, offset + limit);
+        let doubts = await query
+            .where(and(...conditions))
+            .orderBy(...orderByFields)
+            .limit(limit)
+            .offset(offset);
 
         if (userName && doubts.length > 0) {
             const userLikes = await db.select({ doubtId: likesTable.doubtId })
@@ -245,6 +242,15 @@ const doubtType = type ?? 'community';
         // 2. Auto-detect sub-topic using AI
         const subTopic = await categorizeDoubt(content || "", subject, imageUrl);
 
+        let parsedCreatedAt: Date | undefined = undefined;
+        if (data.createdAt) {
+            const d = new Date(data.createdAt);
+            if (isNaN(d.getTime())) {
+                return NextResponse.json({ error: "Invalid createdAt date format" }, { status: 400 });
+            }
+            parsedCreatedAt = d;
+        }
+
         const [newDoubt] = await db.insert(doubtsTable).values({
             userName,
             userEmail: email,
@@ -253,7 +259,8 @@ const doubtType = type ?? 'community';
             content,
             imageUrl,
             classroomId: parsedClassroomId,
-            type
+            type,
+            createdAt: parsedCreatedAt
         }).returning();
 
         if (parsedClassroomId) {

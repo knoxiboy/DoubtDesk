@@ -47,13 +47,16 @@ let recommendedRooms: any[] = [];
 
 if (dbUser && dbUser.university && dbUser.year) {
     const joinedIds = joinedRooms.map((r) => r.id);
-    const conditions = [
+    
+    let conditions = [
         eq(classroomsTable.university, dbUser.university),
         eq(classroomsTable.year, dbUser.year)
     ];
+    
     if (joinedIds.length > 0) {
         conditions.push(notInArray(classroomsTable.id, joinedIds));
     }
+
     recommendedRooms = await db
         .select()
         .from(classroomsTable)

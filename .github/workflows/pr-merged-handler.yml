@@ -4,6 +4,8 @@ on:
   pull_request_target:
     types: [closed]
 
+permissions: {}
+
 jobs:
   handle_merge:
     runs-on: ubuntu-latest

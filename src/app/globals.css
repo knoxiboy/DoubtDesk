@@ -29,6 +29,8 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    --auth-link: 221 83% 53%;
+    --auth-link-hover: 221 83% 43%;
     color-scheme: light;
   }
 
@@ -57,6 +59,8 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+    --auth-link: 223 100% 68%;
+    --auth-link-hover: 217 100% 77%;
     color-scheme: dark;
   }
 }

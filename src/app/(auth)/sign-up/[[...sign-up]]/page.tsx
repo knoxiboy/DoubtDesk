@@ -1,12 +1,34 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { SignUp } from "@clerk/nextjs"
-import { useTheme } from "next-themes"
-import { dark } from "@clerk/themes"
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { SignUp } from "@clerk/nextjs";
+import { useTheme } from "next-themes";
+import { dark } from "@clerk/themes";
+import { ArrowLeft } from "lucide-react";
+import { BACK_TO_HOME_LABEL } from "@/lib/constants";
 
-export default function Page() {
+/**
+ * Renders the Sign Up page for user authentication.
+ * 
+ * This component provides the registration interface using Clerk's `<SignUp />` component.
+ * It includes a theme-aware background, decorative gradients, and waits for client-side
+ * hydration to prevent theme flickering for dark mode users.
+ * 
+ * @returns {JSX.Element | null} The rendered sign-up page or null before hydration.
+ */
+export default function SignUpPage() {
   const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
   const isDark = resolvedTheme === "dark";
 
   return (

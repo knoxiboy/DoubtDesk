@@ -6,6 +6,8 @@ on:
   pull_request_target:
     types: [opened, edited, synchronize, reopened]
 
+permissions: {}
+
 jobs:
   label_gssoc:
     runs-on: ubuntu-latest
@@ -281,6 +283,34 @@ jobs:
             // ──────────────────────────────────────────
             // Deduplicate
             const uniqueLabels = [...new Set(labelsToAdd)];
+
+            // Clean up any existing level labels that conflict with the one we are adding.
+            // This is crucial because GITHUB_TOKEN actions do not trigger label-manager.yml.
+            try {
+              const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+              });
+
+              for (const label of currentLabels) {
+                const labelNameLower = label.name.toLowerCase();
+                const newLevelLower = level.toLowerCase();
+                
+                // If it's a level label (starts with level:) and is not the level we are currently adding, remove it
+                if (labelNameLower.startsWith('level:') && labelNameLower !== newLevelLower) {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: number,
+                    name: label.name,
+                  });
+                  console.log(`Removed conflicting level label "${label.name}" before applying new labels`);
+                }
+              }
+            } catch (e) {
+              console.log(`Error cleaning up conflicting level labels: ${e.message}`);
+            }
 
             await github.rest.issues.addLabels({
               owner: context.repo.owner,

@@ -4,6 +4,8 @@ on:
   issues:
     types: [labeled]
 
+permissions: {}
+
 jobs:
   sync_beginner_tags:
     runs-on: ubuntu-latest

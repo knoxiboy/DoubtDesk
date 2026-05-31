@@ -1,0 +1,3 @@
+ALTER TABLE "moderation_logs" ALTER COLUMN "userEmail" DROP NOT NULL;--> statement-breakpoint
+UPDATE "moderation_logs" SET "userEmail" = NULL WHERE "userEmail" NOT IN (SELECT email FROM users);--> statement-breakpoint
+ALTER TABLE "moderation_logs" ADD CONSTRAINT "moderation_logs_userEmail_users_email_fk" FOREIGN KEY ("userEmail") REFERENCES "public"."users"("email") ON DELETE set null ON UPDATE no action;

@@ -9,7 +9,7 @@ import DoubtSortSelect, { DoubtSortValue } from "@/components/DoubtSortSelect";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import useSWRInfinite from "swr/infinite";
 import { useInView } from "react-intersection-observer";
-import ScrollToTopButton from "@/components/ScrollToTopButton";
+
 
 export default function PublicRoomPage() {
   const params = useParams();
@@ -70,7 +70,7 @@ export default function PublicRoomPage() {
     <div className="p-4 md:p-8 space-y-8 max-w-5xl mx-auto pb-24 text-slate-900 dark:text-zinc-100 bg-white dark:bg-black min-h-screen transition-colors duration-500 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/10 dark:from-blue-500/5 blur-[120px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0" />
 
-      <ScrollToTopButton />
+
       
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-100 dark:border-zinc-900/60 relative z-10">
         <div className="space-y-2">
@@ -83,6 +83,7 @@ export default function PublicRoomPage() {
         </div>
         <button 
           onClick={() => setIsAskModalOpen(true)}
+          aria-label="Ask a Doubt"
           className="flex items-center gap-3 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-lg shadow-blue-600/10 active:scale-[0.98] shrink-0"
         >
           <Plus className="w-5 h-5" />
@@ -121,6 +122,7 @@ export default function PublicRoomPage() {
           </p>
           <button 
             onClick={() => setIsAskModalOpen(true)}
+            aria-label="Post the first doubt"
             className="px-6 py-3.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-sm"
           >
             Post the first doubt

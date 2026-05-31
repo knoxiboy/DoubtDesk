@@ -13,7 +13,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (validationError) return validationError;
         const { content, imageUrl } = data;
         
-
         const user = await currentUser();
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
