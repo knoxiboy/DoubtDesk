@@ -149,6 +149,43 @@ export default function Home() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Navbar */}
+      <header className="fixed top-0 left-0 right-0 z-50 px-4 sm:px-6 lg:px-20 py-4 flex items-center justify-between border-b border-slate-200/60 dark:border-white/5 bg-slate-50/80 dark:bg-black/80 backdrop-blur-md transition-colors duration-300">
+        <Link href="/" className="flex items-center gap-2">
+          <span className={`${staatliches.className} text-2xl uppercase tracking-widest text-slate-900 dark:text-white`}>
+            DoubtDesk
+          </span>
+        </Link>
+
+        <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-500 dark:text-slate-400">
+          <a href="#features" className="hover:text-slate-900 dark:hover:text-white transition-colors duration-200">Features</a>
+          <a href="#how-it-works" className="hover:text-slate-900 dark:hover:text-white transition-colors duration-200">How it works</a>
+          <a href="#testimonials" className="hover:text-slate-900 dark:hover:text-white transition-colors duration-200">Testimonials</a>
+          <Link href="/public-rooms" className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold transition-colors duration-200">
+            <Globe className="w-4 h-4" />
+            Public Doubts
+          </Link>
+        </nav>
+
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button className="text-sm px-4 py-2 rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors duration-200 font-medium">Sign In</button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button className="text-sm px-4 py-2 rounded-xl bg-[#5E8CFF] hover:bg-[#8BB8FF] text-white font-semibold transition-colors duration-200">Sign Up</button>
+            </SignUpButton>
+          </SignedOut>
+          <SignedIn>
+            <button onClick={() => setShowSignOutDialog(true)} className="text-sm px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors duration-200">
+              Sign Out
+            </button>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
+        </div>
+      </header>
+
       {/* Hero Section */}
       <main className="flex-1 relative overflow-hidden scroll-smooth">
         <div className="absolute inset-0 z-0 pointer-events-none">
