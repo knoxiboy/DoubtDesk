@@ -52,38 +52,53 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             if (!email) {
                 return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
             }
-            
+
             const secureUserIdentifier = email;
 
-            // Check if already liked
-            const existingLike = await db.select()
-                .from(likesTable)
-                .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)))
-                .limit(1);
+            const result = await db.transaction(async (tx) => {
+                const locked = await tx.execute(
+                    sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} FOR UPDATE`
+                );
 
-            if (existingLike.length > 0) {
-                await db.delete(likesTable)
-                    .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)));
-                
-                const updated = await db.update(doubtsTable)
-                    .set({ likes: sql`${doubtsTable.likes} - 1` })
-                    .where(eq(doubtsTable.id, doubtId))
-                    .returning();
-                
-                return NextResponse.json({ ...updated[0], hasLiked: false });
-            } else {
-                await db.insert(likesTable).values({
-                    userName: secureUserIdentifier,
-                    doubtId
-                });
+                if (!locked.rows.length) {
+                    return null;
+                }
 
-                const updated = await db.update(doubtsTable)
-                    .set({ likes: sql`${doubtsTable.likes} + 1` })
-                    .where(eq(doubtsTable.id, doubtId))
-                    .returning();
-                
-                return NextResponse.json({ ...updated[0], hasLiked: true });
+                const existingLike = await tx.select()
+                    .from(likesTable)
+                    .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)))
+                    .limit(1);
+
+                if (existingLike.length > 0) {
+                    await tx.delete(likesTable)
+                        .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)));
+
+                    const updated = await tx.update(doubtsTable)
+                        .set({ likes: sql`GREATEST(${doubtsTable.likes} - 1, 0)` })
+                        .where(eq(doubtsTable.id, doubtId))
+                        .returning();
+
+                    return { ...updated[0], hasLiked: false };
+                } else {
+                    await tx.insert(likesTable).values({
+                        userName: secureUserIdentifier,
+                        doubtId
+                    });
+
+                    const updated = await tx.update(doubtsTable)
+                        .set({ likes: sql`${doubtsTable.likes} + 1` })
+                        .where(eq(doubtsTable.id, doubtId))
+                        .returning();
+
+                    return { ...updated[0], hasLiked: true };
+                }
+            });
+
+            if (!result) {
+                return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
             }
+
+            return NextResponse.json(result);
         }
 
         if (action === "solve") {
