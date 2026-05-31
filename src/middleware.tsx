@@ -19,8 +19,15 @@ export default clerkMiddleware(async (auth, req) => {
         const rateLimitKey = userId || ip;
         
         // Choose limiter based on path
-        const isAiRoute = req.nextUrl.pathname.includes('/solve') || req.nextUrl.pathname.includes('/ask-ai');
-        const isVideoRoute = req.nextUrl.pathname.includes('/video/generate');
+        const path = req.nextUrl.pathname;
+        const isAiRoute =
+            path.startsWith('/api/solve') ||
+            path.startsWith('/api/ask-ai') ||
+            path.startsWith('/api/cover-letter') ||
+            path.startsWith('/api/resume-analyzer') ||
+            path.startsWith('/api/ai-career-chat-agent') ||
+            path.startsWith('/api/roadmap');
+        const isVideoRoute = path.startsWith('/api/video/generate');
         const limiter = isVideoRoute ? videoLimiter : (isAiRoute ? aiLimiter : generalLimiter);
 
         try {

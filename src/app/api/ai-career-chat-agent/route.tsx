@@ -6,12 +6,17 @@ import { checkUserBlock } from "@/lib/auth-utils";
 export async function POST(req: any) {
     try {
         const user = await currentUser();
-        const email = user?.primaryEmailAddress?.emailAddress;
-
-        if (email) {
-            const { isBlocked, errorResponse } = await checkUserBlock(email);
-            if (isBlocked) return errorResponse;
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+
+        const email = user.primaryEmailAddress?.emailAddress;
+        if (!email) {
+            return NextResponse.json({ error: "User email not found" }, { status: 400 });
+        }
+
+        const { errorResponse } = await checkUserBlock(email);
+        if (errorResponse) return errorResponse;
 
         const body = await req.json();
         const userInput = body.userInput;

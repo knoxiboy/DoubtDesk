@@ -39,9 +39,21 @@ function validateResumeFile(file: File) {
     return null;
 }
 
-// Forced Refresh: 2026-02-09T06:05:00Z
 export async function POST(req: NextRequest) {
     try {
+        const user = await currentUser();
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const userEmail = user.primaryEmailAddress?.emailAddress;
+        if (!userEmail) {
+            return NextResponse.json({ error: "User email not found" }, { status: 400 });
+        }
+
+        const { errorResponse } = await checkUserBlock(userEmail);
+        if (errorResponse) return errorResponse;
+
         const formData = await req.formData();
         const file = formData.get("resume");
         const jobDescription = formData.get("jobDescription") as string || "";
@@ -55,14 +67,6 @@ export async function POST(req: NextRequest) {
         const validationError = validateResumeFile(file);
         if (validationError) {
             return NextResponse.json({ error: validationError }, { status: 400 });
-        }
-
-        const user = await currentUser();
-        const userEmail = user?.primaryEmailAddress?.emailAddress;
-
-        if (userEmail) {
-            const { isBlocked, errorResponse } = await checkUserBlock(userEmail);
-            if (isBlocked) return errorResponse;
         }
 
         // 1. Extract text from PDF using pdf-parse-fork (Robust, no worker issues)
@@ -168,23 +172,22 @@ ${resumeText}
 
         const aiOutput = JSON.parse(response.data.choices[0].message.content);
 
-        // Save to Database if user is authenticated
-        if (userEmail) {
-            // Use field/role as title if job description is empty
-            const displayTitle = jobDescription.trim()
-                ? jobDescription
-                : (fieldOfInterest || targetRole)
-                    ? `${fieldOfInterest}${fieldOfInterest && targetRole ? ' - ' : ''}${targetRole}`.trim()
-                    : "General Analysis";
+        const trimmedJD = jobDescription.trim();
+        const trimmedField = fieldOfInterest.trim();
+        const trimmedRole = targetRole.trim();
+        const displayTitle = trimmedJD
+            ? trimmedJD
+            : (trimmedField || trimmedRole)
+                ? `${trimmedField}${trimmedField && trimmedRole ? ' - ' : ''}${trimmedRole}`
+                : "General Analysis";
 
-            await db.insert(resumeAnalysisTable).values({
-                userEmail,
-                resumeText,
-                resumeName: file.name,
-                jobDescription: displayTitle,
-                analysisData: JSON.stringify(aiOutput)
-            });
-        }
+        await db.insert(resumeAnalysisTable).values({
+            userEmail,
+            resumeText,
+            resumeName: file.name,
+            jobDescription: displayTitle,
+            analysisData: JSON.stringify(aiOutput)
+        });
 
         return NextResponse.json(aiOutput);
 
