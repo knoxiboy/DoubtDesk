@@ -158,6 +158,9 @@ export const doubtsTable = pgTable("doubts", {
         classroomIdIndex: index("doubt_classroomId_idx").on(table.classroomId),
         typeIndex: index("type_idx").on(table.type),
         subjectIndex: index("subject_idx").on(table.subject),
+        createdAtIndex: index("idx_doubts_created").on(table.createdAt),
+        isSolvedIndex: index("idx_doubts_solved").on(table.isSolved),
+        /** Anonymise the doubt author if their account is deleted. */
         userEmailFk: foreignKey({
             columns: [table.userEmail],
             foreignColumns: [usersTable.email],
