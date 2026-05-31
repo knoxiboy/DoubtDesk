@@ -447,7 +447,10 @@ export default function DiscussionsPage() {
 
       <DiscussionModal
         open={discussionOpen}
-        onClose={() => setDiscussionOpen(false)}
+        onClose={() => {
+          setDiscussionOpen(false);
+          setSelectedThread(null);
+        }}
         thread={selectedThread}
       />
     </div>

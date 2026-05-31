@@ -22,12 +22,12 @@ describe('Footer Component', () => {
         expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute('href', '/about');
         expect(screen.getByRole('link', { name: 'FAQs' })).toHaveAttribute('href', '/faq');
         expect(screen.getByRole('link', { name: 'Contributors' })).toHaveAttribute('href', '/contributors');
+        expect(screen.getByRole('link', { name: 'Discussions' })).toHaveAttribute('href', '/discussions');
     });
 
     it('does not render links for unimplemented standalone pages', () => {
         render(<Footer />);
         expect(screen.queryByRole('link', { name: 'Help Center' })).not.toBeInTheDocument();
-        expect(screen.queryByRole('link', { name: 'Discussions' })).not.toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Leaderboard' })).not.toBeInTheDocument();
     });
 
