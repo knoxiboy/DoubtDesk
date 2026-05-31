@@ -3,6 +3,7 @@ import { doubtTagsTable, doubtsTable, likesTable, classroomsTable, repliesTable,
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
+import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { updateDoubtActionSchema } from "@/lib/validations/doubt";
 import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubtStatus";
@@ -164,6 +165,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             // Only owner can edit
             if (!isOwner) {
                 return NextResponse.json({ error: "Only the owner can edit their doubt" }, { status: 403 });
+            }
+
+            if (content) {
+                const moderation = await moderateContent(content);
+                const violationError = await handleModerationViolation(email!, content, moderation);
+                if (violationError) {
+                    return NextResponse.json({ error: violationError }, { status: 400 });
+                }
             }
 
             const [updated] = await db.update(doubtsTable)

@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
+import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { updateReplyActionSchema } from "@/lib/validations/reply";
 
@@ -44,6 +45,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         const isOwner = email && reply.userEmail === email;
         if (!isOwner && !isTeacher) {
             return NextResponse.json({ error: "Forbidden: not allowed to edit this reply" }, { status: 403 });
+        }
+
+        if (content) {
+            const moderation = await moderateContent(content);
+            const violationError = await handleModerationViolation(email, content, moderation);
+            if (violationError) {
+                return NextResponse.json({ error: violationError }, { status: 400 });
+            }
         }
 
         const updateData: { content?: string | null; imageUrl?: string | null } = {};
