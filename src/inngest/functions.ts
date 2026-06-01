@@ -311,3 +311,4 @@ export const sendWeeklyDigest = inngest.createFunction(
     return { message: `Successfully sent weekly digest to ${digestedCount} users.` };
   }
 );
+export { detectConfusionSpikes } from "../app/api/inngest/ConfusionSpikeDetector";

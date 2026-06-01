@@ -1,3 +1,4 @@
+// src/app/api/inngest/ConfusionSpikeDetector.ts
 import { inngest } from "./client";
 import { db } from "@/configs/db";
 import { doubtsTable, confusionAlertsTable } from "@/configs/schema"; 
@@ -46,7 +47,7 @@ export const detectConfusionSpikes = inngest.createFunction(
                 .from(confusionAlertsTable)
                 .where(
                     and(
-                        eq(confusionAlertsTable.classroomId, classroomId),
+                        eq(confusionAlertsTable.classroomId, Number(classroomId)),
                         gte(confusionAlertsTable.createdAt, lookbackTime)
                     )
                 )
@@ -74,7 +75,7 @@ export const detectConfusionSpikes = inngest.createFunction(
                 .from(doubtsTable)
                 .where(
                     and(
-                        eq(doubtsTable.classroomId, classroomId),
+                        eq(doubtsTable.classroomId, Number(classroomId)),
                         gte(doubtsTable.createdAt, lookbackTime)
                     )
                 );
@@ -136,16 +137,23 @@ Return a valid, strict JSON object with this exact shape:
             return { status: "Analyzed, but no significant thematic confusion spike detected." };
         }
 
-        // 4. Fully isolated deterministic database log execution
+        // 4. Fully isolated deterministic database log execution (SYNCED WITH SCHEMA)
         await step.run("persist-confusion-alert-log", async () => {
-            // Instantiating timestamp outside the parameter initialization guarantees uniform mutation states
             const executionTimestamp = new Date();
             
+            // Generate standard fallbacks for missing values safely
+            const computedAction = `Consider hosting a brief interactive discussion or query resolution session regarding "${clusteringAnalysis.coreConcept || 'this topic'}".`;
+            const mappedIds = dynamicDoubts ? dynamicDoubts.slice(0, 5).map(d => d.id) : [];
+
             await db.insert(confusionAlertsTable).values({
-                classroomId,
-                coreConcept: clusteringAnalysis.coreConcept,
-                confidenceScore: clusteringAnalysis.confidenceScore, 
-                summary: clusteringAnalysis.summary,
+                classroomId: Number(classroomId),                     // Explicit cast to integer
+                topic: clusteringAnalysis.coreConcept || "General Confusion Spike", // Explicit fallback mapping
+                summary: clusteringAnalysis.summary || "Multiple students are exhibiting core structural concept doubts.",
+                suggestedAction: computedAction,                     // Fully satisfies required field mapping
+                confidence: Math.round((clusteringAnalysis.confidenceScore || 0) * 100), // Scale conversion to safe integer
+                doubtCount: dynamicDoubts ? dynamicDoubts.length : 0, // Fallback tracking for notNull mapping
+                sampleDoubtIds: JSON.stringify(mappedIds),           // Stringified valid payload array
+                status: "active",                                     // Strict status constraint mapping
                 createdAt: executionTimestamp
             });
             

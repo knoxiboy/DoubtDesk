@@ -178,20 +178,14 @@ export async function updateStreak(userEmail: string): Promise<void> {
                 ELSE 1
             END`;
 
-            // FIX: Mutate `lastActiveDate` forward to the next logical state interval 
-            // inside this exact transaction block to guarantee idempotency across multiple invocations.
-            // By updating it to the current timestamp (or pushing it forward), daysDiff calculation changes on the next run.
+            // ✅ Native Date assignment applied safely inside the transaction payload
             await tx
                 .update(usersTable)
                 .set({ 
                     karmaScore: nextScoreSql,
                     karmaLevel: atomicLevelCaseSql, 
                     currentStreak: nextStreakVal,
-<<<<<<< HEAD
-                    lastActiveDate: now.toISOString(), // Advancing the marker prevents double-dipping
-=======
                     lastActiveDate: now, // Advancing the marker prevents double-dipping
->>>>>>> upstream/main
                 })
                 .where(eq(usersTable.email, userEmail));
 
