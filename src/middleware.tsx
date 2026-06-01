@@ -50,8 +50,24 @@ export default clerkMiddleware(async (auth, req) => {
                 );
             }
         } catch (error) {
+            // Rate limiter failure: fail closed for AI and video routes (high
+            // abuse risk) and fail open for general routes. Silently allowing
+            // all requests when the limiter is down eliminates the primary
+            // abuse-prevention control on the most expensive endpoints.
             console.error("Rate limiting error:", error);
-            // Fallback: allow request if rate limiter fails
+            if (isAiRoute || isVideoRoute) {
+                return new NextResponse(
+                    JSON.stringify({
+                        error: "Rate limiting service is temporarily unavailable. Please try again in a moment.",
+                    }),
+                    {
+                        status: 503,
+                        headers: { 'Content-Type': 'application/json' },
+                    }
+                );
+            }
+            // For general routes a transient limiter failure is lower risk;
+            // allow the request through rather than blocking non-AI traffic.
         }
     }
 
