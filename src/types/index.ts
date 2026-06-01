@@ -210,6 +210,7 @@ export interface Doubt {
     solvedReplyId?: number | null;
     type: "ai" | "community" | "teacher";
     isPinned: boolean | null;
+    isPendingSync?: boolean;
     createdAt: Date | string;
 }
 
@@ -360,6 +361,7 @@ export interface AnalyticsData {
     peakTime: PeakTime[];
     engagement: EngagementMetrics;
     topContributors: TopContributor[];
+    driftOverTime?: { date: string; gradeLevel: number }[];
 }
 
 /** Personal learning recommendations */
