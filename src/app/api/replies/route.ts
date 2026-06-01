@@ -139,15 +139,6 @@ export async function POST(req: Request) {
             }
         }
 
-        let parsedCreatedAt: Date | undefined = undefined;
-        if (data.createdAt) {
-            const d = new Date(data.createdAt);
-            if (isNaN(d.getTime())) {
-                return NextResponse.json({ error: "Invalid createdAt date format" }, { status: 400 });
-            }
-            parsedCreatedAt = d;
-        }
-
         const newReply = await db.insert(repliesTable).values({
             doubtId: doubtId,
             userName,
@@ -155,7 +146,6 @@ export async function POST(req: Request) {
             type,
             content: content || null,
             imageUrl: imageUrl || null,
-            createdAt: parsedCreatedAt
         }).returning();
 
         createReplyNotification({
