@@ -49,9 +49,14 @@ export async function POST(request: Request) {
 
         if (action === "block") {
             const newBlockCount = user.blockCount + 1;
+            // Maximum block duration: 365 days (1 year). Without a cap the formula
+            // 14 * 2^(blockCount - 3) overflows JavaScript's safe integer range at
+            // blockCount >= 53, producing Infinity or an Invalid Date that may
+            // clear the block entirely depending on the database driver behaviour.
+            const MAX_BLOCK_DAYS = 365;
             let durationDays = 3;
             if (newBlockCount === 2) durationDays = 7;
-            else if (newBlockCount >= 3) durationDays = 14 * Math.pow(2, newBlockCount - 3);
+            else if (newBlockCount >= 3) durationDays = Math.min(14 * Math.pow(2, newBlockCount - 3), MAX_BLOCK_DAYS);
 
             const blockedUntil = new Date();
             blockedUntil.setDate(blockedUntil.getDate() + durationDays);
@@ -75,9 +80,9 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Moderation action error:", error);
-        if (error.message === 'NEXT_REDIRECT') {
+        if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
             throw error; 
         }
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

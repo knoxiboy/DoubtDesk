@@ -5,11 +5,26 @@ import { Redis } from "@upstash/redis";
 // For local development or when Redis is not configured, we'll use a mock limiter
 // that doesn't actually block requests but provides the same interface.
 
-let aiLimiter: any;
-let generalLimiter: any;
-let emailNotificationLimiter: any;
-let videoLimiter: any;
-let redisClient: any;
+let aiLimiter: Ratelimit | MockLimiter;
+let generalLimiter: Ratelimit | MockLimiter;
+let emailNotificationLimiter: Ratelimit | MockLimiter;
+let videoLimiter: Ratelimit | MockLimiter;
+let redisClient: Redis | MockRedis;
+
+interface MockLimiter {
+  limit(identifier: string): Promise<{
+    success: boolean;
+    limit: number;
+    remaining: number;
+    reset: number;
+  }>;
+}
+
+interface MockRedis {
+    setnx(key: string, value: unknown): Promise<number>;
+    del(key: string): Promise<number>;
+  expire?(key: string, seconds: number): Promise<number>;
+}
 
 const isRedisConfigured = 
   process.env.UPSTASH_REDIS_REST_URL && 
@@ -85,13 +100,20 @@ if (isRedisConfigured) {
 
   // Provide a mock redis client for locks
   redisClient = {
-    setnx: async (key: string, value: any) => {
+    setnx: async (key: string, value: unknown) => {
       if (memoryMap.has(key)) return 0;
       memoryMap.set(key, { count: 1, reset: Date.now() + 5 * 60 * 1000 });
       return 1;
     },
     del: async (key: string) => {
       memoryMap.delete(key);
+      return 1;
+    },
+    expire: async (key: string, seconds: number) => {
+      const rec = memoryMap.get(key);
+      if (!rec) return 0;
+      rec.reset = Date.now() + seconds * 1000;
+      memoryMap.set(key, rec);
       return 1;
     }
   };

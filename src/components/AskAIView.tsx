@@ -10,6 +10,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import { toast } from 'sonner';
+import { Doubt } from '@/types';
 import 'katex/dist/katex.min.css';
 
 type SolveType = 'standard' | 'simple' | 'exam' | 'eli10';
@@ -66,7 +67,7 @@ const EXAMPLE_PROMPTS = [
 export default function AskAIView({ classroomId = null, onSuccess, initialDoubt }: { 
     classroomId?: number | null, 
     onSuccess?: () => void,
-    initialDoubt?: any 
+    initialDoubt?: Doubt | null
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [inputMode, setInputMode] = useState<'text' | 'image'>('text');
@@ -84,8 +85,8 @@ const { copied, copy } = useCopyToClipboard();
 
     useEffect(() => {
         if (initialDoubt) {
-            setPrompt(initialDoubt.content === "Visual Inquiry" ? "" : initialDoubt.content);
-            setImageBase64(initialDoubt.imageUrl);
+            setPrompt(initialDoubt.content === "Visual Inquiry" ? "" : (initialDoubt.content ?? ""));
+            setImageBase64(initialDoubt.imageUrl ?? null);
             setResponse(null);
             setErrorMsg(null);
             setErrorCode(null);
@@ -99,7 +100,7 @@ const { copied, copy } = useCopyToClipboard();
                     const data = await res.json();
                     if (res.ok && data.length > 0) {
                         // Find the AI solution reply
-                        const solution = data.find((r: any) => r.type === 'solution' || r.userName === 'DoubtDesk AI');
+                        const solution = data.find((r: { type?: string; userName?: string }) => r.type === 'solution' || r.userName === 'DoubtDesk AI');
                         if (solution) {
                             setResponse(solution.content);
                         } else {
@@ -138,8 +139,9 @@ const { copied, copy } = useCopyToClipboard();
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Video generation failed.");
             setVideoUrl(data.videoUrl);
-        } catch (err: any) {
-            setErrorMsg(err.message);
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            setErrorMsg(error.message);
         } finally {
             setIsVideoLoading(false);
         }
@@ -173,9 +175,10 @@ const { copied, copy } = useCopyToClipboard();
             }
             setResponse(data.reply);
             if (onSuccess) onSuccess();
-        } catch (err: any) {
-            setErrorMsg(err.message || "Something went wrong. Please try again.");
-            toast.error(err.message || "Failed to process AI request.");
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            setErrorMsg(error.message || "Something went wrong. Please try again.");
+            toast.error(error.message || "Failed to process AI request.");
         } finally {
             setIsLoading(false);
         }
@@ -343,7 +346,7 @@ const { copied, copy } = useCopyToClipboard();
             onClick={handleGenerateVideo}
             disabled={isVideoLoading}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-slate-900 dark:text-white rounded-xl font-bold uppercase tracking-tighter text-[9px] shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50"
-        >
+         aria-label="Interactive button">
             {isVideoLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3 text-yellow-400 fill-yellow-400" />} {isVideoLoading ? "Generating..." : "Generate Video"}
         </button>
     )}

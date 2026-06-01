@@ -5,6 +5,7 @@ import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, classroomsTable, usersTable } from "@/configs/schema";
 import { and, eq, inArray, gte, lte } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { DoubtRecord, ReplyRecord } from "@/types";
 
 export async function GET(req: NextRequest) {
     try {
@@ -76,8 +77,8 @@ export async function GET(req: NextRequest) {
         }
 
         // 5. Query and Aggregate Data
-        let doubts: any[] = [];
-        let replies: any[] = [];
+        let doubts: DoubtRecord[] = [];
+        let replies: ReplyRecord[] = [];
         let realDataUsed = false;
 
         if (selectedClassroomIds.length > 0) {
@@ -257,8 +258,7 @@ export async function GET(req: NextRequest) {
             solvedStats,
             classroomsList
         });
-
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Teacher Analytics Endpoint failed:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }

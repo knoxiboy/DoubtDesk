@@ -15,6 +15,7 @@ import {
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { AnalyticsDashboardData, Classroom, SubjectAnalytics } from "@/types";
 
 const COLORS = ["#8b5cf6", "#3b82f6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4"];
 
@@ -22,7 +23,7 @@ export default function AnalyticsDashboard() {
     const { appUser, loading: authLoading } = useAppUser();
     const router = useRouter();
 
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<AnalyticsDashboardData | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedClassroom, setSelectedClassroom] = useState<string>("all");
     const [dateRange, setDateRange] = useState<string>("30");
@@ -45,9 +46,9 @@ export default function AnalyticsDashboard() {
             }
             const json = await res.json();
             setData(json);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            toast.error(err.message || "Failed to load analytics");
+            toast.error(err instanceof Error ? err.message : "Failed to load analytics");
         } finally {
             setLoading(false);
         }
@@ -129,21 +130,21 @@ export default function AnalyticsDashboard() {
             
             csvContent += "DAILY DOUBT TRENDS\n";
             csvContent += "Date,Doubt Count\n";
-            data.trends.forEach((row: any) => {
+            data.trends.forEach((row) => {
                 csvContent += `"${row.date}",${row.count}\n`;
             });
             csvContent += "\n";
             
             csvContent += "SUBJECT WISE BREAKDOWN\n";
             csvContent += "Subject,Doubt Count\n";
-            data.subjects.forEach((row: any) => {
+            data.subjects.forEach((row) => {
                 csvContent += `"${row.subject}",${row.count}\n`;
             });
             csvContent += "\n";
 
             csvContent += "PEAK ACTIVITY HOURS\n";
             csvContent += "Hour,Doubt Count\n";
-            data.peakHours.forEach((row: any) => {
+            data.peakHours.forEach((row) => {
                 csvContent += `"${row.hour}",${row.count}\n`;
             });
             
@@ -196,7 +197,7 @@ export default function AnalyticsDashboard() {
                         <button
                             onClick={downloadCSV}
                             className="flex items-center justify-center gap-2.5 px-5 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-lg shadow-blue-600/10 active:scale-[0.98] shrink-0"
-                        >
+                         aria-label="Interactive button">
                             <Download className="w-4 h-4" /> Export Report (CSV)
                         </button>
                     )}
@@ -270,6 +271,7 @@ export default function AnalyticsDashboard() {
                         </div>
                     </div>
                 ) : (
+                    data && (
                     <>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             {[
@@ -509,7 +511,7 @@ export default function AnalyticsDashboard() {
 
                         </div>
                     </>
-                )}
+                ))}
 
             </div>
         </div>

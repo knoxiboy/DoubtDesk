@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 import { DM_Sans } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
@@ -122,6 +123,7 @@ export default function RootLayout({
               <main className="flex-1">
                 {children}
               </main>
+              <ScrollToTopButton />
               <Footer />
             </Provider>
           </ThemeProvider>

@@ -1,13 +1,34 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { SignIn } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import { dark } from "@clerk/themes";
 import { ArrowLeft } from "lucide-react";
+import { BACK_TO_HOME_LABEL } from "@/lib/constants";
 
+/**
+ * Renders the Sign In page for user authentication.
+ * 
+ * This component provides the login interface using Clerk's `<SignIn />` component.
+ * It includes a theme-aware background, decorative gradients, and waits for client-side
+ * hydration to prevent theme flickering for dark mode users.
+ * 
+ * @returns {JSX.Element | null} The rendered sign-in page or null before hydration.
+ */
 export default function SignInPage() {
   const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-slate-50 dark:bg-black" />;
+  }
+
   const isDark = resolvedTheme === "dark";
 
   return (
@@ -21,8 +42,8 @@ export default function SignInPage() {
           href="/" 
           className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white transition-colors duration-200 self-start ml-2 group"
         >
-          <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" />
-          Back to Home
+          <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-1" aria-hidden={true} focusable={false} />
+          {BACK_TO_HOME_LABEL}
         </Link>
         
         {/* Auth Interface */}
@@ -73,9 +94,7 @@ export default function SignInPage() {
                   isDark ? "text-zinc-400" : "text-slate-500",
 
                 footerActionLink:
-                  isDark
-                    ? "text-[#5E8CFF] hover:text-[#8BB8FF] font-semibold transition-colors duration-200"
-                    : "text-blue-600 hover:text-blue-700 font-semibold transition-colors duration-200",
+                  "text-[hsl(var(--auth-link))] hover:text-[hsl(var(--auth-link-hover))] font-semibold transition-colors duration-200",
                     
                 dividerLine:
                   isDark ? "bg-zinc-800" : "bg-slate-100",

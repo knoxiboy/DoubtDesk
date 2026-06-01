@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
             .execute();
 
         return NextResponse.json({ shared: sharedChat.length > 0 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Fetch Share Status Error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         }
 
         return NextResponse.json({ success: true, shared });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Toggle Share Error:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }

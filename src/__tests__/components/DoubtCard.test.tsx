@@ -1,5 +1,16 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+
+jest.mock('@clerk/nextjs', () => ({
+    useUser: () => ({ isSignedIn: true, user: { id: '1' } }),
+}));
+
+jest.mock('next/navigation', () => ({
+    useSearchParams: () => ({
+        get: jest.fn(() => null),
+    }),
+}));
+
 import DoubtCard from '@/components/DoubtCard';
 
 global.fetch = jest.fn(() =>

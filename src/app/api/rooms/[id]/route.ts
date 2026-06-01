@@ -37,6 +37,8 @@ export async function GET(
                 year: classroomsTable.year,
                 teacherEmail: classroomsTable.teacherEmail,
                 inviteCode: classroomsTable.inviteCode,
+                pedagogyLevel: classroomsTable.pedagogyLevel,
+                targetGradeLevel: classroomsTable.targetGradeLevel,
                 role: membershipsTable.role,
             })
             .from(classroomsTable)
@@ -51,6 +53,61 @@ export async function GET(
         }
 
         return NextResponse.json(roomData);
+    } catch (error) {
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
+    }
+}
+
+export async function PATCH(
+    req: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const user = await currentUser();
+        if (!user || !user.primaryEmailAddress?.emailAddress) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const email = user.primaryEmailAddress.emailAddress;
+
+        // 0. Check if user is blocked
+        const { isBlocked, errorResponse } = await checkUserBlock(email);
+        if (isBlocked) return errorResponse;
+
+        const { id } = await params;
+        const roomId = parseInt(id);
+
+        if (isNaN(roomId)) {
+            return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });
+        }
+
+        // Verify the user is the teacher of this classroom
+        const [classroom] = await db
+            .select()
+            .from(classroomsTable)
+            .where(and(eq(classroomsTable.id, roomId), eq(classroomsTable.teacherEmail, email)));
+
+        if (!classroom) {
+            return NextResponse.json({ error: 'Forbidden: only the teacher can modify this classroom' }, { status: 403 });
+        }
+
+        const { pedagogyLevel, targetGradeLevel } = await req.json();
+
+        if (pedagogyLevel === undefined || targetGradeLevel === undefined) {
+            return NextResponse.json({ error: 'pedagogyLevel and targetGradeLevel are required' }, { status: 400 });
+        }
+
+        const [updatedRoom] = await db
+            .update(classroomsTable)
+            .set({
+                pedagogyLevel,
+                targetGradeLevel: parseInt(targetGradeLevel.toString()),
+            })
+            .where(eq(classroomsTable.id, roomId))
+            .returning();
+
+        return NextResponse.json(updatedRoom);
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });

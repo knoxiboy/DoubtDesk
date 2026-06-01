@@ -1,6 +1,16 @@
 import { registerRoot, Composition } from 'remotion';
 import { DoubtVideo } from './Composition';
 
+interface Scene {
+    duration?: number;
+    [key: string]: unknown;
+}
+
+interface VideoProps {
+    scenes: Scene[];
+    [key: string]: unknown;
+}
+
 registerRoot(() => {
     return (
         <Composition
@@ -10,8 +20,8 @@ registerRoot(() => {
             fps={30}
             width={1920}
             height={1080}
-            calculateMetadata={async ({ props }: { props: any }) => {
-                const totalDuration = (props.scenes as any[]).reduce((acc, scene) => acc + Math.max(30, (scene.duration || 5) * 30), 0);
+            calculateMetadata={async ({ props }: { props: VideoProps }) => {
+                const totalDuration = props.scenes.reduce((acc, scene) => acc + Math.max(30, (scene.duration || 5) * 30), 0);
                 return {
                     durationInFrames: totalDuration,
                 };

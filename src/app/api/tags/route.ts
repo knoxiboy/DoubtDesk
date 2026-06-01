@@ -1,6 +1,6 @@
 import { db } from "@/configs/db";
 import { membershipsTable, tagsTable } from "@/configs/schema";
-import { and, desc, eq, ilike, isNull, or } from "drizzle-orm";
+import { and, desc, eq, ilike, isNull, or, type SQL } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 
@@ -34,9 +34,9 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
         }
 
-        const conditions: any[] = [
+        const conditions: SQL<unknown>[] = [
             classroomId
-                ? or(isNull(tagsTable.classroomId), eq(tagsTable.classroomId, classroomId))
+                ? or(isNull(tagsTable.classroomId), eq(tagsTable.classroomId, classroomId)) as SQL<unknown>
                 : isNull(tagsTable.classroomId)
         ];
 
@@ -90,8 +90,11 @@ export async function POST(req: Request) {
         }).returning();
 
         return NextResponse.json(tag, { status: 201 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error saving tag:", error);
-        return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 });
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : "Internal Server Error" },
+            { status: 500 },
+        );
     }
 }

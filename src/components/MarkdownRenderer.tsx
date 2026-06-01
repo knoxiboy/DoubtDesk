@@ -45,15 +45,14 @@ export default function MarkdownRenderer({ content, className = "" }: MarkdownRe
                 remarkPlugins={[remarkGfm, remarkMath]}
                 rehypePlugins={[[rehypeSanitize, schema], rehypeKatex]}
                 components={{
-                    code({ node, inline, className, children, ...props }: any) {
+                    code({ className, children, style, ...props }) {
                         const match = /language-(\w+)/.exec(className || "");
-                        return !inline && match ? (
+                        return match ? (
                             <SyntaxHighlighter
                                 style={atomDark}
                                 language={match[1]}
                                 PreTag="div"
                                 className="rounded-xl my-4"
-                                {...props}
                             >
                                 {String(children).replace(/\n$/, "")}
                             </SyntaxHighlighter>

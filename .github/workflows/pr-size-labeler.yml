@@ -4,6 +4,8 @@ on:
   pull_request_target:
     types: [opened, synchronize, reopened]
 
+permissions: {}
+
 jobs:
   size-label:
     runs-on: ubuntu-latest
@@ -11,7 +13,8 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - uses: pascalgn/size-label-action@v0.5.0
+      - name: Calculate size label
+        uses: pascalgn/size-label-action@v0.5.0
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         with:
@@ -23,4 +26,46 @@ jobs:
               "200": "l",
               "800": "xl",
               "2000": "xxl"
+            }
+
+      - name: Clean up conflicting size labels
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const number = context.payload.pull_request.number;
+            
+            const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+            });
+
+            // Standard size labels added by our size-label-action
+            const standardSizes = new Set(['size/xs', 'size/s', 'size/m', 'size/l', 'size/xl', 'size/xxl']);
+            
+            // Find if there is a standard size label currently applied
+            const appliedStandardSize = currentLabels.find(l => standardSizes.has(l.name.toLowerCase()));
+            
+            if (appliedStandardSize) {
+              const keepLabel = appliedStandardSize.name;
+              
+              for (const label of currentLabels) {
+                const nameLower = label.name.toLowerCase();
+                
+                // If it's a size label (starts with size/ or size:) and is not the standard one we want to keep, remove it
+                if ((nameLower.startsWith('size/') || nameLower.startsWith('size:')) && label.name !== keepLabel) {
+                  try {
+                    await github.rest.issues.removeLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: number,
+                      name: label.name,
+                    });
+                    console.log(`Removed conflicting size label "${label.name}" (kept "${keepLabel}")`);
+                  } catch (e) {
+                    console.log(`Could not remove size label "${label.name}": ${e.message}`);
+                  }
+                }
+              }
             }

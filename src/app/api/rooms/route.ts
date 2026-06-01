@@ -7,6 +7,7 @@ import { checkUserBlock } from '@/lib/auth-utils';
 import { buildErrorResponse } from '@/lib/error-handler';
 import { parseAndValidateRequest } from '@/lib/validations/validate';
 import { createClassroomSchema } from '@/lib/validations/classroom';
+import { Classroom } from '@/types';
 
 // 1. GET: List classrooms for the user + Recommendations
 export async function GET(req: Request) {
@@ -43,17 +44,20 @@ const [dbUser] = await db
     .from(usersTable)
     .where(eq(usersTable.email, email));
 
-let recommendedRooms: any[] = [];
+let recommendedRooms: Classroom[] = [];
 
 if (dbUser && dbUser.university && dbUser.year) {
     const joinedIds = joinedRooms.map((r) => r.id);
-    const conditions = [
+    
+    let conditions = [
         eq(classroomsTable.university, dbUser.university),
         eq(classroomsTable.year, dbUser.year)
     ];
+    
     if (joinedIds.length > 0) {
         conditions.push(notInArray(classroomsTable.id, joinedIds));
     }
+
     recommendedRooms = await db
         .select()
         .from(classroomsTable)

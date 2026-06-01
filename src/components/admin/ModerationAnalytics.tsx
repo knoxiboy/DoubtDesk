@@ -23,24 +23,10 @@ import {
 import { BarChart3, PieChart as PieChartIcon } from "lucide-react";
 
 import { Flag, Clock, UserX, AlertTriangle } from "lucide-react";
+import { ModerationAnalyticsStats } from "@/types";
 
 interface AnalyticsProps {
-  stats: {
-    totalFlags: number;
-    pendingReviews: number;
-    blockedUsers: number;
-    flagsToday: number;
-
-    violationCategories: {
-      name: string;
-      value: number | string;
-    }[];
-
-    flagsPerDay: {
-      date: string;
-      count: number | string;
-    }[];
-  };
+  stats: ModerationAnalyticsStats;
 }
 
 const COLORS = ["#3b82f6", "#06b6d4", "#8b5cf6", "#f59e0b", "#ef4444"];

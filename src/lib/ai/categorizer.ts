@@ -17,7 +17,7 @@ Subject: "Mathematics", Content: "Find the derivative of x^2" -> "Differential C
 
 Respond ONLY with the sub-topic name. No punctuation or explanation.`;
 
-        let userMessage: any = `Subject: ${subject}\nContent: ${content || "See image"}`;
+        let userMessage: Groq.Chat.Completions.ChatCompletionMessageParam["content"] = `Subject: ${subject}\nContent: ${content || "See image"}`;
 
         if (imageBase64) {
             userMessage = [

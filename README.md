@@ -159,7 +159,8 @@ Joins/Creates a Classroom (via invite code)
 
 > Screenshots are located in the `screenshots/` directory and will be updated as the UI evolves.
 
-[![Landing Page](https://github.com/knoxiboy/DoubtDesk/raw/main/screenshots/landing.png)](https://github.com/knoxiboy/DoubtDesk/blob/main/screenshots/landing.png)
+[![Landing Page](https://github.com/navyamittal2245/DoubtDesk/blob/c6c7b24540c613b9b71ee825ba36e1b15d7eb617/screenshots/screenshot-1780079477082.png)
+
 
 [![AI Solver](https://github.com/knoxiboy/DoubtDesk/raw/main/screenshots/ai-solver.png)](https://github.com/knoxiboy/DoubtDesk/blob/main/screenshots/ai-solver.png)
 

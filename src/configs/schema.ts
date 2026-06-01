@@ -34,6 +34,8 @@ export const classroomsTable = pgTable("classrooms", {
     year: varchar({ length: 50 }).notNull(),
     teacherEmail: varchar({ length: 255 }).notNull(),
     inviteCode: varchar({ length: 10 }).notNull().unique(),
+    pedagogyLevel: varchar({ length: 50 }).default("Undergraduate (Freshman)").notNull(),
+    targetGradeLevel: integer().default(13).notNull(),
     createdAt: timestamp().defaultNow().notNull(),
 });
 
@@ -158,6 +160,9 @@ export const doubtsTable = pgTable("doubts", {
         classroomIdIndex: index("doubt_classroomId_idx").on(table.classroomId),
         typeIndex: index("type_idx").on(table.type),
         subjectIndex: index("subject_idx").on(table.subject),
+        createdAtIndex: index("idx_doubts_created").on(table.createdAt),
+        isSolvedIndex: index("idx_doubts_solved").on(table.isSolved),
+        /** Anonymise the doubt author if their account is deleted. */
         userEmailFk: foreignKey({
             columns: [table.userEmail],
             foreignColumns: [usersTable.email],
@@ -179,6 +184,14 @@ export const tagsTable = pgTable("tags", {
 }, (table) => ({
     classroomIdIndex: index("tag_classroomId_idx").on(table.classroomId),
     normalizedNameIndex: uniqueIndex("tag_scope_name_idx").on(table.normalizedName, table.classroomId),
+    createdByEmailFk: foreignKey({
+        columns: [table.createdByEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("set null"),
+    classroomIdFk: foreignKey({
+        columns: [table.classroomId],
+        foreignColumns: [classroomsTable.id],
+    }).onDelete("cascade"),
 }));
 
 export const doubtTagsTable = pgTable("doubt_tags", {
@@ -190,6 +203,14 @@ export const doubtTagsTable = pgTable("doubt_tags", {
     doubtIdIndex: index("doubt_tag_doubtId_idx").on(table.doubtId),
     tagIdIndex: index("doubt_tag_tagId_idx").on(table.tagId),
     uniqueDoubtTag: uniqueIndex("doubt_tag_unique_idx").on(table.doubtId, table.tagId),
+    doubtIdFk: foreignKey({
+        columns: [table.doubtId],
+        foreignColumns: [doubtsTable.id],
+    }).onDelete("cascade"),
+    tagIdFk: foreignKey({
+        columns: [table.tagId],
+        foreignColumns: [tagsTable.id],
+    }).onDelete("cascade"),
 }));
 
 export const repliesTable = pgTable("replies", {
@@ -201,6 +222,11 @@ export const repliesTable = pgTable("replies", {
     content: text("content"),
     imageUrl: text("image_url"),
     upvotes: integer("upvotes").default(0).notNull(),
+    gradeLevel: integer("grade_level"),
+    complexityScore: integer("complexity_score"),
+    readabilityScore: integer("readability_score"),
+    pedagogyDrifted: boolean("pedagogy_drifted").default(false),
+    driftExplanation: text("drift_explanation"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
     doubtIdIndex: index("doubtId_idx").on(table.doubtId),
@@ -208,6 +234,10 @@ export const repliesTable = pgTable("replies", {
         columns: [table.doubtId],
         foreignColumns: [doubtsTable.id],
     }).onDelete("cascade"),
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("set null"),
 }));
 
 export const likesTable = pgTable("likes", {
@@ -238,13 +268,18 @@ export const replyLikesTable = pgTable("reply_likes", {
 
 export const moderationLogsTable = pgTable("moderation_logs", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userEmail: varchar({ length: 255 }).notNull(),
+    userEmail: varchar({ length: 255 }), // Removed notNull()
     reason: text().notNull(),
     violationType: varchar({ length: 50 }).notNull(),
     contentSnippet: text(),
     status: varchar({ length: 20 }).default("pending").notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-});
+}, (table) => ({
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("set null"),
+}));
 
 export const bookmarksTable = pgTable(
     "bookmarks",

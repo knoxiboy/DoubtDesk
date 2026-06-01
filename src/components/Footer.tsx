@@ -236,6 +236,14 @@ export default function Footer() {
                   </Link>
                 </li>
                 <li>
+                  <Link
+                    href="/discussions"
+                    className="group flex items-center gap-2 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                    <MessageSquare className="w-4 h-4 text-blue-500 shrink-0" />
+                    <span>Discussions</span>
+                  </Link>
+                </li>
+                <li>
                   <a href="https://github.com/knoxiboy/DoubtDesk/issues" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-2 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
                     <MessageSquare className="w-4 h-4 text-blue-500 shrink-0" />
                     <span>Report Tracker</span>

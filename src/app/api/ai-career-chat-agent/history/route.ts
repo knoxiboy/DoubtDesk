@@ -46,9 +46,9 @@ export async function GET(req: NextRequest) {
             .orderBy(desc(sql`MAX(${chatHistoryTable.createdAt})`));
 
         return NextResponse.json(sessions);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Chat History Fetch Error:", error);
-        return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -84,9 +84,9 @@ export async function POST(req: NextRequest) {
             .returning();
 
         return NextResponse.json(savedMessage);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Chat History Save Error:", error);
-        return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -121,8 +121,8 @@ export async function DELETE(req: NextRequest) {
             .returning();
 
         return NextResponse.json({ message: "Chat session deleted successfully" });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Chat History Delete Error:", error);
-        return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

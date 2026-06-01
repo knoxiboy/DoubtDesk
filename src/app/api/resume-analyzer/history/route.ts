@@ -31,8 +31,8 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json(parsedHistory);
 
-    } catch (error: any) {
-        console.error("Fetch Resume History Error:", error.message);
+    } catch (error: unknown) {
+        console.error("Fetch Resume History Error:", error instanceof Error ? error.message : error);
         return NextResponse.json({
             error: "Failed to fetch resume history",
         }, { status: 500 });
@@ -69,8 +69,8 @@ export async function DELETE(req: NextRequest) {
             .execute();
 
         return NextResponse.json({ message: "Resume analysis deleted successfully" });
-    } catch (error: any) {
-        console.error("Delete Resume Analysis Error:", error.message);
+    } catch (error: unknown) {
+        console.error("Delete Resume Analysis Error:", error instanceof Error ? error.message : error);
         return NextResponse.json({ error: "Failed to delete resume analysis" }, { status: 500 });
     }
 }
