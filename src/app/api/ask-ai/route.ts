@@ -507,8 +507,8 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
                 const [newDoubt] = await db
                     .insert(doubtsTable)
                     .values({
-                        userName: fullName,
-                        userEmail: email || null,
+
+                        userEmail: email,
                         subject,
                         content:
                             prompt || 'Visual Inquiry',
@@ -531,7 +531,7 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
                         .insert(repliesTable)
                         .values({
                             doubtId: newDoubt.id,
-                            userName: 'DoubtDesk AI',
+                            userEmail: 'ai@doubtdesk.com',
                             type: 'solution',
                             content: reply,
                             gradeLevel: driftResult.gradeLevel,

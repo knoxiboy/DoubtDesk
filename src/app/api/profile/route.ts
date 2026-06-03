@@ -25,7 +25,7 @@ export async function GET(req: Request) {
         const [dbUserResults, doubts, replies, memberships] = await Promise.all([
             db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1),
             db.select().from(doubtsTable).where(eq(doubtsTable.userEmail, email)),
-            db.select().from(repliesTable).where(or(eq(repliesTable.userEmail, email), eq(repliesTable.userName, name))),
+            db.select().from(repliesTable).where(eq(repliesTable.userEmail, email)),
             db.select().from(membershipsTable).where(eq(membershipsTable.userEmail, email))
         ]);
 

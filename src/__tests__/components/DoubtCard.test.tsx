@@ -22,19 +22,21 @@ global.fetch = jest.fn(() =>
 
 const mockDoubt = {
     id: 1,
-    userName: 'Student_123',
+    userEmail: 'student@example.com',
     subject: 'Calculus',
     content: 'How do limits work in infinity?',
     createdAt: new Date().toISOString(),
     likes: 5,
     replyCount: 2,
-    isSolved: 'unsolved',
+    isSolved: 'unsolved' as const,
+    type: 'community' as const,
+    isPinned: false,
 };
 
 describe('DoubtCard Component', () => {
     it('renders doubt details correctly', () => {
         render(<DoubtCard doubt={mockDoubt} />);
-        expect(screen.getByText('Student_123')).toBeInTheDocument();
+        expect(screen.getByText('student')).toBeInTheDocument();
         expect(screen.getByText('Calculus')).toBeInTheDocument();
         expect(screen.getByText('How do limits work in infinity?')).toBeInTheDocument();
     });

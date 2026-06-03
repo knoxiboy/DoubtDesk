@@ -86,7 +86,7 @@ export const sendReplyNotification = inngest.createFunction(
         email: d.userEmail,
         subject: d.subject,
         content: d.content || "",
-        authorName: d.userName,
+        authorName: d.userEmail?.split('@')[0] || "Student",
         notificationsEnabled: u ? u.emailNotificationsEnabled : true,
         notificationPreference: u ? u.notificationPreference : "instant",
       };
@@ -173,7 +173,7 @@ export const sendDailyDigest = inngest.createFunction(
             doubtSubject: doubtsTable.subject,
             doubtContent: doubtsTable.content,
             replyId: pendingNotificationsTable.replyId,
-            replierName: repliesTable.userName,
+            replierName: repliesTable.userEmail,
             replyContent: repliesTable.content,
           })
           .from(pendingNotificationsTable)
@@ -254,7 +254,7 @@ export const sendWeeklyDigest = inngest.createFunction(
             doubtSubject: doubtsTable.subject,
             doubtContent: doubtsTable.content,
             replyId: pendingNotificationsTable.replyId,
-            replierName: repliesTable.userName,
+            replierName: repliesTable.userEmail,
             replyContent: repliesTable.content,
           })
           .from(pendingNotificationsTable)

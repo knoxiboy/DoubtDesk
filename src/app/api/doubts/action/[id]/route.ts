@@ -14,7 +14,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const { errorResponse, data } = await parseAndValidateRequest(req, updateDoubtActionSchema);
         if (errorResponse) return errorResponse;
 
-        const { action, content, subject, imageUrl, userName, replyId, tags = [] } = data;
+        const { action, content, subject, imageUrl, replyId, tags = [] } = data;
 
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
@@ -68,12 +68,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
                 const existingLike = await tx.select()
                     .from(likesTable)
-                    .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)))
+                    .where(and(eq(likesTable.userEmail, secureUserIdentifier), eq(likesTable.doubtId, doubtId)))
                     .limit(1);
 
                 if (existingLike.length > 0) {
                     await tx.delete(likesTable)
-                        .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)));
+                        .where(and(eq(likesTable.userEmail, secureUserIdentifier), eq(likesTable.doubtId, doubtId)));
 
                     const updated = await tx.update(doubtsTable)
                         .set({ likes: sql`GREATEST(${doubtsTable.likes} - 1, 0)` })
@@ -83,7 +83,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                     return { ...updated[0], hasLiked: false };
                 } else {
                     await tx.insert(likesTable).values({
-                        userName: secureUserIdentifier,
+                        userEmail: secureUserIdentifier,
                         doubtId
                     });
 

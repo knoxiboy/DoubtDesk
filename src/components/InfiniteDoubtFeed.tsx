@@ -74,7 +74,7 @@ export default function InfiniteDoubtFeed({
 
 
         const params = new URLSearchParams();
-        const userName = typeof window !== 'undefined' ? localStorage.getItem("anonymous_user") : null;
+
 
 
         if (classroomId) params.append("classroomId", classroomId.toString());
@@ -82,7 +82,7 @@ export default function InfiniteDoubtFeed({
         if (type) params.append("type", type);
         if (tag && tag !== "All") params.append("tag", tag);
         if (isSolved) params.append("isSolved", isSolved);
-        if (userName) params.append("userName", userName);
+
 
         params.append("limit", PAGE_SIZE.toString());
         params.append("offset", (pageIndex * PAGE_SIZE).toString());
