@@ -227,21 +227,9 @@ npm run dev
 
 ### Environment Variables
 
-Create a `.env` file in the project root with the following keys:
+DoubtDesk relies on several external services (Clerk, Neon, Groq, Inngest, etc.). 
 
-```env
-# Database (Neon PostgreSQL)
-DATABASE_URL=your_neon_connection_string
-
-# Authentication (Clerk)
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-
-# AI (Groq)
-GROQ_API_KEY=gsk_...
-```
+For a complete breakdown of which services are strictly required versus optional, along with a setup verification checklist, please read the **[Local Environment Setup Guide](docs/SETUP.md)**.
 
 > **Security:** Never commit your `.env` file. It is already included in `.gitignore`.
 
