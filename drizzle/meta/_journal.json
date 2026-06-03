@@ -43,13 +43,6 @@
       "when": 1780032370230,
       "tag": "0005_hot_phantom_reporter",
       "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1780439118777,
-      "tag": "0006_acoustic_kingpin",
-      "breakpoints": true
     }
   ]
 }

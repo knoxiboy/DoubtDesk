@@ -64,7 +64,7 @@ export const membershipsTable = pgTable("memberships", {
 export const classroomInvitesTable = pgTable("classroom_invites", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
 
-  tokenHash: varchar("token_hash", { length: 128 }).notNull().unique(),
+  tokenHash: varchar("token_hash", { length: 128 }).notNull(),
 
   classroomId: integer("classroom_id").notNull(),
   createdBy: varchar("created_by", { length: 255 }).notNull(),
