@@ -181,14 +181,14 @@ export default function ClassroomPage() {
     if (classroom?.id) {
       fetch(`/api/classroom/pedagogy?classroomId=${classroom.id}`)
         .then(r => r.json())
-        .then(setPedagogyProfile);
+        .then(setPedagogyProfile).catch(err => console.error(err));
     }
   }, [classroom?.id]);
 
     const copyCode = async () => {
         if (classroom?.inviteCode) {
             try {
-                await navigator.clipboard.writeText(classroom.inviteCode);
+                await navigator.clipboard.writeText(classroom.inviteCode).catch(err => console.error("Clipboard error:", err));
                 setCopied(true);
                 toast.success("Invite code copied!", { id: `copy-invite-${classroom.inviteCode}` });
                 setTimeout(() => setCopied(false), 2000);
@@ -752,7 +752,7 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
         fetch(`/api/analytics?classroomId={classroomId}`)
             .then(res => res.json())
             .then(d => {
-                setData(d);
+                setData(d).catch(err => console.error(err));
                 setLoading(false);
             });
     };
@@ -1034,7 +1034,7 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
         fetch(`/api/analytics/personal?classroomId=${classroomId}`)
             .then(res => res.json())
             .then(d => {
-                setPersonalData(d);
+                setPersonalData(d).catch(err => console.error(err));
                 setLoading(false);
             });
     }, [classroomId]);
