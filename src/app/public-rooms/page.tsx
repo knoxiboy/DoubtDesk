@@ -74,8 +74,13 @@ export default function PublicRoomsPage() {
         setSize(1);
     };
 
-    const getKey = (pageIndex: number, previousPageData: Doubt[] | null | undefined) => {
-        if (previousPageData && !previousPageData.length) return null;
+    const getKey = (pageIndex: number, previousPageData: any) => {
+        if (previousPageData) {
+            const hasMore = Array.isArray(previousPageData)
+                ? previousPageData.length === 20
+                : previousPageData.hasMore;
+            if (!hasMore) return null;
+        }
         
         const userName = typeof window !== 'undefined' ? localStorage.getItem("anonymous_user") : "";
         const params = new URLSearchParams();
@@ -117,7 +122,7 @@ export default function PublicRoomsPage() {
         revalidateFirstPage: false
     });
 
-    const doubts = (data ? [].concat(...data) : []) as Doubt[];
+    const doubts = (data ? data.flatMap((page: any) => Array.isArray(page) ? page : (page.doubts || [])) : []) as Doubt[];
     
     // Apply local filters to pending doubts so they match the active view
     const matchingPendingDoubts = pendingDoubts.filter((d) => {
@@ -169,7 +174,12 @@ export default function PublicRoomsPage() {
         return d.isSolved === 'solved';
     });
     const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
-    const isReachingEnd = data && data[data.length - 1]?.length < 20;
+    const lastPage = data ? data[data.length - 1] : null;
+    const isReachingEnd =
+        data &&
+        (Array.isArray(lastPage)
+            ? lastPage.length < 20
+            : !lastPage?.hasMore);
 
     const { ref: loadMoreRef, inView } = useInView();
 

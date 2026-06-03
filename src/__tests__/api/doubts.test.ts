@@ -1,4 +1,5 @@
 import { GET, POST } from '@/app/api/doubts/route';
+import { db } from '@/configs/db';
 
 jest.mock('@clerk/nextjs/server', () => ({
     currentUser: jest.fn().mockImplementation(async () => ({
@@ -141,43 +142,59 @@ jest.mock('@/configs/db', () => ({
 
 describe('Doubts API Endpoints', () => {
     it('GET should return list of doubts with pagination', async () => {
+        (db.select as jest.Mock).mockImplementationOnce(() => createChainWithData([{ count: 2 }]))
+                                .mockImplementationOnce(() => createChainWithData(mockDoubts));
+
         const req = new Request('http://localhost/api/doubts?subject=Physics');
-        const res = await GET(req);
+        const res = await GET(req) as Response;
         const json = await res.json();
         expect(res.status).toBe(200);
-        expect(Array.isArray(json)).toBe(true);
-        expect(json.length).toBeGreaterThan(0);
-        expect(json[0].subject).toBe('Physics');
+        expect(Array.isArray(json.doubts)).toBe(true);
+        expect(json.doubts.length).toBeGreaterThan(0);
+        expect(json.doubts[0].subject).toBe('Physics');
+        expect(json.hasMore).toBe(false);
+        expect(json.totalCount).toBe(2);
+        expect(json.page).toBe(1);
+        expect(json.limit).toBe(20);
     });
 
     it('GET should support popular sorting', async () => {
+        (db.select as jest.Mock).mockImplementationOnce(() => createChainWithData([{ count: 2 }]))
+                                .mockImplementationOnce(() => createChainWithData([mockDoubts[1], mockDoubts[0]]));
+
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=popular');
-        const res = await GET(req);
+        const res = await GET(req) as Response;
         const json = await res.json();
 
         expect(res.status).toBe(200);
         // Most liked doubt (id=2, likes=10) should come first
-        expect(json[0].id).toBe(2);
+        expect(json.doubts[0].id).toBe(2);
     });
 
     it('GET should support most-replied sorting', async () => {
+        (db.select as jest.Mock).mockImplementationOnce(() => createChainWithData([{ count: 2 }]))
+                                .mockImplementationOnce(() => createChainWithData([mockDoubts[0], mockDoubts[1]]));
+
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=most-replied');
-        const res = await GET(req);
+        const res = await GET(req) as Response;
         const json = await res.json();
 
         expect(res.status).toBe(200);
         // Doubt with most replies (id=1, count=2) should come first
-        expect(json[0].id).toBe(1);
+        expect(json.doubts[0].id).toBe(1);
     });
 
     it('GET should support unsolved filtering', async () => {
+        (db.select as jest.Mock).mockImplementationOnce(() => createChainWithData([{ count: 1 }]))
+                                .mockImplementationOnce(() => createChainWithData([mockDoubts[0]]));
+
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=unsolved');
-        const res = await GET(req);
+        const res = await GET(req) as Response;
         const json = await res.json();
 
         expect(res.status).toBe(200);
-        expect(json.length).toBeGreaterThan(0);
-        json.forEach((d: any) => expect(d.isSolved).toBe('unsolved'));
+        expect(json.doubts.length).toBeGreaterThan(0);
+        json.doubts.forEach((d: any) => expect(d.isSolved).toBe('unsolved'));
     });
 
     it('POST should create a new doubt', async () => {
@@ -190,7 +207,7 @@ describe('Doubts API Endpoints', () => {
                 content: 'New doubt'
             })
         });
-        const res = await POST(req);
+        const res = await POST(req) as Response;
         const json = await res.json();
         expect(res.status).toBe(200);
         expect(json.id).toBe(2);

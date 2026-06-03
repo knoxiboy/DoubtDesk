@@ -144,8 +144,13 @@ export default function ClassroomPage() {
     setSize(1);
   };
 
-  const getKey = (pageIndex: number, previousPageData: Doubt[]) => {
-    if (previousPageData && !previousPageData.length) return null; // reached the end
+  const getKey = (pageIndex: number, previousPageData: any) => {
+    if (previousPageData) {
+      const hasMore = Array.isArray(previousPageData)
+        ? previousPageData.length === 20
+        : previousPageData.hasMore;
+      if (!hasMore) return null;
+    }
     if (activeTab === "insights") return null;
     const params = new URLSearchParams({
       classroomId: String(id),
@@ -171,11 +176,16 @@ export default function ClassroomPage() {
     revalidateFirstPage: false,
   });
 
-  const doubts = data ? [].concat(...data) : ([] as Doubt[]);
+  const doubts = data ? data.flatMap((page: any) => Array.isArray(page) ? page : (page.doubts || [])) : ([] as Doubt[]);
   const isLoadingMore =
     doubtsLoading ||
     (size > 0 && data && typeof data[size - 1] === "undefined");
-  const isReachingEnd = data && data[data.length - 1]?.length < 20;
+  const lastPage = data ? data[data.length - 1] : null;
+  const isReachingEnd =
+    data &&
+    (Array.isArray(lastPage)
+      ? lastPage.length < 20
+      : !lastPage?.hasMore);
 
   const { ref: loadMoreRef, inView } = useInView();
 
