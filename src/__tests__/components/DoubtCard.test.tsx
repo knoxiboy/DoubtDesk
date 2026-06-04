@@ -33,11 +33,11 @@ const mockDoubt = {
     hasBookmarked: false,
     hasLiked: false,
     imageUrl: null,
-    type: 'manual',
+    type: 'community',
     classroomId: null,
     isPinned: false,
     isPendingSync: false,
-} as any;
+};
 
 describe('DoubtCard Component', () => {
     it('renders doubt details correctly', () => {
