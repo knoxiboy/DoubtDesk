@@ -10,7 +10,12 @@ import {
     Bookmark,
     MessageSquare,
     Zap,
-    BarChart3
+    BarChart3,
+    GraduationCap,
+    FileText,
+    PenTool,
+    Map,
+    Bot,
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
@@ -197,6 +202,110 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 </div>
                             </div>
 
+                            {appUser?.role === 'student' && (
+                                <div className="space-y-3">
+                                    <div className="px-4">
+                                        <h2 className="text-[10px] font-bold uppercase tracking-wider text-green-600 dark:text-green-400 mb-2 flex items-center gap-1.5">
+                                            <GraduationCap className="w-3.5 h-3.5" />
+                                            Student Toolkit
+                                        </h2>
+                                        <div className="h-[1px] w-full bg-green-500/10 dark:bg-green-500/5"></div>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Link
+                                                    href="/ai-career-chat"
+                                                    onClick={onClose}
+                                                    className={linkClasses(pathname === '/ai-career-chat')}
+                                                >
+                                                    <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
+                                                        <Bot className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                                                    </div>
+                                                    <span className="text-xs font-bold uppercase tracking-wider">
+                                                        AI Career Chat
+                                                    </span>
+                                                </Link>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right" className="bg-zinc-900 text-white border-zinc-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md">AI Career Chat</TooltipContent>
+                                        </Tooltip>
+
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Link
+                                                    href="/resume-analyzer"
+                                                    onClick={onClose}
+                                                    className={linkClasses(pathname === '/resume-analyzer')}
+                                                >
+                                                    <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
+                                                        <FileText className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                                                    </div>
+                                                    <span className="text-xs font-bold uppercase tracking-wider">
+                                                        Resume Analyzer
+                                                    </span>
+                                                </Link>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right" className="bg-zinc-900 text-white border-zinc-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md">Resume Analyzer</TooltipContent>
+                                        </Tooltip>
+
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Link
+                                                    href="/resume-builder"
+                                                    onClick={onClose}
+                                                    className={linkClasses(pathname === '/resume-builder')}
+                                                >
+                                                    <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
+                                                        <PenTool className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                                                    </div>
+                                                    <span className="text-xs font-bold uppercase tracking-wider">
+                                                        Resume Builder
+                                                    </span>
+                                                </Link>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right" className="bg-zinc-900 text-white border-zinc-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md">Resume Builder</TooltipContent>
+                                        </Tooltip>
+
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Link
+                                                    href="/cover-letter"
+                                                    onClick={onClose}
+                                                    className={linkClasses(pathname === '/cover-letter')}
+                                                >
+                                                    <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
+                                                        <MessageSquare className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                                                    </div>
+                                                    <span className="text-xs font-bold uppercase tracking-wider">
+                                                        Cover Letter
+                                                    </span>
+                                                </Link>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right" className="bg-zinc-900 text-white border-zinc-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md">Cover Letter</TooltipContent>
+                                        </Tooltip>
+
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Link
+                                                    href="/roadmaps"
+                                                    onClick={onClose}
+                                                    className={linkClasses(pathname === '/roadmaps')}
+                                                >
+                                                    <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
+                                                        <Map className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                                                    </div>
+                                                    <span className="text-xs font-bold uppercase tracking-wider">
+                                                        Roadmaps
+                                                    </span>
+                                                </Link>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right" className="bg-zinc-900 text-white border-zinc-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md">Roadmaps</TooltipContent>
+                                        </Tooltip>
+                                    </div>
+                                </div>
+                            )}
+                            
                             {(appUser?.role === 'teacher' || appUser?.role === 'admin') && (
                                 <div className="space-y-3">
                                     <div className="px-4">
