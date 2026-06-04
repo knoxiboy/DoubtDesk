@@ -115,3 +115,10 @@ jobs:
               state: 'closed',
               state_reason: 'not_planned'
             });
+
+  fallback:
+    runs-on: ubuntu-latest
+    if: ${{ !((github.event_name == 'issue_comment' && contains(github.event.comment.body, '/duplicate #') && !github.event.issue.pull_request) || ((github.event_name == 'issues' || github.event_name == 'pull_request_target') && (github.event.label.name == 'duplicate' || github.event.label.name == 'invalid'))) }}
+    steps:
+      - name: No action required
+        run: echo "No duplicate or invalid action required for this event."
