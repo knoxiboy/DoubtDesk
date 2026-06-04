@@ -29,10 +29,11 @@ Welcome, GSSoC 2026 contributors! This section covers everything you need to kno
 
 ## Contribution Levels
 
+| Level | Points | Expectations |
+| --- | --- | --- |
 | Level 1 | 10 pts | Documentation updates, minor UI fixes, small CSS changes |
 | Level 2 | 25 pts | New features, bug fixes with tests, component additions |
 | Level 3 | 45 pts | Complex features, performance improvements, architecture changes |
-| Level 4 | 75 pts | Security fixes, major refactors, core system changes |
 
 ## PR Requirements by Level
 
@@ -42,19 +43,14 @@ Welcome, GSSoC 2026 contributors! This section covers everything you need to kno
 - Issue number linked with `Closes #<issue-number>`
 
 **Level 2**
-- Everything in Beginner, plus:
+- Everything in Level 1, plus:
 - Explanation of technical approach
 - Confirmation that `npm run lint` and `npm run build` pass locally
 
 **Level 3**
-- Everything in Intermediate, plus:
+- Everything in Level 2, plus:
 - Before/after screenshots or screen recordings
 - Notes on edge cases considered
-
-**Level 4**
-- Everything in Advanced, plus:
-- Summary of security or performance impact
-- Steps to test and verify the fix
 
 ## Claiming Issues
 
