@@ -31,10 +31,9 @@ Welcome, GSSoC 2026 contributors! This section covers everything you need to kno
 
 | Level | Points | Expectations |
 | --- | --- | --- |
-| Beginner | 10 pts | Documentation updates, minor UI fixes, small CSS changes |
-| Intermediate | 25 pts | New features, bug fixes with tests, component additions |
-| Advanced | 45 pts | Complex features, performance improvements, architecture changes |
-| Critical | 75 pts | Security fixes, major refactors, core system changes |
+| Level 1 | 10 pts | Documentation updates, minor UI fixes, small CSS changes |
+| Level 2 | 25 pts | New features, bug fixes with tests, component additions |
+| Level 3 | 45 pts | Complex features, performance improvements, architecture changes |
 
 ## PR Requirements by Level
 
