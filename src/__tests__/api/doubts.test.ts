@@ -36,7 +36,7 @@ jest.mock('@/lib/validations/doubt', () => ({
     createDoubtSchema: {}
 }));
 
-const mockDoubts = [
+const originalMockDoubts = [
     {
         id: 1,
         doubtId: 1,
@@ -72,6 +72,8 @@ const mockDoubts = [
         userEmail: 'other@example.com'
     }
 ];
+
+let currentDoubts = [...originalMockDoubts];
 
 const createEmptyChain = () => {
     const chain: any = {
@@ -118,7 +120,7 @@ jest.mock('@/configs/db', () => ({
                 return createEmptyChain();
             }
             // Default: return doubts
-            return createChainWithData(mockDoubts);
+            return createChainWithData(currentDoubts);
         }),
 
         insert: jest.fn().mockImplementation(() => ({
@@ -151,6 +153,7 @@ describe('Doubts API Endpoints', () => {
     });
 
     it('GET should support popular sorting', async () => {
+        currentDoubts = [...originalMockDoubts].sort((a, b) => b.likes - a.likes);
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=popular');
         const res = await GET(req);
         const json = await res.json();
@@ -158,9 +161,11 @@ describe('Doubts API Endpoints', () => {
         expect(res.status).toBe(200);
         // Most liked doubt (id=2, likes=10) should come first
         expect(json[0].id).toBe(2);
+        currentDoubts = [...originalMockDoubts];
     });
 
     it('GET should support most-replied sorting', async () => {
+        currentDoubts = [...originalMockDoubts].sort((a, b) => (b.count || 0) - (a.count || 0));
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=most-replied');
         const res = await GET(req);
         const json = await res.json();
@@ -168,9 +173,11 @@ describe('Doubts API Endpoints', () => {
         expect(res.status).toBe(200);
         // Doubt with most replies (id=1, count=2) should come first
         expect(json[0].id).toBe(1);
+        currentDoubts = [...originalMockDoubts];
     });
 
     it('GET should support unsolved filtering', async () => {
+        currentDoubts = originalMockDoubts.filter(d => d.isSolved === 'unsolved');
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=unsolved');
         const res = await GET(req);
         const json = await res.json();
@@ -178,6 +185,7 @@ describe('Doubts API Endpoints', () => {
         expect(res.status).toBe(200);
         expect(json.length).toBeGreaterThan(0);
         json.forEach((d: any) => expect(d.isSolved).toBe('unsolved'));
+        currentDoubts = [...originalMockDoubts];
     });
 
     it('POST should create a new doubt', async () => {

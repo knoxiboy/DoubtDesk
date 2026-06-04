@@ -16,6 +16,8 @@ const createQueryMock = (data: any) => {
     const chain: any = {
         from: () => chain,
         where: () => chain,
+        limit: () => chain,
+        offset: () => chain,
         then: (resolve: any) => Promise.resolve(resolve(data)),
     };
 
@@ -67,15 +69,14 @@ describe('Room Members API Endpoint', () => {
         checkUserBlockMock.mockResolvedValue({ isBlocked: false });
         selectResultQueue.push(
             [{ id: 1, userEmail: 'student@example.com', role: 'student', classroomId: 1 }],
+            [{ count: 2 }],
             [
                 {
-                    id: 1,
                     userEmail: 'student@example.com',
                     role: 'student',
                     joinedAt: new Date('2026-01-01T00:00:00.000Z'),
                 },
                 {
-                    id: 2,
                     userEmail: 'classmate@example.com',
                     role: 'student',
                     joinedAt: new Date('2026-01-02T00:00:00.000Z'),
@@ -110,15 +111,14 @@ describe('Room Members API Endpoint', () => {
         checkUserBlockMock.mockResolvedValue({ isBlocked: false });
         selectResultQueue.push(
             [{ id: 1, userEmail: 'teacher@example.com', role: 'teacher', classroomId: 1 }],
+            [{ count: 2 }],
             [
                 {
-                    id: 1,
                     userEmail: 'teacher@example.com',
                     role: 'teacher',
                     joinedAt: new Date('2026-01-01T00:00:00.000Z'),
                 },
                 {
-                    id: 2,
                     userEmail: 'student@example.com',
                     role: 'student',
                     joinedAt: new Date('2026-01-02T00:00:00.000Z'),

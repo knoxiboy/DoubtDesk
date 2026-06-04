@@ -1,5 +1,5 @@
 // src/app/api/inngest/ConfusionSpikeDetector.ts
-import { inngest } from "./client";
+import { inngest } from "@/inngest/client";
 import { db } from "@/configs/db";
 import { doubtsTable, confusionAlertsTable } from "@/configs/schema"; 
 import { and, gte, eq, desc } from "drizzle-orm";
@@ -33,7 +33,7 @@ export const detectConfusionSpikes = inngest.createFunction(
         }
     },
     { event: "doubt/created" },
-    async ({ event, step }) => {
+    async ({ event, step }: any) => {
         const { classroomId } = event.data;
 
         if (!classroomId) return { skipped: "No classroomId provided" };

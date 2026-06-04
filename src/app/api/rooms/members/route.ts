@@ -66,15 +66,23 @@ export async function GET(req: Request) {
             .limit(limit)
             .offset(offset);
 
-        return NextResponse.json({
-            members,
-            pagination: {
-                total,
-                page,
-                limit,
-                totalPages: Math.ceil(total / limit),
-            },
+        // Security: Mask emails if the requester is a student
+        const isTeacher = membership.role === 'teacher';
+        
+        let counter = 1;
+        const formattedMembers = members.map((m) => {
+            if (isTeacher) {
+                return m;
+            } else {
+                return {
+                    displayName: `Student_${counter++}`,
+                    role: m.role,
+                    joinedAt: m.joinedAt,
+                };
+            }
         });
+
+        return NextResponse.json(formattedMembers);
 
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
