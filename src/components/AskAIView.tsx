@@ -19,7 +19,7 @@ function useCopyToClipboard(timeout = 2000) {
 
     const copy = async (text: string, id: string) => {
         try {
-            await navigator.clipboard.writeText(text).catch(err => console.error("Clipboard error:", err));
+            await navigator.clipboard.writeText(text);
             setCopied(id);
             toast.success("Copied to clipboard!");
             setTimeout(() => setCopied(null), timeout);

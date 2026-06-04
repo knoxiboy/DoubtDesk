@@ -17,7 +17,7 @@ export default function TeacherDashboard() {
         fetch("/api/teacher/insights")
             .then(res => res.json())
             .then(json => {
-                setData(json).catch(err => console.error(err));
+                setData(json);
                 setLoading(false);
             })
             .catch(err => {

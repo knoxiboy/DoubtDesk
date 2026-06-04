@@ -188,7 +188,7 @@ export default function ClassroomPage() {
     const copyCode = async () => {
         if (classroom?.inviteCode) {
             try {
-                await navigator.clipboard.writeText(classroom.inviteCode).catch(err => console.error("Clipboard error:", err));
+                await navigator.clipboard.writeText(classroom.inviteCode);
                 setCopied(true);
                 toast.success("Invite code copied!", { id: `copy-invite-${classroom.inviteCode}` });
                 setTimeout(() => setCopied(false), 2000);
