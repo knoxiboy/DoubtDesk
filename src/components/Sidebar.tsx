@@ -77,10 +77,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                 className="flex items-center gap-3 hover:opacity-90 transition-opacity"
                             >
                                 <div className="w-10 h-10 rounded-xl overflow-hidden relative shadow-md shadow-blue-500/10 bg-slate-50 dark:bg-zinc-900 flex items-center justify-center">
-                                    <Image 
-                                        src="/logo.png" 
-                                        alt={SIDEBAR_CONSTANTS.LOGO_ALT} 
-                                        width={40} 
+                                    <Image
+                                        src="/logo.png"
+                                        alt={SIDEBAR_CONSTANTS.LOGO_ALT}
+                                        width={40}
                                         height={40}
                                         className="object-contain dark:brightness-110"
                                         priority
@@ -120,6 +120,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                 <Link
                                                     href={item.href}
                                                     onClick={onClose}
+                                                    aria-label={item.name}
                                                     className={linkClasses(isActive)}
                                                 >
                                                     <Icon
@@ -155,6 +156,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                             <Link
                                                 href="/public-rooms"
                                                 onClick={onClose}
+                                                aria-label="Public Doubts"
                                                 className={linkClasses(pathname === '/public-rooms')}
                                             >
                                                 <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
@@ -186,6 +188,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                             <Link
                                                 href="/ask-ai"
                                                 onClick={onClose}
+                                                aria-label="Ask AI Solver"
                                                 className={linkClasses(pathname === '/ask-ai')}
                                             >
                                                 <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
@@ -218,6 +221,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                 <Link
                                                     href="/ai-career-chat"
                                                     onClick={onClose}
+                                                    aria-label="AI Career Chat"
                                                     className={linkClasses(pathname === '/ai-career-chat')}
                                                 >
                                                     <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
@@ -236,6 +240,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                 <Link
                                                     href="/resume-analyzer"
                                                     onClick={onClose}
+                                                    aria-label="Resume Analyzer"
                                                     className={linkClasses(pathname === '/resume-analyzer')}
                                                 >
                                                     <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
@@ -254,6 +259,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                 <Link
                                                     href="/resume-builder"
                                                     onClick={onClose}
+                                                    aria-label="Resume Builder"
                                                     className={linkClasses(pathname === '/resume-builder')}
                                                 >
                                                     <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
@@ -272,6 +278,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                 <Link
                                                     href="/cover-letter"
                                                     onClick={onClose}
+                                                    aria-label="Cover Letter Generator"
                                                     className={linkClasses(pathname === '/cover-letter')}
                                                 >
                                                     <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
@@ -290,6 +297,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                 <Link
                                                     href="/roadmaps"
                                                     onClick={onClose}
+                                                    aria-label="Career Roadmaps"
                                                     className={linkClasses(pathname === '/roadmaps')}
                                                 >
                                                     <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
@@ -305,7 +313,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                     </div>
                                 </div>
                             )}
-                            
+
                             {(appUser?.role === 'teacher' || appUser?.role === 'admin') && (
                                 <div className="space-y-3">
                                     <div className="px-4">
@@ -322,6 +330,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                 <Link
                                                     href="/dashboard/analytics"
                                                     onClick={onClose}
+                                                    aria-label="Class Analytics"
                                                     className={linkClasses(pathname === '/dashboard/analytics')}
                                                 >
                                                     <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
