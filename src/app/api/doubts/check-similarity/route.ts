@@ -4,6 +4,7 @@ import { and, eq, isNull, desc, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import Groq from "groq-sdk";
+import { findSemanticDuplicates } from "@/lib/ai/embeddings";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || "dummy_key",
@@ -39,7 +40,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ similarDoubts: [] });
     }
 
-    // Fetch the last 20 doubts from the same room/community
+    // 1) Fast path: embedding + vector similarity search (pgvector)
+    try {
+      const similarDoubts = await findSemanticDuplicates({
+        content,
+        classroomId: classroomId ?? null,
+        type: "community",
+        similarityThreshold: 0.8,
+        topK: 5,
+      });
+
+      return NextResponse.json({ similarDoubts });
+    } catch (err) {
+      console.error("Embedding similarity path failed, falling back to LLM:", err);
+    }
+
+    // 2) Fallback: Fetch the last 50 doubts from the same room/community
     const recentDoubts = await db
       .select({
         id: doubtsTable.id,
@@ -59,6 +75,7 @@ export async function POST(req: Request) {
       )
       .orderBy(desc(doubtsTable.createdAt))
       .limit(50);
+
 
     if (recentDoubts.length === 0) {
       return NextResponse.json({ similarDoubts: [] });

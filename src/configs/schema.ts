@@ -185,6 +185,10 @@ export const doubtsTable = pgTable("doubts", {
     type: varchar({ length: 20 }).default("community"),
     isPinned: boolean().default(false),
     createdAt: timestamp().defaultNow().notNull(),
+
+    // Semantic duplicate detection
+    // NOTE: stored as pgvector embedding(1536)
+    embedding: any(),
 }, (table) => {
     return {
         classroomIdIndex: index("doubt_classroomId_idx").on(table.classroomId),

@@ -12,6 +12,7 @@ import {
     tagsTable 
 } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
+import { safeGenerateEmbedding } from "@/lib/ai/embeddings";
 import { and, eq, inArray, isNull, or, not, sql, SQL, ilike, desc, getTableColumns } from "drizzle-orm";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 import { buildErrorResponse } from "@/lib/error-handler";
@@ -253,9 +254,25 @@ export async function POST(req: Request) {
                 content,
                 imageUrl,
                 classroomId: parsedClassroomId,
-                type: doubtType
+                type: doubtType,
             })
             .returning();
+
+        // Generate and persist embedding for semantic duplicate detection.
+        // Fail open: doubt creation should not block if embeddings are unavailable.
+        try {
+            const embeddingInput = `${subject}\n${content || ""}`.trim();
+            const embedding = await safeGenerateEmbedding(embeddingInput);
+            if (embedding && Array.isArray(embedding) && embedding.length > 0) {
+                await db
+                    .update(doubtsTable)
+                    .set({ embedding: embedding as any })
+                    .where(eq(doubtsTable.id, newDoubt.id));
+            }
+        } catch (err) {
+            console.error("Failed to generate/store doubt embedding:", err);
+        }
+
 
         if (parsedClassroomId) {
             inngest.send({
