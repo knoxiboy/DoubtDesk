@@ -181,7 +181,11 @@ export default function ClassroomPage() {
     if (classroom?.id) {
       fetch(`/api/classroom/pedagogy?classroomId=${classroom.id}`)
         .then(r => r.json())
-        .then(setPedagogyProfile).catch(err => console.error(err));
+        .then(setPedagogyProfile)
+        .catch(err => {
+          console.error(err);
+          toast.error("Failed to load pedagogy profile");
+        });
     }
   }, [classroom?.id]);
 
@@ -749,12 +753,13 @@ function ClassroomInsightsView({ classroomId, role }: { classroomId: number, rol
 
     const fetchData = () => {
         setLoading(true);
-        fetch(`/api/analytics?classroomId={classroomId}`)
+        fetch(`/api/analytics?classroomId=${classroomId}`)
             .then(res => res.json())
             .then(d => {
-                setData(d).catch(err => console.error(err));
-                setLoading(false);
-            });
+                setData(d);
+            })
+            .catch(err => console.error(err))
+            .finally(() => setLoading(false));
     };
 
     useEffect(() => {
