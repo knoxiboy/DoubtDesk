@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 
 import { db } from "@/configs/db";
 import {
@@ -69,7 +70,10 @@ export async function POST(
         and(
           eq(membershipsTable.userEmail, email),
           eq(membershipsTable.classroomId, classroomId),
-          eq(membershipsTable.role, "teacher"),
+          inArray(
+            membershipsTable.role,
+            ["owner", "teacher", "co-teacher"]
+          ),
         ),
       );
 
