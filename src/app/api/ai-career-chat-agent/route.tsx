@@ -1,17 +1,22 @@
 import axios from "axios";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
 
-export async function POST(req: any) {
+export async function POST(req: NextRequest) {
     try {
         const user = await currentUser();
-        const email = user?.primaryEmailAddress?.emailAddress;
-
-        if (email) {
-            const { isBlocked, errorResponse } = await checkUserBlock(email);
-            if (isBlocked) return errorResponse;
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+
+        const email = user.primaryEmailAddress?.emailAddress;
+        if (!email) {
+            return NextResponse.json({ error: "User email not found" }, { status: 400 });
+        }
+
+        const { errorResponse } = await checkUserBlock(email);
+        if (errorResponse) return errorResponse;
 
         const body = await req.json();
         const userInput = body.userInput;
@@ -97,10 +102,14 @@ Always focus on helping the user move one step closer to their career goal.
         const aiResponse = response.data.choices[0].message.content;
 
         return NextResponse.json({ output: aiResponse });
-    } catch (error: any) {
-        console.error("AI Career Chat Error:", error.response?.data || error.message);
+    } catch (error: unknown) {
+        const err = error as {
+            response?: { data?: { error?: { message?: string } } };
+            message?: string;
+        };
+        console.error("AI Career Chat Error:", err.response?.data || err.message);
         return NextResponse.json({
-            error: error.response?.data?.error?.message || error.message || "Internal Server Error"
+            error: err.response?.data?.error?.message || err.message || "Internal Server Error"
         }, { status: 500 });
     }
 }

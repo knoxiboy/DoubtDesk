@@ -49,9 +49,9 @@ export async function POST(req: NextRequest) {
 
             return NextResponse.json(inserted[0]);
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Resume Save Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -110,9 +110,9 @@ export async function GET(req: NextRequest) {
         });
 
         return NextResponse.json(resumes);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Resume Fetch Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -144,8 +144,8 @@ export async function DELETE(req: NextRequest) {
             .where(and(eq(resumesTable.id, parseInt(id)), eq(resumesTable.userEmail, userEmail)));
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Resume Delete Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

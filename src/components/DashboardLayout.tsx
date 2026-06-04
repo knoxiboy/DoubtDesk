@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SignedIn, UserButton, useClerk } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import { Menu, LogOut, User } from "lucide-react";
 import Link from "next/link";
@@ -27,6 +28,41 @@ export default function DashboardLayout({
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
 
   const { signOut } = useClerk();
+  const pathname = usePathname();
+
+  const pageInfo: Record<
+    string,
+    { title: string; description: string }
+  > = {
+    "/dashboard": {
+      title: "Dashboard",
+      description: "Welcome back to DoubtDesk",
+    },
+    "/rooms": {
+      title: "Virtual Campus",
+      description: "Collaborate and learn with your campus community",
+    },
+    "/public-rooms": {
+      title: "Public Doubts",
+      description: "Explore and solve doubts with the community",
+    },
+    "/bookmarks": {
+      title: "Bookmarks",
+      description: "Your saved doubts and threads",
+    },
+    "/ask-ai": {
+      title: "AI Solver",
+      description: "Ask questions to the AI assistant",
+    },
+    "/profile": {
+      title: "Profile",
+      description: "Manage your user profile and settings",
+    },
+  };
+
+  const currentPage =
+    Object.entries(pageInfo).find(([route]) => pathname.startsWith(route))?.[1] ||
+    pageInfo["/dashboard"];
 
   const handleSignOut = async () => {
     await signOut({ redirectUrl: "/" });
@@ -53,10 +89,10 @@ export default function DashboardLayout({
 
               <div className="hidden md:flex flex-col">
                 <h1 className="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                  Dashboard
+                  {currentPage.title}
                 </h1>
                 <p className="text-xs font-medium text-slate-400 dark:text-zinc-500">
-                  Welcome back to DoubtDesk
+                  {currentPage.description}
                 </p>
               </div>
             </div>

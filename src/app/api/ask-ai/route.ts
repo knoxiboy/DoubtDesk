@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/configs/db';
-import { doubtsTable, repliesTable, usersTable } from '@/configs/schema';
+import { doubtsTable, repliesTable, usersTable, classroomsTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';
 import { moderateContent, handleModerationViolation } from '@/lib/moderation';
+import { checkPedagogicalDrift } from '@/lib/pedagogy';
 
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY || 'dummy_key',
@@ -67,14 +68,15 @@ function isUnclearVisionReply(reply: string) {
 /**
  * Determines whether a provider/model failure should trigger fallback retries.
  */
-function shouldRetryModel(err: any): boolean {
+function shouldRetryModel(err: unknown): boolean {
+    const error = err as { status?: number; message?: string };
     const retryableStatuses = [429, 500, 502, 503, 504];
 
-    if (retryableStatuses.includes(err?.status)) {
+    if (error?.status && retryableStatuses.includes(error.status)) {
         return true;
     }
 
-    const message = err?.message?.toLowerCase?.() || '';
+    const message = error?.message?.toLowerCase?.() || "";
 
     if (
         message.includes('timeout') ||
@@ -114,8 +116,8 @@ function markModelFailure(model: string) {
  * @param isVision Whether the request includes an image
  */
 async function callGroqWithFallback(
-    messages: any[],
-    isVision: boolean
+    messages: Groq.Chat.Completions.ChatCompletionMessageParam[],
+    isVision: boolean,
 ) {
     const models = isVision ? VISION_MODELS : TEXT_MODELS;
 
@@ -153,11 +155,9 @@ async function callGroqWithFallback(
                 completion,
                 modelUsed: model,
             };
-        } catch (err: any) {
-            console.warn(
-                `Model ${model} failed:`,
-                err?.message
-            );
+        } catch (err: unknown) {
+            const error = err as { status?: number; message?: string };
+            console.warn(`Model ${model} failed:`, error?.message);
 
             lastError = err;
 
@@ -166,10 +166,10 @@ async function callGroqWithFallback(
              * cascading retries across providers.
              */
             if (
-                err?.status === 400 ||
-                err?.status === 401 ||
-                err?.status === 403 ||
-                err?.status === 404
+                error?.status === 400 ||
+                error?.status === 401 ||
+                error?.status === 403 ||
+                error?.status === 404
             ) {
                 throw err;
             }
@@ -255,9 +255,51 @@ export async function POST(req: Request) {
             history = [],
         } = await req.json();
 
-        const conversationHistory = Array.isArray(history)
-            ? history
-            : [];
+        // Validate and sanitize history entries before injecting them into the
+        // LLM context. Accepting arbitrary objects would let an attacker inject
+        // system-role messages that override the application system prompt or
+        // bypass the moderation check applied only to the current prompt field.
+        const ALLOWED_ROLES = new Set(['user', 'assistant']);
+        const MAX_HISTORY_ENTRIES = 20;
+        const MAX_CONTENT_LENGTH = 4000;
+
+        const conversationHistory: { role: 'user' | 'assistant'; content: string }[] = [];
+        if (Array.isArray(history)) {
+            for (const entry of history.slice(-MAX_HISTORY_ENTRIES)) {
+                if (
+                    entry &&
+                    typeof entry === 'object' &&
+                    ALLOWED_ROLES.has(entry.role) &&
+                    typeof entry.content === 'string'
+                ) {
+                    conversationHistory.push({
+                        role: entry.role as 'user' | 'assistant',
+                        content: entry.content.slice(0, MAX_CONTENT_LENGTH),
+                    });
+                }
+            }
+        }
+
+        let targetGradeLevel = 13;
+        let pedagogyLevel = "Undergraduate (Freshman)";
+
+        if (classroomId) {
+            try {
+                const [classroom] = await db
+                    .select({
+                        pedagogyLevel: classroomsTable.pedagogyLevel,
+                        targetGradeLevel: classroomsTable.targetGradeLevel,
+                    })
+                    .from(classroomsTable)
+                    .where(eq(classroomsTable.id, parseInt(classroomId.toString())));
+                if (classroom) {
+                    pedagogyLevel = classroom.pedagogyLevel;
+                    targetGradeLevel = classroom.targetGradeLevel;
+                }
+            } catch (dbErr) {
+                console.error("Failed to fetch classroom pedagogy settings:", dbErr);
+            }
+        }
 
         // 1. AI Moderation Check for Prompts
         if (prompt) {
@@ -299,6 +341,11 @@ export async function POST(req: Request) {
 - Subscripts: Always use proper LaTeX (e.g., \\omega_1).
 - Symbols: Wrap all variables and greek letters in math delimiters.
 - Cleanliness: No repeated characters or filler text.`;
+
+        const PEDAGOGY_RULES = classroomId ? `
+### PEDAGOGICAL LEVEL TARGET:
+- The target student academic level is: ${pedagogyLevel} (Flesch-Kincaid Grade Level Target: ${targetGradeLevel}).
+- Explain concepts at this specific complexity. Do NOT use terms or mathematical proofs beyond this grade level. Avoid oversimplifying unless required.` : '';
 
         let systemPrompt: string;
 
@@ -357,10 +404,14 @@ Use EXACTLY these 3 ## sections:
 Use bold text (e.g. **Step 1:**) for sub-steps inside the sections. Do NOT use any other ## headings.`;
         }
 
+        if (systemPrompt) {
+            systemPrompt += PEDAGOGY_RULES;
+        }
+
         const isVisionRequest =
             !!imageBase64 && !isFollowUp;
 
-        let userMessageContent: any;
+        let userMessageContent: Groq.Chat.Completions.ChatCompletionMessageParam["content"];
 
         if (isVisionRequest) {
             const visionInstruction = `Analyze the image. Follow these strict rules:
@@ -386,7 +437,7 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
             userMessageContent = prompt;
         }
 
-        const messages: any[] = [];
+        const messages: Groq.Chat.Completions.ChatCompletionMessageParam[] = [];
 
         messages.push({
             role: 'system',
@@ -473,6 +524,8 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
                     })
                     .returning();
 
+                const driftResult = checkPedagogicalDrift(reply, targetGradeLevel);
+
                 if (newDoubt) {
                     const [aiReply] = await db
                         .insert(repliesTable)
@@ -481,6 +534,11 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
                             userName: 'DoubtDesk AI',
                             type: 'solution',
                             content: reply,
+                            gradeLevel: driftResult.gradeLevel,
+                            complexityScore: driftResult.complexityScore,
+                            readabilityScore: driftResult.readabilityScore,
+                            pedagogyDrifted: driftResult.pedagogyDrifted,
+                            driftExplanation: driftResult.driftExplanation,
                         })
                         .returning();
 
@@ -512,7 +570,7 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
             subject,
             model: modelUsed,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error(
             'Error in Groq API Flow:',
             error
@@ -520,8 +578,8 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
 
         return NextResponse.json(
             {
-                error:
-                    error?.message ||
+                error: error instanceof Error ?
+                    error.message :
                     'The AI service is currently overloaded or experiencing issues. Please try again in 30 seconds.',
             },
             { status: 500 }

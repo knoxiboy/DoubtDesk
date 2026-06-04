@@ -1,0 +1,145 @@
+name: PR Issue Assignment Check
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  check_issue_assignment:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: read
+    steps:
+      - name: Verify PR author is assigned to linked issue
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prAuthor = context.payload.pull_request.user.login;
+            const prBody = context.payload.pull_request.body || '';
+            const prNumber = context.payload.pull_request.number;
+
+            // Extract all linked issue numbers from the PR body
+            // Matches: closes #123, fixes #123, resolves #123 (case-insensitive)
+            const linkedIssueMatches = prBody.matchAll(
+              /(?:closes?|fixes?|resolves?|related to)\s+#(\d+)/gi
+            );
+            const linkedIssuesSet = new Set([...linkedIssueMatches].map(m => parseInt(m[1])));
+
+            // Also check branch name for issue numbers (e.g. 179-soft-delete)
+            const prBranch = context.payload.pull_request.head.ref || '';
+            const branchMatches = prBranch.match(/(\d+)/g);
+            if (branchMatches) {
+              branchMatches.forEach(numStr => {
+                const num = parseInt(numStr, 10);
+                if (num > 0 && num < 1000) {
+                  linkedIssuesSet.add(num);
+                }
+              });
+            }
+
+            const linkedIssues = Array.from(linkedIssuesSet);
+
+            // If no linked issue is found, skip this check
+            // (pr-code-quality.yml already warns about missing linked issues)
+            if (linkedIssues.length === 0) {
+              console.log('No linked issues found in PR body or branch name. Skipping assignment check.');
+              return;
+            }
+
+            console.log(`PR #${prNumber} by @${prAuthor} links to issues: ${linkedIssues.join(', ')}`);
+
+            const violations = [];
+
+            for (const issueNumber of linkedIssues) {
+              let issue;
+              try {
+                const { data } = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                });
+                issue = data;
+              } catch (e) {
+                console.log(`Could not fetch issue #${issueNumber}: ${e.message}`);
+                violations.push({
+                  issueNumber,
+                  reason: `Issue #${issueNumber} could not be found or accessed.`,
+                });
+                continue;
+              }
+
+              // Check if the PR author is in the issue's assignees list
+              const assignees = issue.assignees.map(a => a.login);
+              const isAssigned = assignees.includes(prAuthor);
+
+              console.log(`Issue #${issueNumber} assignees: [${assignees.join(', ')}] — @${prAuthor} assigned: ${isAssigned}`);
+
+              if (!isAssigned) {
+                violations.push({
+                  issueNumber,
+                  assignees,
+                  reason: assignees.length === 0
+                    ? `Issue #${issueNumber} has no assignees. Please request assignment before submitting a PR.`
+                    : `Issue #${issueNumber} is assigned to @${assignees.join(', @')} — not to @${prAuthor}.`,
+                });
+              }
+            }
+
+            if (violations.length === 0) {
+              console.log(`✅ @${prAuthor} is assigned to all linked issues. PR is valid.`);
+              return;
+            }
+
+            // Build rejection comment
+            const violationLines = violations
+              .map(v => `- **#${v.issueNumber}**: ${v.reason}`)
+              .join('\n');
+
+            const comment = [
+              `## ❌ PR Rejected — Issue Assignment Check Failed`,
+              ``,
+              `Hi @${prAuthor}! This PR has been **closed** because you are not assigned to the issue(s) it references:`,
+              ``,
+              violationLines,
+              ``,
+              `**What to do:**`,
+              `1. Comment \`/assign\` on the issue to request assignment from a maintainer.`,
+              `2. Wait until you are officially assigned.`,
+              `3. Then re-open or re-submit your PR.`,
+              ``,
+              `> PRs that fix issues not assigned to the author cannot be accepted — this ensures fair contribution tracking.`,
+            ].join('\n');
+
+            // Post the rejection comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: comment,
+            });
+
+            // Add the 'invalid' label to the PR
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                labels: ['invalid']
+              });
+            } catch (e) {
+              console.log(`Failed to add invalid label: ${e.message}`);
+            }
+
+            // Close the PR
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              state: 'closed',
+            });
+
+            console.log(`❌ Closed PR #${prNumber} as invalid — @${prAuthor} is not assigned to linked issue(s).`);

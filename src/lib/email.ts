@@ -306,9 +306,9 @@ export async function sendReplyNotificationEmail(params: {
             console.error(`[EMAIL ERROR] Resend API responded with status ${res.status}:`, errText);
             return { success: false, error: errText };
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[EMAIL ERROR] Failed to send email via Resend:", error);
-        return { success: false, error: error?.message || error };
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 
@@ -500,9 +500,9 @@ export async function sendDigestEmail(params: {
             console.error(`[EMAIL ERROR] Resend API responded with status ${res.status}:`, errText);
             return { success: false, error: errText };
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[EMAIL ERROR] Failed to send digest email via Resend:", error);
-        return { success: false, error: error?.message || error };
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
 

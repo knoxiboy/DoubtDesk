@@ -1,16 +1,27 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Loader2, Upload, File, Eye, EyeOff, Bold, Italic, Code, List, Tags, Sparkles, FileText, ExternalLink } from "lucide-react";
+import { X, Loader2, Upload, File, Eye, EyeOff, Bold, Italic, Code, List, Tags, Sparkles, FileText, ExternalLink, AlertCircle, CheckCircle2, Search } from "lucide-react";
 import { toast } from "sonner";
 import MarkdownRenderer from "./MarkdownRenderer";
+import type { Doubt, Tag } from "@/types";
+import { OFFLINE_DOUBT_QUEUED } from "@/lib/copy-constants";
+
+interface SimilarDoubt {
+    id: number;
+    subject: string;
+    content: string | null;
+    isSolved: string | null;
+    similarity: number;
+    solvedAnswer?: string | null;
+}
 
 interface AskDoubtProps {
     defaultSubject?: string;
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
-    doubtToEdit?: any;
+    doubtToEdit?: Doubt & { tags?: Tag[] };
     classroomId?: number | null;
     type?: string;
 }
@@ -84,13 +95,43 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
     const [fileSize, setFileSize] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [userName, setUserName] = useState("");
-    const [tags, setTags] = useState<string[]>(doubtToEdit?.tags?.map((tag: any) => tag.name) || []);
+    const [tags, setTags] = useState<string[]>(doubtToEdit?.tags?.map((tag: Tag) => tag.name) || []);
     const [tagDraft, setTagDraft] = useState("");
     const [subjectWasEdited, setSubjectWasEdited] = useState(false);
     const [suggestedSubject, setSuggestedSubject] = useState("");
     const [isDragging, setIsDragging] = useState(false);
     const [isPreviewMode, setIsPreviewMode] = useState(false);
     const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const [similarDoubts, setSimilarDoubts] = useState<SimilarDoubt[]>([]);
+    const [isCheckingSimilarity, setIsCheckingSimilarity] = useState(false);
+    const [similarityChecked, setSimilarityChecked] = useState(false);
+    const [expandedSolvedId, setExpandedSolvedId] = useState<number | null>(null);
+    const similarityDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const checkSimilarity = async (text: string) => {
+        if (doubtToEdit || text.trim().length < 20) {
+            setSimilarDoubts([]);
+            setSimilarityChecked(false);
+            return;
+        }
+        setIsCheckingSimilarity(true);
+        try {
+            const res = await fetch("/api/doubts/check-similarity", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ content: text, classroomId }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setSimilarDoubts(data.similarDoubts || []);
+                setSimilarityChecked(true);
+            }
+        } catch (err) {
+            console.error("Similarity check failed:", err);
+        } finally {
+            setIsCheckingSimilarity(false);
+        }
+    };
 
     const insertMarkdown = (type: "bold" | "italic" | "code" | "list") => {
         const textarea = contentTextareaRef.current;
@@ -133,7 +174,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
             setSubject(doubtToEdit.subject || defaultSubject);
             setImageUrl(doubtToEdit.imageUrl || "");
             setFileName(doubtToEdit.imageUrl ? (doubtToEdit.imageUrl.startsWith("data:application/pdf") ? "Attached Document.pdf" : "Existing Image") : "");
-            setTags(doubtToEdit.tags?.map((tag: any) => tag.name) || []);
+            setTags(doubtToEdit.tags?.map((tag: Tag) => tag.name) || []);
         } else {
             setSubject(defaultSubject);
             setTags([]);
@@ -144,6 +185,8 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
     useEffect(() => {
         if (content.trim().length < 20) {
             setSuggestedSubject("");
+            setSimilarDoubts([]);
+            setSimilarityChecked(false);
             return;
         }
 
@@ -153,6 +196,16 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
         if (detectedSubject && !subjectWasEdited) {
             setSubject(detectedSubject);
         }
+
+        // Debounced similarity check (fires 1.5s after user stops typing)
+        if (similarityDebounceRef.current) clearTimeout(similarityDebounceRef.current);
+        similarityDebounceRef.current = setTimeout(() => {
+            checkSimilarity(content);
+        }, 1500);
+
+        return () => {
+            if (similarityDebounceRef.current) clearTimeout(similarityDebounceRef.current);
+        };
     }, [content, subjectWasEdited]);
 
     useEffect(() => {
@@ -239,6 +292,34 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
 
         setIsSubmitting(true);
         try {
+            if (typeof navigator !== "undefined" && !navigator.onLine) {
+                if (doubtToEdit) {
+                    toast.error("You cannot edit doubts while offline.");
+                    setIsSubmitting(false);
+                    return;
+                }
+
+                const payload = { userName, subject, content, imageUrl, classroomId, type, tags };
+                const { addToQueue } = await import("@/lib/offline/syncQueue");
+                await addToQueue("/api/doubts", "POST", payload);
+
+                if ("serviceWorker" in navigator && "SyncManager" in window) {
+                    try {
+                        const reg = await navigator.serviceWorker.ready;
+                        await (reg as any).sync.register("doubtDeskSyncQueue");
+                    } catch (syncErr) {
+                        console.warn("Background sync registration failed:", syncErr);
+                    }
+                }
+
+                toast.success(OFFLINE_DOUBT_QUEUED, {
+                    id: "doubt-offline-queued",
+                });
+                onSuccess();
+                setIsSubmitting(false);
+                return;
+            }
+
             const url = doubtToEdit ? `/api/doubts/action/${doubtToEdit.id}` : "/api/doubts";
             const method = doubtToEdit ? "PATCH" : "POST";
             const body = doubtToEdit
@@ -413,7 +494,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                 onClick={addSuggestedTags}
                                 disabled={!content.trim()}
                                 className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 disabled:opacity-40"
-                            >
+                             aria-label="Interactive button">
                                 <Sparkles className="w-3 h-3" /> Suggest
                             </button>
                         </div>
@@ -530,19 +611,106 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                         </div>
                     </div>
 
+                    {/* ── Similar Doubts Panel ── */}
+                    {!doubtToEdit && (
+                        <div className="space-y-2">
+                            {isCheckingSimilarity && (
+                                <div className="flex items-center gap-2 px-4 py-3 bg-blue-500/10 border border-blue-500/20 rounded-2xl text-blue-400 text-xs font-bold">
+                                    <Search className="w-3.5 h-3.5 animate-pulse" />
+                                    Checking for similar questions…
+                                </div>
+                            )}
+
+                            {!isCheckingSimilarity && similarityChecked && similarDoubts.length === 0 && (
+                                <div className="flex items-center gap-2 px-4 py-3 bg-green-500/10 border border-green-500/20 rounded-2xl text-green-400 text-xs font-bold">
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    No similar doubts found — your question looks unique!
+                                </div>
+                            )}
+
+                            {!isCheckingSimilarity && similarDoubts.length > 0 && (
+                                <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl overflow-hidden">
+                                    <div className="flex items-center gap-2 px-4 py-3 bg-yellow-500/10 border-b border-yellow-500/20">
+                                        <AlertCircle className="w-4 h-4 text-yellow-400 shrink-0" />
+                                        <span className="text-yellow-300 text-xs font-black uppercase tracking-widest">
+                                            {similarDoubts.length} Similar Doubt{similarDoubts.length > 1 ? "s" : ""} Found — Already Answered?
+                                        </span>
+                                    </div>
+                                    <div className="divide-y divide-yellow-500/10 max-h-64 overflow-y-auto">
+                                        {similarDoubts.map((d) => (
+                                            <div key={d.id} className="px-4 py-3 space-y-1.5">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-slate-900 dark:text-slate-200 text-xs font-bold line-clamp-2">
+                                                            {d.content || "(Image/PDF attached)"}
+                                                        </p>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">
+                                                                {d.subject}
+                                                            </span>
+                                                            <span className="text-[9px] font-black uppercase tracking-widest text-blue-400">
+                                                                {d.similarity}% match
+                                                            </span>
+                                                            {d.isSolved === "solved" ? (
+                                                                <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-green-400">
+                                                                    <CheckCircle2 className="w-3 h-3" /> Solved
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Open</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <a
+                                                        href={classroomId ? `/rooms/${classroomId}?doubt=${d.id}` : `/?doubt=${d.id}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="shrink-0 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
+                                                    >
+                                                        View <ExternalLink className="w-3 h-3" />
+                                                    </a>
+                                                </div>
+                                                {d.isSolved === "solved" && d.solvedAnswer && (
+                                                    <div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setExpandedSolvedId(expandedSolvedId === d.id ? null : d.id)}
+                                                            className="text-[9px] font-black uppercase tracking-widest text-green-400 hover:text-green-300 underline underline-offset-4"
+                                                        >
+                                                            {expandedSolvedId === d.id ? "Hide Answer ▲" : "Show Answer ▼"}
+                                                        </button>
+                                                        {expandedSolvedId === d.id && (
+                                                            <div className="mt-2 p-3 bg-green-500/5 border border-green-500/20 rounded-xl text-xs text-slate-300 overflow-y-auto max-h-32">
+                                                                <MarkdownRenderer content={d.solvedAnswer} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="px-4 py-2.5 bg-yellow-500/5 border-t border-yellow-500/10">
+                                        <p className="text-[9px] text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest">
+                                            If none of these answer your question, feel free to post anyway.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     <div className="pt-4 flex gap-4">
                         <button
                             type="button"
                             onClick={onClose}
                             className="flex-1 py-4 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-2xl font-bold transition-all border border-slate-200 dark:border-white/5"
-                        >
+                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting || (!content.trim() && !imageUrl) || !subject.trim() || isTooLong || (hasContent && isTooShort)}
                             className="flex-[2] py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
+                         aria-label="Submit">
                             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                             {doubtToEdit ? "Update Doubt" : "Post Doubt"}
                         </button>

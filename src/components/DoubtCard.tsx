@@ -1,22 +1,37 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock } from "lucide-react";
+import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock, Loader2 } from "lucide-react";
 import AskDoubt from "./AskDoubt";
 import DoubtRepliesModal from "./DoubtRepliesModal";
 import { toast } from "sonner";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
+import type { Doubt, Tag } from "@/types";
 import { useSearchParams } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 
 interface DoubtCardProps {
-    doubt: any;
+    doubt: Doubt & {
+        tags?: Tag[];
+        hasBookmarked?: boolean;
+        hasLiked?: boolean;
+        replyCount?: number;
+    };
     onUpdate?: () => void;
-    onViewAISolution?: (doubt: any) => void;
+    onViewAISolution?: (
+        doubt: Doubt & {
+            tags?: Tag[];
+            hasBookmarked?: boolean;
+            hasLiked?: boolean;
+            replyCount?: number;
+        },
+    ) => void;
     role?: string;
     openRepliesOnMount?: boolean;
 }
 
 export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, openRepliesOnMount = false }: DoubtCardProps) {
+    const { isSignedIn } = useUser();
     const [isOwner, setIsOwner] = useState(false);
     const [isLiking, setIsLiking] = useState(false);
     const [isSolving, setIsSolving] = useState(false);
@@ -154,7 +169,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
 
     return (
         <>
-            <div className="group bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 hover:border-blue-500/30 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/5 flex flex-col h-full relative overflow-hidden">
+            <div className={`group bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 hover:border-blue-500/30 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/5 flex flex-col h-full relative overflow-hidden ${doubt.isPendingSync ? "opacity-65 italic" : ""}`}>
                 {/* Background Glow */}
                 <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/5 blur-[100px] rounded-full group-hover:bg-blue-600/10 transition-all duration-500"></div>
 
@@ -175,37 +190,47 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                        {isTeacher && doubt.classroomId && (
-                            <button
-                                onClick={handlePin}
-                                disabled={isPinning}
-                                className={`p-2 rounded-xl border transition-all ${ doubt.isPinned ? "bg-blue-600/20 border-blue-500/40 text-blue-400" : "bg-white/5 border-white/10 text-slate-500 hover:text-blue-400" }`}
-                                title={doubt.isPinned ? "Unpin doubt" : "Pin doubt to top"}
-                            >
-                                <Pin className={`w-4 h-4 ${doubt.isPinned ? 'fill-blue-400' : ''} ${isPinning ? 'animate-pulse' : ''}`} />
-                            </button>
-                        )}
-                        {doubt.isPinned && !isTeacher && (
-                            <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
-                                <Pin className="w-3 h-3 text-blue-400 fill-blue-400" />
-                                <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Pinned</span>
-                            </div>
-                        )}
-                        {doubt.isSolved === "solved" ? (
-                            <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center gap-1.5">
-                                <CheckCircle className="w-3 h-3 text-emerald-500" />
-                                <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Solved</span>
-                            </div>
-                        ) : doubt.isSolved === "in-progress" ? (
-                            <div className="px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center gap-1.5">
-                                <Clock className="w-3 h-3 text-amber-500" />
-                                <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">In Progress</span>
+                        {doubt.isPendingSync ? (
+                            <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-500/10 border border-slate-500/20 rounded-full animate-pulse">
+                                <Loader2 className="w-3 h-3 text-slate-400 animate-spin" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Syncing Offline...</span>
                             </div>
                         ) : (
-                            <div className="px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-full flex items-center gap-1.5">
-                                <AlertTriangle className="w-3 h-3 text-red-500" />
-                                <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">Unsolved</span>
-                            </div>
+                            <>
+                                {isTeacher && doubt.classroomId && (
+                                    <button
+                                        onClick={handlePin}
+                                        disabled={isPinning}
+                                        className={`p-2 rounded-xl border transition-all ${ doubt.isPinned ? "bg-blue-600/20 border-blue-500/40 text-blue-400" : "bg-white/5 border-white/10 text-slate-500 hover:text-blue-400" }`}
+                                        title={doubt.isPinned ? "Unpin doubt" : "Pin doubt to top"}
+                                        aria-label="Interactive button"
+                                    >
+                                        <Pin className={`w-4 h-4 ${doubt.isPinned ? 'fill-blue-400' : ''} ${isPinning ? 'animate-pulse' : ''}`} />
+                                    </button>
+                                )}
+                                {doubt.isPinned && !isTeacher && (
+                                    <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
+                                        <Pin className="w-3 h-3 text-blue-400 fill-blue-400" />
+                                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Pinned</span>
+                                    </div>
+                                )}
+                                {doubt.isSolved === "solved" ? (
+                                    <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center gap-1.5">
+                                        <CheckCircle className="w-3 h-3 text-emerald-500" />
+                                        <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Solved</span>
+                                    </div>
+                                ) : doubt.isSolved === "in-progress" ? (
+                                    <div className="px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full flex items-center gap-1.5">
+                                        <Clock className="w-3 h-3 text-amber-500" />
+                                        <span className="text-[9px] font-black text-amber-500 uppercase tracking-widest">In Progress</span>
+                                    </div>
+                                ) : (
+                                    <div className="px-3 py-1 bg-red-500/10 border border-red-500/20 rounded-full flex items-center gap-1.5">
+                                        <AlertTriangle className="w-3 h-3 text-red-500" />
+                                        <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">Unsolved</span>
+                                    </div>
+                                )}
+                            </>
                         )}
                         <div className="px-3 py-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
                             <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{doubt.subject}</span>
@@ -223,7 +248,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
 
                     {(doubt.tags?.length ?? 0) > 0 && (
                         <div className="flex flex-wrap gap-2">
-                            {doubt.tags.map((tag: any) => (
+                            {doubt.tags?.map((tag: Tag) => (
                                 <span
                                     key={tag.id || tag.name}
                                     className="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[9px] font-black uppercase tracking-widest"
@@ -252,84 +277,89 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                 </div>
 
                 {/* Footer Actions */}
-                <div className="mt-auto pt-6 border-t border-slate-200 dark:border-white/5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-                    <div className="flex flex-wrap items-center gap-2.5 flex-1">
-                        <button
-                            onClick={() => handleAction("like")}
-                            disabled={isLiking}
-                            className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-6 py-3 rounded-2xl transition-all group/btn ${ doubt.hasLiked ? "bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-lg shadow-blue-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
-                        >
-                            <ThumbsUp className={`w-4 h-4 ${isLiking ? 'animate-pulse' : 'group-hover/btn:scale-110 transition-transform'} ${doubt.hasLiked ? 'fill-blue-400' : ''}`} />
-                            <span className="text-xs font-black">{likes}</span>
-                        </button>
-
-                        <button
-                            onClick={handleBookmark}
-                            disabled={isBookmarking}
-                            className={`flex items-center justify-center p-3 rounded-2xl transition-all ${ doubt.hasBookmarked ? "bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-lg shadow-purple-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
-                            title={doubt.hasBookmarked ? "Remove bookmark" : "Add to bookmarks"}
-                        >
-                            <Bookmark className={`w-4 h-4 ${isBookmarking ? 'animate-pulse' : ''} ${doubt.hasBookmarked ? 'fill-purple-400' : ''}`} />
-                        </button>
-
-                        {((isOwner && doubt.type !== 'ai') || isTeacher) && doubt.isSolved !== "solved" && (
+                {!doubt.isPendingSync && (
+                    <div className="mt-auto pt-6 border-t border-slate-200 dark:border-white/5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                        <div className="flex flex-wrap items-center gap-2.5 flex-1">
                             <button
-                                onClick={() => handleAction("solve")}
-                                disabled={isSolving}
-                                className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-3 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-slate-900 dark:hover:text-white rounded-2xl transition-all border border-emerald-500/20 active:scale-95 group/sol"
+                                onClick={() => handleAction("like")}
+                                disabled={isLiking}
+                                className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-6 py-3 rounded-2xl transition-all group/btn ${ doubt.hasLiked ? "bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-lg shadow-blue-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
                             >
-                                <CheckCircle className={`w-4 h-4 ${isSolving ? 'animate-spin' : 'group-hover/sol:scale-110'}`} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Mark Solved</span>
+                                <ThumbsUp className={`w-4 h-4 ${isLiking ? 'animate-pulse' : 'group-hover/btn:scale-110 transition-transform'} ${doubt.hasLiked ? 'fill-blue-400' : ''}`} />
+                                <span className="text-xs font-black">{likes}</span>
                             </button>
-                        )}
 
-                        {doubt.isSolved === "solved" && (
-                            <button
-                                onClick={() => {
-                                    if (doubt.type === 'ai' && onViewAISolution) {
-                                        onViewAISolution(doubt);
-                                    } else {
-                                        setIsRepliesOpen(true);
-                                    }
-                                }}
-                                className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all shadow-2xl shadow-emerald-500/30 active:scale-95 group/sol whitespace-nowrap"
-                            >
-                                <CheckCircle className="w-4 h-4 fill-white/20 group-hover/sol:scale-110 transition-transform flex-shrink-0" />
-                                <span className="text-[11px] font-black uppercase tracking-[0.2em]">View Official Solution</span>
-                            </button>
-                        )}
-                    </div>
-
-                    <div className="flex items-center gap-2.5">
-                        {(isOwner || isTeacher) && (
-                            <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 flex-1 sm:flex-none justify-center">
-                                {isOwner && (
-                                    <button
-                                        onClick={() => setIsEditModalOpen(true)}
-                                        className="flex-1 sm:flex-none p-3 rounded-xl hover:bg-blue-600/20 text-slate-500 dark:text-slate-500 hover:text-blue-400 transition-all group/edit"
-                                        aria-label="Edit doubt"
-                                    >
-                                        <Edit2 className="w-4 h-4 group-hover/edit:scale-110 transition-transform" />
-                                    </button>
-                                )}
+                            {isSignedIn && (
                                 <button
-                                    onClick={() => setIsDeleteDialogOpen(true)}
-                                    className="flex-1 sm:flex-none p-3 rounded-xl hover:bg-red-500/20 text-slate-500 dark:text-slate-500 hover:text-red-400 transition-all group/trash"
-                                    aria-label="Delete doubt"
+                                    onClick={handleBookmark}
+                                    disabled={isBookmarking}
+                                    className={`flex items-center justify-center p-3 rounded-2xl transition-all ${ doubt.hasBookmarked ? "bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-lg shadow-purple-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
+                                    title={doubt.hasBookmarked ? "Remove bookmark" : "Add to bookmarks"}
+                                    aria-label="Interactive button"
                                 >
-                                    <Trash2 className="w-4 h-4 group-hover/trash:scale-110 transition-transform" />
+                                    <Bookmark className={`w-4 h-4 ${isBookmarking ? 'animate-pulse' : ''} ${doubt.hasBookmarked ? 'fill-purple-400' : ''}`} />
                                 </button>
-                            </div>
-                        )}
-                        <button
-                            onClick={() => setIsRepliesOpen(true)}
-                            className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-white/5 active:scale-95 group/msg"
-                        >
-                            <MessageSquare className="w-5 h-5 group-hover/msg:scale-110 transition-transform" />
-                            <span className="text-xs font-black">{doubt.replyCount || 0}</span>
-                        </button>
+                            )}
+
+                            {((isOwner && doubt.type !== 'ai') || isTeacher) && doubt.isSolved !== "solved" && (
+                                <button
+                                    onClick={() => handleAction("solve")}
+                                    disabled={isSolving}
+                                    className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-3 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-500 hover:text-slate-900 dark:hover:text-white rounded-2xl transition-all border border-emerald-500/20 active:scale-95 group/sol"
+                                >
+                                    <CheckCircle className={`w-4 h-4 ${isSolving ? 'animate-spin' : 'group-hover/sol:scale-110'}`} />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Mark Solved</span>
+                                </button>
+                            )}
+
+                            {doubt.isSolved === "solved" && (
+                                <button
+                                    onClick={() => {
+                                        if (doubt.type === 'ai' && onViewAISolution) {
+                                            onViewAISolution(doubt);
+                                        } else {
+                                            setIsRepliesOpen(true);
+                                        }
+                                    }}
+                                    className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all shadow-2xl shadow-emerald-500/30 active:scale-95 group/sol whitespace-nowrap"
+                                >
+                                    <CheckCircle className="w-4 h-4 fill-white/20 group-hover/sol:scale-110 transition-transform flex-shrink-0" />
+                                    <span className="text-[11px] font-black uppercase tracking-[0.2em]">View Official Solution</span>
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2.5">
+                            {(isOwner || isTeacher) && (
+                                <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 flex-1 sm:flex-none justify-center">
+                                    {isOwner && (
+                                        <button
+                                            onClick={() => setIsEditModalOpen(true)}
+                                            className="flex-1 sm:flex-none p-3 rounded-xl hover:bg-blue-600/20 text-slate-500 dark:text-slate-500 hover:text-blue-400 transition-all group/edit"
+                                            aria-label="Edit doubt"
+                                        >
+                                            <Edit2 className="w-4 h-4 group-hover/edit:scale-110 transition-transform" />
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setIsDeleteDialogOpen(true)}
+                                        className="flex-1 sm:flex-none p-3 rounded-xl hover:bg-red-500/20 text-slate-500 dark:text-slate-500 hover:text-red-400 transition-all group/trash"
+                                        aria-label="Delete doubt"
+                                    >
+                                        <Trash2 className="w-4 h-4 group-hover/trash:scale-110 transition-transform" />
+                                    </button>
+                                </div>
+                            )}
+                            <button
+                                onClick={() => setIsRepliesOpen(true)}
+                                className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-white/5 active:scale-95 group/msg"
+                            >
+                                <MessageSquare className="w-5 h-5 group-hover/msg:scale-110 transition-transform" />
+                                <span className="text-xs font-black">{doubt.replyCount || 0}</span>
+                            </button>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {isEditModalOpen && (
                     <AskDoubt
@@ -370,7 +400,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                         onClick={(e) => e.stopPropagation()}
                     >
                         <img
-                            src={doubt.imageUrl}
+                            src={doubt.imageUrl ?? undefined}
                             alt="Full View"
                             className="max-w-full max-h-full object-contain rounded-xl shadow-2xl border border-slate-200 dark:border-white/10"
                         />

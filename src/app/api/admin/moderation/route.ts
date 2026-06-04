@@ -77,9 +77,9 @@ export async function GET(request: Request) {
                 total: totalFlags
             }
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching moderation data:", error);
-        if (error.message === 'NEXT_REDIRECT') {
+        if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
             throw error; 
         }
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

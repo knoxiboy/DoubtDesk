@@ -268,7 +268,7 @@ export default function RoomsPage() {
                                     type="submit"
                                     disabled={isActionLoading}
                                     className="flex-[2] py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-600/10 flex items-center justify-center gap-2 transition-all"
-                                >
+                                 aria-label="Submit">
                                     {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Initiate room"}
                                 </button>
                             </div>
@@ -312,7 +312,7 @@ export default function RoomsPage() {
                                     type="submit"
                                     disabled={isActionLoading}
                                     className="flex-[2] py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs shadow-lg shadow-blue-600/10 flex items-center justify-center gap-2 transition-all"
-                                >
+                                 aria-label="Submit">
                                     {isActionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Access Circle"}
                                 </button>
                             </div>

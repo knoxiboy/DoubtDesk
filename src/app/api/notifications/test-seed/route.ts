@@ -3,7 +3,24 @@ import { db } from "@/configs/db";
 import { notificationsTable } from "@/configs/schema";
 import { currentUser } from "@clerk/nextjs/server";
 
-export async function GET(req: Request) {
+const canSeedNotifications = () => process.env.NODE_ENV !== "production";
+
+export async function GET() {
+    if (!canSeedNotifications()) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(
+        { error: "Method Not Allowed" },
+        { status: 405, headers: { Allow: "POST" } }
+    );
+}
+
+export async function POST() {
+    if (!canSeedNotifications()) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     try {
         const user = await currentUser();
         if (!user || !user.primaryEmailAddress?.emailAddress) {
@@ -43,17 +60,13 @@ export async function GET(req: Request) {
         // Insert dummy notifications
         await db.insert(notificationsTable).values(dummyNotifications);
 
-        return NextResponse.json({ 
-            success: true, 
-            message: "Successfully seeded dummy notifications for the current user." 
+        return NextResponse.json({
+            success: true,
+            message: "Successfully seeded dummy notifications for the current user."
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error seeding notifications:", error);
-        return NextResponse.json({ 
-            error: "Failed to seed notifications", 
-            details: error?.message || String(error),
-            stack: error?.stack
-        }, { status: 500 });
+        return NextResponse.json({ error: "Failed to seed notifications" }, { status: 500 });
     }
 }

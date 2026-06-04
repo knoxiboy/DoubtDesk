@@ -33,27 +33,15 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-interface Log {
-    id: number;
-    userEmail: string;
-    userName: string | null;
-    violationCount: number | null;
-    isBlocked: boolean | null;
-    reason: string;
-    violationType: string;
-    contentSnippet: string | null;
-    status: string;
-    createdAt: Date | string;
-}
+import { ModerationActionLog } from "@/types";
 
 interface ModerationTableProps {
-    logs: Log[];
+    logs: ModerationActionLog[];
     onActionSuccess: () => void;
 }
 
 export default function ModerationTable({ logs, onActionSuccess }: ModerationTableProps) {
-    const [actionLog, setActionLog] = useState<{ log: Log, action: "warn" | "block" } | null>(null);
+    const [actionLog, setActionLog] = useState<{ log: ModerationActionLog, action: "warn" | "block" } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const handleAction = async (logId: number, userEmail: string, action: string) => {
@@ -70,8 +58,8 @@ export default function ModerationTable({ logs, onActionSuccess }: ModerationTab
 
             toast.success(data.message);
             onActionSuccess();
-        } catch (error: any) {
-            toast.error(error.message);
+        } catch (error: unknown) {
+            toast.error(error instanceof Error ? error.message : "An error occurred");
         } finally {
             setIsLoading(false);
             setActionLog(null);
@@ -144,7 +132,7 @@ export default function ModerationTable({ logs, onActionSuccess }: ModerationTab
                             <TableCell className="text-right">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                        <Button variant="ghost" className="h-8 w-8 p-0" >
                                             <span className="sr-only">Open menu</span>
                                             <MoreHorizontal className="h-4 w-4" />
                                         </Button>

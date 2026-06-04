@@ -7,6 +7,7 @@ import {
   GitPullRequest,
   ArrowRight,
 } from "lucide-react";
+import { GitHubContributor } from "@/types";
 
 async function getContributors() {
   const res = await fetch(
@@ -20,7 +21,7 @@ async function getContributors() {
     throw new Error("Failed to fetch contributors");
   }
 
-  return res.json();
+  return res.json() as Promise<GitHubContributor[]>;
 }
 
 const stats = [
@@ -118,7 +119,7 @@ export default async function ContributorsPage() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {contributors.map((contributor: any) => (
+            {contributors.map((contributor) => (
               <Link
                 key={contributor.id}
                 href={contributor.html_url}

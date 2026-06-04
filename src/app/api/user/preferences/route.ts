@@ -14,10 +14,10 @@ export async function GET() {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        let email = (sessionClaims as any)?.email;
+        let email = (sessionClaims as Record<string, unknown>)?.email as string | undefined;
         if (!email) {
             const clerkUser = await currentUser();
-            email = clerkUser?.primaryEmailAddress?.emailAddress;
+            email = clerkUser?.primaryEmailAddress?.emailAddress || undefined;
         }
         if (!email) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -31,9 +31,10 @@ export async function GET() {
         return NextResponse.json({
             themePreference: user?.themePreference ?? "system",
         });
-    } catch (error: any) {
-        console.error("GET /api/user/preferences error:", error);
-        return NextResponse.json({ error: error?.message || "Server error" }, { status: 500 });
+    } catch (error: unknown) {
+        const err = error instanceof Error ? error : new Error(String(error));
+        console.error("GET /api/user/preferences error:", err);
+        return NextResponse.json({ error: err.message || "Server error" }, { status: 500 });
     }
 }
 
@@ -44,10 +45,10 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        let email = (sessionClaims as any)?.email;
+        let email = (sessionClaims as Record<string, unknown>)?.email as string | undefined;
         if (!email) {
             const clerkUser = await currentUser();
-            email = clerkUser?.primaryEmailAddress?.emailAddress;
+            email = clerkUser?.primaryEmailAddress?.emailAddress || undefined;
         }
         if (!email) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -69,8 +70,8 @@ export async function PATCH(req: NextRequest) {
             .where(eq(usersTable.email, email));
 
         return NextResponse.json({ themePreference }, { status: 200 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("PATCH /api/user/preferences error:", error);
-        return NextResponse.json({ error: error?.message || "Server error" }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Server error" }, { status: 500 });
     }
 }

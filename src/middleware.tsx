@@ -15,12 +15,20 @@ export default clerkMiddleware(async (auth, req) => {
     // Rate limiting for public-facing API routes
     if (req.nextUrl.pathname.startsWith('/api') && !req.nextUrl.pathname.startsWith('/api/inngest')) {
         const { userId } = await auth();
-        const ip = (req as any).ip ?? req.headers.get('x-real-ip') ?? req.headers.get('x-forwarded-for') ?? '127.0.0.1';
+        const forwardedFor = req.headers.get("x-forwarded-for");
+        const ip = req.headers.get("x-real-ip") ?? forwardedFor?.split(",")[0]?.trim() ?? "127.0.0.1";
         const rateLimitKey = userId || ip;
         
         // Choose limiter based on path
-        const isAiRoute = req.nextUrl.pathname.includes('/solve') || req.nextUrl.pathname.includes('/ask-ai');
-        const isVideoRoute = req.nextUrl.pathname.includes('/video/generate');
+        const path = req.nextUrl.pathname;
+        const isAiRoute =
+            path.startsWith('/api/solve') ||
+            path.startsWith('/api/ask-ai') ||
+            path.startsWith('/api/cover-letter') ||
+            path.startsWith('/api/resume-analyzer') ||
+            path.startsWith('/api/ai-career-chat-agent') ||
+            path.startsWith('/api/roadmap');
+        const isVideoRoute = path.startsWith('/api/video/generate');
         const limiter = isVideoRoute ? videoLimiter : (isAiRoute ? aiLimiter : generalLimiter);
 
         try {
@@ -49,8 +57,24 @@ export default clerkMiddleware(async (auth, req) => {
                 );
             }
         } catch (error) {
+            // Rate limiter failure: fail closed for AI and video routes (high
+            // abuse risk) and fail open for general routes. Silently allowing
+            // all requests when the limiter is down eliminates the primary
+            // abuse-prevention control on the most expensive endpoints.
             console.error("Rate limiting error:", error);
-            // Fallback: allow request if rate limiter fails
+            if (isAiRoute || isVideoRoute) {
+                return new NextResponse(
+                    JSON.stringify({
+                        error: "Rate limiting service is temporarily unavailable. Please try again in a moment.",
+                    }),
+                    {
+                        status: 503,
+                        headers: { 'Content-Type': 'application/json' },
+                    }
+                );
+            }
+            // For general routes a transient limiter failure is lower risk;
+            // allow the request through rather than blocking non-AI traffic.
         }
     }
 

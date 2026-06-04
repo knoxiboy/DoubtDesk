@@ -8,12 +8,17 @@ import { checkUserBlock } from "@/lib/auth-utils";
 export async function POST(req: NextRequest) {
     try {
         const user = await currentUser();
-        const userEmail = user?.primaryEmailAddress?.emailAddress;
-
-        if (userEmail) {
-            const { isBlocked, errorResponse } = await checkUserBlock(userEmail);
-            if (isBlocked) return errorResponse;
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+
+        const userEmail = user.primaryEmailAddress?.emailAddress;
+        if (!userEmail) {
+            return NextResponse.json({ error: "User email not found" }, { status: 400 });
+        }
+
+        const { errorResponse } = await checkUserBlock(userEmail);
+        if (errorResponse) return errorResponse;
 
         const { jobDescription, userDetails } = await req.json();
 
@@ -66,22 +71,20 @@ Write a professional cover letter based on these details.
 
         const coverLetter = response.data.choices[0].message.content;
 
-        // Save to Database if user is authenticated
-        if (userEmail) {
-            await db.insert(coverLettersTable).values({
-                userEmail,
-                jobDescription,
-                userDetails,
-                coverLetter
-            });
-        }
+        await db.insert(coverLettersTable).values({
+            userEmail,
+            jobDescription,
+            userDetails,
+            coverLetter
+        });
 
         return NextResponse.json({ coverLetter });
 
-    } catch (error: any) {
-        console.error("Cover Letter Generation Error:", error.response?.data || error.message);
+    } catch (error: unknown) {
+        const err = error as { response?: { data?: unknown }; message?: string };
+        console.error("Cover Letter Generation Error:", err.response?.data || err.message);
         return NextResponse.json({
-            error: error.message || "Failed to generate cover letter",
+            error: err.message || "Failed to generate cover letter",
         }, { status: 500 });
     }
 }

@@ -1,0 +1,157 @@
+name: PR Opened Handler
+
+# Handles all pull_request_target:opened (and ready_for_review/reopened) events:
+#   1. Welcome first-time contributors
+#   2. Verify the author has starred the repo
+#   3. Auto-assign reviewers (maintainer + Copilot + CodeRabbit)
+
+on:
+  pull_request_target:
+    types: [opened, ready_for_review, reopened]
+  issues:
+    types: [opened]
+
+permissions: {}
+
+jobs:
+  # ── Welcome first-time contributors ─────────────────────────────────────────
+  welcome:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            Hello there! 👋 Welcome to the DoubtDesk repository!
+
+            Thank you for opening your first issue. We are thrilled to have you here, especially if you're participating in GSSoC! Please make sure you have carefully read our [Contributing Guidelines](https://github.com/knoxiboy/DoubtDesk/blob/main/CONTRIBUTING.md) to understand our rules and how to request assignment. A maintainer will review your issue shortly.
+          pr-message: |
+            Hello there! 🎉 Thank you so much for your first pull request to DoubtDesk!
+
+            We really appreciate your contribution. A maintainer will review your code soon. If you are participating in GSSoC, ensure your PR is linked to an open issue. Please make sure you have followed all rules in our [Contributing Guidelines](https://github.com/knoxiboy/DoubtDesk/blob/main/CONTRIBUTING.md). Happy coding!
+
+  # ── Verify author has starred the repo (PRs only) ───────────────────────────
+  check_star:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    if: github.event_name == 'pull_request_target'
+    steps:
+      - name: Verify author has starred repo
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const queryWithVars = `
+            query($cursor: String) {
+              repository(owner: "${context.repo.owner}", name: "${context.repo.repo}") {
+                stargazers(first: 100, after: $cursor) {
+                  nodes { login }
+                  pageInfo { hasNextPage, endCursor }
+                }
+              }
+            }`;
+
+            let stargazers = new Set();
+            let cursor = null;
+            let hasNextPage = true;
+
+            try {
+              while (hasNextPage) {
+                const result = await github.graphql(queryWithVars, { cursor });
+                const data = result.repository.stargazers;
+                data.nodes.forEach(n => stargazers.add(n.login));
+                hasNextPage = data.pageInfo.hasNextPage;
+                cursor = data.pageInfo.endCursor;
+              }
+
+              const author = context.payload.pull_request.user.login;
+
+              if (!stargazers.has(author)) {
+                await github.rest.pulls.createReview({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: context.payload.pull_request.number,
+                  body: `Technical Review\n\nHi @${author}! Thank you for your contribution to DoubtDesk.\n\nThe code changes look good. Before we can complete the technical review, approve, and merge this pull request, we have one final requirement for all contributors: Please star the DoubtDesk repository.\n\nOnce you have starred the repository, please drop a comment here saying "done" (or we will automatically detect it) and we will proceed with approving and merging your PR. Thank you.`,
+                  event: 'REQUEST_CHANGES',
+                });
+                core.setFailed('Author has not starred the repository. Left a review requesting it.');
+              } else {
+                console.log(`✅ @${author} has starred the repository.`);
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  labels: ['review-needed'],
+                });
+              }
+            } catch (error) {
+              console.error('Error fetching stargazers', error);
+              core.setFailed('GraphQL Error: ' + error.message);
+            }
+
+  # ── Auto-assign reviewers (PRs only) ────────────────────────────────────────
+  assign_reviewers:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    if: github.event_name == 'pull_request_target'
+    steps:
+      - name: Request review from maintainers and Copilot
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const maintainers = ['knoxiboy'];
+            const author = context.payload.pull_request.user.login;
+            const prNumber = context.payload.pull_request.number;
+
+            // Assign PR author as assignee
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              assignees: [author],
+            });
+
+            // Request review from human maintainers (excluding author)
+            const reviewers = maintainers.filter(m => m !== author);
+            if (reviewers.length > 0) {
+              try {
+                await github.rest.pulls.requestReviewers({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                  reviewers,
+                });
+                console.log(`Requested review from: ${reviewers.join(', ')}`);
+              } catch (e) {
+                console.log('Could not assign human reviewers:', e.message);
+              }
+            }
+
+            // Request review from GitHub Copilot
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                reviewers: ['copilot'],
+              });
+              console.log('Requested review from GitHub Copilot');
+            } catch (e) {
+              console.log('Could not request Copilot review (may not be enabled):', e.message);
+            }
+
+            // Tag CodeRabbit for review
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `@coderabbitai review`,
+            });
+            console.log('Requested CodeRabbit review via comment');

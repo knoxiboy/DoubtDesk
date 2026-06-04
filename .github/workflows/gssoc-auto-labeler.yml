@@ -4,7 +4,9 @@ on:
   issues:
     types: [opened, edited]
   pull_request_target:
-    types: [opened, edited, synchronize, reopened]
+    types: [opened, reopened]
+
+permissions: {}
 
 jobs:
   label_gssoc:
@@ -25,6 +27,28 @@ jobs:
             const body = (item.body || '').toLowerCase();
             const combined = title + ' ' + body;
             const number = item.number;
+
+            // Fetch current labels on the issue/PR first
+            let currentLabels = [];
+            try {
+              const { data } = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+              });
+              currentLabels = data.map(l => l.name);
+            } catch (e) {
+              console.log(`Error fetching current labels: ${e.message}`);
+            }
+
+            const hasExistingLevel = currentLabels.some(name => name.toLowerCase().startsWith('level:'));
+
+            // Helper to check if a keyword matches as a distinct word in the text
+            function hasWord(text, word) {
+              const escaped = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+              const regex = new RegExp('\\b' + escaped + '\\b', 'i');
+              return regex.test(text);
+            }
 
             const labelsToAdd = ["gssoc'26"];
 
@@ -85,7 +109,7 @@ jobs:
 
             let detectedTypes = [];
             for (const [label, keywords] of Object.entries(typeSignals)) {
-              const score = keywords.filter(k => combined.includes(k)).length;
+              const score = keywords.filter(k => hasWord(combined, k)).length;
               if (score > 0) detectedTypes.push({ label, score });
             }
             detectedTypes.sort((a, b) => b.score - a.score);
@@ -126,7 +150,7 @@ jobs:
 
             if (!isPR) {
               for (const [label, keywords] of Object.entries(areaSignals)) {
-                const score = keywords.filter(k => combined.includes(k)).length;
+                const score = keywords.filter(k => hasWord(combined, k)).length;
                 if (score >= 2) labelsToAdd.push(label);
               }
             }
@@ -134,113 +158,114 @@ jobs:
             // ──────────────────────────────────────────
             // 3. DIFFICULTY LEVEL (deep semantic analysis)
             // ──────────────────────────────────────────
+            let level = null;
+            if (!hasExistingLevel) {
+              // CRITICAL indicators: systemic security flaws, data corruption,
+              // architectural failures, production-breaking issues
+              const criticalSignals = [
+                'data leak', 'credential', 'connection string', 'exposed',
+                'unauthenticated', 'privilege escalation', 'data corruption',
+                'data loss', 'production down', 'denial of service',
+                'race condition', 'deadlock', 'memory explosion',
+                'prompt injection', 'sql injection', 'broken access control',
+                'fails open', 'fail-open', 'bypass moderation',
+                'mass', 'all users', 'entire table', 'entire dataset',
+                'no authentication', 'no authorization', 'token leak',
+                'systemic', 'architectural', 'foreign key missing',
+                'orphan records', 'identity inconsistency',
+                'o(n) memory', 'unbounded', 'no pagination at db level'
+              ];
 
-            // CRITICAL indicators: systemic security flaws, data corruption,
-            // architectural failures, production-breaking issues
-            const criticalSignals = [
-              'data leak', 'credential', 'connection string', 'exposed',
-              'unauthenticated', 'privilege escalation', 'data corruption',
-              'data loss', 'production down', 'denial of service',
-              'race condition', 'deadlock', 'memory explosion',
-              'prompt injection', 'sql injection', 'broken access control',
-              'fails open', 'fail-open', 'bypass moderation',
-              'mass', 'all users', 'entire table', 'entire dataset',
-              'no authentication', 'no authorization', 'token leak',
-              'systemic', 'architectural', 'foreign key missing',
-              'orphan records', 'identity inconsistency',
-              'o(n) memory', 'unbounded', 'no pagination at db level'
-            ];
+              // ADVANCED indicators: multi-system, deep backend,
+              // complex algorithms, significant refactoring
+              const advancedSignals = [
+                'idor', 'security', 'auth', 'real-time', 'websocket',
+                'embedding', 'cosine similarity', 'vector', 'de-duplication',
+                'notification system', 'email digest', 'background job',
+                'inngest', 'distributed lock', 'rate limit', 'redis',
+                'video generation', 'remotion', 'tts', 'ocr',
+                'migration', 'schema change', 'foreign key', 'cascade',
+                'promise.all', 'parallelize', 'concurrency',
+                'fallback', 'retry', 'circuit breaker', 'multi-model',
+                'streaming', 'sse', 'pagination', 'cursor-based',
+                'soft delete', 'audit trail', 'role-based',
+                'api route', 'middleware', 'input validation', 'zod',
+                'drizzle', 'neon', 'database optimization'
+              ];
 
-            // ADVANCED indicators: multi-system, deep backend,
-            // complex algorithms, significant refactoring
-            const advancedSignals = [
-              'idor', 'security', 'auth', 'real-time', 'websocket',
-              'embedding', 'cosine similarity', 'vector', 'de-duplication',
-              'notification system', 'email digest', 'background job',
-              'inngest', 'distributed lock', 'rate limit', 'redis',
-              'video generation', 'remotion', 'tts', 'ocr',
-              'migration', 'schema change', 'foreign key', 'cascade',
-              'promise.all', 'parallelize', 'concurrency',
-              'fallback', 'retry', 'circuit breaker', 'multi-model',
-              'streaming', 'sse', 'pagination', 'cursor-based',
-              'soft delete', 'audit trail', 'role-based',
-              'api route', 'middleware', 'input validation', 'zod',
-              'drizzle', 'neon', 'database optimization'
-            ];
+              // INTERMEDIATE indicators: moderate complexity,
+              // single-system changes, standard patterns
+              const intermediateSignals = [
+                'component', 'hook', 'context', 'state management',
+                'form validation', 'character counter', 'clipboard',
+                'search', 'filter', 'sort', 'modal', 'toast',
+                'loading state', 'skeleton', 'error boundary',
+                'responsive', 'dark mode', 'theme', 'animation',
+                'chart', 'analytics', 'dashboard', 'profile'
+              ];
 
-            // INTERMEDIATE indicators: moderate complexity,
-            // single-system changes, standard patterns
-            const intermediateSignals = [
-              'component', 'hook', 'context', 'state management',
-              'form validation', 'character counter', 'clipboard',
-              'search', 'filter', 'sort', 'modal', 'toast',
-              'loading state', 'skeleton', 'error boundary',
-              'responsive', 'dark mode', 'theme', 'animation',
-              'chart', 'analytics', 'dashboard', 'profile'
-            ];
+              // BEGINNER indicators: simple, isolated, cosmetic
+              const beginnerSignals = [
+                'typo', 'readme', 'comment', 'rename', 'alt text',
+                'aria-label', 'tooltip', 'hover', 'color', 'font',
+                'spacing', 'padding', 'margin', 'icon', 'logo',
+                'link', 'url', 'meta tag', 'title tag', 'seo',
+                'robots.txt', 'sitemap', 'changelog', 'contributing',
+                'button text', 'placeholder', 'copy change',
+                'add class', 'css fix', 'style fix'
+              ];
 
-            // BEGINNER indicators: simple, isolated, cosmetic
-            const beginnerSignals = [
-              'typo', 'readme', 'comment', 'rename', 'alt text',
-              'aria-label', 'tooltip', 'hover', 'color', 'font',
-              'spacing', 'padding', 'margin', 'icon', 'logo',
-              'link', 'url', 'meta tag', 'title tag', 'seo',
-              'robots.txt', 'sitemap', 'changelog', 'contributing',
-              'button text', 'placeholder', 'copy change',
-              'add class', 'css fix', 'style fix'
-            ];
+              let criticalScore = criticalSignals.filter(k => hasWord(combined, k)).length;
+              let advancedScore = advancedSignals.filter(k => hasWord(combined, k)).length;
+              let intermediateScore = intermediateSignals.filter(k => hasWord(combined, k)).length;
+              let beginnerScore = beginnerSignals.filter(k => hasWord(combined, k)).length;
 
-            let criticalScore = criticalSignals.filter(k => combined.includes(k)).length;
-            let advancedScore = advancedSignals.filter(k => combined.includes(k)).length;
-            let intermediateScore = intermediateSignals.filter(k => combined.includes(k)).length;
-            let beginnerScore = beginnerSignals.filter(k => combined.includes(k)).length;
+              // Boost scores based on structural signals in the body
+              // Files mentioned → indicates complexity
+              const fileRefs = (combined.match(/\.(ts|tsx|js|jsx|yml|sql|json)/g) || []).length;
+              const codeBlocks = (combined.match(/```/g) || []).length / 2;
+              const stepCount = (combined.match(/^\d+\./gm) || []).length;
 
-            // Boost scores based on structural signals in the body
-            // Files mentioned → indicates complexity
-            const fileRefs = (combined.match(/\.(ts|tsx|js|jsx|yml|sql|json)/g) || []).length;
-            const codeBlocks = (combined.match(/```/g) || []).length / 2;
-            const stepCount = (combined.match(/^\d+\./gm) || []).length;
+              if (fileRefs >= 5) criticalScore += 2;
+              else if (fileRefs >= 3) advancedScore += 1;
 
-            if (fileRefs >= 5) criticalScore += 2;
-            else if (fileRefs >= 3) advancedScore += 1;
+              if (codeBlocks >= 3) advancedScore += 1;
+              if (stepCount >= 5) intermediateScore += 1;
 
-            if (codeBlocks >= 3) advancedScore += 1;
-            if (stepCount >= 5) intermediateScore += 1;
+              // Body length signals (longer = more complex usually)
+              if (body.length > 2000) advancedScore += 1;
+              if (body.length > 4000) criticalScore += 1;
 
-            // Body length signals (longer = more complex usually)
-            if (body.length > 2000) advancedScore += 1;
-            if (body.length > 4000) criticalScore += 1;
-
-            // Security issues should never be beginner
-            if (detectedTypes.some(t => t.label === 'type:security')) {
-              beginnerScore = 0;
-              if (criticalScore < 2) advancedScore += 3;
-            }
-
-            // Determine final level
-            let level;
-            if (criticalScore >= 3) {
-              level = 'level:critical';
-            } else if (criticalScore >= 2 || advancedScore >= 3) {
-              level = 'level:advanced';
-              // Promote to critical if security + high impact
-              if (detectedTypes.some(t => t.label === 'type:security') && criticalScore >= 1) {
-                level = 'level:critical';
+              // Security issues should never be beginner
+              if (detectedTypes.some(t => t.label === 'type:security')) {
+                beginnerScore = 0;
+                if (criticalScore < 2) advancedScore += 3;
               }
-            } else if (advancedScore >= 1 || intermediateScore >= 2) {
-              level = 'level:intermediate';
-            } else if (beginnerScore >= 1) {
-              level = 'level:beginner';
-            } else {
-              level = 'level:intermediate';
-            }
 
-            labelsToAdd.push(level);
+              // Determine final level
+              if (criticalScore >= 3) {
+                level = 'level:critical';
+              } else if (criticalScore >= 2 || advancedScore >= 3) {
+                level = 'level:advanced';
+                // Promote to critical if security + high impact
+                if (detectedTypes.some(t => t.label === 'type:security') && criticalScore >= 1) {
+                  level = 'level:critical';
+                }
+              } else if (advancedScore >= 1 || intermediateScore >= 2) {
+                level = 'level:intermediate';
+              } else if (beginnerScore >= 1) {
+                level = 'level:beginner';
+              } else {
+                level = 'level:intermediate';
+              }
 
-            // Add beginner-friendly tags only for issues
-            if (level === 'level:beginner' && !isPR) {
-              labelsToAdd.push('good first issue');
-              labelsToAdd.push('beginner friendly');
+              labelsToAdd.push(level);
+
+              // Add beginner-friendly tags only for issues
+              if (level === 'level:beginner' && !isPR) {
+                labelsToAdd.push('good first issue');
+                labelsToAdd.push('beginner friendly');
+              }
             }
 
             // ──────────────────────────────────────────
@@ -250,13 +275,7 @@ jobs:
             // and only when the content score is borderline.
             // Small/xs size NEVER bumps level down.
             // ──────────────────────────────────────────
-            if (isPR) {
-              const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: number
-              });
-
+            if (!hasExistingLevel && isPR) {
               const sizeLabel = currentLabels.find(l => l.name.startsWith('size/'));
               if (sizeLabel) {
                 const sizeName = sizeLabel.name;
@@ -281,6 +300,30 @@ jobs:
             // ──────────────────────────────────────────
             // Deduplicate
             const uniqueLabels = [...new Set(labelsToAdd)];
+
+            // Clean up any existing level labels that conflict with the one we are adding.
+            // This is crucial because GITHUB_TOKEN actions do not trigger label-manager.yml.
+            if (!hasExistingLevel && level) {
+              try {
+                for (const label of currentLabels) {
+                  const labelNameLower = label.name.toLowerCase();
+                  const newLevelLower = level.toLowerCase();
+                  
+                  // If it's a level label (starts with level:) and is not the level we are currently adding, remove it
+                  if (labelNameLower.startsWith('level:') && labelNameLower !== newLevelLower) {
+                    await github.rest.issues.removeLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: number,
+                      name: label.name,
+                    });
+                    console.log(`Removed conflicting level label "${label.name}" before applying new labels`);
+                  }
+                }
+              } catch (e) {
+                console.log(`Error cleaning up conflicting level labels: ${e.message}`);
+              }
+            }
 
             await github.rest.issues.addLabels({
               owner: context.repo.owner,

@@ -28,6 +28,7 @@ const USER_ENDPOINT = "/api/user";
 
 import SessionTracker from "@/components/auth/SessionTracker";
 import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { KeyboardShortcutsProvider } from "@/components/KeyboardShortcutsProvider";
 import { CommandMenu } from "@/components/CommandMenu";
@@ -101,6 +102,43 @@ export function Provider({ children }: { children: React.ReactNode }) {
 
         void refresh();
     }, [isSignedIn, isLoaded]);
+
+    useEffect(() => {
+        // Trigger initial sync when app loads
+        import("@/lib/offline/syncQueue")
+            .then(({ syncOfflineQueue }) => {
+                syncOfflineQueue();
+            })
+            .catch((err) => {
+                console.error("Failed to load syncQueue for offline synchronization:", err);
+            });
+
+        const handleAuthRequired = () => {
+            toast.error("Your session has expired. Please sign in again to sync your offline replies/doubts.", {
+                id: "sync-auth-error",
+                duration: 8000,
+            });
+        };
+
+        window.addEventListener("sync-auth-required", handleAuthRequired);
+
+        if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
+            const handleMessage = (event: MessageEvent) => {
+                if (event.data?.type === "SYNC_AUTH_REQUIRED") {
+                    handleAuthRequired();
+                }
+            };
+            navigator.serviceWorker.addEventListener("message", handleMessage);
+            return () => {
+                window.removeEventListener("sync-auth-required", handleAuthRequired);
+                navigator.serviceWorker.removeEventListener("message", handleMessage);
+            };
+        }
+
+        return () => {
+            window.removeEventListener("sync-auth-required", handleAuthRequired);
+        };
+    }, []);
 
     useEffect(() => {
         const handleAnchorClick = (event: MouseEvent) => {

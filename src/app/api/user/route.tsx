@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/configs/db";
 import { usersTable } from "@/configs/schema";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { User } from "@/types";
 
 export async function POST(req: NextRequest) {
     try {
@@ -13,8 +14,8 @@ export async function POST(req: NextRequest) {
         }
 
         // Try to get email from session claims first
-        let email = (sessionClaims as any)?.email;
-        let name = (sessionClaims as any)?.full_name || (sessionClaims as any)?.name || "";
+        let email = sessionClaims?.email as string | undefined;
+        let name = sessionClaims?.full_name as string || sessionClaims?.name as string || "";
 
         // Fallback to currentUser if email not in claims
         if (!email) {
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
         // =========================================================
         // ✅ DRIZZLE (NEON) — PRIMARY SOURCE OF TRUTH
         // =========================================================
-        let dbUser: any = null;
+        let dbUser: User | null = null;
         let dbStatus: 200 | 201 = 200;
 
         const [user] = await db
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
             .where(eq(usersTable.email, email));
 
         if (user) {
-            dbUser = user;
+            dbUser = user as User;
             dbStatus = 200;
         } else {
             const [createdUser] = await db
@@ -54,15 +55,15 @@ export async function POST(req: NextRequest) {
                 );
             }
 
-            dbUser = createdUser;
+            dbUser = createdUser as User;
             dbStatus = 201;
         }
 
         return NextResponse.json(dbUser, { status: dbStatus });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("User Sync Error:", error);
         return NextResponse.json(
-            { error: error?.message || "Server error" },
+            { error: error instanceof Error ? error.message : "Server error" },
             { status: 500 }
         );
     }

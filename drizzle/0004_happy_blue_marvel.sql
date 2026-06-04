@@ -1,0 +1,2 @@
+UPDATE "tags" SET "createdByEmail" = NULL WHERE "createdByEmail" NOT IN (SELECT email FROM users);--> statement-breakpoint
+ALTER TABLE "tags" ADD CONSTRAINT "tags_createdByEmail_users_email_fk" FOREIGN KEY ("createdByEmail") REFERENCES "public"."users"("email") ON DELETE set null ON UPDATE no action;

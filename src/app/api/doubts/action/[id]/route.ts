@@ -3,9 +3,11 @@ import { doubtTagsTable, doubtsTable, likesTable, classroomsTable, repliesTable,
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
+import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { updateDoubtActionSchema } from "@/lib/validations/doubt";
 import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubtStatus";
+import type { Tag } from "@/types";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -52,38 +54,53 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             if (!email) {
                 return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
             }
-            
+
             const secureUserIdentifier = email;
 
-            // Check if already liked
-            const existingLike = await db.select()
-                .from(likesTable)
-                .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)))
-                .limit(1);
+            const result = await db.transaction(async (tx) => {
+                const locked = await tx.execute(
+                    sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} FOR UPDATE`
+                );
 
-            if (existingLike.length > 0) {
-                await db.delete(likesTable)
-                    .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)));
-                
-                const updated = await db.update(doubtsTable)
-                    .set({ likes: sql`${doubtsTable.likes} - 1` })
-                    .where(eq(doubtsTable.id, doubtId))
-                    .returning();
-                
-                return NextResponse.json({ ...updated[0], hasLiked: false });
-            } else {
-                await db.insert(likesTable).values({
-                    userName: secureUserIdentifier,
-                    doubtId
-                });
+                if (!locked.rows.length) {
+                    return null;
+                }
 
-                const updated = await db.update(doubtsTable)
-                    .set({ likes: sql`${doubtsTable.likes} + 1` })
-                    .where(eq(doubtsTable.id, doubtId))
-                    .returning();
-                
-                return NextResponse.json({ ...updated[0], hasLiked: true });
+                const existingLike = await tx.select()
+                    .from(likesTable)
+                    .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)))
+                    .limit(1);
+
+                if (existingLike.length > 0) {
+                    await tx.delete(likesTable)
+                        .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)));
+
+                    const updated = await tx.update(doubtsTable)
+                        .set({ likes: sql`GREATEST(${doubtsTable.likes} - 1, 0)` })
+                        .where(eq(doubtsTable.id, doubtId))
+                        .returning();
+
+                    return { ...updated[0], hasLiked: false };
+                } else {
+                    await tx.insert(likesTable).values({
+                        userName: secureUserIdentifier,
+                        doubtId
+                    });
+
+                    const updated = await tx.update(doubtsTable)
+                        .set({ likes: sql`${doubtsTable.likes} + 1` })
+                        .where(eq(doubtsTable.id, doubtId))
+                        .returning();
+
+                    return { ...updated[0], hasLiked: true };
+                }
+            });
+
+            if (!result) {
+                return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
             }
+
+            return NextResponse.json(result);
         }
 
         if (action === "solve") {
@@ -166,6 +183,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 return NextResponse.json({ error: "Only the owner can edit their doubt" }, { status: 403 });
             }
 
+            if (content) {
+                const moderation = await moderateContent(content);
+                const violationError = await handleModerationViolation(email!, content, moderation);
+                if (violationError) {
+                    return NextResponse.json({ error: violationError }, { status: 400 });
+                }
+            }
+
             const [updated] = await db.update(doubtsTable)
                 .set({ 
                     content: content || null, 
@@ -183,7 +208,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
             await db.delete(doubtTagsTable).where(eq(doubtTagsTable.doubtId, doubtId));
 
-            const savedTags: any[] = [];
+            const savedTags: Tag[] = [];
             for (const normalizedName of normalizedTags) {
                 const [existingTag] = await db.select().from(tagsTable).where(and(
                     eq(tagsTable.normalizedName, normalizedName),

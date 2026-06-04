@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageSquare, Plus, SlidersHorizontal, Loader2 } from "lucide-react";
+import { MessageSquare, Plus, SlidersHorizontal, Loader2, Bookmark } from "lucide-react";
 import AskDoubt from "@/components/AskDoubt";
 import DoubtCard from "@/components/DoubtCard";
 import DoubtSortSelect, { DoubtSortValue } from "@/components/DoubtSortSelect";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import useSWRInfinite from "swr/infinite";
 import { useInView } from "react-intersection-observer";
-import ScrollToTopButton from "@/components/ScrollToTopButton";
+import { Doubt } from "@/types";
+import { useUser } from "@clerk/nextjs";
 
 export default function PublicRoomsPage() {
+    const { isSignedIn } = useUser();
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -25,6 +27,7 @@ export default function PublicRoomsPage() {
 
     const [searchVal, setSearchVal] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
+    const [pendingDoubts, setPendingDoubts] = useState<any[]>([]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -32,6 +35,27 @@ export default function PublicRoomsPage() {
         }, 500);
         return () => clearTimeout(timer);
     }, [searchVal]);
+
+    useEffect(() => {
+        const loadPendingDoubts = async () => {
+            try {
+                const { getPendingDoubts } = await import("@/lib/offline/syncQueue");
+                const pending = await getPendingDoubts();
+                setPendingDoubts(pending);
+            } catch (err) {
+                console.error("Failed to load pending doubts:", err);
+            }
+        };
+
+        loadPendingDoubts();
+
+        window.addEventListener("sync-queue-updated", loadPendingDoubts);
+        window.addEventListener("online", loadPendingDoubts);
+        return () => {
+            window.removeEventListener("sync-queue-updated", loadPendingDoubts);
+            window.removeEventListener("online", loadPendingDoubts);
+        };
+    }, []);
 
     const sort = (searchParams.get("sort") as DoubtSortValue) || "newest";
 
@@ -50,15 +74,19 @@ export default function PublicRoomsPage() {
         setSize(1);
     };
 
-    const getKey = (pageIndex: number, previousPageData: any[]) => {
+    const getKey = (pageIndex: number, previousPageData: Doubt[] | null | undefined) => {
         if (previousPageData && !previousPageData.length) return null;
         
         const userName = typeof window !== 'undefined' ? localStorage.getItem("anonymous_user") : "";
         const params = new URLSearchParams();
         
         if (filter !== "All") {
-            const subjectFilter = filter === "Others" ? appliedCustomFilter : filter;
-            if (subjectFilter) params.append("subject", subjectFilter);
+            if (filter === "Bookmarked") {
+                params.append("bookmarked", "true");
+            } else {
+                const subjectFilter = filter === "Others" ? appliedCustomFilter : filter;
+                if (subjectFilter) params.append("subject", subjectFilter);
+            }
         }
 
         if (searchQuery) {
@@ -89,8 +117,52 @@ export default function PublicRoomsPage() {
         revalidateFirstPage: false
     });
 
-    const doubts = data ? [].concat(...data) : [];
-    const filteredDoubts = (doubts as any[]).filter((d) => {
+    const doubts = (data ? [].concat(...data) : []) as Doubt[];
+    
+    // Apply local filters to pending doubts so they match the active view
+    const matchingPendingDoubts = pendingDoubts.filter((d) => {
+        // 1. Subject filter
+        if (filter !== "All") {
+            if (filter === "Bookmarked") {
+                // Pending doubts are not synced yet, so they cannot be bookmarked
+                return false;
+            } else if (filter === "Others") {
+                const knownSubjects = ["Math", "Science", "Physics", "Chemistry", "Programming"];
+                const isOtherSubject = !knownSubjects.includes(d.subject);
+                if (appliedCustomFilter) {
+                    return d.subject?.toLowerCase() === appliedCustomFilter.toLowerCase();
+                }
+                return isOtherSubject;
+            } else {
+                return d.subject?.toLowerCase() === filter.toLowerCase();
+            }
+        }
+        
+        // 2. Search query filter
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            const contentMatch = d.content?.toLowerCase().includes(query);
+            const subjectMatch = d.subject?.toLowerCase().includes(query);
+            const userNameMatch = d.userName?.toLowerCase().includes(query);
+            if (!contentMatch && !subjectMatch && !userNameMatch) {
+                return false;
+            }
+        }
+        
+        // 3. Tag filter
+        if (appliedTagFilter.trim()) {
+            const normalizedTag = appliedTagFilter.trim().toLowerCase();
+            const hasMatchingTag = d.tags?.some((t: any) => t.name?.toLowerCase() === normalizedTag);
+            if (!hasMatchingTag) {
+                return false;
+            }
+        }
+        
+        return true;
+    });
+
+    const allDoubts = [...matchingPendingDoubts, ...doubts];
+    const filteredDoubts = (allDoubts as any[]).filter((d) => {
         if (statusFilter === 'all') return true;
         if (statusFilter === 'unsolved') return d.isSolved === 'unsolved' || !d.isSolved;
         if (statusFilter === 'in-progress') return d.isSolved === 'in-progress';
@@ -135,8 +207,6 @@ export default function PublicRoomsPage() {
         <div className="p-4 md:p-8 space-y-8 max-w-5xl mx-auto pb-24 text-slate-900 dark:text-zinc-100 bg-white dark:bg-black min-h-screen transition-colors duration-500 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/10 dark:from-blue-500/5 blur-[120px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0" />
 
-            <ScrollToTopButton />
-
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-100 dark:border-zinc-900/60 relative z-10">
                 <div className="space-y-2">
                     <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -174,7 +244,13 @@ export default function PublicRoomsPage() {
                         <SlidersHorizontal className="w-4 h-4" />
                         <span className="text-[11px] font-bold uppercase tracking-wider">Filter:</span>
                     </div>
-                    {["All", "Math", "Science", "Physics", "Chemistry", "Programming", "Others"].map((f) => (
+                    {(() => {
+                        const filtersList = ["All", "Math", "Science", "Physics", "Chemistry", "Programming", "Others"];
+                        if (isSignedIn) {
+                            filtersList.push("Bookmarked");
+                        }
+                        return filtersList;
+                    })().map((f) => (
                         <button
                             key={f}
                             onClick={() => {
@@ -187,12 +263,17 @@ export default function PublicRoomsPage() {
                                     setIsOthersActive(true);
                                 }
                             }}
-                            className={`px-5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 border shrink-0 ${
+                            className={`px-5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all duration-300 border shrink-0 flex items-center gap-1.5 ${
                                 filter === f 
-                                ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/10" 
+                                ? f === "Bookmarked"
+                                    ? "bg-blue-500/20 border-blue-500/30 text-blue-500 dark:text-blue-400 shadow-lg shadow-blue-500/5"
+                                    : "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/10" 
                                 : "bg-white dark:bg-zinc-950/20 border-slate-200 dark:border-zinc-900 text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-900/40"
                             }`}
                         >
+                            {f === "Bookmarked" && (
+                                <Bookmark className={`w-3.5 h-3.5 ${filter === "Bookmarked" ? "fill-blue-500 text-blue-500 dark:fill-blue-400 dark:text-blue-400" : "text-slate-400 dark:text-zinc-500"}`} />
+                            )}
                             {f}
                         </button>
                     ))}
@@ -232,7 +313,7 @@ export default function PublicRoomsPage() {
                         <button
                             onClick={fetchDoubts}
                             className="px-3 py-2 bg-slate-50 dark:bg-zinc-900/40 text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all"
-                        >
+                         aria-label="Interactive button">
                             Tag
                         </button>
 
@@ -325,15 +406,23 @@ export default function PublicRoomsPage() {
 
                     <div className="relative space-y-2 mb-6">
                         <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                            {searchQuery ? "No matching doubts" : randomMessage.headline}{" "}
-                            <span className="text-blue-600 dark:text-blue-400">{searchQuery ? "" : randomMessage.accent}</span>
+                            {searchQuery 
+                                ? "No matching doubts" 
+                                : filter === "Bookmarked"
+                                    ? "No bookmarked doubts yet"
+                                    : randomMessage.headline}{" "}
+                            <span className="text-blue-600 dark:text-blue-400">
+                                {searchQuery ? "" : filter === "Bookmarked" ? "" : randomMessage.accent}
+                            </span>
                         </h2>
                         <p className="text-slate-500 dark:text-zinc-400 max-w-sm mx-auto text-xs font-medium leading-relaxed">
                             {searchQuery 
                                 ? `We couldn't find any doubts matching "${searchQuery}". Try a different keyword or subject.`
-                                : filter === "All"
-                                    ? randomMessage.sub
-                                    : `${filter} is wide open. Drop a doubt, and watch your classmates rally around it.`}
+                                : filter === "Bookmarked"
+                                    ? "Save important doubts by clicking the bookmark icon on any doubt card to view them here later."
+                                    : filter === "All"
+                                        ? randomMessage.sub
+                                        : `${filter} is wide open. Drop a doubt, and watch your classmates rally around it.`}
                         </p>
                     </div>
 
@@ -344,6 +433,13 @@ export default function PublicRoomsPage() {
                                 className="flex items-center gap-3 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98]"
                             >
                                 Clear Search
+                            </button>
+                        ) : filter === "Bookmarked" ? (
+                            <button
+                                onClick={() => setFilter("All")}
+                                className="group flex items-center gap-3 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98]"
+                            >
+                                Explore public doubts
                             </button>
                         ) : (
                             <button

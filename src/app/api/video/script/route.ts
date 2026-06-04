@@ -37,7 +37,7 @@ Return ONLY a JSON array of objects.`;
 
         const scriptJson = JSON.parse(completion.choices[0]?.message?.content || "{\"scenes\": []}");
         return NextResponse.json(scriptJson);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Script generation failed:', error);
         return NextResponse.json({ error: 'Failed to generate script' }, { status: 500 });
     }

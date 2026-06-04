@@ -74,7 +74,7 @@ export default function OnboardingPage() {
                                 <button
                                     key={role}
                                     type="button"
-                                    onClick={() => setFormData({ ...formData, role: role as any })}
+                                    onClick={() => setFormData({ ...formData, role: role as 'student' | 'teacher' | 'admin'  })}
                                     className={`py-4 rounded-xl border transition-all duration-300 flex flex-col items-center gap-2 font-semibold ${ formData.role === role ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" : "bg-slate-50/50 dark:bg-zinc-900/20 border-slate-200 dark:border-zinc-900 text-slate-400 dark:text-zinc-500 hover:bg-slate-100 dark:hover:bg-zinc-900/40" }`}
                                 >
                                     {role === 'student' && <GraduationCap className="w-5 h-5" />}
@@ -136,7 +136,7 @@ export default function OnboardingPage() {
                             type="submit"
                             disabled={isSubmitting}
                             className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider transition-all duration-300 shadow-lg shadow-blue-600/10 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
-                        >
+                         aria-label="Submit">
                             {isSubmitting ? (
                                 <Loader2 className="w-5 h-5 animate-spin" />
                             ) : (
