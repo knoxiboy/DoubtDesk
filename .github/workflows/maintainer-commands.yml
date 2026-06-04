@@ -4,6 +4,8 @@ on:
   issue_comment:
     types: [created]
 
+permissions: {}
+
 jobs:
   assign_command:
     runs-on: ubuntu-latest

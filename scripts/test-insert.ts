@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { db } from "../configs/db";
-import { notificationsTable } from "../configs/schema";
+import { db } from "../src/configs/db";
+import { notificationsTable } from "../src/configs/schema";
 
 async function main() {
     console.log("Testing insert...");
@@ -17,11 +17,12 @@ async function main() {
         ];
         await db.insert(notificationsTable).values(dummyNotifications);
         console.log("Success!");
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const err = error as { code?: string; detail?: string; message?: string };
         console.error("Error inserting:");
         console.dir(error, { depth: null });
-        if (error.code) console.error("Code:", error.code);
-        if (error.detail) console.error("Detail:", error.detail);
+        if (err.code) console.error("Code:", err.code);
+        if (err.detail) console.error("Detail:", err.detail);
     }
 }
 

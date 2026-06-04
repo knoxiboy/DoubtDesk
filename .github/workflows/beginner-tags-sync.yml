@@ -4,12 +4,14 @@ on:
   issues:
     types: [labeled]
 
+permissions: {}
+
 jobs:
   sync_beginner_tags:
     runs-on: ubuntu-latest
     permissions:
       issues: write
-    if: ${{ github.event.label.name == 'level:beginner' }}
+    if: github.event.label.name == 'level:beginner'
     steps:
       - name: Add associated tags
         uses: actions/github-script@v6
