@@ -172,6 +172,10 @@ export interface User {
     emailNotificationsEnabled: boolean;
     notificationPreference: "instant" | "daily" | "weekly" | "none";
     themePreference: "light" | "dark" | "system";
+    interests?: string | null;
+    learningGoals?: string | null;
+    subjects?: string | null;
+    instituteInfo?: string | null;
     createdAt: Date | string;
 }
 

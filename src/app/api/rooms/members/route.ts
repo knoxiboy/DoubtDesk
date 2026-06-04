@@ -57,6 +57,7 @@ export async function GET(req: Request) {
         // Fetch paginated members of this classroom
         const members = await db
             .select({
+                id: membershipsTable.id,
                 userEmail: membershipsTable.userEmail,
                 role: membershipsTable.role,
                 joinedAt: membershipsTable.joinedAt,
@@ -66,8 +67,19 @@ export async function GET(req: Request) {
             .limit(limit)
             .offset(offset);
 
+        const PRIVILEGED_MEMBER_ROLES = new Set(['teacher', 'admin']);
+        const canViewEmails = PRIVILEGED_MEMBER_ROLES.has(membership.role.toLowerCase());
+
+        const formattedMembers = canViewEmails
+            ? members.map(({ id, ...member }) => member)
+            : members.map((member) => ({
+                displayName: `${member.role === 'student' ? 'Student' : 'Member'}_${member.id}`,
+                role: member.role,
+                joinedAt: member.joinedAt,
+            }));
+
         return NextResponse.json({
-            members,
+            members: formattedMembers,
             pagination: {
                 total,
                 page,
@@ -80,4 +92,4 @@ export async function GET(req: Request) {
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });
     }
-}
+}

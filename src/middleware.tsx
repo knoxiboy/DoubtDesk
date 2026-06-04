@@ -1,10 +1,13 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { aiLimiter, generalLimiter, videoLimiter } from '@/lib/ratelimit';
+import { db } from '@/configs/db';
+import { usersTable } from '@/configs/schema';
+import { eq } from 'drizzle-orm';
 
 const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/profile(.*)', '/admin(.*)']);
 
-const isPublicRoute = createRouteMatcher(['/sign-in', '/sign-up', '/api/inngest', '/', '/public-rooms(.*)']);
+const isPublicRoute = createRouteMatcher(['/sign-in', '/sign-up', '/api/inngest', '/', '/public-rooms(.*)', '/onboarding']);
 
 export default clerkMiddleware(async (auth, req) => {
     // Skip middleware for Inngest API
@@ -78,9 +81,33 @@ export default clerkMiddleware(async (auth, req) => {
         }
     }
 
+    const { userId, sessionClaims, redirectToSignIn } = await auth();
+    const isPublic = isPublicRoute(req);
+    const isApi = req.nextUrl.pathname.startsWith('/api');
+
     if (isProtectedRoute(req)) {
-        const { userId, redirectToSignIn } = await auth();
         if (!userId) return redirectToSignIn();
+    }
+
+    // Redirect authenticated users who haven't completed onboarding to the onboarding page
+    if (userId && !isApi && !isPublic) {
+        const email = sessionClaims?.email as string | undefined;
+        if (email) {
+            try {
+                const [dbUser] = await db
+                    .select({ onboarded: usersTable.onboarded })
+                    .from(usersTable)
+                    .where(eq(usersTable.email, email))
+                    .limit(1);
+
+                if (!dbUser || !dbUser.onboarded) {
+                    const onboardingUrl = new URL('/onboarding', req.url);
+                    return NextResponse.redirect(onboardingUrl);
+                }
+            } catch (err) {
+                console.error("Middleware onboarding check error:", err);
+            }
+        }
     }
 });
 

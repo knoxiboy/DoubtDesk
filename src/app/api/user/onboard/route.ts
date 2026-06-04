@@ -3,6 +3,26 @@ import { db } from '@/configs/db';
 import { usersTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { z } from 'zod';
+
+const onboardingSchema = z.object({
+    role: z.enum(['student', 'teacher', 'admin']),
+    university: z.string().min(1, 'University name is required'),
+    collegeEmail: z.string().email('Invalid college email address'),
+    year: z.string().optional().nullable(),
+    interests: z.string().optional().nullable(),
+    learningGoals: z.string().optional().nullable(),
+    subjects: z.string().optional().nullable(),
+    instituteInfo: z.string().optional().nullable(),
+}).refine(data => {
+    if (data.role === 'student') {
+        return !!data.year;
+    }
+    return true;
+}, {
+    message: 'Academic year is required for students',
+    path: ['year'],
+});
 
 export async function POST(req: Request) {
     try {
@@ -28,17 +48,29 @@ export async function POST(req: Request) {
         if (!email) {
             return NextResponse.json({ error: 'User email not found' }, { status: 401 });
         }
-        const { university, year, role, collegeEmail } = await req.json();
 
-        if (!university || !role || !collegeEmail) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        const body = await req.json();
+        const parsed = onboardingSchema.safeParse(body);
+
+        if (!parsed.success) {
+            return NextResponse.json(
+                { error: parsed.error.errors[0].message },
+                { status: 400 }
+            );
         }
 
-        const finalYear = role === 'student' ? year : 'Staff/Faculty';
+        const {
+            university,
+            year,
+            role,
+            collegeEmail,
+            interests,
+            learningGoals,
+            subjects,
+            instituteInfo
+        } = parsed.data;
 
-        if (role === 'student' && !year) {
-            return NextResponse.json({ error: 'Academic year is required for students' }, { status: 400 });
-        }
+        const finalYear = role === 'student' ? year! : 'Staff/Faculty';
 
         // Update user in database
         await db.update(usersTable)
@@ -47,6 +79,10 @@ export async function POST(req: Request) {
                 year: finalYear,
                 role,
                 collegeEmail,
+                interests: role === 'student' ? (interests || null) : null,
+                learningGoals: role === 'student' ? (learningGoals || null) : null,
+                subjects: role === 'teacher' ? (subjects || null) : null,
+                instituteInfo: role === 'teacher' ? (instituteInfo || null) : null,
                 onboarded: true
             })
             .where(eq(usersTable.email, email));

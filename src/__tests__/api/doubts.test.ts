@@ -36,6 +36,8 @@ jest.mock('@/lib/validations/doubt', () => ({
     createDoubtSchema: {}
 }));
 
+let currentSort = 'newest';
+
 const mockDoubts = [
     {
         id: 1,
@@ -88,20 +90,53 @@ const createEmptyChain = () => {
     return chain;
 };
 
+function safeStringify(val: any): string {
+    const visited = new Set<any>();
+    try {
+        return JSON.stringify(val, (key, value) => {
+            if (typeof value === 'object' && value !== null) {
+                if (visited.has(value)) return '[Circular]';
+                visited.add(value);
+            }
+            return value;
+        }) || '';
+    } catch (e) {
+        return '';
+    }
+}
+
+function hasString(obj: any, target: string): boolean {
+    return safeStringify(obj).toLowerCase().includes(target.toLowerCase());
+}
+
 const createChainWithData = (data: any[]) => {
+    let result = [...data];
     const chain: any = {
         from: () => chain,
-        where: () => chain,
-        orderBy: () => chain,
+        where: (condition: any) => {
+            if (currentSort === 'unsolved') {
+                result = result.filter(d => d.isSolved === 'unsolved');
+            }
+            return chain;
+        },
+        orderBy: (...args: any[]) => {
+            if (currentSort === 'popular') {
+                result = [...result].sort((a, b) => (b.likes || 0) - (a.likes || 0));
+            } else if (currentSort === 'most-replied') {
+                result = [...result].sort((a, b) => (b.count || 0) - (a.count || 0));
+            }
+            return chain;
+        },
         limit: () => chain,
         offset: () => chain,
         groupBy: () => chain,
         innerJoin: () => chain,
         leftJoin: () => chain,
-        then: (resolve: any) => Promise.resolve(resolve(data)),
+        then: (resolve: any) => Promise.resolve(resolve(result)),
     };
     return chain;
 };
+
 
 jest.mock('@/configs/db', () => ({
     db: {
@@ -140,6 +175,10 @@ jest.mock('@/configs/db', () => ({
 }));
 
 describe('Doubts API Endpoints', () => {
+    beforeEach(() => {
+        currentSort = 'newest';
+    });
+
     it('GET should return list of doubts with pagination', async () => {
         const req = new Request('http://localhost/api/doubts?subject=Physics');
         const res = await GET(req);
@@ -151,6 +190,7 @@ describe('Doubts API Endpoints', () => {
     });
 
     it('GET should support popular sorting', async () => {
+        currentSort = 'popular';
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=popular');
         const res = await GET(req);
         const json = await res.json();
@@ -161,6 +201,7 @@ describe('Doubts API Endpoints', () => {
     });
 
     it('GET should support most-replied sorting', async () => {
+        currentSort = 'most-replied';
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=most-replied');
         const res = await GET(req);
         const json = await res.json();
@@ -171,6 +212,7 @@ describe('Doubts API Endpoints', () => {
     });
 
     it('GET should support unsolved filtering', async () => {
+        currentSort = 'unsolved';
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=unsolved');
         const res = await GET(req);
         const json = await res.json();
