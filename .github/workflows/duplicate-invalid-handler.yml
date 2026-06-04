@@ -73,7 +73,7 @@ jobs:
     permissions:
       issues: write
       pull-requests: write
-    if: (github.event_name == 'issues' || github.event_name == 'pull_request_target') && (github.event.label.name == 'duplicate' || github.event.label.name == 'invalid')
+    if: ${{ (github.event_name == 'issues' || github.event_name == 'pull_request_target') && (github.event.label.name == 'duplicate' || github.event.label.name == 'invalid') }}
     steps:
       - name: Handle invalid or duplicate via label
 
