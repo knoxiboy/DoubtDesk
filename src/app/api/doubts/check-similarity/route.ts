@@ -4,6 +4,10 @@ import { and, eq, isNull, desc, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import Groq from "groq-sdk";
+import {
+  buildAiProviderErrorResponse,
+  enforceAiAvailability,
+} from "@/lib/ai/kill-switch";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || "dummy_key",
@@ -64,6 +68,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ similarDoubts: [] });
     }
 
+    const availabilityResponse = await enforceAiAvailability(
+      user.primaryEmailAddress?.emailAddress || user.id,
+    );
+    if (availabilityResponse) return availabilityResponse;
+
     // Build a compact list for Groq to compare
     const doubtList = recentDoubts
       .map(
@@ -95,7 +104,7 @@ Do not include any explanation or markdown.`;
       });
     } catch (err) {
       console.error("Groq API failed:", err);
-      return NextResponse.json({ similarDoubts: [] });
+      return buildAiProviderErrorResponse(err);
     }
 
     const raw = completion.choices[0]?.message?.content?.trim() || "[]";

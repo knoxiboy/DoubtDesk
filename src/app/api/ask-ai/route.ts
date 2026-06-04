@@ -8,6 +8,10 @@ import { moderateContent, handleModerationViolation } from '@/lib/moderation';
 import { checkPedagogicalDrift } from '@/lib/pedagogy';
 import { aiLimiter } from '@/lib/ratelimit';
 import {
+    buildAiProviderErrorResponse,
+    enforceAiAvailability,
+} from '@/lib/ai/kill-switch';
+import {
     AI_REQUEST_MAX_BYTES,
     AI_REQUEST_MAX_SIZE_LABEL,
     validateAiImageDataUrl,
@@ -468,6 +472,9 @@ export async function POST(req: Request) {
             }
         }
 
+        const availabilityResponse = await enforceAiAvailability(email);
+        if (availabilityResponse) return availabilityResponse;
+
         // 1. AI Moderation Check for Prompts
         if (prompt) {
             const moderation =
@@ -739,11 +746,6 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
             error
         );
 
-        return NextResponse.json(
-            {
-                error: 'The AI service is currently overloaded or experiencing issues. Please try again in 30 seconds.',
-            },
-            { status: 500 }
-        );
+        return buildAiProviderErrorResponse(error);
     }
 }

@@ -11,6 +11,14 @@ jest.mock('@/lib/ratelimit', () => ({
             reset: Date.now() + 60_000,
         }),
     },
+    aiDailyLimiter: {
+        limit: jest.fn().mockResolvedValue({
+            success: true,
+            limit: 100,
+            remaining: 99,
+            reset: Date.now() + 86_400_000,
+        }),
+    },
 }));
 
 jest.mock('@clerk/nextjs/server', () => ({

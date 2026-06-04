@@ -6,6 +6,7 @@ import { Redis } from "@upstash/redis";
 // that doesn't actually block requests but provides the same interface.
 
 let aiLimiter: Ratelimit | MockLimiter;
+let aiDailyLimiter: Ratelimit | MockLimiter;
 let generalLimiter: Ratelimit | MockLimiter;
 let emailNotificationLimiter: Ratelimit | MockLimiter;
 let videoLimiter: Ratelimit | MockLimiter;
@@ -29,6 +30,11 @@ interface MockRedis {
 const isRedisConfigured = 
   process.env.UPSTASH_REDIS_REST_URL && 
   process.env.UPSTASH_REDIS_REST_TOKEN;
+const configuredAiDailyLimit = Number.parseInt(process.env.AI_DAILY_USER_LIMIT || "100", 10);
+const aiDailyLimit =
+  Number.isSafeInteger(configuredAiDailyLimit) && configuredAiDailyLimit > 0
+    ? configuredAiDailyLimit
+    : 100;
 
 if (isRedisConfigured) {
   const redis = Redis.fromEnv();
@@ -39,6 +45,13 @@ if (isRedisConfigured) {
     limiter: Ratelimit.slidingWindow(10, "1 m"),
     analytics: true,
     prefix: "ratelimit:ai",
+  });
+
+  aiDailyLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.fixedWindow(aiDailyLimit, "1 d"),
+    analytics: true,
+    prefix: "ratelimit:ai:daily",
   });
 
   // General API (Doubts, Replies): 30 req/min
@@ -94,6 +107,7 @@ if (isRedisConfigured) {
   });
 
   aiLimiter = createMockLimiter(10, 60 * 1000);
+  aiDailyLimiter = createMockLimiter(aiDailyLimit, 24 * 60 * 60 * 1000);
   generalLimiter = createMockLimiter(30, 60 * 1000);
   emailNotificationLimiter = createMockLimiter(1, 5 * 60 * 1000); // 1 per 5 mins
   videoLimiter = createMockLimiter(3, 60 * 60 * 1000); // 3 per hour
@@ -119,4 +133,4 @@ if (isRedisConfigured) {
   };
 }
 
-export { aiLimiter, generalLimiter, emailNotificationLimiter, videoLimiter, redisClient };
+export { aiLimiter, aiDailyLimiter, generalLimiter, emailNotificationLimiter, videoLimiter, redisClient };

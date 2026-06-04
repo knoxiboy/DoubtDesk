@@ -2,6 +2,10 @@ import axios from "axios";
 import { NextResponse, type NextRequest } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
+import {
+    buildAiProviderErrorResponse,
+    enforceAiAvailability,
+} from "@/lib/ai/kill-switch";
 
 export async function POST(req: NextRequest) {
     try {
@@ -24,6 +28,9 @@ export async function POST(req: NextRequest) {
         if (!userInput) {
             return NextResponse.json({ error: "userInput is required" }, { status: 400 });
         }
+
+        const availabilityResponse = await enforceAiAvailability(email);
+        if (availabilityResponse) return availabilityResponse;
 
         const systemPrompt = `
 You are Mentorix AI, an expert career advisor designed to help students and early professionals plan and grow their careers in technology and related fields.
@@ -103,13 +110,7 @@ Always focus on helping the user move one step closer to their career goal.
 
         return NextResponse.json({ output: aiResponse });
     } catch (error: unknown) {
-        const err = error as {
-            response?: { data?: { error?: { message?: string } } };
-            message?: string;
-        };
-        console.error("AI Career Chat Error:", err.response?.data || err.message);
-        return NextResponse.json({
-            error: err.response?.data?.error?.message || err.message || "Internal Server Error"
-        }, { status: 500 });
+        console.error("AI Career Chat Error:", error);
+        return buildAiProviderErrorResponse(error);
     }
 }
