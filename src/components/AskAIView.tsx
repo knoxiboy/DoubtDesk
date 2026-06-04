@@ -20,6 +20,15 @@ import {
 } from '@/lib/ai-image-validation';
 import 'katex/dist/katex.min.css';
 
+const STRINGS = {
+    CLIPBOARD_ERROR: "Clipboard error:",
+    COPIED_SUCCESS: "Copied to clipboard!",
+    COPY_FAILED: "Failed to copy. Please try manually.",
+    TYPE_QUESTION: "Type Question",
+    UPLOAD_IMAGE: "Upload Image",
+    DOUBT_PLACEHOLDER: "Type your doubt here...",
+} as const;
+
 type SolveType = 'standard' | 'simple' | 'exam' | 'eli10';
 function useCopyToClipboard(timeout = 2000) {
     const [copied, setCopied] = useState<string | null>(null);
@@ -28,10 +37,11 @@ function useCopyToClipboard(timeout = 2000) {
         try {
             await navigator.clipboard.writeText(text);
             setCopied(id);
-            toast.success("Copied to clipboard!");
+            toast.success(STRINGS.COPIED_SUCCESS);
             setTimeout(() => setCopied(null), timeout);
-        } catch {
-            toast.error("Failed to copy. Please try manually.");
+        } catch (err) {
+            console.error(STRINGS.CLIPBOARD_ERROR, err);
+            toast.error(STRINGS.COPY_FAILED);
         }
     };
 
@@ -239,13 +249,13 @@ const { copied, copy } = useCopyToClipboard();
                         onClick={() => { setInputMode('text'); setImageBase64(null); }}
                         className={`flex-1 flex items-center justify-center gap-2 py-4 text-xs font-black uppercase tracking-widest transition-all ${inputMode === 'text' ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-500/5' : 'text-slate-500 hover:text-slate-300'}`}
                     >
-                        <Type className="w-4 h-4" /> Type Question
+                        <Type className="w-4 h-4" /> {STRINGS.TYPE_QUESTION}
                     </button>
                     <button
                         onClick={() => { setInputMode('image'); setPrompt(''); }}
                         className={`flex-1 flex items-center justify-center gap-2 py-4 text-xs font-black uppercase tracking-widest transition-all ${inputMode === 'image' ? 'text-purple-400 border-b-2 border-purple-500 bg-purple-500/5' : 'text-slate-500 hover:text-slate-300'}`}
                     >
-                        <Camera className="w-4 h-4" /> Upload Image
+                        <Camera className="w-4 h-4" /> {STRINGS.UPLOAD_IMAGE}
                     </button>
                 </div>
 
@@ -255,7 +265,7 @@ const { copied, copy } = useCopyToClipboard();
                             <textarea
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
-                                placeholder="Type your doubt here..."
+                                placeholder={STRINGS.DOUBT_PLACEHOLDER}
                                 rows={4}
                                 className="w-full bg-white/60 dark:bg-slate-950/60 border border-slate-200 dark:border-white/8 rounded-2xl px-5 py-4 text-slate-900 dark:text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all resize-none font-medium text-sm leading-relaxed"
                                 disabled={isLoading}
