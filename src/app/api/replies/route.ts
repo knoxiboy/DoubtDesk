@@ -23,10 +23,10 @@ export async function GET(req: Request) {
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
         if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
             const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            const { status, body } = buildErrorResponse(
-                new Error(`Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`)
+            return errorResponse(
+                `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`,
+                403
             );
-            return NextResponse.json(body, { status });
         }
 
         const { searchParams } = new URL(req.url);
@@ -101,10 +101,10 @@ export async function POST(req: Request) {
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
         if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
             const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            const { status, body } = buildErrorResponse(
-                new Error(`Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`)
+            return errorResponse(
+                `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`,
+                403
             );
-            return NextResponse.json(body, { status });
         }
 
         // 1. AI Moderation Check
