@@ -81,10 +81,11 @@ describe('Reply Vote API Endpoint', () => {
         });
 
         const res = await POST(req);
-        const json = await res.json();
         const dbMock = (globalThis as any).__voteDbMock;
 
-        expect(res.status).toBe(200);
+        expect(res!.status).toBe(200);
+            
+        const json = await res!.json();
         expect(json.hasUpvoted).toBe(true);
         expect(dbMock.insert).toHaveBeenCalled();
         expect(dbMock.insert.mock.results[0].value.values).toHaveBeenCalledWith({

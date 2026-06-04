@@ -20,8 +20,8 @@ import { DOUBT_STATUS, isValidDoubtStatus, isOpen } from "@/lib/doubtStatus";
 // Chainable query builder used by the route. Each helper returns `this`
 // (or a thenable) so we can record the call sequence.
 const updateBuilder = {
-    set: jest.fn().mockReturnThis(),
-    where: jest.fn().mockResolvedValue([]),
+    set: jest.fn<any, any[]>().mockReturnThis(),
+    where: jest.fn<any, any[]>().mockResolvedValue([]),
 };
 
 const insertBuilder = {

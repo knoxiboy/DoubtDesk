@@ -146,7 +146,7 @@ describe('Doubts API Endpoints', () => {
         const req = new Request('http://localhost/api/doubts?subject=Physics');
         const res = await GET(req);
         const json = await res.json();
-        expect(res.status).toBe(200);
+        expect(res!.status).toBe(200);
         expect(Array.isArray(json)).toBe(true);
         expect(json.length).toBeGreaterThan(0);
         expect(json[0].subject).toBe('Physics');

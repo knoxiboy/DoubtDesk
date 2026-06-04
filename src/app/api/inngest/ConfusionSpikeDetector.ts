@@ -30,10 +30,10 @@ export const detectConfusionSpikes = inngest.createFunction(
         debounce: {
             key: "event.data.classroomId",
             period: "60s"
-        }
+        },
+        triggers: [{ event: "doubt/created" }]
     },
-    { event: "doubt/created" },
-    async ({ event, step }: any) => {
+    async ({ event, step }) => {
         const { classroomId } = event.data;
 
         if (!classroomId) return { skipped: "No classroomId provided" };

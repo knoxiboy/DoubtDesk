@@ -1,4 +1,5 @@
 import { DELETE, PATCH } from '@/app/api/replies/action/[id]/route';
+import { NextRequest } from 'next/server';
 
 const currentUserMock = jest.fn();
 const selectResultQueue: any[] = [];
@@ -47,14 +48,14 @@ describe('Replies Action API Endpoint', () => {
     it('returns 401 for unauthenticated DELETE', async () => {
         currentUserMock.mockResolvedValue(null);
 
-        const req = new Request('http://localhost/api/replies/action/2', {
+        const req = new NextRequest('http://localhost/api/replies/action/2', {
             method: 'DELETE',
         });
 
         const res = await DELETE(req, { params: Promise.resolve({ id: '2' }) });
         const json = await res.json();
 
-        expect(res.status).toBe(401);
+        expect(res!.status).toBe(401);
         expect(json.error).toBe('Unauthorized');
     });
 
@@ -63,14 +64,14 @@ describe('Replies Action API Endpoint', () => {
             primaryEmailAddress: null,
         });
 
-        const req = new Request('http://localhost/api/replies/action/2', {
+        const req = new NextRequest('http://localhost/api/replies/action/2', {
             method: 'DELETE',
         });
 
         const res = await DELETE(req, { params: Promise.resolve({ id: '2' }) });
         const json = await res.json();
 
-        expect(res.status).toBe(400);
+        expect(res!.status).toBe(400);
         expect(json.error).toBe('Email required');
     });
 
@@ -85,7 +86,7 @@ describe('Replies Action API Endpoint', () => {
             [{ id: 2, classroomId: null }]
         );
 
-        const req = new Request('http://localhost/api/replies/action/2', {
+        const req = new NextRequest('http://localhost/api/replies/action/2', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content: 'updated content' }),
@@ -94,7 +95,7 @@ describe('Replies Action API Endpoint', () => {
         const res = await PATCH(req, { params: Promise.resolve({ id: '2' }) });
         const json = await res.json();
 
-        expect(res.status).toBe(403);
+        expect(res!.status).toBe(403);
         expect(json.error).toContain('Forbidden');
     });
 
@@ -109,7 +110,7 @@ describe('Replies Action API Endpoint', () => {
             [{ id: 2, classroomId: null }]
         );
 
-        const req = new Request('http://localhost/api/replies/action/2', {
+        const req = new NextRequest('http://localhost/api/replies/action/2', {
             method: 'DELETE',
         });
 
@@ -117,7 +118,7 @@ describe('Replies Action API Endpoint', () => {
         const json = await res.json();
         const dbMock = (globalThis as any).__repliesActionDbMock;
 
-        expect(res.status).toBe(200);
+        expect(res!.status).toBe(200);
         expect(json.message).toBe('Reply deleted successfully');
         expect(dbMock.delete).toHaveBeenCalled();
     });
