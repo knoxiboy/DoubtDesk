@@ -43,6 +43,7 @@
     - [Mid-Term (v1.2)](#mid-term-v12)
     - [Long-Term (v2.0)](#long-term-v20)
   - [Code of Conduct](#code-of-conduct)
+  - [Security](#security)
   - [License](#license)
   - [Acknowledgments](#acknowledgments)
 
@@ -227,21 +228,9 @@ npm run dev
 
 ### Environment Variables
 
-Create a `.env` file in the project root with the following keys:
+DoubtDesk relies on several external services (Clerk, Neon, Groq, Inngest, etc.). 
 
-```env
-# Database (Neon PostgreSQL)
-DATABASE_URL=your_neon_connection_string
-
-# Authentication (Clerk)
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-
-# AI (Groq)
-GROQ_API_KEY=gsk_...
-```
+For a complete breakdown of which services are strictly required versus optional, along with a setup verification checklist, please read the **[Local Environment Setup Guide](docs/SETUP.md)**.
 
 > **Security:** Never commit your `.env` file. It is already included in `.gitignore`.
 
@@ -409,6 +398,12 @@ The following is a prioritized list of planned enhancements. Contributions towar
 We are committed to providing a welcoming and harassment-free experience for everyone. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before participating.
 
 **In short:** Be respectful, be constructive, be kind.
+
+---
+
+## Security
+
+If you discover a security vulnerability, please follow the responsible disclosure process described in [SECURITY.md](SECURITY.md).
 
 ---
 

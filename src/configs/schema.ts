@@ -61,6 +61,36 @@ export const membershipsTable = pgTable("memberships", {
     };
 });
 
+export const classroomInvitesTable = pgTable("classroom_invites", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+
+  tokenHash: varchar("token_hash", { length: 128 }).notNull(),
+
+  classroomId: integer("classroom_id").notNull(),
+  createdBy: varchar("created_by", { length: 255 }).notNull(),
+
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+
+  usedCount: integer("used_count").default(0).notNull(),
+  maxUses: integer("max_uses"),
+  revokedAt: timestamp("revoked_at"),
+}, (table) => ({
+  tokenHashIdx: uniqueIndex("classroom_invites_token_hash_idx").on(table.tokenHash),
+  classroomIdIdx: index("classroom_invites_classroom_id_idx").on(table.classroomId),
+  expiresAtIdx: index("classroom_invites_expires_at_idx").on(table.expiresAt),
+
+  classroomFk: foreignKey({
+    columns: [table.classroomId],
+    foreignColumns: [classroomsTable.id],
+  }).onDelete("cascade"),
+
+  createdByFk: foreignKey({
+    columns: [table.createdBy],
+    foreignColumns: [usersTable.email],
+  }).onDelete("cascade"),
+}));
+
 export const chatHistoryTable = pgTable("chat_history", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     chatId: varchar({ length: 255 }).notNull(),

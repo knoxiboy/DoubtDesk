@@ -11,6 +11,13 @@ import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import { toast } from 'sonner';
 import { Doubt } from '@/types';
+import {
+    AI_IMAGE_ALLOWED_MIME_TYPES,
+    AI_IMAGE_ALLOWED_TYPES_LABEL,
+    AI_IMAGE_MAX_BYTES,
+    AI_IMAGE_MAX_SIZE_LABEL,
+    isAllowedAiImageMimeType,
+} from '@/lib/ai-image-validation';
 import 'katex/dist/katex.min.css';
 
 type SolveType = 'standard' | 'simple' | 'exam' | 'eli10';
@@ -148,10 +155,48 @@ const { copied, copy } = useCopyToClipboard();
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
+        const input = e.currentTarget;
+        const file = input.files?.[0];
         if (!file) return;
+
+        setErrorMsg(null);
+        setErrorCode(null);
+
+        if (!isAllowedAiImageMimeType(file.type)) {
+            const message = `Please upload a ${AI_IMAGE_ALLOWED_TYPES_LABEL} image.`;
+            setErrorMsg(message);
+            toast.error(message);
+            input.value = '';
+            return;
+        }
+
+        if (file.size > AI_IMAGE_MAX_BYTES) {
+            const message = `Images must be ${AI_IMAGE_MAX_SIZE_LABEL} or smaller.`;
+            setErrorMsg(message);
+            setErrorCode('IMAGE_TOO_LARGE');
+            toast.error(message);
+            input.value = '';
+            return;
+        }
+
         const reader = new FileReader();
-        reader.onloadend = () => setImageBase64(reader.result as string);
+        reader.onerror = () => {
+            const message = 'Could not read this image. Please try another file.';
+            setErrorMsg(message);
+            toast.error(message);
+            input.value = '';
+        };
+        reader.onloadend = () => {
+            if (typeof reader.result === 'string') {
+                setImageBase64(reader.result);
+                return;
+            }
+
+            const message = 'Could not read this image. Please try another file.';
+            setErrorMsg(message);
+            toast.error(message);
+            input.value = '';
+        };
         reader.readAsDataURL(file);
     };
 
@@ -218,7 +263,7 @@ const { copied, copy } = useCopyToClipboard();
                         </>
                     ) : (
                         <>
-                            <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+                            <input type="file" accept={AI_IMAGE_ALLOWED_MIME_TYPES.join(',')} className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
                             {!imageBase64 ? (
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
@@ -229,13 +274,14 @@ const { copied, copy } = useCopyToClipboard();
                                     </div>
                                     <div className="text-center">
                                         <p className="text-slate-900 dark:text-white font-bold text-xs uppercase tracking-widest">Select Image</p>
+                                        <p className="text-slate-500 dark:text-slate-500 text-[10px] mt-1">{AI_IMAGE_ALLOWED_TYPES_LABEL} · Max {AI_IMAGE_MAX_SIZE_LABEL}</p>
                                     </div>
                                 </button>
                             ) : (
                                 <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950">
                                     <img src={imageBase64} alt="Uploaded" className="w-full max-h-64 object-contain" />
                                     <button
-                                        onClick={() => setImageBase64(null)}
+                                        onClick={() => { setImageBase64(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                                         className="absolute top-3 right-3 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg"
                                         aria-label="Remove image"
                                     >
