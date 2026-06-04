@@ -6,6 +6,12 @@ import AskDoubt from "./AskDoubt";
 import DoubtRepliesModal from "./DoubtRepliesModal";
 import { toast } from "sonner";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface DoubtCardProps {
     doubt: any;
@@ -138,8 +144,9 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
     };
 
     return (
+        <TooltipProvider>
         <>
-            <div className="group bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-8 hover:border-blue-500/30 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/5 flex flex-col h-full relative overflow-hidden">
+            <div className="group bg-white/50 dark:bg-slate-900/50 rounded-2xl p-6 border border-slate-200 dark:border-white/10 shadow-sm hover:shadow-md transition-shadow relative flex flex-col">
                 {/* Background Glow */}
                 <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-600/5 blur-[100px] rounded-full group-hover:bg-blue-600/10 transition-all duration-500"></div>
 
@@ -161,14 +168,19 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                     </div>
                     <div className="flex items-center gap-2">
                         {isTeacher && doubt.classroomId && (
+                            <Tooltip>
+                            <TooltipTrigger asChild>
                             <button
                                 onClick={handlePin}
                                 disabled={isPinning}
+                                aria-label={doubt.isPinned ? "Unpin doubt" : "Pin doubt to top"}
                                 className={`p-2 rounded-xl border transition-all ${ doubt.isPinned ? "bg-blue-600/20 border-blue-500/40 text-blue-400" : "bg-white/5 border-white/10 text-slate-500 hover:text-blue-400" }`}
-                                title={doubt.isPinned ? "Unpin doubt" : "Pin doubt to top"}
                             >
                                 <Pin className={`w-4 h-4 ${doubt.isPinned ? 'fill-blue-400' : ''} ${isPinning ? 'animate-pulse' : ''}`} />
                             </button>
+                            </TooltipTrigger>
+                            <TooltipContent>{doubt.isPinned ? "Unpin doubt" : "Pin doubt to top"}</TooltipContent>
+                            </Tooltip>
                         )}
                         {doubt.isPinned && !isTeacher && (
                             <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
@@ -242,20 +254,26 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                         <button
                             onClick={() => handleAction("like")}
                             disabled={isLiking}
+                            aria-label={doubt.hasLiked ? "Unlike this doubt" : "Like this doubt"}
                             className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-6 py-3 rounded-2xl transition-all group/btn ${ doubt.hasLiked ? "bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-lg shadow-blue-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
                         >
                             <ThumbsUp className={`w-4 h-4 ${isLiking ? 'animate-pulse' : 'group-hover/btn:scale-110 transition-transform'} ${doubt.hasLiked ? 'fill-blue-400' : ''}`} />
                             <span className="text-xs font-black">{likes}</span>
                         </button>
 
+                        <Tooltip>
+                        <TooltipTrigger asChild>
                         <button
                             onClick={handleBookmark}
                             disabled={isBookmarking}
+                            aria-label={doubt.hasBookmarked ? "Remove bookmark" : "Bookmark this doubt"}
                             className={`flex items-center justify-center p-3 rounded-2xl transition-all ${ doubt.hasBookmarked ? "bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-lg shadow-purple-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
-                            title={doubt.hasBookmarked ? "Remove bookmark" : "Add to bookmarks"}
                         >
                             <Bookmark className={`w-4 h-4 ${isBookmarking ? 'animate-pulse' : ''} ${doubt.hasBookmarked ? 'fill-purple-400' : ''}`} />
                         </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{doubt.hasBookmarked ? "Remove bookmark" : "Bookmark this doubt"}</TooltipContent>
+                        </Tooltip>
 
                         {((isOwner && doubt.type !== 'ai') || isTeacher) && doubt.isSolved !== "solved" && (
                             <button
@@ -308,6 +326,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                         )}
                         <button
                             onClick={() => setIsRepliesOpen(true)}
+                            aria-label={`View replies, ${doubt.replyCount || 0} total`}
                             className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-white/5 active:scale-95 group/msg"
                         >
                             <MessageSquare className="w-5 h-5 group-hover/msg:scale-110 transition-transform" />
@@ -374,5 +393,6 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role }: D
                 confirmText="Yes, Delete"
             />
         </>
+        </TooltipProvider>
     );
 }
