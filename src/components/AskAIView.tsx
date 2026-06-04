@@ -27,6 +27,9 @@ const STRINGS = {
     TYPE_QUESTION: "Type Question",
     UPLOAD_IMAGE: "Upload Image",
     DOUBT_PLACEHOLDER: "Type your doubt here...",
+    IMAGE_TYPE_ERROR: (label: string) => `Please upload a ${label} image.`,
+    IMAGE_SIZE_ERROR: (label: string) => `Images must be ${label} or smaller.`,
+    IMAGE_READ_ERROR: "Could not read this image. Please try another file.",
 } as const;
 
 type SolveType = 'standard' | 'simple' | 'exam' | 'eli10';
@@ -173,7 +176,7 @@ const { copied, copy } = useCopyToClipboard();
         setErrorCode(null);
 
         if (!isAllowedAiImageMimeType(file.type)) {
-            const message = `Please upload a ${AI_IMAGE_ALLOWED_TYPES_LABEL} image.`;
+            const message = STRINGS.IMAGE_TYPE_ERROR(AI_IMAGE_ALLOWED_TYPES_LABEL);
             setErrorMsg(message);
             toast.error(message);
             input.value = '';
@@ -181,7 +184,7 @@ const { copied, copy } = useCopyToClipboard();
         }
 
         if (file.size > AI_IMAGE_MAX_BYTES) {
-            const message = `Images must be ${AI_IMAGE_MAX_SIZE_LABEL} or smaller.`;
+            const message = STRINGS.IMAGE_SIZE_ERROR(AI_IMAGE_MAX_SIZE_LABEL);
             setErrorMsg(message);
             setErrorCode('IMAGE_TOO_LARGE');
             toast.error(message);
@@ -191,7 +194,7 @@ const { copied, copy } = useCopyToClipboard();
 
         const reader = new FileReader();
         reader.onerror = () => {
-            const message = 'Could not read this image. Please try another file.';
+            const message = STRINGS.IMAGE_READ_ERROR;
             setErrorMsg(message);
             toast.error(message);
             input.value = '';
@@ -202,7 +205,7 @@ const { copied, copy } = useCopyToClipboard();
                 return;
             }
 
-            const message = 'Could not read this image. Please try another file.';
+            const message = STRINGS.IMAGE_READ_ERROR;
             setErrorMsg(message);
             toast.error(message);
             input.value = '';
