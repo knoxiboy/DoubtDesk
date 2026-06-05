@@ -42,7 +42,13 @@ export async function POST(
     if (isBlocked) return blockErrorResponse;
 
     const { id } = await params;
-    const classroomId = parseInt(id);
+    const classroomId = parseInt(id, 10);
+    if (Number.isNaN(classroomId)) {
+      return NextResponse.json(
+        { error: "Invalid classroom ID" },
+        { status: 400 }
+      );
+    }
 
     const [classroom] = await db
       .select()

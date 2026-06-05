@@ -37,7 +37,6 @@ export async function GET(req: Request) {
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress ?? null;
         const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
-        let membership = null;
 
         if (classroomId) {
             if (!email) {
@@ -61,17 +60,24 @@ export async function GET(req: Request) {
 
         if (classroomId && email) {
             const [membership] = await db
-            .select()
-            .from(membershipsTable)
-            .where(
-                and(
-                    eq(membershipsTable.userEmail, email),
-                    eq(membershipsTable.classroomId, classroomId)
-                )
-            );
+                .select()
+                .from(membershipsTable)
+                .where(
+                    and(
+                        eq(membershipsTable.userEmail, email),
+                        eq(membershipsTable.classroomId, classroomId)
+                    )
+                );
 
-            isTeacher = !!(membership && canTeach(membership.role));
-        }
+            if (!membership) {
+                return NextResponse.json(
+                    { error: "Access denied" },
+                    { status: 403 }
+                );
+            }
+
+            isTeacher = canTeach(membership.role);
+            }
 
         if (!isTeacher) {
             const teacherCondition = email
@@ -239,8 +245,24 @@ export async function POST(req: Request) {
         if (isBlocked) return blockResponse;
 
         if (parsedClassroomId) {
-        }
-        
+            const [membership] = await db
+            .select()
+            .from(membershipsTable)
+            .where(
+                and(
+                    eq(membershipsTable.userEmail, email),
+                    eq(membershipsTable.classroomId, parsedClassroomId)
+                )
+            );
+
+            if (!membership) {
+                return NextResponse.json(
+                    { error: "Access denied" },
+                    { status: 403 }
+                );
+            }
+        }                                
+
         if (content) {
             const moderation = await moderateContent(content);
             const violationError = await handleModerationViolation(email, content, moderation);
