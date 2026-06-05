@@ -9,9 +9,13 @@ export const parsePositiveInt = (
   value: string | null,
   fallback: number
 ): number => {
-  const parsed = Number.parseInt(value ?? "", 10);
+  if (!value || !/^\d+$/.test(value.trim())) {
+    return fallback;
+  }
 
-  if (Number.isNaN(parsed) || parsed <= 0) {
+  const parsed = Number(value);
+
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     return fallback;
   }
 

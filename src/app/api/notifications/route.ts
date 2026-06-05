@@ -19,7 +19,7 @@ export async function GET(req: Request) {
         const offsetStr = searchParams.get("offset");
         const limitStr = searchParams.get("limit");
 
-        const limit = parsePositiveInt(limitStr, 20);
+        const limit = parsePositiveInt(limitStr, 50);
         const offset = offsetStr
             ? parsePositiveInt(offsetStr, 0)
             : (pageStr ? (parsePositiveInt(pageStr, 1) - 1) * limit : 0);
