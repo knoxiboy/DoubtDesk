@@ -287,6 +287,25 @@ Contributions are welcome from developers of all experience levels. Whether you 
 
 ### Quick Start for Contributors
 
+#### Using Docker (Recommended)
+
+1. **Clone** the repository.
+2. **Create a `.env` file** from `.env.example` with your API keys (Clerk, Groq, etc.).
+3. **Start the services:**
+
+```bash
+docker compose up -d
+```
+
+This starts PostgreSQL and the app in production mode. The app is available at `http://localhost:3000`.
+
+```bash
+# Apply database migrations
+docker compose exec app npx drizzle-kit push
+```
+
+#### Without Docker
+
 1. **Browse open issues** on the [Issues](https://github.com/knoxiboy/DoubtDesk/issues) tab. Filter by `good-first-issue` or `beginner-friendly` labels.
 2. **Comment on the issue** to indicate you are working on it.
 3. **Fork and clone** the repository.
@@ -296,7 +315,7 @@ Contributions are welcome from developers of all experience levels. Whether you 
    - `fix/classroom-invite-validation`
    - `docs/update-readme-screenshots`
 6. **Make focused changes** with clear, conventional commit messages.
-7. **Test locally** using `npm run dev`.
+7. **Test locally** using `npm run dev` or `docker compose up -d` for the full stack.
 8. **Submit a PR** against the `main` branch.
 
 ### Commit Message Format
