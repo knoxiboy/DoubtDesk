@@ -276,9 +276,9 @@ jobs:
             // Small/xs size NEVER bumps level down.
             // ──────────────────────────────────────────
             if (!hasExistingLevel && isPR) {
-              const sizeLabel = currentLabels.find(l => l.name.startsWith('size/'));
+              const sizeLabel = currentLabels.find(l => l.startsWith('size/'));
               if (sizeLabel) {
-                const sizeName = sizeLabel.name;
+                const sizeName = sizeLabel;
                 const levels = ['level:beginner', 'level:intermediate', 'level:advanced', 'level:critical'];
                 const currentLevelIdx = levels.indexOf(level);
 
@@ -306,7 +306,7 @@ jobs:
             if (!hasExistingLevel && level) {
               try {
                 for (const label of currentLabels) {
-                  const labelNameLower = label.name.toLowerCase();
+                  const labelNameLower = label.toLowerCase();
                   const newLevelLower = level.toLowerCase();
                   
                   // If it's a level label (starts with level:) and is not the level we are currently adding, remove it
@@ -315,9 +315,9 @@ jobs:
                       owner: context.repo.owner,
                       repo: context.repo.repo,
                       issue_number: number,
-                      name: label.name,
+                      name: label,
                     });
-                    console.log(`Removed conflicting level label "${label.name}" before applying new labels`);
+                    console.log(`Removed conflicting level label "${label}" before applying new labels`);
                   }
                 }
               } catch (e) {
