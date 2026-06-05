@@ -26,9 +26,10 @@ interface DoubtRepliesModalProps {
     onClose: () => void;
     onReplyChange?: () => void;
     isTeacher?: boolean;
+    inline?: boolean;
 }
 
-export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChange, isTeacher = false }: DoubtRepliesModalProps) {
+export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChange, isTeacher = false, inline = false }: DoubtRepliesModalProps) {
     const [replies, setReplies] = useState<Reply[]>([]);
     const [pendingReplies, setPendingReplies] = useState<any[]>([]);
     const [pendingRepliesError, setPendingRepliesError] = useState<any>(null);
@@ -63,13 +64,13 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen || inline) {
             fetchReplies();
             const savedName = localStorage.getItem("anonymous_user");
             if (savedName) setUserName(savedName);
             if (savedName === doubt.userName) setIsDoubtOwner(true);
         }
-    }, [isOpen, doubt.id, doubt.userName]);
+    }, [isOpen, doubt.id, doubt.userName, inline]);
 
     useEffect(() => {
         const loadPendingReplies = async () => {
@@ -87,7 +88,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             }
         };
 
-        if (isOpen) {
+        if (isOpen || inline) {
             loadPendingReplies();
             window.addEventListener("sync-queue-updated", loadPendingReplies);
             window.addEventListener("online", loadPendingReplies);
@@ -97,13 +98,14 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             window.removeEventListener("sync-queue-updated", loadPendingReplies);
             window.removeEventListener("online", loadPendingReplies);
         };
-    }, [isOpen, doubt.id]);
+    }, [isOpen, doubt.id, inline]);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [replies]);
 
     useEffect(() => {
+        if (inline) return;
         const handleEsc = (e: KeyboardEvent) => {
             if (e.key === "Escape") onClose();
         };
@@ -111,7 +113,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             window.addEventListener("keydown", handleEsc);
         }
         return () => window.removeEventListener("keydown", handleEsc);
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose, inline]);
 
     const fetchReplies = async () => {
         const storedUserName = localStorage.getItem("anonymous_user");
@@ -619,11 +621,11 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
         );
     };
 
-    if (!isOpen) return null;
+    if (!isOpen && !inline) return null;
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/60 dark:bg-slate-950/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+    const discussionContent = (
+        <>
+            <div className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] w-full flex flex-col overflow-hidden shadow-2xl ${inline ? 'max-w-none h-full min-h-[60vh]' : 'max-w-3xl h-[85vh] animate-in zoom-in-95 duration-200'}`}>
                 {/* Header */}
                 <div className="p-5 sm:p-8 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-white/[0.02]">
                     <div className="flex items-center gap-4">
@@ -640,9 +642,11 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-3 hover:bg-slate-100 dark:hover:bg-white/5 rounded-2xl text-slate-600 dark:text-slate-400 transition-colors" aria-label="Close modal">
-                        <X className="w-6 h-6" />
-                    </button>
+                    {!inline && (
+                        <button onClick={onClose} className="p-3 hover:bg-slate-100 dark:hover:bg-white/5 rounded-2xl text-slate-600 dark:text-slate-400 transition-colors" aria-label="Close modal">
+                            <X className="w-6 h-6" />
+                        </button>
+                    )}
                 </div>
 
                 {/* Tab Navigation - Hidden for 'Ask Teacher' Doubts */}
@@ -1039,6 +1043,16 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 description="This action cannot be undone. The reply will be permanently removed."
                 confirmText="Delete Reply"
             />
+        </>
+    );
+
+    if (inline) {
+        return discussionContent;
+    }
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/60 dark:bg-slate-950/60 backdrop-blur-sm">
+            {discussionContent}
         </div>
     );
 }
