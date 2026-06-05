@@ -4,6 +4,8 @@ import { db } from "@/configs/db";
 import { coverLettersTable } from "@/configs/schema";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { coverLetterSchema } from "@/lib/validations/career";
 
 export async function POST(req: NextRequest) {
     try {
@@ -20,11 +22,9 @@ export async function POST(req: NextRequest) {
         const { errorResponse } = await checkUserBlock(userEmail);
         if (errorResponse) return errorResponse;
 
-        const { jobDescription, userDetails } = await req.json();
-
-        if (!jobDescription || !userDetails) {
-            return NextResponse.json({ error: "Job description and user details are required" }, { status: 400 });
-        }
+        const { errorResponse, data } = await parseAndValidateRequest(req, coverLetterSchema);
+        if (errorResponse) return errorResponse;
+        const { jobDescription, userDetails } = data;
 
         const systemPrompt = `
 You are an expert Career Coach and Professional Resume/Cover Letter Writer.

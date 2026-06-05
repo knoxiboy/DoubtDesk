@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { currentUser } from '@clerk/nextjs/server';
+import { parseAndValidateRequest } from '@/lib/validations/validate';
+import { scriptSchema } from '@/lib/validations/video';
 
 export async function POST(req: Request) {
     try {
@@ -13,10 +15,9 @@ export async function POST(req: Request) {
             apiKey: process.env.GROQ_API_KEY || 'dummy_key',
         });
 
-        const { content } = await req.json();
-        if (!content) {
-            return NextResponse.json({ error: 'Content is required' }, { status: 400 });
-        }
+        const { errorResponse, data } = await parseAndValidateRequest(req, scriptSchema);
+        if (errorResponse) return errorResponse;
+        const { content } = data;
 
         const systemPrompt = `You are a video script writer. Split the following educational explanation into exactly 4-5 scenes for a slide-based video.
 Each scene must have:

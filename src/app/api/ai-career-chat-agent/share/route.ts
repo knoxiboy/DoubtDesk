@@ -5,6 +5,8 @@ import { eq, and } from "drizzle-orm";
 import { db } from "@/configs/db";
 import { sharedChatsTable, chatHistoryTable } from "@/configs/schema";
 import { currentUser } from "@clerk/nextjs/server";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { shareChatSchema } from "@/lib/validations/career-chat";
 
 export async function GET(req: NextRequest) {
     try {
@@ -36,12 +38,9 @@ export async function POST(req: NextRequest) {
         }
 
         const userEmail = clerkUser.primaryEmailAddress.emailAddress;
-        const body = await req.json();
-        const { chatId, shared } = body;
-
-        if (!chatId) {
-            return NextResponse.json({ error: "Chat ID is required" }, { status: 400 });
-        }
+        const { errorResponse, data } = await parseAndValidateRequest(req, shareChatSchema);
+        if (errorResponse) return errorResponse;
+        const { chatId, shared } = data;
 
         // Verify ownership (optional but recommended)
         const chatExists = await db

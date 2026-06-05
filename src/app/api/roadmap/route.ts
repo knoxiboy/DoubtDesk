@@ -4,6 +4,8 @@ import { db } from "@/configs/db";
 import { roadmapsTable } from "@/configs/schema";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { roadmapSchema } from "@/lib/validations/career";
 
 export async function POST(req: NextRequest) {
     try {
@@ -18,11 +20,9 @@ export async function POST(req: NextRequest) {
         const { isBlocked, errorResponse } = await checkUserBlock(userEmail);
         if (isBlocked) return errorResponse;
 
-        const { targetField, timeline, currentLevel, weeklyCommitment } = await req.json();
-
-        if (!targetField || !timeline || !currentLevel) {
-            return NextResponse.json({ error: "Required fields are missing" }, { status: 400 });
-        }
+        const { errorResponse, data } = await parseAndValidateRequest(req, roadmapSchema);
+        if (errorResponse) return errorResponse;
+        const { targetField, timeline, currentLevel, weeklyCommitment } = data;
 
         const systemPrompt = `
 You are an expert Career Coach and Curriculum Designer. 

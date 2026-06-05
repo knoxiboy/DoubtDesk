@@ -4,6 +4,8 @@ import { db } from "@/configs/db";
 import { usersTable, karmaTransactionsTable, userBadgesTable, badgeDefinitionsTable } from "@/configs/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { checkAndAwardBadges } from "@/lib/karma-utils";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { karmaEventSchema } from "@/lib/validations/karma";
 import { currentUser } from "@clerk/nextjs/server";
 
 // ── KARMA LEVEL THRESHOLDS ────────────────────────────────────────────────────
@@ -93,12 +95,9 @@ export async function GET() {
 // ── POST /api/karma ───────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json();
-        const { userEmail, eventType, replyId, doubtId, note } = body;
-
-        if (!eventType) {
-            return NextResponse.json({ error: "Missing required parameter: eventType" }, { status: 400 });
-        }
+        const { errorResponse, data } = await parseAndValidateRequest(req, karmaEventSchema);
+        if (errorResponse) return errorResponse;
+        const { userEmail, eventType, replyId, doubtId, note } = data;
 
         const points = KARMA_POINTS[eventType];
         if (points === undefined) {

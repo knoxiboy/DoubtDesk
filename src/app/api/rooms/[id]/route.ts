@@ -4,6 +4,8 @@ import { classroomsTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';
 import { checkUserBlock } from '@/lib/auth-utils';
 import { buildErrorResponse } from '@/lib/error-handler';
+import { parseAndValidateRequest } from '@/lib/validations/validate';
+import { updateClassroomSchema } from '@/lib/validations/classroom';
 import {
     parseClassroomId,
     requireAuth,
@@ -65,11 +67,9 @@ export async function PATCH(
         const roomId = parseClassroomId(id);
         await requireTeacher(email, roomId);
 
-        const { pedagogyLevel, targetGradeLevel } = await req.json();
-
-        if (pedagogyLevel === undefined || targetGradeLevel === undefined) {
-            return NextResponse.json({ error: 'pedagogyLevel and targetGradeLevel are required' }, { status: 400 });
-        }
+        const { errorResponse, data } = await parseAndValidateRequest(req, updateClassroomSchema);
+        if (errorResponse) return errorResponse;
+        const { pedagogyLevel, targetGradeLevel } = data;
 
         const [updatedRoom] = await db
             .update(classroomsTable)

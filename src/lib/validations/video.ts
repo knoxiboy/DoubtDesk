@@ -8,3 +8,7 @@ export const generateVideoSchema = z.object({
   message: "Either content or imageUrl is required",
   path: ["content"]
 });
+
+export const scriptSchema = z.object({
+  content: trimmedString.min(1).max(5000),
+});
