@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock, Loader2 } from "lucide-react";
+import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock, Loader2, ExternalLink } from "lucide-react";
 import AskDoubt from "./AskDoubt";
 import DoubtRepliesModal from "./DoubtRepliesModal";
 import { toast } from "sonner";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import type { Doubt, Tag } from "@/types";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 
 interface DoubtCardProps {
@@ -44,6 +44,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
     const [isBookmarking, setIsBookmarking] = useState(false);
     const [likes, setLikes] = useState<number>(doubt.likes || 0);
     const searchParams = useSearchParams();
+    const router = useRouter();
     const lastAutoOpenedThread = useRef<string | null>(null);
 
     const isTeacher = role === 'teacher';
@@ -239,7 +240,14 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 space-y-6">
+                <a
+                    href={`/doubts/${doubt.id}`}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        router.push(`/doubts/${doubt.id}`);
+                    }}
+                    className="flex-1 space-y-6 cursor-pointer group/title"
+                >
                     {doubt.content && (
                         <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed mb-6 font-medium line-clamp-4">
                             {doubt.content}
@@ -261,7 +269,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
 
                     {doubt.imageUrl && (
                         <div
-                            onClick={() => setIsFullscreenImageOpen(true)}
+                            onClick={(e) => { e.preventDefault(); setIsFullscreenImageOpen(true); }}
                             className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-900 aspect-video group-hover:border-slate-300 dark:group-hover:border-white/20 transition-colors cursor-zoom-in group/img"
                         >
                             <img
@@ -274,7 +282,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                             </div>
                         </div>
                     )}
-                </div>
+                </a>
 
                 {/* Footer Actions */}
                 {!doubt.isPendingSync && (
@@ -288,6 +296,15 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                 <ThumbsUp className={`w-4 h-4 ${isLiking ? 'animate-pulse' : 'group-hover/btn:scale-110 transition-transform'} ${doubt.hasLiked ? 'fill-blue-400' : ''}`} />
                                 <span className="text-xs font-black">{likes}</span>
                             </button>
+
+                            <a
+                                href={`/doubts/${doubt.id}`}
+                                onClick={(e) => { e.preventDefault(); router.push(`/doubts/${doubt.id}`); }}
+                                className="flex items-center justify-center p-3 rounded-2xl transition-all bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5"
+                                title="Open detail page"
+                            >
+                                <ExternalLink className="w-4 h-4" />
+                            </a>
 
                             {isSignedIn && (
                                 <button
