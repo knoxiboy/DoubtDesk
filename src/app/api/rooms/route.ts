@@ -32,6 +32,8 @@ export async function GET(req: Request) {
                 year: classroomsTable.year,
                 teacherEmail: classroomsTable.teacherEmail,
                 inviteCode: classroomsTable.inviteCode,
+                inviteCodeExpiresAt: classroomsTable.inviteCodeExpiresAt,
+                allowedEmailDomains: classroomsTable.allowedEmailDomains,
                 role: membershipsTable.role,
             })
             .from(classroomsTable)

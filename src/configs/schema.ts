@@ -34,6 +34,8 @@ export const classroomsTable = pgTable("classrooms", {
     year: varchar({ length: 50 }).notNull(),
     teacherEmail: varchar({ length: 255 }).notNull(),
     inviteCode: varchar({ length: 10 }).notNull().unique(),
+    inviteCodeExpiresAt: timestamp("invite_code_expires_at"),
+    allowedEmailDomains: text("allowed_email_domains").array(),
     pedagogyLevel: varchar({ length: 50 }).default("Undergraduate (Freshman)").notNull(),
     targetGradeLevel: integer().default(13).notNull(),
     createdAt: timestamp().defaultNow().notNull(),

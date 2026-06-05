@@ -37,6 +37,8 @@ export async function GET(
                 year: classroomsTable.year,
                 teacherEmail: classroomsTable.teacherEmail,
                 inviteCode: classroomsTable.inviteCode,
+                inviteCodeExpiresAt: classroomsTable.inviteCodeExpiresAt,
+                allowedEmailDomains: classroomsTable.allowedEmailDomains,
                 pedagogyLevel: classroomsTable.pedagogyLevel,
                 targetGradeLevel: classroomsTable.targetGradeLevel,
                 role: membershipsTable.role,
@@ -92,18 +94,34 @@ export async function PATCH(
             return NextResponse.json({ error: 'Forbidden: only the teacher can modify this classroom' }, { status: 403 });
         }
 
-        const { pedagogyLevel, targetGradeLevel } = await req.json();
+        const body = await req.json();
+        const updateData: Record<string, unknown> = {};
 
-        if (pedagogyLevel === undefined || targetGradeLevel === undefined) {
-            return NextResponse.json({ error: 'pedagogyLevel and targetGradeLevel are required' }, { status: 400 });
+        if (body.pedagogyLevel !== undefined) {
+            updateData.pedagogyLevel = body.pedagogyLevel;
+        }
+        if (body.targetGradeLevel !== undefined) {
+            updateData.targetGradeLevel = parseInt(body.targetGradeLevel.toString());
+        }
+        if (body.inviteCodeExpiresAt !== undefined) {
+            updateData.inviteCodeExpiresAt = body.inviteCodeExpiresAt
+                ? new Date(body.inviteCodeExpiresAt)
+                : null;
+        }
+        if (body.allowedEmailDomains !== undefined) {
+            updateData.allowedEmailDomains = body.allowedEmailDomains;
+        }
+        if (body.regenerateInviteCode) {
+            updateData.inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
         }
 
         const [updatedRoom] = await db
             .update(classroomsTable)
-            .set({
-                pedagogyLevel,
-                targetGradeLevel: parseInt(targetGradeLevel.toString()),
-            })
+            .set(updateData)
             .where(eq(classroomsTable.id, roomId))
             .returning();
 

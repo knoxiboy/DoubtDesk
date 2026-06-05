@@ -24,6 +24,9 @@ import {
   Calendar,
   ArrowRight,
   Clock,
+  RefreshCw,
+  Globe,
+  Save,
   Activity,
   Lightbulb,
   Layers,
@@ -65,6 +68,10 @@ interface Classroom {
   year: string;
   teacherEmail: string;
   inviteCode: string;
+  inviteCodeExpiresAt?: string | null;
+  allowedEmailDomains?: string[] | null;
+  pedagogyLevel?: string;
+  targetGradeLevel?: number;
   role: string;
 }
 
@@ -955,6 +962,152 @@ export default function ClassroomPage() {
       )}
 
       {/* INVITE STUDENTS MODAL */}
+      {/* SETTINGS MODAL */}
+      {isSettingsModalOpen && classroom?.role === "teacher" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl bg-white/60 dark:bg-black/60 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-900 w-full max-w-lg rounded-2xl p-6 md:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-slate-900 dark:text-zinc-100">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <h2 className="text-xl font-bold tracking-tight">
+                  Classroom Settings
+                </h2>
+                <p className="text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[10px]">
+                  Invite code & access controls
+                </p>
+              </div>
+              <button
+                onClick={() => setIsSettingsModalOpen(false)}
+                className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-white transition-colors"
+                aria-label="Close modal"
+              >
+                <Plus className="w-5 h-5 rotate-45" />
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              {/* Current Invite Code */}
+              <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 p-4">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                  Current Invite Code
+                </p>
+                <code className="text-2xl font-black text-blue-600 dark:text-blue-400 tracking-wider">
+                  {classroom?.inviteCode}
+                </code>
+              </div>
+
+              {/* Regenerate Invite Code */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                  Regenerate Invite Code
+                </label>
+                <button
+                  onClick={async () => {
+                    const res = await fetch(`/api/rooms/${id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ regenerateInviteCode: true }),
+                    });
+                    if (res.ok) {
+                      const updated = await res.json();
+                      setClassroom(prev => prev ? { ...prev, inviteCode: updated.inviteCode } : prev);
+                      toast.success('Invite code regenerated!');
+                    } else {
+                      const err = await res.json();
+                      toast.error(err.error || 'Failed to regenerate');
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 active:scale-[0.98]"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Regenerate Code
+                </button>
+              </div>
+
+              {/* Invite Code Expiry */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 flex items-center gap-1.5">
+                  <Clock className="w-3 h-3" /> Invite Code Expiry
+                </label>
+                <input
+                  type="datetime-local"
+                  defaultValue={classroom?.inviteCodeExpiresAt
+                    ? new Date(classroom.inviteCodeExpiresAt).toISOString().slice(0, 16)
+                    : ''}
+                  id="expiry-input"
+                  className="w-full rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
+                />
+                <button
+                  onClick={() => {
+                    const input = document.getElementById('expiry-input') as HTMLInputElement;
+                    const val = input?.value;
+                    fetch(`/api/rooms/${id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        inviteCodeExpiresAt: val ? new Date(val).toISOString() : null,
+                      }),
+                    }).then(async (res) => {
+                      if (res.ok) {
+                        const updated = await res.json();
+                        setClassroom(prev => prev ? { ...prev, inviteCodeExpiresAt: updated.inviteCodeExpiresAt } : prev);
+                        toast.success('Expiry updated!');
+                      } else {
+                        const err = await res.json();
+                        toast.error(err.error || 'Failed to update');
+                      }
+                    });
+                  }}
+                  className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 active:scale-[0.98]"
+                >
+                  <Save className="w-3.5 h-3.5" /> Save Expiry
+                </button>
+              </div>
+
+              {/* Allowed Email Domains */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 flex items-center gap-1.5">
+                  <Globe className="w-3 h-3" /> Allowed Email Domains
+                </label>
+                <p className="text-[11px] text-slate-400 dark:text-zinc-500">
+                  Restrict joining to specific email domains (e.g. university.edu). Leave empty to allow any domain.
+                </p>
+                <input
+                  type="text"
+                  defaultValue={(classroom?.allowedEmailDomains || []).join(', ')}
+                  placeholder="e.g. university.edu, college.ac.in"
+                  id="domains-input"
+                  className="w-full rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
+                />
+                <button
+                  onClick={() => {
+                    const input = document.getElementById('domains-input') as HTMLInputElement;
+                    const domains = input?.value
+                      ? input.value.split(',').map(d => d.trim()).filter(Boolean)
+                      : null;
+                    fetch(`/api/rooms/${id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ allowedEmailDomains: domains }),
+                    }).then(async (res) => {
+                      if (res.ok) {
+                        const updated = await res.json();
+                        setClassroom(prev => prev ? { ...prev, allowedEmailDomains: updated.allowedEmailDomains } : prev);
+                        toast.success('Domain restrictions updated!');
+                      } else {
+                        const err = await res.json();
+                        toast.error(err.error || 'Failed to update');
+                      }
+                    });
+                  }}
+                  className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 active:scale-[0.98]"
+                >
+                  <Save className="w-3.5 h-3.5" /> Save Domains
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isCodeModalOpen && classroom?.role === "teacher" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl bg-white/60 dark:bg-black/60 animate-in fade-in duration-300">
           <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-900 w-full max-w-lg rounded-2xl p-6 md:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-slate-900 dark:text-zinc-100">
