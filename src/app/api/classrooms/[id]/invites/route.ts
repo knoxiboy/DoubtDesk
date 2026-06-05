@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs/server";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import { db } from "@/configs/db";
 import {
   classroomInvitesTable,
   classroomsTable,
-  membershipsTable,
 } from "@/configs/schema";
 import { checkUserBlock } from "@/lib/auth-utils";
 import { buildErrorResponse } from "@/lib/error-handler";
@@ -17,6 +15,11 @@ import {
   getInviteExpiry,
   hashInviteToken,
 } from "@/lib/invite-token";
+import {
+  parseClassroomId,
+  requireAuth,
+  requireTeacher,
+} from "@/lib/auth/membership-guard";
 
 export async function POST(
   req: Request,
@@ -29,26 +32,15 @@ export async function POST(
     );
     if (errorResponse) return errorResponse;
 
-    const user = await currentUser();
-    if (!user || !user.primaryEmailAddress?.emailAddress) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const email = user.primaryEmailAddress.emailAddress;
+    const { email } = await requireAuth();
 
     const { isBlocked, errorResponse: blockErrorResponse } =
       await checkUserBlock(email);
     if (isBlocked) return blockErrorResponse;
 
     const { id } = await params;
-    const classroomId = parseInt(id);
-
-    if (isNaN(classroomId)) {
-      return NextResponse.json(
-        { error: "Invalid classroom ID" },
-        { status: 400 },
-      );
-    }
+    const classroomId = parseClassroomId(id);
+    await requireTeacher(email, classroomId);
 
     const [classroom] = await db
       .select()
@@ -59,27 +51,6 @@ export async function POST(
       return NextResponse.json(
         { error: "Classroom not found" },
         { status: 404 },
-      );
-    }
-
-    const [teacherMembership] = await db
-      .select()
-      .from(membershipsTable)
-      .where(
-        and(
-          eq(membershipsTable.userEmail, email),
-          eq(membershipsTable.classroomId, classroomId),
-          eq(membershipsTable.role, "teacher"),
-        ),
-      );
-
-    if (classroom.teacherEmail !== email && !teacherMembership) {
-      return NextResponse.json(
-        {
-          error:
-            "Forbidden: only the classroom teacher can generate invite links",
-        },
-        { status: 403 },
       );
     }
 

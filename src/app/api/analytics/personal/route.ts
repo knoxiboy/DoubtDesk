@@ -1,27 +1,29 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
-import { doubtsTable, usersTable } from '@/configs/schema';
+import { doubtsTable } from '@/configs/schema';
 import { and, eq, desc } from 'drizzle-orm';
-import { currentUser } from '@clerk/nextjs/server';
 import Groq from 'groq-sdk';
+import { buildErrorResponse } from '@/lib/error-handler';
+import {
+    parseClassroomId,
+    requireAuth,
+    requireMembership,
+} from '@/lib/auth/membership-guard';
 
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY || 'dummy_key',
 });
 
 export async function GET(req: Request) {
-    const { searchParams } = new URL(req.url);
-    const classroomIdStr = searchParams.get("classroomId");
-    const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
-
-    if (!classroomId) {
-        return NextResponse.json({ error: "Classroom ID required" }, { status: 400 });
-    }
-
     try {
-        const user = await currentUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        const email = user.primaryEmailAddress?.emailAddress;
+        const { email } = await requireAuth();
+        const { searchParams } = new URL(req.url);
+        const classroomIdStr = searchParams.get("classroomId");
+        if (!classroomIdStr) {
+            return NextResponse.json({ error: "Classroom ID required" }, { status: 400 });
+        }
+        const classroomId = parseClassroomId(classroomIdStr);
+        await requireMembership(email, classroomId);
 
         // Fetch user's doubts in this classroom
         const userDoubts = await db.select({
@@ -33,7 +35,7 @@ export async function GET(req: Request) {
         .where(
             and(
                 eq(doubtsTable.classroomId, classroomId),
-                eq(doubtsTable.userEmail, email!)
+                eq(doubtsTable.userEmail, email)
             )
         )
         .orderBy(desc(doubtsTable.createdAt));
@@ -82,6 +84,11 @@ export async function GET(req: Request) {
         });
 
     } catch (error: unknown) {
+        const { status, body } = buildErrorResponse(error);
+        if (status < 500) {
+            return NextResponse.json(body, { status });
+        }
+
         console.error("Personal Analytics Error:", error);
         return NextResponse.json({ error: "Failed to generate personal insights" }, { status: 500 });
     }

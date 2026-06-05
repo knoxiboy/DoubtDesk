@@ -1,10 +1,8 @@
 import { GET, POST } from '@/app/api/doubts/route';
+import { currentUser } from '@clerk/nextjs/server';
 
 jest.mock('@clerk/nextjs/server', () => ({
-    currentUser: jest.fn().mockImplementation(async () => ({
-        primaryEmailAddress: { emailAddress: 'student@example.com' },
-        fullName: 'Test Student'
-    }))
+    currentUser: jest.fn()
 }));
 
 jest.mock('@/lib/moderation', () => ({
@@ -72,6 +70,7 @@ const mockDoubts = [
         userEmail: 'other@example.com'
     }
 ];
+let mockQueryDoubts = mockDoubts;
 
 const createEmptyChain = () => {
     const chain: any = {
@@ -118,7 +117,7 @@ jest.mock('@/configs/db', () => ({
                 return createEmptyChain();
             }
             // Default: return doubts
-            return createChainWithData(mockDoubts);
+            return createChainWithData(mockQueryDoubts);
         }),
 
         insert: jest.fn().mockImplementation(() => ({
@@ -140,6 +139,25 @@ jest.mock('@/configs/db', () => ({
 }));
 
 describe('Doubts API Endpoints', () => {
+    beforeEach(() => {
+        mockQueryDoubts = mockDoubts;
+        (currentUser as jest.Mock).mockResolvedValue({
+            primaryEmailAddress: { emailAddress: 'student@example.com' },
+            fullName: 'Test Student'
+        });
+    });
+
+    it('GET allows anonymous community doubt reads', async () => {
+        (currentUser as jest.Mock).mockResolvedValue(null);
+
+        const req = new Request('http://localhost/api/doubts?subject=Physics');
+        const res = await GET(req);
+        const json = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(json[0].subject).toBe('Physics');
+    });
+
     it('GET should return list of doubts with pagination', async () => {
         const req = new Request('http://localhost/api/doubts?subject=Physics');
         const res = await GET(req);
@@ -151,6 +169,7 @@ describe('Doubts API Endpoints', () => {
     });
 
     it('GET should support popular sorting', async () => {
+        mockQueryDoubts = [...mockDoubts].sort((a, b) => b.likes - a.likes);
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=popular');
         const res = await GET(req);
         const json = await res.json();
@@ -171,6 +190,7 @@ describe('Doubts API Endpoints', () => {
     });
 
     it('GET should support unsolved filtering', async () => {
+        mockQueryDoubts = mockDoubts.filter((doubt) => doubt.isSolved === 'unsolved');
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=unsolved');
         const res = await GET(req);
         const json = await res.json();

@@ -2,32 +2,41 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
-import { doubtsTable, repliesTable, classroomsTable, usersTable } from "@/configs/schema";
+import { doubtsTable, repliesTable, classroomsTable, membershipsTable, usersTable } from "@/configs/schema";
 import { and, eq, inArray, gte, lte } from "drizzle-orm";
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { DoubtRecord, ReplyRecord } from "@/types";
+import {
+    parseOptionalClassroomId,
+    requireAuth,
+    requireTeacher,
+} from "@/lib/auth/membership-guard";
+import { buildErrorResponse } from "@/lib/error-handler";
 
 export async function GET(req: NextRequest) {
     try {
-        // 1. Authenticate user
-        const { userId } = await auth();
-        if (!userId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        const clerkUser = await currentUser();
-        const email = clerkUser?.primaryEmailAddress?.emailAddress;
-        if (!email) {
-            return NextResponse.json({ error: "No email found for Clerk user" }, { status: 400 });
-        }
+        const { email } = await requireAuth();
 
         // 2. Fetch user and check role
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
         
         // Find if user is a teacher in classrooms even if role field is not fully populated
         const classroomsTaught = await db.select().from(classroomsTable).where(eq(classroomsTable.teacherEmail, email));
+        const teacherMemberships = await db
+            .select({
+                classroomId: membershipsTable.classroomId,
+                role: membershipsTable.role,
+            })
+            .from(membershipsTable)
+            .where(eq(membershipsTable.userEmail, email));
+        const teacherMembershipIds = teacherMemberships
+            .filter((membership) => ["teacher", "owner", "admin"].includes(membership.role))
+            .map((membership) => membership.classroomId);
         
-        const isTeacherOrAdmin = dbUser?.role === 'teacher' || dbUser?.role === 'admin' || classroomsTaught.length > 0;
+        const isTeacherOrAdmin =
+            dbUser?.role === 'teacher' ||
+            dbUser?.role === 'admin' ||
+            classroomsTaught.length > 0 ||
+            teacherMembershipIds.length > 0;
         
         if (!isTeacherOrAdmin) {
             return NextResponse.json({ error: "Forbidden: Teachers or admins only" }, { status: 403 });
@@ -38,7 +47,9 @@ export async function GET(req: NextRequest) {
         // 3. Parse query parameters
         const { searchParams } = new URL(req.url);
         const classroomIdStr = searchParams.get("classroomId");
-        const classroomId = classroomIdStr && classroomIdStr !== "all" ? parseInt(classroomIdStr) : null;
+        const classroomId = classroomIdStr === "all"
+            ? null
+            : parseOptionalClassroomId(classroomIdStr);
         
         const startDateStr = searchParams.get("startDate");
         const endDateStr = searchParams.get("endDate");
@@ -56,7 +67,17 @@ export async function GET(req: NextRequest) {
                 university: classroomsTable.university
             }).from(classroomsTable);
         } else {
-            classroomsList = classroomsTaught.map(c => ({
+            const membershipClassrooms = teacherMembershipIds.length > 0
+                ? await db.select({
+                    id: classroomsTable.id,
+                    name: classroomsTable.name,
+                    university: classroomsTable.university
+                }).from(classroomsTable).where(inArray(classroomsTable.id, teacherMembershipIds))
+                : [];
+            const accessibleClassrooms = new Map(
+                [...classroomsTaught, ...membershipClassrooms].map((classroom) => [classroom.id, classroom])
+            );
+            classroomsList = [...accessibleClassrooms.values()].map(c => ({
                 id: c.id,
                 name: c.name,
                 university: c.university
@@ -66,12 +87,10 @@ export async function GET(req: NextRequest) {
         // Determine which classroom IDs we should query
         let selectedClassroomIds: number[] = [];
         if (classroomId) {
-            // Check if teacher/admin is allowed to see this specific classroom
-            if (role === 'admin' || classroomsList.some(c => c.id === classroomId)) {
-                selectedClassroomIds = [classroomId];
-            } else {
-                return NextResponse.json({ error: "Forbidden: No access to this classroom" }, { status: 403 });
+            if (role !== 'admin') {
+                await requireTeacher(email, classroomId);
             }
+            selectedClassroomIds = [classroomId];
         } else {
             selectedClassroomIds = classroomsList.map(c => c.id);
         }
@@ -259,7 +278,7 @@ export async function GET(req: NextRequest) {
             classroomsList
         });
     } catch (error: unknown) {
-        console.error("Teacher Analytics Endpoint failed:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }
