@@ -397,7 +397,7 @@ export default function ClassroomPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 scrollbar-hide w-full xl:w-auto max-w-full">
+            <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap flex-nowrap pb-1 scrollbar-hide w-full xl:w-auto max-w-full">
               {[
                 { id: "ask-ai", label: "Ask AI", icon: Brain },
                 { id: "community", label: "Community", icon: MessageSquare },
@@ -498,7 +498,7 @@ export default function ClassroomPage() {
                 Classroom Board
               </h2>
 
-              <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800">
+              <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 w-full sm:w-auto overflow-x-auto flex-nowrap scrollbar-hide whitespace-nowrap">
                 <button
                   onClick={() => setDoubtFilter("unsolved")}
                   className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${doubtFilter === "unsolved" ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200"}`}
@@ -730,7 +730,7 @@ export default function ClassroomPage() {
                 )}
               </h2>
 
-              <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800">
+              <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 w-full sm:w-auto overflow-x-auto flex-nowrap scrollbar-hide whitespace-nowrap">
                 <button
                   onClick={() => setDoubtFilter("unsolved")}
                   className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${doubtFilter === "unsolved" ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200"}`}

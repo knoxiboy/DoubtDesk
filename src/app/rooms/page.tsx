@@ -146,18 +146,18 @@ export default function RoomsPage() {
                         </h1>
                     </div>
 
-                    <div className="flex items-center gap-4 shrink-0">
+                    <div className="flex items-center gap-4 shrink-0 w-full sm:w-auto">
                         {appUser?.role === 'teacher' || appUser?.role === 'admin' ? (
                             <button 
                                 onClick={() => setIsCreateModalOpen(true)}
-                                className="group flex items-center gap-3 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-lg shadow-blue-600/10 active:scale-[0.98]"
+                                className="w-full sm:w-auto group flex items-center justify-center gap-3 px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-lg shadow-blue-600/10 active:scale-[0.98]"
                             >
                                 <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" /> New Class
                             </button>
                         ) : (
                             <button 
                                 onClick={() => setIsJoinModalOpen(true)}
-                                className="group flex items-center gap-3 px-6 py-4 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300"
+                                className="w-full sm:w-auto group flex items-center justify-center gap-3 px-6 py-4 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/60 rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300"
                             >
                                 <LinkIcon className="w-4 h-4" /> Join Code
                             </button>
