@@ -1,11 +1,9 @@
 import { GET, POST } from '@/app/api/doubts/route';
 import { db } from '@/configs/db';
+import { currentUser } from '@clerk/nextjs/server';
 
 jest.mock('@clerk/nextjs/server', () => ({
-    currentUser: jest.fn().mockImplementation(async () => ({
-        primaryEmailAddress: { emailAddress: 'student@example.com' },
-        fullName: 'Test Student'
-    }))
+    currentUser: jest.fn()
 }));
 
 jest.mock('@/lib/moderation', () => ({
@@ -73,6 +71,7 @@ const mockDoubts = [
         userEmail: 'other@example.com'
     }
 ];
+let mockQueryDoubts = mockDoubts;
 
 const createEmptyChain = () => {
     const chain: any = {
@@ -119,7 +118,7 @@ jest.mock('@/configs/db', () => ({
                 return createEmptyChain();
             }
             // Default: return doubts
-            return createChainWithData(mockDoubts);
+            return createChainWithData(mockQueryDoubts);
         }),
 
         insert: jest.fn().mockImplementation(() => ({
@@ -141,6 +140,25 @@ jest.mock('@/configs/db', () => ({
 }));
 
 describe('Doubts API Endpoints', () => {
+    beforeEach(() => {
+        mockQueryDoubts = mockDoubts;
+        (currentUser as jest.Mock).mockResolvedValue({
+            primaryEmailAddress: { emailAddress: 'student@example.com' },
+            fullName: 'Test Student'
+        });
+    });
+
+    it('GET allows anonymous community doubt reads', async () => {
+        (currentUser as jest.Mock).mockResolvedValue(null);
+
+        const req = new Request('http://localhost/api/doubts?subject=Physics');
+        const res = await GET(req);
+        const json = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(json.doubts[0].subject).toBe('Physics');
+    });
+
     it('GET should return list of doubts with pagination', async () => {
         (db.select as jest.Mock).mockImplementationOnce(() => createChainWithData([{ count: 2 }]))
                                 .mockImplementationOnce(() => createChainWithData(mockDoubts));
@@ -161,7 +179,6 @@ describe('Doubts API Endpoints', () => {
     it('GET should support popular sorting', async () => {
         (db.select as jest.Mock).mockImplementationOnce(() => createChainWithData([{ count: 2 }]))
                                 .mockImplementationOnce(() => createChainWithData([mockDoubts[1], mockDoubts[0]]));
-
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=popular');
         const res = await GET(req) as Response;
         const json = await res.json();
@@ -187,7 +204,6 @@ describe('Doubts API Endpoints', () => {
     it('GET should support unsolved filtering', async () => {
         (db.select as jest.Mock).mockImplementationOnce(() => createChainWithData([{ count: 1 }]))
                                 .mockImplementationOnce(() => createChainWithData([mockDoubts[0]]));
-
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=unsolved');
         const res = await GET(req) as Response;
         const json = await res.json();
@@ -195,6 +211,61 @@ describe('Doubts API Endpoints', () => {
         expect(res.status).toBe(200);
         expect(json.doubts.length).toBeGreaterThan(0);
         json.doubts.forEach((d: any) => expect(d.isSolved).toBe('unsolved'));
+    });
+
+    it('GET should handle hasMore=true when totalCount > limit', async () => {
+        (db.select as jest.Mock)
+            .mockImplementationOnce(() => createChainWithData([{ count: 3 }]))
+            .mockImplementationOnce(() => createChainWithData(mockDoubts));
+
+        const req = new Request('http://localhost/api/doubts?subject=Physics&limit=2');
+        const res = await GET(req) as Response;
+        const json = await res.json();
+        expect(res.status).toBe(200);
+        expect(json.hasMore).toBe(true);
+        expect(json.totalCount).toBe(3);
+        expect(json.limit).toBe(2);
+    });
+
+    it('GET should handle exact page boundary when totalCount === limit', async () => {
+        (db.select as jest.Mock)
+            .mockImplementationOnce(() => createChainWithData([{ count: 2 }]))
+            .mockImplementationOnce(() => createChainWithData(mockDoubts));
+
+        const req = new Request('http://localhost/api/doubts?subject=Physics&limit=2');
+        const res = await GET(req) as Response;
+        const json = await res.json();
+        expect(res.status).toBe(200);
+        expect(json.hasMore).toBe(false);
+        expect(json.totalCount).toBe(2);
+        expect(json.limit).toBe(2);
+    });
+
+    it('GET should handle empty results when totalCount === 0', async () => {
+        (db.select as jest.Mock)
+            .mockImplementationOnce(() => createChainWithData([{ count: 0 }]))
+            .mockImplementationOnce(() => createChainWithData([]));
+
+        const req = new Request('http://localhost/api/doubts?subject=Physics');
+        const res = await GET(req) as Response;
+        const json = await res.json();
+        expect(res.status).toBe(200);
+        expect(json.doubts.length).toBe(0);
+        expect(json.hasMore).toBe(false);
+        expect(json.totalCount).toBe(0);
+    });
+
+    it('GET should sanitize invalid pagination inputs (page=abc, limit=0, offset=-10)', async () => {
+        (db.select as jest.Mock)
+            .mockImplementationOnce(() => createChainWithData([{ count: 2 }]))
+            .mockImplementationOnce(() => createChainWithData(mockDoubts));
+
+        const req = new Request('http://localhost/api/doubts?page=abc&limit=0&offset=-10');
+        const res = await GET(req) as Response;
+        const json = await res.json();
+        expect(res.status).toBe(200);
+        expect(json.page).toBe(1);
+        expect(json.limit).toBe(20);
     });
 
     it('POST should create a new doubt', async () => {

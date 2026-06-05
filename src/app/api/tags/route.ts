@@ -1,37 +1,27 @@
 import { db } from "@/configs/db";
-import { membershipsTable, tagsTable } from "@/configs/schema";
+import { tagsTable } from "@/configs/schema";
 import { and, desc, eq, ilike, isNull, or, type SQL } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs/server";
+import { buildErrorResponse } from "@/lib/error-handler";
+import {
+    parseOptionalClassroomId,
+    requireAuth,
+    requireMembership,
+} from "@/lib/auth/membership-guard";
 
 const normalizeTagName = (name: string) => name.trim().replace(/\s+/g, " ").toLowerCase();
 
-async function canAccessClassroom(classroomId: number, email?: string | null) {
-    if (!email) return false;
-
-    const [membership] = await db.select().from(membershipsTable).where(
-        and(
-            eq(membershipsTable.userEmail, email),
-            eq(membershipsTable.classroomId, classroomId)
-        )
-    ).limit(1);
-
-    return !!membership;
-}
-
 export async function GET(req: Request) {
     try {
-        const user = await currentUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const { email } = await requireAuth();
 
         const { searchParams } = new URL(req.url);
         const classroomIdParam = searchParams.get("classroomId");
         const query = searchParams.get("q")?.trim();
-        const classroomId = classroomIdParam ? parseInt(classroomIdParam) : null;
-        const email = user.primaryEmailAddress?.emailAddress;
+        const classroomId = parseOptionalClassroomId(classroomIdParam);
 
-        if (classroomId && !(await canAccessClassroom(classroomId, email))) {
-            return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
+        if (classroomId) {
+            await requireMembership(email, classroomId);
         }
 
         const conditions: SQL<unknown>[] = [
@@ -50,27 +40,24 @@ export async function GET(req: Request) {
 
         return NextResponse.json(tags);
     } catch (error) {
-        console.error("Error fetching tags:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }
 
 export async function POST(req: Request) {
     try {
-        const user = await currentUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-        const email = user.primaryEmailAddress?.emailAddress;
+        const { email } = await requireAuth();
         const { name, classroomId: rawClassroomId } = await req.json();
         const normalizedName = normalizeTagName(name || "");
-        const classroomId = rawClassroomId ? parseInt(rawClassroomId.toString()) : null;
+        const classroomId = parseOptionalClassroomId(rawClassroomId);
 
         if (!normalizedName) {
             return NextResponse.json({ error: "Tag name is required" }, { status: 400 });
         }
 
-        if (classroomId && !(await canAccessClassroom(classroomId, email))) {
-            return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
+        if (classroomId) {
+            await requireMembership(email, classroomId);
         }
 
         const [existing] = await db.select().from(tagsTable).where(
@@ -86,15 +73,12 @@ export async function POST(req: Request) {
             name: normalizedName.replace(/\b\w/g, (char) => char.toUpperCase()),
             normalizedName,
             classroomId,
-            createdByEmail: email || null,
+            createdByEmail: email,
         }).returning();
 
         return NextResponse.json(tag, { status: 201 });
     } catch (error: unknown) {
-        console.error("Error saving tag:", error);
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Internal Server Error" },
-            { status: 500 },
-        );
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }

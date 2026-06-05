@@ -1,66 +1,56 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { doubtsTable, repliesTable, membershipsTable, classroomsTable } from '@/configs/schema';
-import { desc, sql, and, isNull, eq, count, countDistinct, ne, inArray } from 'drizzle-orm';
-import { currentUser } from '@clerk/nextjs/server';
+import { desc, sql, and, eq, count, countDistinct, ne, inArray } from 'drizzle-orm';
 import { checkUserBlock } from '@/lib/auth-utils';
+import { buildErrorResponse } from '@/lib/error-handler';
+import {
+    parseOptionalClassroomId,
+    requireAuth,
+    requireMembership,
+} from '@/lib/auth/membership-guard';
 
 export async function GET(req: Request) {
-    const user = await currentUser();
-    if (!user || !user.primaryEmailAddress?.emailAddress) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const email = user.primaryEmailAddress.emailAddress;
-
-    // Check if user is blocked
-    const { isBlocked, errorResponse } = await checkUserBlock(email);
-    if (isBlocked) return errorResponse;
-
-    const { searchParams } = new URL(req.url);
-    const classroomIdStr = searchParams.get("classroomId");
-    const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
-
-    let classroomFilter;
-
-    if (classroomId) {
-        // Verify the user is a member of this classroom
-        const [membership] = await db.select().from(membershipsTable).where(
-            and(
-                eq(membershipsTable.userEmail, email),
-                eq(membershipsTable.classroomId, classroomId)
-            )
-        );
-
-        if (!membership) {
-            return NextResponse.json({ error: 'Access denied: not a member of this classroom' }, { status: 403 });
-        }
-
-        classroomFilter = eq(doubtsTable.classroomId, classroomId);
-    } else {
-        // Get all classrooms user is a member of
-        const userMemberships = await db.select({ classroomId: membershipsTable.classroomId })
-            .from(membershipsTable)
-            .where(eq(membershipsTable.userEmail, email));
-
-        const userClassroomIds = userMemberships.map(m => m.classroomId);
-
-        if (userClassroomIds.length === 0) {
-            return NextResponse.json({
-                trendingDoubts: [],
-                mostAskedTopics: [],
-                solvedStats: [],
-                peakTime: [],
-                engagement: { totalStudents: 0, totalDoubts: 0, totalReplies: 0 },
-                weakTopics: [],
-                topContributors: []
-            });
-        }
-
-        classroomFilter = inArray(doubtsTable.classroomId, userClassroomIds);
-    }
-
     try {
+        const { email } = await requireAuth();
+        const { isBlocked, errorResponse } = await checkUserBlock(email);
+        if (isBlocked) return errorResponse;
+
+        const { searchParams } = new URL(req.url);
+        const classroomId = parseOptionalClassroomId(searchParams.get("classroomId"));
+
+        let classroomFilter;
+
+        if (classroomId) {
+            await requireMembership(email, classroomId);
+            classroomFilter = eq(doubtsTable.classroomId, classroomId);
+        } else {
+            const userMemberships = await db.select({ classroomId: membershipsTable.classroomId })
+                .from(membershipsTable)
+                .where(eq(membershipsTable.userEmail, email));
+
+            const userClassroomIds = userMemberships.map(m => m.classroomId);
+
+            if (userClassroomIds.length === 0) {
+                return NextResponse.json({
+                    trendingDoubts: [],
+                    mostAskedTopics: [],
+                    solvedStats: [],
+                    peakTime: [],
+                    engagement: { totalStudents: 0, totalDoubts: 0, totalReplies: 0 },
+                    weakTopics: [],
+                    topContributors: [],
+                    classroomSettings: {
+                        pedagogyLevel: "Undergraduate (Freshman)",
+                        targetGradeLevel: 13
+                    },
+                    recentAIReplies: []
+                });
+            }
+
+            classroomFilter = inArray(doubtsTable.classroomId, userClassroomIds);
+        }
+
         // Run all queries in parallel to eliminate sequential query latency
         const [
             trendingDoubts,
@@ -241,17 +231,7 @@ export async function GET(req: Request) {
         });
 
     } catch (error: unknown) {
-        console.error('Error fetching analytics:', error);
-        return NextResponse.json({
-            trendingDoubts: [],
-            mostAskedTopics: [],
-            solvedStats: [],
-            peakTime: [],
-            engagement: { totalStudents: 0, totalDoubts: 0, totalReplies: 0 },
-            weakTopics: [],
-            topContributors: [],
-            classroomSettings: { pedagogyLevel: "Undergraduate (Freshman)", targetGradeLevel: 13 },
-            recentAIReplies: []
-        });
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }

@@ -3,6 +3,7 @@ import { db } from "@/configs/db";
 import { notificationsTable } from "@/configs/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { parsePositiveInt } from "@/lib/utils";
 
 export async function GET(req: Request) {
     try {
@@ -17,9 +18,12 @@ export async function GET(req: Request) {
         const pageStr = searchParams.get("page");
         const offsetStr = searchParams.get("offset");
         const limitStr = searchParams.get("limit");
-        const page = pageStr ? parseInt(pageStr, 10) : 1;
-        const limit = limitStr ? parseInt(limitStr, 10) : 20;
-        const offset = offsetStr ? parseInt(offsetStr, 10) : (page - 1) * limit;
+
+        const limit = parsePositiveInt(limitStr, 20);
+        const offset = offsetStr
+            ? parsePositiveInt(offsetStr, 0)
+            : (pageStr ? (parsePositiveInt(pageStr, 1) - 1) * limit : 0);
+        const page = Math.floor(offset / limit) + 1;
 
         // Calculate total count globally
         const [totalCountRow] = await db
@@ -42,7 +46,10 @@ export async function GET(req: Request) {
         const notifications = await db.select()
             .from(notificationsTable)
             .where(eq(notificationsTable.userEmail, userEmail))
-            .orderBy(desc(notificationsTable.createdAt))
+            .orderBy(
+                desc(notificationsTable.createdAt),
+                desc(notificationsTable.id)
+            )
             .limit(limit)
             .offset(offset);
 

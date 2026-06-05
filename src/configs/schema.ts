@@ -27,17 +27,23 @@ export const usersTable = pgTable("users", {
     createdAt: timestamp().defaultNow().notNull(),
 });
 
-export const classroomsTable = pgTable("classrooms", {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    name: varchar({ length: 255 }).notNull(),
-    university: varchar({ length: 255 }).notNull(),
-    year: varchar({ length: 50 }).notNull(),
-    teacherEmail: varchar({ length: 255 }).notNull(),
-    inviteCode: varchar({ length: 10 }).notNull().unique(),
-    pedagogyLevel: varchar({ length: 50 }).default("Undergraduate (Freshman)").notNull(),
-    targetGradeLevel: integer().default(13).notNull(),
-    createdAt: timestamp().defaultNow().notNull(),
-});
+export const classroomsTable = pgTable(
+    "classrooms",
+    {
+        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        name: varchar({ length: 255 }).notNull(),
+        university: varchar({ length: 255 }).notNull(),
+        year: varchar({ length: 50 }).notNull(),
+        teacherEmail: varchar({ length: 255 }).notNull(),
+        inviteCode: varchar({ length: 10 }).notNull().unique(),
+        pedagogyLevel: varchar({ length: 50 }).default("Undergraduate (Freshman)").notNull(),
+        targetGradeLevel: integer().default(13).notNull(),
+        createdAt: timestamp().defaultNow().notNull(),
+    },
+    (table) => ({
+        teacherEmailIndex: index("classrooms_teacherEmail_idx").on(table.teacherEmail),
+    }),
+);
 
 export const membershipsTable = pgTable("memberships", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -192,6 +198,10 @@ export const doubtsTable = pgTable("doubts", {
         subjectIndex: index("subject_idx").on(table.subject),
         createdAtIndex: index("idx_doubts_created").on(table.createdAt),
         isSolvedIndex: index("idx_doubts_solved").on(table.isSolved),
+        userEmailClassroomIdIndex: index("doubts_userEmail_classroomId_idx").on(
+            table.userEmail,
+            table.classroomId,
+        ),
         userEmailFk: foreignKey({
             columns: [table.userEmail],
             foreignColumns: [usersTable.email],
@@ -304,6 +314,10 @@ export const moderationLogsTable = pgTable("moderation_logs", {
     status: varchar({ length: 20 }).default("pending").notNull(),
     createdAt: timestamp().defaultNow().notNull(),
 }, (table) => ({
+    userEmailCreatedAtIndex: index("moderation_logs_userEmail_createdAt_idx").on(
+        table.userEmail,
+        table.createdAt,
+    ),
     userEmailFk: foreignKey({
         columns: [table.userEmail],
         foreignColumns: [usersTable.email],

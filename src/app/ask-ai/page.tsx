@@ -14,6 +14,13 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
+import {
+    AI_IMAGE_ALLOWED_MIME_TYPES,
+    AI_IMAGE_ALLOWED_TYPES_LABEL,
+    AI_IMAGE_MAX_BYTES,
+    AI_IMAGE_MAX_SIZE_LABEL,
+    isAllowedAiImageMimeType,
+} from '@/lib/ai-image-validation';
 import 'katex/dist/katex.min.css';
 
 type InputMode = 'text' | 'image';
@@ -85,10 +92,40 @@ export default function AskAIPage() {
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
+        const input = e.currentTarget;
+        const file = input.files?.[0];
         if (!file) return;
+
+        setErrorMsg(null);
+        setErrorCode(null);
+
+        if (!isAllowedAiImageMimeType(file.type)) {
+            setErrorMsg(`Please upload a ${AI_IMAGE_ALLOWED_TYPES_LABEL} image.`);
+            input.value = '';
+            return;
+        }
+
+        if (file.size > AI_IMAGE_MAX_BYTES) {
+            setErrorMsg(`Images must be ${AI_IMAGE_MAX_SIZE_LABEL} or smaller.`);
+            setErrorCode('IMAGE_TOO_LARGE');
+            input.value = '';
+            return;
+        }
+
         const reader = new FileReader();
-        reader.onloadend = () => setImageBase64(reader.result as string);
+        reader.onerror = () => {
+            setErrorMsg('Could not read this image. Please try another file.');
+            input.value = '';
+        };
+        reader.onloadend = () => {
+            if (typeof reader.result === 'string') {
+                setImageBase64(reader.result);
+                return;
+            }
+
+            setErrorMsg('Could not read this image. Please try another file.');
+            input.value = '';
+        };
         reader.readAsDataURL(file);
     };
 
@@ -374,7 +411,7 @@ export default function AskAIPage() {
                                 </>
                             ) : (
                                 <>
-                                    <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+                                    <input type="file" accept={AI_IMAGE_ALLOWED_MIME_TYPES.join(',')} className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
                                     {!imageBase64 ? (
                                         <button
                                             onClick={() => fileInputRef.current?.click()}
@@ -385,7 +422,7 @@ export default function AskAIPage() {
                                             </div>
                                             <div className="text-center">
                                                 <p className="text-slate-900 dark:text-white font-bold">Click to upload image</p>
-                                                <p className="text-slate-500 dark:text-slate-500 text-sm mt-1">PNG, JPG, WEBP · Max 10MB</p>
+                                                <p className="text-slate-500 dark:text-slate-500 text-sm mt-1">{AI_IMAGE_ALLOWED_TYPES_LABEL} · Max {AI_IMAGE_MAX_SIZE_LABEL}</p>
                                             </div>
                                         </button>
                                     ) : (

@@ -11,6 +11,8 @@ import { useInView } from "react-intersection-observer";
 import { Doubt } from "@/types";
 import { useUser } from "@clerk/nextjs";
 
+const PAGE_SIZE = 20;
+
 export default function PublicRoomsPage() {
     const { isSignedIn } = useUser();
     const pathname = usePathname();
@@ -77,7 +79,7 @@ export default function PublicRoomsPage() {
     const getKey = (pageIndex: number, previousPageData: any) => {
         if (previousPageData) {
             const hasMore = Array.isArray(previousPageData)
-                ? previousPageData.length === 20
+                ? previousPageData.length === PAGE_SIZE
                 : previousPageData.hasMore;
             if (!hasMore) return null;
         }
@@ -108,7 +110,7 @@ export default function PublicRoomsPage() {
 
         if (userName) params.append("userName", userName);
         params.append("page", (pageIndex + 1).toString());
-        params.append("limit", "20");
+        params.append("limit", String(PAGE_SIZE));
         
         return `/api/doubts?${params.toString()}`;
     };
@@ -122,7 +124,15 @@ export default function PublicRoomsPage() {
         revalidateFirstPage: false
     });
 
-    const doubts = (data ? data.flatMap((page: any) => Array.isArray(page) ? page : (page.doubts || [])) : []) as Doubt[];
+    const doubts = (data
+        ? data.flatMap((page: any) =>
+            page
+              ? Array.isArray(page)
+                ? page
+                : (page.doubts || [])
+              : []
+          )
+        : []) as Doubt[];
     
     // Apply local filters to pending doubts so they match the active view
     const matchingPendingDoubts = pendingDoubts.filter((d) => {
@@ -178,7 +188,7 @@ export default function PublicRoomsPage() {
     const isReachingEnd =
         data &&
         (Array.isArray(lastPage)
-            ? lastPage.length < 20
+            ? lastPage.length < PAGE_SIZE
             : !lastPage?.hasMore);
 
     const { ref: loadMoreRef, inView } = useInView();

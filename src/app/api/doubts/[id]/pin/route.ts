@@ -1,6 +1,11 @@
 import { db } from "@/configs/db";
-import { doubtsTable, classroomsTable } from "@/configs/schema";
+import {
+    doubtsTable,
+    classroomsTable,
+    membershipsTable,
+    } from "@/configs/schema";
 import { and, eq, count } from "drizzle-orm";
+import { canTeach } from "@/lib/auth/membership-guard";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 
@@ -20,11 +25,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             return NextResponse.json({ error: "Only classroom doubts can be pinned" }, { status: 400 });
         }
 
-        const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId)).limit(1);
-        if (!room || room.teacherEmail !== email) {
-            return NextResponse.json({ error: "Only the teacher can pin doubts" }, { status: 403 });
-        }
+        const [membership] = await db
+        .select()
+        .from(membershipsTable)
+        .where(
+            and(
+                eq(membershipsTable.userEmail, email),
+                eq(membershipsTable.classroomId, doubt.classroomId)
+            )
+        );
 
+        if (!membership || !canTeach(membership.role)) {
+            return NextResponse.json(
+                { error: "Insufficient permissions to pin doubts" },
+                { status: 403 }
+            );
+        }
+            
         // Check pin count
         const [pinCount] = await db.select({ value: count() })
             .from(doubtsTable)
@@ -62,11 +79,24 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             return NextResponse.json({ error: "Only classroom doubts can be pinned" }, { status: 400 });
         }
 
-        const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId)).limit(1);
-        if (!room || room.teacherEmail !== email) {
-            return NextResponse.json({ error: "Only the teacher can unpin doubts" }, { status: 403 });
+        const [membership] = await db
+        .select()
+        .from(membershipsTable)
+        .where(
+            and(
+                eq(membershipsTable.userEmail, email),
+                eq(membershipsTable.classroomId, doubt.classroomId)
+            )
+        );
+
+        if (!membership || !canTeach(membership.role)) {
+            return NextResponse.json(
+                { error: "Insufficient permissions to unpin doubts" },
+                { status: 403 }
+            );
         }
 
+        
         const updated = await db.update(doubtsTable)
             .set({ isPinned: false })
             .where(eq(doubtsTable.id, doubtId))

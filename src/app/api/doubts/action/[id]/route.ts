@@ -8,6 +8,7 @@ import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { updateDoubtActionSchema } from "@/lib/validations/doubt";
 import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubtStatus";
 import type { Tag } from "@/types";
+import { canTeach } from "@/lib/auth/membership-guard";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -45,9 +46,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const isOwner = email && doubt.userEmail === email;
         let isTeacher = false;
 
-        if (doubt.classroomId) {
-            const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId));
-            isTeacher = !!(room && email && room.teacherEmail === email);
+        if (doubt.classroomId && email) {
+            const [membership] = await db
+            .select()
+            .from(membershipsTable)
+            .where(
+                and(
+                    eq(membershipsTable.userEmail, email),
+                    eq(membershipsTable.classroomId, doubt.classroomId)
+                )
+            );
+
+            isTeacher = !!(membership && canTeach(membership.role));    
         }
 
         if (action === "like") {
@@ -255,9 +265,18 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         const isOwner = email && doubt.userEmail === email;
         let isTeacher = false;
 
-        if (doubt.classroomId) {
-            const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId));
-            isTeacher = !!(room && email && room.teacherEmail === email);
+        if (doubt.classroomId && email) {
+            const [membership] = await db
+            .select()
+            .from(membershipsTable)
+            .where(
+                and(
+                    eq(membershipsTable.userEmail, email),
+                    eq(membershipsTable.classroomId, doubt.classroomId)
+                )
+            );
+
+            isTeacher = !!(membership && canTeach(membership.role));
         }
 
         // Only owner or teacher can delete
