@@ -41,19 +41,25 @@ export async function POST(req: Request) {
     }
 
     // 1) Fast path: embedding + vector similarity search (pgvector)
+    // Only short-circuit when semantic search actually returns usable results.
+    // Empty results can mean embedding generation failed (safeGenerateEmbedding -> null)
+    // or no candidate passed thresholds; in those cases we must fall back to the LLM.
     try {
       const similarDoubts = await findSemanticDuplicates({
         content,
         classroomId: classroomId ?? null,
         type: "community",
-        similarityThreshold: 0.8,
+        similarityThreshold: 80, // 0..100 percentage contract
         topK: 5,
       });
 
-      return NextResponse.json({ similarDoubts });
+      if (similarDoubts.length > 0) {
+        return NextResponse.json({ similarDoubts });
+      }
     } catch (err) {
       console.error("Embedding similarity path failed, falling back to LLM:", err);
     }
+
 
     // 2) Fallback: Fetch the last 50 doubts from the same room/community
     const recentDoubts = await db

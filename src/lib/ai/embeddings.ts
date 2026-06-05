@@ -31,11 +31,15 @@ async function generateGroqEmbedding(textInput: string): Promise<number[]> {
   });
 
   const vector = (res.data?.[0]?.embedding || []) as number[];
-  if (!Array.isArray(vector) || vector.length !== EMBEDDING_DIMENSIONS) {
-    // Be lenient if Groq returns different dims; still return what we got.
-    if (!Array.isArray(vector) || vector.length === 0) {
-      throw new Error("Groq returned empty embedding");
-    }
+
+  if (!Array.isArray(vector) || vector.length === 0) {
+    throw new Error("Groq returned empty embedding");
+  }
+
+  if (vector.length !== EMBEDDING_DIMENSIONS) {
+    throw new Error(
+      `Groq returned embedding dimension ${vector.length}, expected ${EMBEDDING_DIMENSIONS}`,
+    );
   }
 
   return vector;
@@ -107,8 +111,14 @@ export async function findSemanticDuplicates(params: {
     sql`${doubtsTable.embedding} IS NOT NULL`,
   );
 
-  // Cosine similarity = 1 - (embedding <=> query)
-  const similarityExpr = sql<number>`(1 - (${doubtsTable.embedding} <=> ${queryVec}))`;
+  // pgvector cosine distance: (embedding <=> query) returns distance in [0..2] depending on normalization.
+  // Existing code treated (1 - distance) as similarity, which is incorrect for a 0..100 % contract.
+  // Convert cosine similarity (approx in [0..1]) to a 0..100 percentage.
+  // Note: We clamp to [0,100] defensively.
+  const similarityExpr = sql<number>`(
+    greatest(0, least(100, (1 - (${doubtsTable.embedding} <=> ${queryVec})) * 100))
+  )`;
+
 
 
 
