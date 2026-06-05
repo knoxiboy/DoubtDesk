@@ -93,7 +93,7 @@ Always focus on helping the user move one step closer to their career goal.
             },
             {
                 headers: {
-                    "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+                    "Authorization": `Bearer ${process.env.GROQ_API_KEY || 'dummy_key'}`,
                     "Content-Type": "application/json",
                 },
             }

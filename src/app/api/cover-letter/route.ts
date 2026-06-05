@@ -63,7 +63,7 @@ Write a professional cover letter based on these details.
             },
             {
                 headers: {
-                    "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+                    "Authorization": `Bearer ${process.env.GROQ_API_KEY || 'dummy_key'}`,
                     "Content-Type": "application/json",
                 },
             }
