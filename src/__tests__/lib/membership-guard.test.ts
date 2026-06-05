@@ -17,7 +17,7 @@ jest.mock("@clerk/nextjs/server", () => ({
 const membershipResults: Array<Record<string, string>[]> = [];
 
 const createMembershipQuery = () => {
-    const query = {
+    const query: any = {
         from: jest.fn(() => query),
         where: jest.fn(() => query),
         then: (resolve: (value: Record<string, string>[]) => unknown) =>
@@ -58,7 +58,7 @@ describe("membership guard", () => {
     it("rejects unauthenticated requests with a 401 ApiError", async () => {
         currentUserMock.mockResolvedValue(null);
 
-        await expect(requireAuth()).rejects.toMatchObject<ApiError>({
+        await expect(requireAuth()).rejects.toMatchObject({
             statusCode: 401,
             message: "Unauthorized",
         });
@@ -67,7 +67,7 @@ describe("membership guard", () => {
     it("rejects authenticated users without a primary email with a 401 ApiError", async () => {
         currentUserMock.mockResolvedValue({ primaryEmailAddress: null } as never);
 
-        await expect(requireAuth()).rejects.toMatchObject<ApiError>({
+        await expect(requireAuth()).rejects.toMatchObject({
             statusCode: 401,
             message: "Unauthorized",
         });
@@ -94,7 +94,7 @@ describe("membership guard", () => {
 
         await expect(
             requireMembership("outsider@example.com", 7),
-        ).rejects.toMatchObject<ApiError>({
+        ).rejects.toMatchObject({
             statusCode: 403,
             message: "Access denied to this classroom",
         });
@@ -118,7 +118,7 @@ describe("membership guard", () => {
 
         await expect(
             requireTeacher("student@example.com", 7),
-        ).rejects.toMatchObject<ApiError>({ statusCode: 403 });
+        ).rejects.toMatchObject({ statusCode: 403 });
         await expect(
             requireTeacher("teacher@example.com", 7),
         ).resolves.toEqual({ role: "teacher" });

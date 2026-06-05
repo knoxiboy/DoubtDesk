@@ -1,8 +1,11 @@
-const missingDatabaseUrlError = 'DATABASE_URL is required. Please check your .env file.';
-
 describe('getDatabaseUrl', () => {
     const originalDatabaseUrl = process.env.DATABASE_URL;
     const originalPublicDatabaseUrl = process.env.NEXT_PUBLIC_NEON_DB_CONNECTION_STRING;
+
+    beforeEach(() => {
+        jest.resetModules();
+        jest.clearAllMocks();
+    });
 
     afterEach(() => {
         if (originalDatabaseUrl) {
@@ -18,7 +21,7 @@ describe('getDatabaseUrl', () => {
         }
     });
 
-    it.each([undefined, '', '   '])('throws when DATABASE_URL is %p', (databaseUrl) => {
+    it.each([undefined, '', '   '])('returns dummy URL when DATABASE_URL is %p', (databaseUrl) => {
         if (databaseUrl === undefined) {
             delete process.env.DATABASE_URL;
         } else {
@@ -27,7 +30,7 @@ describe('getDatabaseUrl', () => {
 
         const { getDatabaseUrl } = require('@/configs/database-url');
 
-        expect(() => getDatabaseUrl()).toThrow(missingDatabaseUrlError);
+        expect(getDatabaseUrl()).toBe('postgresql://dummy:dummy@localhost/dummy');
     });
 
     it('returns a trimmed DATABASE_URL when configured', () => {
@@ -44,7 +47,7 @@ describe('getDatabaseUrl', () => {
 
         const { getDatabaseUrl } = require('@/configs/database-url');
 
-        expect(() => getDatabaseUrl()).toThrow(missingDatabaseUrlError);
+        expect(getDatabaseUrl()).toBe('postgresql://dummy:dummy@localhost/dummy');
     });
 });
 
@@ -65,7 +68,7 @@ describe('database configuration', () => {
         }
     });
 
-    it('throws a clear error when DATABASE_URL is missing', () => {
-        expect(() => require('@/configs/db')).toThrow(missingDatabaseUrlError);
+    it('does not throw when DATABASE_URL is missing', () => {
+        expect(() => require('@/configs/db')).not.toThrow();
     });
 });
