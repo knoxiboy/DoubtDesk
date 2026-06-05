@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getScrollBehavior } from "@/lib/scroll-to-section";
 
 type ScrollToTopButtonProps = {
   showProgress?: boolean;
@@ -48,14 +49,22 @@ export default function ScrollToTopButton({
   if (!isVisible) return null;
 
   const circumference = 2 * Math.PI * 24;
+  const scrollToTop = () =>
+    window.scrollTo({ top: 0, behavior: getScrollBehavior() });
+
+  const focusRingClass =
+    "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background";
 
   if (showProgressOnHome) {
     return (
       <button
         type="button"
-        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        onClick={scrollToTop}
         aria-label="Scroll to top"
-        className="fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center"
+        className={cn(
+          "fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full",
+          focusRingClass
+        )}
       >
         <svg
           className="absolute top-0 left-0 h-14 w-14 -rotate-90"
@@ -100,12 +109,12 @@ export default function ScrollToTopButton({
   return (
     <button
       type="button"
-      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      onClick={scrollToTop}
       aria-label="Scroll to top"
       className={cn(
         "fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-background text-foreground shadow-lg transition-all",
         "hover:-translate-y-1 hover:bg-accent hover:text-accent-foreground",
-        "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
+        focusRingClass,
         "dark:border-white/10 dark:bg-card dark:shadow-black/20"
       )}
     >

@@ -1,3 +1,10 @@
+export function getScrollBehavior(): ScrollBehavior {
+  const prefersReducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+  return prefersReducedMotion ? "auto" : "smooth";
+}
+
 export function scrollToSection(
   targetId: string,
   options?: { updateHash?: boolean }
@@ -10,7 +17,7 @@ export function scrollToSection(
   const top =
     target.getBoundingClientRect().top + window.scrollY - headerHeight;
 
-  window.scrollTo({ top, behavior: "smooth" });
+  window.scrollTo({ top, behavior: getScrollBehavior() });
 
   if (options?.updateHash !== false) {
     history.pushState(null, "", `#${targetId}`);
