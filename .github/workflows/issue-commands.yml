@@ -1,10 +1,10 @@
-name: Issue Assignment Handler
+name: Issue Commands
 
-# Handles the full assignment lifecycle:
-#   1. Contributor comments /assign  → add needs-maintainer-approval label + ack comment
-#   2. Maintainer comments /assign @user → assign user, remove approval label, confirm
-#   3. Maintainer comments /duplicate #N → mark duplicate, close as not_planned
-#   4. Issue is assigned (any method) → remove needs-maintainer-approval label
+# Single source of truth for all issue comment commands:
+#   /assign        → contributor requests assignment
+#   /assign @user  → maintainer assigns a user
+#   /duplicate #N  → maintainer marks duplicate
+# Also handles: issue assigned event → cleanup labels
 
 on:
   issue_comment:
@@ -15,8 +15,8 @@ on:
 permissions: {}
 
 jobs:
-  # ── Contributor requests assignment (/assign with no @user) ──────────────────
-  contributor_assign_request:
+  # ── Contributor requests assignment (/assign without @user) ──────────────────
+  contributor-request:
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -24,16 +24,18 @@ jobs:
       github.event_name == 'issue_comment' &&
       !github.event.issue.pull_request &&
       contains(github.event.comment.body, '/assign') &&
-      !contains(github.event.comment.body, '/assign @')
+      !contains(github.event.comment.body, '/assign @') &&
+      !contains(github.event.comment.body, '/duplicate')
     steps:
-      - name: Acknowledge assignment request
-        uses: actions/github-script@v6
+      - name: Acknowledge assignment request (idempotent)
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const commenter = context.payload.comment.user.login;
+            const issueNumber = context.issue.number;
 
-            // Ignore if commenter is a maintainer — they use /assign @user instead
+            // Skip if commenter is a maintainer
             try {
               const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
                 owner: context.repo.owner,
@@ -45,45 +47,77 @@ jobs:
                 return;
               }
             } catch (e) {
-              console.log('Could not fetch permission level.', e);
+              console.log('Could not fetch permission level:', e.message);
             }
 
+            // Check if already assigned to someone
+            const { data: issue } = await github.rest.issues.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+            });
+
+            if (issue.assignees && issue.assignees.length > 0) {
+              const assigneeNames = issue.assignees.map(a => `@${a.login}`).join(', ');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: `Hi @${commenter}, this issue is already assigned to ${assigneeNames}. Please look for other open issues to work on! 🙏`,
+              });
+              return;
+            }
+
+            // Check idempotency: don't post duplicate ack if we already replied to this user
+            const marker = `<!-- assign-ack-${commenter} -->`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+            });
+            if (comments.some(c => c.body.includes(marker))) {
+              console.log(`Already acknowledged assignment request from ${commenter}.`);
+              return;
+            }
+
+            // Add needs-maintainer-approval label
             try {
               await github.rest.issues.addLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number,
+                issue_number: issueNumber,
                 labels: ['needs-maintainer-approval'],
               });
             } catch (e) {
-              console.log('Could not add label (may not exist yet).', e);
+              console.log('Could not add label:', e.message);
             }
 
+            // Post acknowledgement
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `Hello @${commenter}! 👋 Thanks for your interest in working on this issue.\n\nWe have automatically notified the maintainers for you. They will review your request and officially assign the issue to you shortly if it's available.\n\n**Note:** Please do not start working or raise a pull request until you are officially assigned!`,
+              issue_number: issueNumber,
+              body: `${marker}\nHello @${commenter}! 👋 Thanks for your interest in working on this issue.\n\nWe have automatically notified the maintainers for you. They will review your request and officially assign the issue to you shortly if it's available.\n\n**Note:** Please do not start working or raise a pull request until you are officially assigned!`,
             });
 
-  # ── Maintainer assigns a user (/assign @username) ────────────────────────────
-  maintainer_assign_command:
+  # ── Maintainer assigns user (/assign @username) ─────────────────────────────
+  maintainer-assign:
     runs-on: ubuntu-latest
     permissions:
       issues: write
-      pull-requests: write
     if: |
       github.event_name == 'issue_comment' &&
       !github.event.issue.pull_request &&
       contains(github.event.comment.body, '/assign @')
     steps:
       - name: Assign user via maintainer command
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const commenter = context.payload.comment.user.login;
 
+            // Verify maintainer
             try {
               const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
                 owner: context.repo.owner,
@@ -92,23 +126,40 @@ jobs:
               });
               if (!['admin', 'write'].includes(perm.permission)) {
                 console.log(`${commenter} is not a maintainer.`);
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: `@${commenter} Only maintainers can use the \`/assign @user\` command.`,
+                });
                 return;
               }
             } catch (e) {
               return;
             }
 
-            const match = context.payload.comment.body.match(/\/assign\s+@([a-zA-Z0-9-]+)/);
+            const match = context.payload.comment.body.match(/\/assign\s+@([a-zA-Z0-9_-]+)/);
             if (!match) return;
             const assignee = match[1];
 
-            await github.rest.issues.addAssignees({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              assignees: [assignee],
-            });
+            try {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                assignees: [assignee],
+              });
+            } catch (e) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `❌ Could not assign @${assignee}: ${e.message}`,
+              });
+              return;
+            }
 
+            // Remove approval label
             try {
               await github.rest.issues.removeLabel({
                 owner: context.repo.owner,
@@ -122,11 +173,11 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `Assigned @${assignee} to this issue! Happy coding! 🚀`,
+              body: `✅ Assigned @${assignee} to this issue! Happy coding! 🚀`,
             });
 
-  # ── Maintainer marks duplicate (/duplicate #N) ───────────────────────────────
-  maintainer_duplicate_command:
+  # ── Maintainer marks duplicate (/duplicate #N) ──────────────────────────────
+  maintainer-duplicate:
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -135,13 +186,14 @@ jobs:
       !github.event.issue.pull_request &&
       contains(github.event.comment.body, '/duplicate #')
     steps:
-      - name: Mark issue as duplicate and close
-        uses: actions/github-script@v6
+      - name: Mark as duplicate and close
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const commenter = context.payload.comment.user.login;
 
+            // Verify maintainer
             try {
               const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
                 owner: context.repo.owner,
@@ -171,7 +223,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `Hi there! Thanks for your contribution. However, this issue has been marked as a **duplicate** of #${dupNumber}. We are closing it to keep our tracker organized. Please search existing issues before opening new ones!`,
+              body: `This issue has been marked as a **duplicate** of #${dupNumber}. Closing to keep our tracker organized. Please search existing issues before opening new ones!`,
             });
 
             await github.rest.issues.update({
@@ -182,15 +234,15 @@ jobs:
               state_reason: 'not_planned',
             });
 
-  # ── Issue assigned (any method) → remove approval label ──────────────────────
-  remove_approval_label_on_assign:
+  # ── Issue assigned → remove approval label ──────────────────────────────────
+  cleanup-on-assign:
     runs-on: ubuntu-latest
     permissions:
       issues: write
     if: github.event_name == 'issues' && github.event.action == 'assigned'
     steps:
       - name: Remove needs-maintainer-approval label
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

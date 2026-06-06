@@ -26,7 +26,6 @@ export const detectConfusionSpikes = inngest.createFunction(
     { 
         id: "detect-confusion-spikes", 
         name: "Detect Confusion Spikes",
-        // Native architectural debounce drops back-to-back spam requests gracefully
         debounce: {
             key: "event.data.classroomId",
             period: "60s"

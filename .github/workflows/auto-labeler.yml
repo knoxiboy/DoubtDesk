@@ -1,4 +1,4 @@
-name: GSSoC Auto Labeler
+name: Auto Labeler
 
 on:
   issues:
@@ -9,14 +9,14 @@ on:
 permissions: {}
 
 jobs:
-  label_gssoc:
+  label:
     runs-on: ubuntu-latest
     permissions:
       issues: write
       pull-requests: write
     steps:
-      - name: Intelligent Auto-Labeling
-        uses: actions/github-script@v6
+      - name: Intelligent auto-labeling
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -28,33 +28,33 @@ jobs:
             const combined = title + ' ' + body;
             const number = item.number;
 
-            // Fetch current labels on the issue/PR first
-            let currentLabels = [];
+            // ── Fetch current labels ──────────────────────────────────
+            let currentLabelObjects = [];
             try {
               const { data } = await github.rest.issues.listLabelsOnIssue({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: number,
               });
-              currentLabels = data.map(l => l.name);
+              currentLabelObjects = data;
             } catch (e) {
               console.log(`Error fetching current labels: ${e.message}`);
             }
 
-            const hasExistingLevel = currentLabels.some(name => name.toLowerCase().startsWith('level:'));
+            const currentLabelNames = currentLabelObjects.map(l => l.name);
+            const hasExistingLevel = currentLabelNames.some(
+              name => name.toLowerCase().startsWith('level:')
+            );
 
-            // Helper to check if a keyword matches as a distinct word in the text
+            // ── Helper: word boundary match ───────────────────────────
             function hasWord(text, word) {
               const escaped = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-              const regex = new RegExp('\\b' + escaped + '\\b', 'i');
-              return regex.test(text);
+              return new RegExp('\\b' + escaped + '\\b', 'i').test(text);
             }
 
             const labelsToAdd = ["gssoc'26"];
 
-            // ──────────────────────────────────────────
-            // 1. TYPE DETECTION (title + body analysis)
-            // ──────────────────────────────────────────
+            // ── 1. TYPE DETECTION ─────────────────────────────────────
             const typeSignals = {
               'type:security': [
                 'idor', 'xss', 'csrf', 'injection', 'vulnerability', 'cve',
@@ -113,8 +113,7 @@ jobs:
               if (score > 0) detectedTypes.push({ label, score });
             }
             detectedTypes.sort((a, b) => b.score - a.score);
-            
-            // Add top 1-2 type labels (primary type + secondary if strong signal)
+
             if (detectedTypes.length > 0) {
               labelsToAdd.push(detectedTypes[0].label);
               if (detectedTypes.length > 1 && detectedTypes[1].score >= 2) {
@@ -122,26 +121,24 @@ jobs:
               }
             }
 
-            // ──────────────────────────────────────────
-            // 2. AREA DETECTION (what part of codebase)
-            // ──────────────────────────────────────────
+            // ── 2. AREA DETECTION (issues only) ───────────────────────
             const areaSignals = {
-              'backend': [
+              'area:backend': [
                 'api', 'route', 'endpoint', 'server', 'database', 'query',
                 'drizzle', 'neon', 'postgres', 'migration', 'schema',
                 'middleware', 'auth check', 'rate limit'
               ],
-              'frontend': [
+              'area:frontend': [
                 'component', 'page', 'ui', 'button', 'modal', 'sidebar',
                 'navbar', 'layout', 'css', 'tailwind', 'responsive',
                 'landing page', 'dashboard', 'form'
               ],
-              'ai': [
+              'area:ai': [
                 'ai', 'groq', 'llama', 'gpt', 'prompt', 'model', 'inference',
                 'moderation', 'embedding', 'vector', 'similarity',
                 'video generation', 'tts', 'ocr', 'remotion'
               ],
-              'database': [
+              'area:database': [
                 'schema', 'table', 'migration', 'foreign key', 'index',
                 'constraint', 'cascade', 'drizzle', 'neon', 'orphan',
                 'integrity', 'relation'
@@ -155,13 +152,14 @@ jobs:
               }
             }
 
-            // ──────────────────────────────────────────
-            // 3. DIFFICULTY LEVEL (deep semantic analysis)
-            // ──────────────────────────────────────────
+            // ── 3. DIFFICULTY LEVEL ───────────────────────────────────
             let level = null;
+            let criticalScore = 0;
+            let advancedScore = 0;
+            let intermediateScore = 0;
+            let beginnerScore = 0;
+
             if (!hasExistingLevel) {
-              // CRITICAL indicators: systemic security flaws, data corruption,
-              // architectural failures, production-breaking issues
               const criticalSignals = [
                 'data leak', 'credential', 'connection string', 'exposed',
                 'unauthenticated', 'privilege escalation', 'data corruption',
@@ -176,8 +174,6 @@ jobs:
                 'o(n) memory', 'unbounded', 'no pagination at db level'
               ];
 
-              // ADVANCED indicators: multi-system, deep backend,
-              // complex algorithms, significant refactoring
               const advancedSignals = [
                 'idor', 'security', 'auth', 'real-time', 'websocket',
                 'embedding', 'cosine similarity', 'vector', 'de-duplication',
@@ -193,8 +189,6 @@ jobs:
                 'drizzle', 'neon', 'database optimization'
               ];
 
-              // INTERMEDIATE indicators: moderate complexity,
-              // single-system changes, standard patterns
               const intermediateSignals = [
                 'component', 'hook', 'context', 'state management',
                 'form validation', 'character counter', 'clipboard',
@@ -204,7 +198,6 @@ jobs:
                 'chart', 'analytics', 'dashboard', 'profile'
               ];
 
-              // BEGINNER indicators: simple, isolated, cosmetic
               const beginnerSignals = [
                 'typo', 'readme', 'comment', 'rename', 'alt text',
                 'aria-label', 'tooltip', 'hover', 'color', 'font',
@@ -215,39 +208,34 @@ jobs:
                 'add class', 'css fix', 'style fix'
               ];
 
-              let criticalScore = criticalSignals.filter(k => hasWord(combined, k)).length;
-              let advancedScore = advancedSignals.filter(k => hasWord(combined, k)).length;
-              let intermediateScore = intermediateSignals.filter(k => hasWord(combined, k)).length;
-              let beginnerScore = beginnerSignals.filter(k => hasWord(combined, k)).length;
+              criticalScore = criticalSignals.filter(k => hasWord(combined, k)).length;
+              advancedScore = advancedSignals.filter(k => hasWord(combined, k)).length;
+              intermediateScore = intermediateSignals.filter(k => hasWord(combined, k)).length;
+              beginnerScore = beginnerSignals.filter(k => hasWord(combined, k)).length;
 
-              // Boost scores based on structural signals in the body
-              // Files mentioned → indicates complexity
+              // Structural boosts
               const fileRefs = (combined.match(/\.(ts|tsx|js|jsx|yml|sql|json)/g) || []).length;
               const codeBlocks = (combined.match(/```/g) || []).length / 2;
               const stepCount = (combined.match(/^\d+\./gm) || []).length;
 
               if (fileRefs >= 5) criticalScore += 2;
               else if (fileRefs >= 3) advancedScore += 1;
-
               if (codeBlocks >= 3) advancedScore += 1;
               if (stepCount >= 5) intermediateScore += 1;
-
-              // Body length signals (longer = more complex usually)
               if (body.length > 2000) advancedScore += 1;
               if (body.length > 4000) criticalScore += 1;
 
-              // Security issues should never be beginner
+              // Security should never be beginner
               if (detectedTypes.some(t => t.label === 'type:security')) {
                 beginnerScore = 0;
                 if (criticalScore < 2) advancedScore += 3;
               }
 
-              // Determine final level
+              // Determine level
               if (criticalScore >= 3) {
                 level = 'level:critical';
               } else if (criticalScore >= 2 || advancedScore >= 3) {
                 level = 'level:advanced';
-                // Promote to critical if security + high impact
                 if (detectedTypes.some(t => t.label === 'type:security') && criticalScore >= 1) {
                   level = 'level:critical';
                 }
@@ -261,67 +249,54 @@ jobs:
 
               labelsToAdd.push(level);
 
-              // Add beginner-friendly tags only for issues
+              // Beginner-friendly tags for issues only
               if (level === 'level:beginner' && !isPR) {
                 labelsToAdd.push('good first issue');
                 labelsToAdd.push('beginner friendly');
               }
             }
 
-            // ──────────────────────────────────────────
-            // 4. PR-SPECIFIC: Size has minimal impact on level
-            // Size is informational only — content & complexity drive the level.
-            // Only extreme size (xxl) can nudge level UP by one tier,
-            // and only when the content score is borderline.
-            // Small/xs size NEVER bumps level down.
-            // ──────────────────────────────────────────
-            if (!hasExistingLevel && isPR) {
-              const sizeLabel = currentLabels.find(l => l.name.startsWith('size/'));
+            // ── 4. PR SIZE NUDGE ──────────────────────────────────────
+            if (!hasExistingLevel && isPR && level) {
+              const sizeLabel = currentLabelObjects.find(
+                l => l.name.toLowerCase().startsWith('size/')
+              );
               if (sizeLabel) {
-                const sizeName = sizeLabel.name;
+                const sizeName = sizeLabel.name.toLowerCase();
                 const levels = ['level:beginner', 'level:intermediate', 'level:advanced', 'level:critical'];
                 const currentLevelIdx = levels.indexOf(level);
-
-                // Only xxl PRs with borderline content scores get a nudge up
-                // "borderline" = advanced/critical scores are close (within 1 point)
                 const isBorderline = Math.abs(advancedScore - criticalScore) <= 1;
                 if (sizeName === 'size/xxl' && isBorderline && currentLevelIdx < 3) {
                   const idx = labelsToAdd.indexOf(level);
                   if (idx > -1) labelsToAdd.splice(idx, 1);
                   labelsToAdd.push(levels[currentLevelIdx + 1]);
-                  console.log(`Size xxl nudged level up (borderline content score)`);
+                  console.log('Size xxl nudged level up (borderline content score)');
                 }
-                // size/xs, size/s, size/m, size/l, size/xl → NO level change
               }
             }
 
-            // ──────────────────────────────────────────
-            // 5. APPLY LABELS
-            // ──────────────────────────────────────────
-            // Deduplicate
+            // ── 5. APPLY LABELS ───────────────────────────────────────
             const uniqueLabels = [...new Set(labelsToAdd)];
 
-            // Clean up any existing level labels that conflict with the one we are adding.
-            // This is crucial because GITHUB_TOKEN actions do not trigger label-manager.yml.
+            // Clean up conflicting level labels before applying
             if (!hasExistingLevel && level) {
-              try {
-                for (const label of currentLabels) {
-                  const labelNameLower = label.name.toLowerCase();
-                  const newLevelLower = level.toLowerCase();
-                  
-                  // If it's a level label (starts with level:) and is not the level we are currently adding, remove it
-                  if (labelNameLower.startsWith('level:') && labelNameLower !== newLevelLower) {
+              for (const existingLabel of currentLabelNames) {
+                if (
+                  existingLabel.toLowerCase().startsWith('level:') &&
+                  existingLabel.toLowerCase() !== level.toLowerCase()
+                ) {
+                  try {
                     await github.rest.issues.removeLabel({
                       owner: context.repo.owner,
                       repo: context.repo.repo,
                       issue_number: number,
-                      name: label.name,
+                      name: existingLabel,
                     });
-                    console.log(`Removed conflicting level label "${label.name}" before applying new labels`);
+                    console.log(`Removed conflicting level label "${existingLabel}"`);
+                  } catch (e) {
+                    console.log(`Could not remove "${existingLabel}": ${e.message}`);
                   }
                 }
-              } catch (e) {
-                console.log(`Error cleaning up conflicting level labels: ${e.message}`);
               }
             }
 
@@ -329,7 +304,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: number,
-              labels: uniqueLabels
+              labels: uniqueLabels,
             });
 
             console.log(`Applied labels to #${number}: ${uniqueLabels.join(', ')}`);

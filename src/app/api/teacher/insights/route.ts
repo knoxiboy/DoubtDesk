@@ -1,36 +1,28 @@
 export const dynamic = "force-dynamic";
 
 import { db } from "@/configs/db";
-import { classroomsTable, doubtsTable } from "@/configs/schema";
+import { doubtsTable } from "@/configs/schema";
 import { and, eq, sql } from "drizzle-orm";
-import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { buildErrorResponse } from "@/lib/error-handler";
+import {
+    parseClassroomId,
+    requireAuth,
+    requireTeacher,
+} from "@/lib/auth/membership-guard";
 
 export async function GET(req: Request) {
     try {
-        const clerkUser = await currentUser();
-        const email = clerkUser?.primaryEmailAddress?.emailAddress;
-
-        if (!email) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        const { email } = await requireAuth();
 
         const { searchParams } = new URL(req.url);
         const classroomIdStr = searchParams.get("classroomId");
-        if (!classroomIdStr || !/^[1-9]\d*$/.test(classroomIdStr)) {
+        if (!classroomIdStr) {
             return NextResponse.json({ error: "classroomId is required" }, { status: 400 });
         }
 
-        const classroomId = Number(classroomIdStr);
-
-        const [classroom] = await db
-            .select({ id: classroomsTable.id })
-            .from(classroomsTable)
-            .where(and(eq(classroomsTable.id, classroomId), eq(classroomsTable.teacherEmail, email)));
-
-        if (!classroom) {
-            return NextResponse.json({ error: "Forbidden: not the teacher of this classroom" }, { status: 403 });
-        }
+        const classroomId = parseClassroomId(classroomIdStr);
+        await requireTeacher(email, classroomId);
 
         const classroomFilter = eq(doubtsTable.classroomId, classroomId);
 
@@ -73,7 +65,7 @@ export async function GET(req: Request) {
             subjectVolume,
         });
     } catch (error) {
-        console.error("Teacher Insights failed:", error);
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }
