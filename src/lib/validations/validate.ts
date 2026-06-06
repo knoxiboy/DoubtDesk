@@ -11,7 +11,7 @@ export async function parseAndValidateRequest<T>(req: Request, schema: ZodSchema
         { success: false, error: "Invalid JSON format" },
         { status: 400 }
       ),
-      data: null as any,
+      data: null,
     };
   }
 
@@ -26,7 +26,7 @@ export async function parseAndValidateRequest<T>(req: Request, schema: ZodSchema
         },
         { status: 400 }
       ),
-      data: null as any,
+      data: null,
     };
   }
 

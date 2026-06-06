@@ -1,10 +1,22 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
-import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/configs/db';
-import { doubtsTable, repliesTable, usersTable } from '@/configs/schema';
+import { doubtsTable, repliesTable, usersTable, classroomsTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';
 import { moderateContent, handleModerationViolation } from '@/lib/moderation';
+import { checkPedagogicalDrift } from '@/lib/pedagogy';
+import { buildErrorResponse } from '@/lib/error-handler';
+import {
+    parseClassroomId,
+    requireAuth,
+    requireMembership,
+} from '@/lib/auth/membership-guard';
+import { aiLimiter } from '@/lib/ratelimit';
+import {
+    AI_REQUEST_MAX_BYTES,
+    AI_REQUEST_MAX_SIZE_LABEL,
+    validateAiImageDataUrl,
+} from '@/lib/ai-image-validation';
 
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY || 'dummy_key',
@@ -51,6 +63,96 @@ const UNCLEAR_IMAGE_PATTERNS = [
     /please\s+(upload|provide).*(clearer|higher[-\s]?quality)/i,
 ];
 
+function jsonError(
+    error: string,
+    status: number,
+    code?: string,
+    headers?: HeadersInit
+) {
+    return NextResponse.json(
+        {
+            error,
+            ...(code ? { code } : {}),
+        },
+        { status, headers }
+    );
+}
+
+async function readJsonWithLimit(req: Request) {
+    const contentLength = Number(req.headers.get('content-length') || 0);
+
+    if (contentLength > AI_REQUEST_MAX_BYTES) {
+        return {
+            ok: false as const,
+            response: jsonError(
+                `Requests must be ${AI_REQUEST_MAX_SIZE_LABEL} or smaller.`,
+                413,
+                'REQUEST_TOO_LARGE'
+            ),
+        };
+    }
+
+    if (!req.body) {
+        return {
+            ok: true as const,
+            data: {},
+        };
+    }
+
+    const reader = req.body.getReader();
+    const decoder = new TextDecoder();
+    const chunks: Uint8Array[] = [];
+    let receivedBytes = 0;
+
+    while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+        if (!value) continue;
+
+        receivedBytes += value.byteLength;
+
+        if (receivedBytes > AI_REQUEST_MAX_BYTES) {
+            await reader.cancel();
+
+            return {
+                ok: false as const,
+                response: jsonError(
+                    `Requests must be ${AI_REQUEST_MAX_SIZE_LABEL} or smaller.`,
+                    413,
+                    'REQUEST_TOO_LARGE'
+                ),
+            };
+        }
+
+        chunks.push(value);
+    }
+
+    let rawBody = '';
+
+    for (const chunk of chunks) {
+        rawBody += decoder.decode(chunk, { stream: true });
+    }
+
+    rawBody += decoder.decode();
+
+    try {
+        return {
+            ok: true as const,
+            data: rawBody ? JSON.parse(rawBody) : {},
+        };
+    } catch {
+        return {
+            ok: false as const,
+            response: jsonError(
+                'Invalid JSON request body.',
+                400,
+                'INVALID_JSON'
+            ),
+        };
+    }
+}
+
 function isUnclearVisionReply(reply: string) {
     const normalizedReply = reply
         .replace(/^SUBJECT:\s*.+\n?/im, '')
@@ -67,14 +169,15 @@ function isUnclearVisionReply(reply: string) {
 /**
  * Determines whether a provider/model failure should trigger fallback retries.
  */
-function shouldRetryModel(err: any): boolean {
+function shouldRetryModel(err: unknown): boolean {
+    const error = err as { status?: number; message?: string };
     const retryableStatuses = [429, 500, 502, 503, 504];
 
-    if (retryableStatuses.includes(err?.status)) {
+    if (error?.status && retryableStatuses.includes(error.status)) {
         return true;
     }
 
-    const message = err?.message?.toLowerCase?.() || '';
+    const message = error?.message?.toLowerCase?.() || "";
 
     if (
         message.includes('timeout') ||
@@ -114,8 +217,8 @@ function markModelFailure(model: string) {
  * @param isVision Whether the request includes an image
  */
 async function callGroqWithFallback(
-    messages: any[],
-    isVision: boolean
+    messages: Groq.Chat.Completions.ChatCompletionMessageParam[],
+    isVision: boolean,
 ) {
     const models = isVision ? VISION_MODELS : TEXT_MODELS;
 
@@ -153,11 +256,9 @@ async function callGroqWithFallback(
                 completion,
                 modelUsed: model,
             };
-        } catch (err: any) {
-            console.warn(
-                `Model ${model} failed:`,
-                err?.message
-            );
+        } catch (err: unknown) {
+            const error = err as { status?: number; message?: string };
+            console.warn(`Model ${model} failed:`, error?.message);
 
             lastError = err;
 
@@ -166,10 +267,10 @@ async function callGroqWithFallback(
              * cascading retries across providers.
              */
             if (
-                err?.status === 400 ||
-                err?.status === 401 ||
-                err?.status === 403 ||
-                err?.status === 404
+                error?.status === 400 ||
+                error?.status === 401 ||
+                error?.status === 403 ||
+                error?.status === 404
             ) {
                 throw err;
             }
@@ -200,30 +301,13 @@ async function callGroqWithFallback(
  */
 export async function POST(req: Request) {
     try {
-        const user = await currentUser();
-
-        if (!user) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            );
-        }
+        const { user, email } = await requireAuth();
 
         const fullName =
             user.fullName ||
             (user.firstName && user.lastName
                 ? `${user.firstName} ${user.lastName}`
                 : 'Academic Student');
-
-        const email =
-            user.primaryEmailAddress?.emailAddress;
-
-        if (!email) {
-            return NextResponse.json(
-                { error: 'Email required' },
-                { status: 400 }
-            );
-        }
 
         // 0. Check if user is blocked
         const [dbUser] = await db
@@ -247,17 +331,129 @@ export async function POST(req: Request) {
             );
         }
 
+        const rateLimit = await aiLimiter.limit(email);
+
+        if (!rateLimit.success) {
+            const retryAfter = Math.max(
+                1,
+                Math.ceil((rateLimit.reset - Date.now()) / 1000)
+            );
+
+            return jsonError(
+                'Too many AI requests. Please try again shortly.',
+                429,
+                'RATE_LIMITED',
+                { 'Retry-After': String(retryAfter) }
+            );
+        }
+
+        const bodyResult = await readJsonWithLimit(req);
+
+        if (!bodyResult.ok) {
+            return bodyResult.response;
+        }
+
+        const body =
+            bodyResult.data &&
+            typeof bodyResult.data === 'object' &&
+            !Array.isArray(bodyResult.data)
+                ? (bodyResult.data as Record<string, unknown>)
+                : {};
+
         const {
-            prompt,
             type = 'standard',
             imageBase64,
             classroomId,
             history = [],
-        } = await req.json();
+        } = body;
 
-        const conversationHistory = Array.isArray(history)
-            ? history
-            : [];
+        const prompt =
+            typeof body.prompt === 'string' ? body.prompt : '';
+        const solveType =
+            typeof type === 'string' ? type : 'standard';
+        let classroomIdValue: number | null = null;
+
+        if (classroomId !== undefined && classroomId !== null) {
+            try {
+                classroomIdValue = parseClassroomId(classroomId);
+            } catch {
+                return jsonError(
+                    'Invalid classroomId.',
+                    422,
+                    'INVALID_CLASSROOM_ID'
+                );
+            }
+        }
+
+        if (classroomIdValue) {
+            await requireMembership(email, classroomIdValue);
+        }
+
+        const validatedImage = imageBase64
+            ? validateAiImageDataUrl(imageBase64)
+            : null;
+
+        if (validatedImage && !validatedImage.ok) {
+            return jsonError(
+                validatedImage.error,
+                validatedImage.status,
+                validatedImage.code
+            );
+        }
+
+        const safeImageBase64 = validatedImage?.dataUrl ?? null;
+
+        // Validate and sanitize history entries before injecting them into the
+        // LLM context. Accepting arbitrary objects would let an attacker inject
+        // system-role messages that override the application system prompt or
+        // bypass the moderation check applied only to the current prompt field.
+        const ALLOWED_ROLES = new Set(['user', 'assistant']);
+        const MAX_HISTORY_ENTRIES = 20;
+        const MAX_CONTENT_LENGTH = 4000;
+
+        const conversationHistory: { role: 'user' | 'assistant'; content: string }[] = [];
+        if (Array.isArray(history)) {
+            for (const entry of history.slice(-MAX_HISTORY_ENTRIES)) {
+                const historyEntry = entry as {
+                    role?: unknown;
+                    content?: unknown;
+                };
+
+                if (
+                    historyEntry &&
+                    typeof historyEntry === 'object' &&
+                    typeof historyEntry.role === 'string' &&
+                    ALLOWED_ROLES.has(historyEntry.role) &&
+                    typeof historyEntry.content === 'string'
+                ) {
+                    conversationHistory.push({
+                        role: historyEntry.role as 'user' | 'assistant',
+                        content: historyEntry.content.slice(0, MAX_CONTENT_LENGTH),
+                    });
+                }
+            }
+        }
+
+        let targetGradeLevel = 13;
+        let pedagogyLevel = "Undergraduate (Freshman)";
+
+        if (classroomIdValue) {
+            try {
+                const [classroom] = await db
+                    .select({
+                        pedagogyLevel: classroomsTable.pedagogyLevel,
+                        targetGradeLevel: classroomsTable.targetGradeLevel,
+                    })
+                    .from(classroomsTable)
+                    .where(eq(classroomsTable.id, classroomIdValue));
+                if (classroom) {
+                    pedagogyLevel = classroom.pedagogyLevel;
+                    targetGradeLevel = classroom.targetGradeLevel;
+                }
+            } catch (dbErr) {
+                console.error("Failed to fetch classroom pedagogy settings:", dbErr);
+            }
+        }
 
         // 1. AI Moderation Check for Prompts
         if (prompt) {
@@ -281,7 +477,7 @@ export async function POST(req: Request) {
 
         if (
             !prompt &&
-            !imageBase64 &&
+            !safeImageBase64 &&
             conversationHistory.length === 0
         ) {
             return NextResponse.json(
@@ -299,6 +495,11 @@ export async function POST(req: Request) {
 - Subscripts: Always use proper LaTeX (e.g., \\omega_1).
 - Symbols: Wrap all variables and greek letters in math delimiters.
 - Cleanliness: No repeated characters or filler text.`;
+
+        const PEDAGOGY_RULES = classroomIdValue ? `
+### PEDAGOGICAL LEVEL TARGET:
+- The target student academic level is: ${pedagogyLevel} (Flesch-Kincaid Grade Level Target: ${targetGradeLevel}).
+- Explain concepts at this specific complexity. Do NOT use terms or mathematical proofs beyond this grade level. Avoid oversimplifying unless required.` : '';
 
         let systemPrompt: string;
 
@@ -320,15 +521,15 @@ ${MATH_RULES}
 4. If they ask a new unrelated doubt, politely ask them to start a new session.
 
 Respond in clean, well-spaced markdown. Do NOT use the "SUBJECT:" header for follow-ups.`;
-        } else if (type === 'simple') {
+        } else if (solveType === 'simple') {
             systemPrompt = `You are an expert AI Doubt Solver. VERY FIRST LINE must be: SUBJECT: [Detected Subject from: ${SUBJECT_LIST}]
 Then write 3-5 short paragraphs using plain English and a real-world analogy. No LaTeX or formulas. Respond in clean, well-spaced markdown.`;
-        } else if (type === 'exam') {
+        } else if (solveType === 'exam') {
             systemPrompt = `You are a strict exam-focused AI Tutor. Respond in clean, well-spaced markdown.
 VERY FIRST LINE must be: SUBJECT: [Detected Subject from: ${SUBJECT_LIST}]
 ${MATH_RULES}
 Structure: Provide an EXAM-READY answer with Key Formula, Step-by-step, Common mistakes, and Examiner keywords. Use **Step X:** for sub-steps inside sections.`;
-        } else if (type === 'eli10') {
+        } else if (solveType === 'eli10') {
             systemPrompt = `You are a friendly AI teacher explaining to a 10-year-old. VERY FIRST LINE must be: SUBJECT: [Detected Subject from: ${SUBJECT_LIST}]
 Use fun analogies, simple words, and no complex math notation unless explained by a fun story.
 
@@ -357,10 +558,14 @@ Use EXACTLY these 3 ## sections:
 Use bold text (e.g. **Step 1:**) for sub-steps inside the sections. Do NOT use any other ## headings.`;
         }
 
-        const isVisionRequest =
-            !!imageBase64 && !isFollowUp;
+        if (systemPrompt) {
+            systemPrompt += PEDAGOGY_RULES;
+        }
 
-        let userMessageContent: any;
+        const isVisionRequest =
+            !!safeImageBase64 && !isFollowUp;
+
+        let userMessageContent: Groq.Chat.Completions.ChatCompletionMessageParam["content"];
 
         if (isVisionRequest) {
             const visionInstruction = `Analyze the image. Follow these strict rules:
@@ -378,7 +583,7 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
                 {
                     type: 'image_url',
                     image_url: {
-                        url: imageBase64,
+                        url: safeImageBase64,
                     },
                 },
             ];
@@ -386,7 +591,7 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
             userMessageContent = prompt;
         }
 
-        const messages: any[] = [];
+        const messages: Groq.Chat.Completions.ChatCompletionMessageParam[] = [];
 
         messages.push({
             role: 'system',
@@ -462,16 +667,14 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
                         content:
                             prompt || 'Visual Inquiry',
                         imageUrl:
-                            imageBase64?.slice(0, 500),
-                        classroomId: classroomId
-                            ? parseInt(
-                                  classroomId.toString()
-                              )
-                            : null,
+                            safeImageBase64?.slice(0, 500),
+                        classroomId: classroomIdValue,
                         type: 'ai',
                         isSolved: 'solved',
                     })
                     .returning();
+
+                const driftResult = checkPedagogicalDrift(reply, targetGradeLevel);
 
                 if (newDoubt) {
                     const [aiReply] = await db
@@ -481,6 +684,11 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
                             userName: 'DoubtDesk AI',
                             type: 'solution',
                             content: reply,
+                            gradeLevel: driftResult.gradeLevel,
+                            complexityScore: driftResult.complexityScore,
+                            readabilityScore: driftResult.readabilityScore,
+                            pedagogyDrifted: driftResult.pedagogyDrifted,
+                            driftExplanation: driftResult.driftExplanation,
                         })
                         .returning();
 
@@ -512,19 +720,13 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
             subject,
             model: modelUsed,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error(
             'Error in Groq API Flow:',
             error
         );
 
-        return NextResponse.json(
-            {
-                error:
-                    error?.message ||
-                    'The AI service is currently overloaded or experiencing issues. Please try again in 30 seconds.',
-            },
-            { status: 500 }
-        );
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }

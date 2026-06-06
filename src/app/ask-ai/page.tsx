@@ -14,6 +14,13 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
+import {
+    AI_IMAGE_ALLOWED_MIME_TYPES,
+    AI_IMAGE_ALLOWED_TYPES_LABEL,
+    AI_IMAGE_MAX_BYTES,
+    AI_IMAGE_MAX_SIZE_LABEL,
+    isAllowedAiImageMimeType,
+} from '@/lib/ai-image-validation';
 import 'katex/dist/katex.min.css';
 
 type InputMode = 'text' | 'image';
@@ -85,10 +92,40 @@ export default function AskAIPage() {
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
+        const input = e.currentTarget;
+        const file = input.files?.[0];
         if (!file) return;
+
+        setErrorMsg(null);
+        setErrorCode(null);
+
+        if (!isAllowedAiImageMimeType(file.type)) {
+            setErrorMsg(`Please upload a ${AI_IMAGE_ALLOWED_TYPES_LABEL} image.`);
+            input.value = '';
+            return;
+        }
+
+        if (file.size > AI_IMAGE_MAX_BYTES) {
+            setErrorMsg(`Images must be ${AI_IMAGE_MAX_SIZE_LABEL} or smaller.`);
+            setErrorCode('IMAGE_TOO_LARGE');
+            input.value = '';
+            return;
+        }
+
         const reader = new FileReader();
-        reader.onloadend = () => setImageBase64(reader.result as string);
+        reader.onerror = () => {
+            setErrorMsg('Could not read this image. Please try another file.');
+            input.value = '';
+        };
+        reader.onloadend = () => {
+            if (typeof reader.result === 'string') {
+                setImageBase64(reader.result);
+                return;
+            }
+
+            setErrorMsg('Could not read this image. Please try another file.');
+            input.value = '';
+        };
         reader.readAsDataURL(file);
     };
 
@@ -133,8 +170,8 @@ export default function AskAIPage() {
             
             setMessages(prev => [...prev, { role: 'assistant', content: data.reply, type: isFollowUp ? 'standard' : type }]);
             setTimeout(scrollToBottom, 200);
-        } catch (err: any) {
-            setErrorMsg(err.message || "Something went wrong. Please try again.");
+        } catch (err: unknown) {
+            setErrorMsg(err instanceof Error ? err.message : "Something went wrong. Please try again.");
             if (isFollowUp) {
                 setMessages(prev => prev.slice(0, -1)); // Remove the user message if it failed
             }
@@ -187,8 +224,9 @@ export default function AskAIPage() {
         }, 100);
     };
 
-    const markdownComponents: any = {
-        strong: ({ children }: any) => {
+    const markdownComponents: Record<string, React.ComponentType<{ children?: React.ReactNode }>> = {
+        // Step labels: full-width block row with numbered pill + accent border
+        strong: ({ children }: React.HTMLAttributes<HTMLElement>) => {
             const text = String(children);
             const isStepLabel = /^Step\s+\d+/i.test(text);
             if (isStepLabel) {
@@ -212,23 +250,28 @@ export default function AskAIPage() {
             return <strong className="text-slate-900 dark:text-white font-bold">{children}</strong>;
         },
 
-        p: ({ children }: any) => (
+        // Paragraphs: left-aligned, proper spacing
+        p: ({ children }: React.HTMLAttributes<HTMLParagraphElement>) => (
             <p className="text-slate-700 dark:text-slate-300 leading-[1.9] font-medium my-3 text-[15px] pl-0">{children}</p>
         ),
 
-        li: ({ children }: any) => (
+        // List items
+        li: ({ children }: React.HTMLAttributes<HTMLLIElement>) => (
             <li className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium my-1.5 text-[15px]">{children}</li>
         ),
 
-        ol: ({ children }: any) => (
+        // Ordered list — indent cleanly
+        ol: ({ children }: React.HTMLAttributes<HTMLOListElement>) => (
             <ol className="list-decimal list-outside ml-6 mt-2 mb-4 space-y-2">{children}</ol>
         ),
 
-        ul: ({ children }: any) => (
+        // Unordered list
+        ul: ({ children }: React.HTMLAttributes<HTMLUListElement>) => (
             <ul className="list-disc list-outside ml-6 mt-2 mb-4 space-y-2">{children}</ul>
         ),
 
-        div: ({ className, children, ...props }: any) => {
+        // Block math: left-aligned in a styled container
+        div: ({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
             if (className?.includes('math-display')) {
                 return (
                     <div className="my-4 pl-4 border-l-2 border-cyan-500/40 bg-white/50 dark:bg-black/50 rounded-r-xl py-4 pr-4 overflow-x-auto">
@@ -238,28 +281,31 @@ export default function AskAIPage() {
             }
             return <div className={className} {...props}>{children}</div>;
         },
-        table: ({ children }: any) => (
+
+        // Tables — beautifully styled
+        table: ({ children }: React.HTMLAttributes<HTMLTableElement>) => (
             <div className="my-5 overflow-x-auto rounded-2xl border border-slate-200 dark:border-white/8 shadow-lg">
                 <table className="w-full text-sm text-left">{children}</table>
             </div>
         ),
-        thead: ({ children }: any) => (
-            <thead className="bg-slate-50/80 dark:bg-black/80 border-b border-slate-200 dark:border-white/8">{children}</thead>
+        thead: ({ children }: React.HTMLAttributes<HTMLTableSectionElement>) => (
+            <thead className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-white/8">{children}</thead>
         ),
-        tbody: ({ children }: any) => (
+        tbody: ({ children }: React.HTMLAttributes<HTMLTableSectionElement>) => (
             <tbody className="divide-y divide-white/5">{children}</tbody>
         ),
-        tr: ({ children }: any) => (
+        tr: ({ children }: React.HTMLAttributes<HTMLTableRowElement>) => (
             <tr className="hover:bg-white/3 transition-colors">{children}</tr>
         ),
-        th: ({ children }: any) => (
+        th: ({ children }: React.HTMLAttributes<HTMLTableCellElement>) => (
             <th className="px-4 py-3 text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest whitespace-nowrap">{children}</th>
         ),
-        td: ({ children }: any) => (
+        td: ({ children }: React.HTMLAttributes<HTMLTableCellElement>) => (
             <td className="px-4 py-3 text-slate-700 dark:text-slate-300 font-medium text-[14px] [&_.katex]:text-slate-900 dark:[&_.katex]:text-white">{children}</td>
         ),
 
-        blockquote: ({ children }: any) => (
+        // Blockquote — highlighted note
+        blockquote: ({ children }: React.HTMLAttributes<HTMLQuoteElement>) => (
             <blockquote className="my-4 pl-4 border-l-4 border-yellow-500/50 bg-yellow-500/5 rounded-r-xl py-3 pr-4 text-yellow-200/80 italic text-[14px]">
                 {children}
             </blockquote>
@@ -365,7 +411,7 @@ export default function AskAIPage() {
                                 </>
                             ) : (
                                 <>
-                                    <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+                                    <input type="file" accept={AI_IMAGE_ALLOWED_MIME_TYPES.join(',')} className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
                                     {!imageBase64 ? (
                                         <button
                                             onClick={() => fileInputRef.current?.click()}
@@ -376,7 +422,7 @@ export default function AskAIPage() {
                                             </div>
                                             <div className="text-center">
                                                 <p className="text-slate-900 dark:text-white font-bold">Click to upload image</p>
-                                                <p className="text-slate-500 dark:text-slate-500 text-sm mt-1">PNG, JPG, WEBP · Max 10MB</p>
+                                                <p className="text-slate-500 dark:text-slate-500 text-sm mt-1">{AI_IMAGE_ALLOWED_TYPES_LABEL} · Max {AI_IMAGE_MAX_SIZE_LABEL}</p>
                                             </div>
                                         </button>
                                     ) : (

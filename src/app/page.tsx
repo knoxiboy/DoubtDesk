@@ -47,7 +47,8 @@ export default function Home() {
   useEffect(() => {
     const handleScroll = () => {
       const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const docHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
       const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
       setScrollProgress(progress);
     };
@@ -59,32 +60,38 @@ export default function Home() {
   const features = [
     {
       title: "Real-time collaborative discussions",
-      description: "Share questions, answers, and classroom updates instantly across study groups.",
+      description:
+        "Share questions, answers, and classroom updates instantly across study groups.",
       icon: MessageCircle,
     },
     {
       title: "Smart classroom management",
-      description: "Organize learning spaces, schedules, and teacher workflows with ease.",
+      description:
+        "Organize learning spaces, schedules, and teacher workflows with ease.",
       icon: LayoutGrid,
     },
     {
       title: "Notes and resource sharing",
-      description: "Keep study materials, highlights, and shared guides organized in one hub.",
+      description:
+        "Keep study materials, highlights, and shared guides organized in one hub.",
       icon: Clipboard,
     },
     {
       title: "Learning roadmaps and guidance",
-      description: "Follow curated study paths that keep learners focused on milestones.",
+      description:
+        "Follow curated study paths that keep learners focused on milestones.",
       icon: Map,
     },
     {
       title: "AI-powered doubt solving",
-      description: "Get instant, context-aware answers to questions with smart AI support.",
+      description:
+        "Get instant, context-aware answers to questions with smart AI support.",
       icon: Activity,
     },
     {
       title: "Organized study collaboration",
-      description: "Coordinate projects, peer review, and group work with clear tools and structure.",
+      description:
+        "Coordinate projects, peer review, and group work with clear tools and structure.",
       icon: Users,
     },
   ];
@@ -92,53 +99,61 @@ export default function Home() {
   const howItWorks = [
     {
       title: "Join or create a classroom",
-      description: "Teachers set up rooms, students join using invite codes."
+      description: "Teachers set up rooms, students join using invite codes.",
     },
     {
       title: "Ask doubts instantly",
-      description: "Post questions using text or image and get AI + peer help."
+      description: "Post questions using text or image and get AI + peer help.",
     },
     {
       title: "Get clear answers & insights",
-      description: "AI explanations, teacher guidance, and analytics all in one place."
-    }
+      description:
+        "AI explanations, teacher guidance, and analytics all in one place.",
+    },
   ];
 
   const testimonials = [
     {
       name: "Aarav Sharma",
       role: "B.Tech Student",
-      text: "DoubtDesk made it so easy to clear my doubts during exam prep. The AI explanations are super clear."
+      text: "DoubtDesk made it so easy to clear my doubts during exam prep. The AI explanations are super clear.",
     },
     {
       name: "Neha Verma",
       role: "CS Student",
-      text: "No more messy WhatsApp groups. Everything is structured and easy to follow."
+      text: "No more messy WhatsApp groups. Everything is structured and easy to follow.",
     },
     {
       name: "Rohit Mehta",
       role: "Teaching Assistant",
-      text: "Analytics help me understand where students struggle the most."
-    }
+      text: "Analytics help me understand where students struggle the most.",
+    },
   ];
 
   const handleSignOut = async () => {
-    await signOut({ redirectUrl: '/' });
+    await signOut({ redirectUrl: "/" });
   };
 
   return (
-    <div className={`${inter.className} min-h-screen bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-50 flex flex-col selection:bg-blue-500/30 dark:selection:bg-[#5E8CFF]/30 transition-colors duration-500 overflow-x-hidden`}>
+    <div
+      className={`${inter.className} min-h-screen bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-50 flex flex-col selection:bg-blue-500/30 dark:selection:bg-[#5E8CFF]/30 transition-colors duration-500 overflow-x-hidden`}
+    >
       {/* Logout Confirmation Dialog */}
       <AlertDialog open={showSignOutDialog} onOpenChange={setShowSignOutDialog}>
         <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl animate-in fade-in-50 zoom-in-95 duration-200">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to sign out?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Are you sure you want to sign out?
+            </AlertDialogTitle>
             <AlertDialogDescription className="text-slate-500 dark:text-slate-400">
-              You will need to log in again to access your classroom insights and doubt-solving history.
+              You will need to log in again to access your classroom insights
+              and doubt-solving history.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all duration-200">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all duration-200">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleSignOut}
               className="bg-red-600 hover:bg-red-700 text-white border-none rounded-xl transition-all duration-200"
@@ -169,24 +184,28 @@ export default function Home() {
         <section className="px-4 sm:px-6 lg:px-20 pt-32 pb-20 relative z-10">
           <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-12 xl:gap-16 items-center">
             <div className="text-center xl:text-left space-y-8 animate-in fade-in slide-in-from-left-6 duration-700 ease-out">
-              
               {/* Primary Header Typography */}
               <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-slate-900 dark:text-white tracking-tight leading-[1.05] max-w-xl sm:max-w-2xl mx-auto xl:mx-0 transition-colors duration-300">
                 Empower <br />
                 Your Learning <br />
                 with{" "}
-                <span className={`${staatliches.className} uppercase tracking-[0.04em] bg-gradient-to-r from-blue-600 via-indigo-500 to-blue-600 dark:from-[#8BB8FF] dark:to-[#AABFFF] bg-clip-text text-transparent bg-[size:200%_auto] animate-[shine_5s_linear_infinite]`}>
+                <span
+                  className={`${staatliches.className} uppercase tracking-[0.04em] bg-gradient-to-r from-blue-600 via-indigo-500 to-blue-600 dark:from-[#8BB8FF] dark:to-[#AABFFF] bg-clip-text text-transparent bg-[size:200%_auto] animate-[shine_5s_linear_infinite]`}
+                >
                   Collaborative AI.
                 </span>
               </h2>
 
               {/* Description Subtext Stack */}
               <div className="space-y-2 max-w-md sm:max-w-xl mx-auto xl:mx-0 transition-all duration-300">
-                <div className={`${staatliches.className} text-xs tracking-[0.16em] text-blue-600 dark:text-blue-400 uppercase font-medium`}>
+                <div
+                  className={`${staatliches.className} text-xs tracking-[0.16em] text-blue-600 dark:text-blue-400 uppercase font-medium`}
+                >
                   Collaborative classrooms
                 </div>
                 <p className="text-base sm:text-lg text-slate-500 dark:text-zinc-400 leading-relaxed transition-colors duration-300">
-                  Built for collaborative classrooms, instant doubt solving, and smarter learning.
+                  Built for collaborative classrooms, instant doubt solving, and
+                  smarter learning.
                 </p>
               </div>
 
@@ -194,17 +213,25 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center xl:justify-start gap-4 transition-all duration-300 max-w-md sm:max-w-none mx-auto xl:mx-0">
                 <SignedIn>
                   <Link href="/rooms" className="w-full sm:w-auto">
-                    <button className="group w-full sm:w-auto px-10 py-5 bg-[#5E8CFF] text-white rounded-2xl text-lg font-bold hover:bg-[#8BB8FF] hover:shadow-[0_0_24px_rgba(94,140,255,0.35)] transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]" >
-                      <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>Open Classroom</span>
+                    <button className="group w-full sm:w-auto px-10 py-5 bg-[#5E8CFF] text-white rounded-2xl text-lg font-bold hover:bg-[#8BB8FF] hover:shadow-[0_0_24px_rgba(94,140,255,0.35)] transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]">
+                      <span
+                        className={`${staatliches.className} uppercase tracking-[0.08em]`}
+                      >
+                        Open Classroom
+                      </span>
                       <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform duration-300" />
                     </button>
                   </Link>
                 </SignedIn>
-                
+
                 <SignedOut>
                   <Link href="/sign-up" className="w-full sm:w-auto">
-                    <button className="group w-full sm:w-auto px-10 py-5 bg-white text-slate-950 rounded-2xl text-lg font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]" >
-                      <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>Open</span>
+                    <button className="group w-full sm:w-auto px-10 py-5 bg-white text-slate-950 rounded-2xl text-lg font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]">
+                      <span
+                        className={`${staatliches.className} uppercase tracking-[0.08em]`}
+                      >
+                        Open
+                      </span>
                       <span>Classroom</span>
                       <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform duration-300" />
                     </button>
@@ -212,8 +239,12 @@ export default function Home() {
                 </SignedOut>
 
                 <Link href="/public-rooms" className="w-full sm:w-auto">
-                  <button className="group w-full sm:w-auto px-10 py-5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-2xl text-lg font-bold border border-slate-200 dark:border-white/10 transition-all hover:shadow-[0_0_20px_rgba(94,140,255,0.15)] flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]" >
-                    <span className={`${staatliches.className} uppercase tracking-[0.08em]`}>Explore Community</span>
+                  <button className="group w-full sm:w-auto px-10 py-5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-2xl text-lg font-bold border border-slate-200 dark:border-white/10 transition-all hover:shadow-[0_0_20px_rgba(94,140,255,0.15)] flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]">
+                    <span
+                      className={`${staatliches.className} uppercase tracking-[0.08em]`}
+                    >
+                      Explore Community
+                    </span>
                     <Globe className="w-5 h-5 text-slate-600 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-[#8BB8FF] group-hover:rotate-12 transition-transform duration-300" />
                   </button>
                 </Link>
@@ -230,17 +261,25 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section id="features" className="scroll-mt-20 px-4 sm:px-6 lg:px-8 py-20 relative z-10 border-t border-slate-200/60 dark:border-slate-900 bg-slate-100/40 dark:bg-black/20 transition-colors duration-500">
+        <section
+          id="features"
+          className="scroll-mt-20 px-4 sm:px-6 lg:px-8 py-20 relative z-10 border-t border-slate-200/60 dark:border-slate-900 bg-slate-100/40 dark:bg-black/20 transition-colors duration-500"
+        >
           <div className="max-w-7xl mx-auto space-y-16">
             <div className="max-w-3xl mx-auto text-center space-y-4">
-              <div className={`${staatliches.className} text-sm tracking-[0.14em] text-blue-600 dark:text-blue-400 uppercase`}>
+              <div
+                className={`${staatliches.className} text-sm tracking-[0.14em] text-blue-600 dark:text-blue-400 uppercase`}
+              >
                 Features
               </div>
               <h3 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight leading-tight transition-colors duration-300">
-                Everything your classroom needs to solve doubts, stay aligned, and move faster.
+                Everything your classroom needs to solve doubts, stay aligned,
+                and move faster.
               </h3>
               <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed transition-colors duration-300">
-                Built for modern study teams, DoubtDesk blends AI-powered doubt solving, shared resources, and smart classroom flows into a single polished platform.
+                Built for modern study teams, DoubtDesk blends AI-powered doubt
+                solving, shared resources, and smart classroom flows into a
+                single polished platform.
               </p>
             </div>
 
@@ -270,10 +309,15 @@ export default function Home() {
         </section>
 
         {/* How It Works Section */}
-        <section id="how-it-works" className="scroll-mt-20 px-4 sm:px-6 lg:px-8 py-20 relative z-10 border-t border-slate-200/60 dark:border-zinc-900 transition-colors duration-500">
+        <section
+          id="how-it-works"
+          className="scroll-mt-20 px-4 sm:px-6 lg:px-8 py-20 relative z-10 border-t border-slate-200/60 dark:border-zinc-900 transition-colors duration-500"
+        >
           <div className="max-w-7xl mx-auto space-y-16">
             <div className="text-center space-y-3">
-              <div className={`${staatliches.className} text-sm tracking-[0.14em] text-blue-600 dark:text-blue-400 uppercase`}>
+              <div
+                className={`${staatliches.className} text-sm tracking-[0.14em] text-blue-600 dark:text-blue-400 uppercase`}
+              >
                 Process
               </div>
               <h3 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight transition-colors duration-300">
@@ -287,7 +331,7 @@ export default function Home() {
             <div className="grid md:grid-cols-3 gap-8 relative">
               {/* Desktop Connecting Line decoration */}
               <div className="hidden md:block absolute top-12 left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-blue-100 via-indigo-100 to-blue-100 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900 -z-10 transition-colors duration-300" />
-              
+
               {howItWorks.map((step, index) => (
                 <div
                   key={step.title}
@@ -310,10 +354,15 @@ export default function Home() {
         </section>
 
         {/* Testimonials Section */}
-        <section id="testimonials" className="scroll-mt-20 px-4 sm:px-6 lg:px-8 py-20 relative z-10 border-t border-slate-200/60 dark:border-zinc-900 bg-slate-100/40 dark:bg-black/20 transition-colors duration-500">
+        <section
+          id="testimonials"
+          className="scroll-mt-20 px-4 sm:px-6 lg:px-8 py-20 relative z-10 border-t border-slate-200/60 dark:border-zinc-900 bg-slate-100/40 dark:bg-black/20 transition-colors duration-500"
+        >
           <div className="max-w-7xl mx-auto space-y-16">
             <div className="text-center space-y-3">
-              <div className={`${staatliches.className} text-sm tracking-[0.14em] text-blue-600 dark:text-blue-400 uppercase`}>
+              <div
+                className={`${staatliches.className} text-sm tracking-[0.14em] text-blue-600 dark:text-blue-400 uppercase`}
+              >
                 Testimonials
               </div>
               <h3 className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight transition-colors duration-300">
@@ -357,15 +406,22 @@ export default function Home() {
           className="fixed bottom-6 right-6 z-50 w-12 h-12 flex items-center justify-center group active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
           aria-label="Scroll to top"
         >
-          <svg className="absolute top-0 left-0 w-12 h-12 -rotate-90" viewBox="0 0 56 56">
+          <svg
+            className="absolute top-0 left-0 w-12 h-12 -rotate-90"
+            viewBox="0 0 56 56"
+          >
             <circle
-              cx="28" cy="28" r="24"
+              cx="28"
+              cy="28"
+              r="24"
               fill="none"
               stroke="rgba(94,140,255,0.12)"
               strokeWidth="4"
             />
             <circle
-              cx="28" cy="28" r="24"
+              cx="28"
+              cy="28"
+              r="24"
               fill="none"
               stroke="#5E8CFF"
               strokeWidth="4"

@@ -10,6 +10,14 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import remarkGfm from 'remark-gfm';
 import { toast } from 'sonner';
+import { Doubt } from '@/types';
+import {
+    AI_IMAGE_ALLOWED_MIME_TYPES,
+    AI_IMAGE_ALLOWED_TYPES_LABEL,
+    AI_IMAGE_MAX_BYTES,
+    AI_IMAGE_MAX_SIZE_LABEL,
+    isAllowedAiImageMimeType,
+} from '@/lib/ai-image-validation';
 import 'katex/dist/katex.min.css';
 
 type SolveType = 'standard' | 'simple' | 'exam' | 'eli10';
@@ -66,7 +74,7 @@ const EXAMPLE_PROMPTS = [
 export default function AskAIView({ classroomId = null, onSuccess, initialDoubt }: { 
     classroomId?: number | null, 
     onSuccess?: () => void,
-    initialDoubt?: any 
+    initialDoubt?: Doubt | null
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [inputMode, setInputMode] = useState<'text' | 'image'>('text');
@@ -84,8 +92,8 @@ const { copied, copy } = useCopyToClipboard();
 
     useEffect(() => {
         if (initialDoubt) {
-            setPrompt(initialDoubt.content === "Visual Inquiry" ? "" : initialDoubt.content);
-            setImageBase64(initialDoubt.imageUrl);
+            setPrompt(initialDoubt.content === "Visual Inquiry" ? "" : (initialDoubt.content ?? ""));
+            setImageBase64(initialDoubt.imageUrl ?? null);
             setResponse(null);
             setErrorMsg(null);
             setErrorCode(null);
@@ -99,7 +107,7 @@ const { copied, copy } = useCopyToClipboard();
                     const data = await res.json();
                     if (res.ok && data.length > 0) {
                         // Find the AI solution reply
-                        const solution = data.find((r: any) => r.type === 'solution' || r.userName === 'DoubtDesk AI');
+                        const solution = data.find((r: { type?: string; userName?: string }) => r.type === 'solution' || r.userName === 'DoubtDesk AI');
                         if (solution) {
                             setResponse(solution.content);
                         } else {
@@ -138,18 +146,57 @@ const { copied, copy } = useCopyToClipboard();
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Video generation failed.");
             setVideoUrl(data.videoUrl);
-        } catch (err: any) {
-            setErrorMsg(err.message);
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            setErrorMsg(error.message);
         } finally {
             setIsVideoLoading(false);
         }
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
+        const input = e.currentTarget;
+        const file = input.files?.[0];
         if (!file) return;
+
+        setErrorMsg(null);
+        setErrorCode(null);
+
+        if (!isAllowedAiImageMimeType(file.type)) {
+            const message = `Please upload a ${AI_IMAGE_ALLOWED_TYPES_LABEL} image.`;
+            setErrorMsg(message);
+            toast.error(message);
+            input.value = '';
+            return;
+        }
+
+        if (file.size > AI_IMAGE_MAX_BYTES) {
+            const message = `Images must be ${AI_IMAGE_MAX_SIZE_LABEL} or smaller.`;
+            setErrorMsg(message);
+            setErrorCode('IMAGE_TOO_LARGE');
+            toast.error(message);
+            input.value = '';
+            return;
+        }
+
         const reader = new FileReader();
-        reader.onloadend = () => setImageBase64(reader.result as string);
+        reader.onerror = () => {
+            const message = 'Could not read this image. Please try another file.';
+            setErrorMsg(message);
+            toast.error(message);
+            input.value = '';
+        };
+        reader.onloadend = () => {
+            if (typeof reader.result === 'string') {
+                setImageBase64(reader.result);
+                return;
+            }
+
+            const message = 'Could not read this image. Please try another file.';
+            setErrorMsg(message);
+            toast.error(message);
+            input.value = '';
+        };
         reader.readAsDataURL(file);
     };
 
@@ -173,9 +220,10 @@ const { copied, copy } = useCopyToClipboard();
             }
             setResponse(data.reply);
             if (onSuccess) onSuccess();
-        } catch (err: any) {
-            setErrorMsg(err.message || "Something went wrong. Please try again.");
-            toast.error(err.message || "Failed to process AI request.");
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            setErrorMsg(error.message || "Something went wrong. Please try again.");
+            toast.error(error.message || "Failed to process AI request.");
         } finally {
             setIsLoading(false);
         }
@@ -215,7 +263,7 @@ const { copied, copy } = useCopyToClipboard();
                         </>
                     ) : (
                         <>
-                            <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+                            <input type="file" accept={AI_IMAGE_ALLOWED_MIME_TYPES.join(',')} className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
                             {!imageBase64 ? (
                                 <button
                                     onClick={() => fileInputRef.current?.click()}
@@ -226,13 +274,14 @@ const { copied, copy } = useCopyToClipboard();
                                     </div>
                                     <div className="text-center">
                                         <p className="text-slate-900 dark:text-white font-bold text-xs uppercase tracking-widest">Select Image</p>
+                                        <p className="text-slate-500 dark:text-slate-500 text-[10px] mt-1">{AI_IMAGE_ALLOWED_TYPES_LABEL} · Max {AI_IMAGE_MAX_SIZE_LABEL}</p>
                                     </div>
                                 </button>
                             ) : (
                                 <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950">
                                     <img src={imageBase64} alt="Uploaded" className="w-full max-h-64 object-contain" />
                                     <button
-                                        onClick={() => setImageBase64(null)}
+                                        onClick={() => { setImageBase64(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                                         className="absolute top-3 right-3 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg"
                                         aria-label="Remove image"
                                     >

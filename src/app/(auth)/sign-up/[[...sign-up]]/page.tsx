@@ -26,7 +26,7 @@ export default function SignUpPage() {
   }, []);
 
   if (!mounted) {
-    return null;
+    return <div className="min-h-screen bg-slate-50 dark:bg-black" />;
   }
 
   const isDark = resolvedTheme === "dark";

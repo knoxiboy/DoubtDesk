@@ -25,16 +25,15 @@ const KARMA_POINTS: Record<string, number> = {
 };
 
 // ── GET /api/karma ────────────────────────────────────────────────────────────
-export async function GET(req: NextRequest) {
+export async function GET() {
     const userContext = await currentUser();
-    let email = userContext?.primaryEmailAddress?.emailAddress;
-
-    if (!email) {
-        email = req.nextUrl.searchParams.get("email") || "";
+    if (!userContext) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const email = userContext.primaryEmailAddress?.emailAddress;
     if (!email) {
-        return NextResponse.json({ error: "Unauthorized: Missing identity reference." }, { status: 401 });
+        return NextResponse.json({ error: "User email not found" }, { status: 400 });
     }
 
     const [user] = await db
@@ -66,7 +65,13 @@ export async function GET(req: NextRequest) {
         .orderBy(desc(userBadgesTable.awardedAt));
 
     const recentHistory = await db
-        .select()
+        .select({
+            id:        karmaTransactionsTable.id,
+            points:    karmaTransactionsTable.points,
+            eventType: karmaTransactionsTable.eventType,
+            note:      karmaTransactionsTable.note,
+            createdAt: karmaTransactionsTable.createdAt,
+        })
         .from(karmaTransactionsTable)
         .where(eq(karmaTransactionsTable.userEmail, email))
         .orderBy(desc(karmaTransactionsTable.createdAt))

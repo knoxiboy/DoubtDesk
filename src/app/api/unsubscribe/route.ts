@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
             .where(eq(usersTable.email, email.trim().toLowerCase()));
 
         return NextResponse.redirect(new URL("/profile?unsubscribed=true", req.url));
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Unsubscribe API Error:", error);
         return redirectWithError(req, "Internal Server Error");
     }

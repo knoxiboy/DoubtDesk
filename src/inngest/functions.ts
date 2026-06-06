@@ -1,4 +1,5 @@
 import { inngest } from "./client";
+import type { NonRetriableError } from "inngest";
 import fs from "fs";
 import path from "path";
 import { db } from "../configs/db";
@@ -6,17 +7,35 @@ import { doubtsTable, usersTable, pendingNotificationsTable, repliesTable } from
 import { eq, inArray } from "drizzle-orm";
 import { emailNotificationLimiter } from "../lib/ratelimit";
 import { sendReplyNotificationEmail, sendDigestEmail } from "../lib/email";
+
+interface InngestEvent {
+    data: Record<string, unknown>;
+}
+
+type InngestStep = {
+    sleep: (id: string, duration: string) => Promise<void>;
+    run: <T>(id: string, fn: () => Promise<T>) => Promise<T>;
+};
+
+type EventData = {
+    doubtId?: number;
+    replyId?: number;
+    replierName?: string;
+    replierEmail?: string;
+    replyContent?: string;
+};
+
 export const helloWorld = inngest.createFunction(
   { id: "hello-world", triggers: [{ event: "test/hello.world" }] },
-  async ({ event, step }: { event: any; step: any }) => {
+  async ({ event, step }: { event: InngestEvent; step: InngestStep }) => {
     await step.sleep("wait-a-moment", "1s");
-    return { message: `Hello ${(event.data as any).email}!` };
+    return { message: `Hello ${(event.data as { email?: string }).email}!` };
   }
 );
 
 export const cleanupTempAssets = inngest.createFunction(
   { id: "cleanup-temp-assets", triggers: [{ cron: "0 * * * *" }] },
-  async ({ step }: { step: any }) => {
+  async ({ step }: { step: InngestStep }) => {
     const deletedFiles = await step.run("delete-old-files", async () => {
       const tempDir = path.resolve("./public/temp-assets");
       const videosDir = path.resolve("./public/videos");
@@ -49,8 +68,12 @@ export const cleanupTempAssets = inngest.createFunction(
 
 export const sendReplyNotification = inngest.createFunction(
   { id: "send-reply-notification", triggers: [{ event: "reply.created" }] },
-  async ({ event, step }: { event: any; step: any }) => {
-    const { doubtId, replyId, replierName, replierEmail, replyContent } = event.data;
+  async ({ event, step }: { event: InngestEvent; step: InngestStep }) => {
+    const { doubtId, replyId, replierName, replierEmail, replyContent } = event.data as EventData;
+
+    if (!doubtId || !replyId) {
+        return { success: false, reason: "Missing doubtId or replyId in event data." };
+    }
 
     // 1. Fetch parent doubt and original author details
     const doubt = await step.run("fetch-doubt-and-author", async () => {
@@ -118,8 +141,8 @@ export const sendReplyNotification = inngest.createFunction(
         doubtId,
         doubtSubject: doubt.subject,
         doubtContent: doubt.content,
-        replierName,
-        replyContent,
+        replierName: replierName || "Someone",
+        replyContent: replyContent || "",
       });
     });
 
@@ -129,7 +152,7 @@ export const sendReplyNotification = inngest.createFunction(
 
 export const sendDailyDigest = inngest.createFunction(
   { id: "send-daily-digest", triggers: [{ cron: "0 8 * * *" }] },
-  async ({ step }: { step: any }) => {
+  async ({ step }: { step: InngestStep }) => {
     const digestedCount = await step.run("process-daily-digest", async () => {
       // 1. Get all users with daily digest preference
       const dailyUsers = await db
@@ -210,7 +233,7 @@ export const sendDailyDigest = inngest.createFunction(
 
 export const sendWeeklyDigest = inngest.createFunction(
   { id: "send-weekly-digest", triggers: [{ cron: "0 8 * * 1" }] },
-  async ({ step }: { step: any }) => {
+  async ({ step }: { step: InngestStep }) => {
     const digestedCount = await step.run("process-weekly-digest", async () => {
       // 1. Get all users with weekly digest preference
       const weeklyUsers = await db
@@ -288,3 +311,4 @@ export const sendWeeklyDigest = inngest.createFunction(
     return { message: `Successfully sent weekly digest to ${digestedCount} users.` };
   }
 );
+export { detectConfusionSpikes } from "../app/api/inngest/ConfusionSpikeDetector";

@@ -187,6 +187,12 @@ Before opening a new issue:
 
 For feature requests, describe the use case, the expected behavior, and why the change would help DoubtDesk users.
 
+### Security Issues
+
+Please do not report security vulnerabilities through public GitHub issues.
+
+Refer to [SECURITY.md](./SECURITY.md) for responsible disclosure instructions.
+
 ### Requesting Assignment
 
 If you want to work on an issue, please leave a comment containing the exact phrase `/assign`. 

@@ -13,7 +13,10 @@ export async function POST(req: Request) {
         }
 
         // Try to get email from session claims first (fastest)
-        let email = (sessionClaims as any)?.email;
+        let email: string | undefined = undefined;
+        if (sessionClaims && typeof sessionClaims === "object" && "email" in sessionClaims) {
+            email = (sessionClaims as Record<string, unknown>)["email"] as string | undefined;
+        }
 
         // Fallback to currentUser if email not in claims
         if (!email) {
@@ -50,13 +53,14 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ success: true });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const err = error as { errors?: unknown; message?: string };
         console.error('Onboarding error trace:', error);
-        if (error.errors) {
-            console.error('Clerk Detail Errors:', JSON.stringify(error.errors, null, 2));
+        if (err.errors) {
+            console.error('Clerk Detail Errors:', JSON.stringify(err.errors, null, 2));
         }
         return NextResponse.json(
-            { error: error?.message || 'Failed to complete onboarding' },
+            { error: err.message || 'Failed to complete onboarding' },
             { status: 500 }
         );
     }

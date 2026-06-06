@@ -21,6 +21,11 @@ interface Notification extends NotificationRecord {
     createdAt: string;
 }
 
+interface NotificationData {
+    unreadCount: number;
+    notifications: Notification[];
+}
+
 const NOTIFICATIONS_KEY = '/api/notifications'
 const NOTIFICATION_LOAD_ERROR_MESSAGE = "Could not load notifications."
 const NOTIFICATION_RETRY_BUTTON_LABEL = "Try again"
@@ -42,7 +47,8 @@ export default function NotificationBell() {
     const { isLoaded, isSignedIn } = useAuth()
     const shouldFetchNotifications = isLoaded && isSignedIn && !isPollingPaused
 
-    const { data, error, mutate } = useSWR(
+    // Polling every 30 seconds for new notifications
+    const { data, error, mutate } = useSWR<NotificationData>(
         NOTIFICATIONS_KEY,
         fetcher,
         {

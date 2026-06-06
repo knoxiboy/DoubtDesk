@@ -1,16 +1,24 @@
+// src/app/api/inngest/route.ts
 import { serve } from "inngest/next";
 import { inngest } from "../../../inngest/client";
-import { helloWorld, cleanupTempAssets, sendReplyNotification, sendDailyDigest, sendWeeklyDigest } from "../../../inngest/functions";
+import { 
+    helloWorld, 
+    cleanupTempAssets, 
+    sendReplyNotification, 
+    sendDailyDigest, 
+    sendWeeklyDigest,
+    detectConfusionSpikes
+} from "../../../inngest/functions";
 
-// Create an API that serves zero functions
+// Serve your registered background processes safely
 export const { GET, POST, PUT } = serve({
     client: inngest,
     functions: [
-        /* your functions will be passed here later! */
         helloWorld,
         cleanupTempAssets,
         sendReplyNotification,
         sendDailyDigest,
-        sendWeeklyDigest
+        sendWeeklyDigest,
+        detectConfusionSpikes
     ],
 });

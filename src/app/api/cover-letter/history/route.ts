@@ -25,8 +25,8 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json(history);
 
-    } catch (error: any) {
-        console.error("Fetch Cover Letter History Error:", error.message);
+    } catch (error: unknown) {
+        console.error("Fetch Cover Letter History Error:", error instanceof Error ? error.message : error);
         return NextResponse.json({
             error: "Failed to fetch cover letter history",
         }, { status: 500 });
@@ -63,8 +63,8 @@ export async function DELETE(req: NextRequest) {
             .execute();
 
         return NextResponse.json({ message: "Cover letter deleted successfully" });
-    } catch (error: any) {
-        console.error("Delete Cover Letter Error:", error.message);
+    } catch (error: unknown) {
+        console.error("Delete Cover Letter Error:", error instanceof Error ? error.message : error);
         return NextResponse.json({ error: "Failed to delete cover letter" }, { status: 500 });
     }
 }

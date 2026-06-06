@@ -16,6 +16,8 @@ const createQueryMock = (data: any) => {
     const chain: any = {
         from: () => chain,
         where: () => chain,
+        limit: () => chain,
+        offset: () => chain,
         then: (resolve: any) => Promise.resolve(resolve(data)),
     };
 
@@ -51,13 +53,13 @@ describe('Room Members API Endpoint', () => {
             primaryEmailAddress: { emailAddress: 'outsider@example.com' },
         });
         checkUserBlockMock.mockResolvedValue({ isBlocked: false });
-        selectResultQueue.push([]);
+        selectResultQueue.push([], []);
 
         const res = (await GET(new Request('http://localhost/api/rooms/members?classroomId=1')))!;
         const json = await res.json();
 
         expect(res.status).toBe(403);
-        expect(json.error).toBe('Access denied');
+        expect(json.error).toBe('Access denied to this classroom');
     });
 
     it('does not expose member emails to student requesters', async () => {
@@ -67,6 +69,7 @@ describe('Room Members API Endpoint', () => {
         checkUserBlockMock.mockResolvedValue({ isBlocked: false });
         selectResultQueue.push(
             [{ id: 1, userEmail: 'student@example.com', role: 'student', classroomId: 1 }],
+            [{ count: 2 }],
             [
                 {
                     id: 1,
@@ -87,18 +90,21 @@ describe('Room Members API Endpoint', () => {
         const json = await res.json();
 
         expect(res.status).toBe(200);
-        expect(json).toEqual([
-            {
-                displayName: 'Student_1',
-                role: 'student',
-                joinedAt: '2026-01-01T00:00:00.000Z',
-            },
-            {
-                displayName: 'Student_2',
-                role: 'student',
-                joinedAt: '2026-01-02T00:00:00.000Z',
-            },
-        ]);
+        expect(json).toEqual({
+            members: [
+                {
+                    displayName: 'Student_1',
+                    role: 'student',
+                    joinedAt: '2026-01-01T00:00:00.000Z',
+                },
+                {
+                    displayName: 'Student_2',
+                    role: 'student',
+                    joinedAt: '2026-01-02T00:00:00.000Z',
+                },
+            ],
+            pagination: { total: 2, page: 1, limit: 20, totalPages: 1 },
+        });
         expect(JSON.stringify(json)).not.toContain('userEmail');
         expect(JSON.stringify(json)).not.toContain('classmate@example.com');
     });
@@ -110,6 +116,7 @@ describe('Room Members API Endpoint', () => {
         checkUserBlockMock.mockResolvedValue({ isBlocked: false });
         selectResultQueue.push(
             [{ id: 1, userEmail: 'teacher@example.com', role: 'teacher', classroomId: 1 }],
+            [{ count: 2 }],
             [
                 {
                     id: 1,
@@ -130,17 +137,20 @@ describe('Room Members API Endpoint', () => {
         const json = await res.json();
 
         expect(res.status).toBe(200);
-        expect(json).toEqual([
-            {
-                userEmail: 'teacher@example.com',
-                role: 'teacher',
-                joinedAt: '2026-01-01T00:00:00.000Z',
-            },
-            {
-                userEmail: 'student@example.com',
-                role: 'student',
-                joinedAt: '2026-01-02T00:00:00.000Z',
-            },
-        ]);
+        expect(json).toEqual({
+            members: [
+                {
+                    userEmail: 'teacher@example.com',
+                    role: 'teacher',
+                    joinedAt: '2026-01-01T00:00:00.000Z',
+                },
+                {
+                    userEmail: 'student@example.com',
+                    role: 'student',
+                    joinedAt: '2026-01-02T00:00:00.000Z',
+                },
+            ],
+            pagination: { total: 2, page: 1, limit: 20, totalPages: 1 },
+        });
     });
 });

@@ -136,3 +136,10 @@ button[aria-label="Keyless prompt"] {
 #clerk-components > div:has(button[aria-label="Keyless prompt"]) {
   display: none !important;
 }
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

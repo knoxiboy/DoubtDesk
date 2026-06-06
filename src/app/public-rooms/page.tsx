@@ -8,6 +8,7 @@ import DoubtSortSelect, { DoubtSortValue } from "@/components/DoubtSortSelect";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import useSWRInfinite from "swr/infinite";
 import { useInView } from "react-intersection-observer";
+import { Doubt } from "@/types";
 import { useUser } from "@clerk/nextjs";
 
 export default function PublicRoomsPage() {
@@ -73,7 +74,7 @@ export default function PublicRoomsPage() {
         setSize(1);
     };
 
-    const getKey = (pageIndex: number, previousPageData: any[]) => {
+    const getKey = (pageIndex: number, previousPageData: Doubt[] | null | undefined) => {
         if (previousPageData && !previousPageData.length) return null;
         
         const userName = typeof window !== 'undefined' ? localStorage.getItem("anonymous_user") : "";
@@ -116,7 +117,7 @@ export default function PublicRoomsPage() {
         revalidateFirstPage: false
     });
 
-    const doubts = data ? [].concat(...data) : [];
+    const doubts = (data ? [].concat(...data) : []) as Doubt[];
     
     // Apply local filters to pending doubts so they match the active view
     const matchingPendingDoubts = pendingDoubts.filter((d) => {

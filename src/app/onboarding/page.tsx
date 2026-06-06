@@ -74,7 +74,7 @@ export default function OnboardingPage() {
                                 <button
                                     key={role}
                                     type="button"
-                                    onClick={() => setFormData({ ...formData, role: role as any })}
+                                    onClick={() => setFormData({ ...formData, role: role as 'student' | 'teacher' | 'admin'  })}
                                     className={`py-4 rounded-xl border transition-all duration-300 flex flex-col items-center gap-2 font-semibold ${ formData.role === role ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" : "bg-slate-50/50 dark:bg-zinc-900/20 border-slate-200 dark:border-zinc-900 text-slate-400 dark:text-zinc-500 hover:bg-slate-100 dark:hover:bg-zinc-900/40" }`}
                                 >
                                     {role === 'student' && <GraduationCap className="w-5 h-5" />}

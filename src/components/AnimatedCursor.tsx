@@ -2,9 +2,11 @@
 
 import { motion, useMotionValue, useSpring } from "framer-motion";
 import { useEffect, useState } from "react";
+import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 
 export default function AnimatedCursor() {
   const [hovering, setHovering] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const mouseX = useMotionValue(-100);
   const mouseY = useMotionValue(-100);
@@ -42,9 +44,12 @@ export default function AnimatedCursor() {
     };
   }, [mouseX, mouseY]);
 
-  if (typeof window !== "undefined" && "ontouchstart" in window) {
-    return null;
-  }
+  if (
+  prefersReducedMotion ||
+  (typeof window !== "undefined" && "ontouchstart" in window)
+) {
+  return null;
+}
 
   return (
     <>

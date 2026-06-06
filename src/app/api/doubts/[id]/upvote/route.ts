@@ -4,6 +4,7 @@ import { db } from "@/configs/db";
 import { repliesTable, replyLikesTable } from "@/configs/schema";
 import { eq, and, sql } from "drizzle-orm"; 
 import { inngest } from "@/inngest/client";
+
 import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(
