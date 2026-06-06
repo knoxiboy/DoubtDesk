@@ -658,10 +658,16 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
         // --- PERSISTENCE LOGIC (Only for the first message to create the doubt) ---
         if (!isFollowUp) {
             try {
+                // Ensure AI user exists
+                await db.insert(usersTable).values({
+                    name: 'DoubtDesk AI',
+                    email: 'ai@doubtdesk.com',
+                    role: 'system'
+                }).onConflictDoNothing({ target: usersTable.email });
+
                 const [newDoubt] = await db
                     .insert(doubtsTable)
                     .values({
-
                         userEmail: email,
                         subject,
                         content:

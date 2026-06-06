@@ -122,7 +122,7 @@ export async function GET(req: Request) {
 
             // 7. Top Contributors (students who reply the most)
             db.select({
-                name: repliesTable.userEmail,
+                name: sql<string>`split_part(${repliesTable.userEmail}, '@', 1)`,
                 replyCount: count(repliesTable.id)
             })
                 .from(repliesTable)

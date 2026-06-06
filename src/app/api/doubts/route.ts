@@ -93,7 +93,8 @@ export async function GET(req: Request) {
         if (search) {
             const searchCondition = or(
                 ilike(doubtsTable.content, `%${search}%`),
-                ilike(doubtsTable.subject, `%${search}%`)
+                ilike(doubtsTable.subject, `%${search}%`),
+                ilike(doubtsTable.userEmail, `%${search}%`)
             );
             if (searchCondition) conditions.push(searchCondition);
         }
