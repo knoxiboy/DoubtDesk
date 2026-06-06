@@ -1,4 +1,5 @@
 import { DELETE, PATCH } from '@/app/api/replies/action/[id]/route';
+import { NextRequest } from 'next/server';
 
 const currentUserMock = jest.fn();
 const selectResultQueue: any[] = [];
@@ -47,7 +48,7 @@ describe('Replies Action API Endpoint', () => {
     it('returns 401 for unauthenticated DELETE', async () => {
         currentUserMock.mockResolvedValue(null);
 
-        const req = new Request('http://localhost/api/replies/action/2', {
+        const req = new NextRequest('http://localhost/api/replies/action/2', {
             method: 'DELETE',
         });
 
@@ -63,7 +64,7 @@ describe('Replies Action API Endpoint', () => {
             primaryEmailAddress: null,
         });
 
-        const req = new Request('http://localhost/api/replies/action/2', {
+        const req = new NextRequest('http://localhost/api/replies/action/2', {
             method: 'DELETE',
         });
 
@@ -85,7 +86,7 @@ describe('Replies Action API Endpoint', () => {
             [{ id: 2, classroomId: null }]
         );
 
-        const req = new Request('http://localhost/api/replies/action/2', {
+        const req = new NextRequest('http://localhost/api/replies/action/2', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content: 'updated content' }),
@@ -109,7 +110,7 @@ describe('Replies Action API Endpoint', () => {
             [{ id: 2, classroomId: null }]
         );
 
-        const req = new Request('http://localhost/api/replies/action/2', {
+        const req = new NextRequest('http://localhost/api/replies/action/2', {
             method: 'DELETE',
         });
 
