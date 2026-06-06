@@ -21,5 +21,6 @@ export const updateDoubtActionSchema = z.object({
   imageUrl: z.union([safeUrl, z.literal('')]).optional().nullable().transform(e => e === '' ? null : e),
 
   replyId: positiveInt.optional().nullable(),
+  status: z.string().optional(),
   tags: z.array(trimmedString.min(1).max(80)).max(8).optional()
 });
