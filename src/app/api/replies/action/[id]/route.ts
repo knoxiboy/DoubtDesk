@@ -6,6 +6,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { updateReplyActionSchema } from "@/lib/validations/reply";
+import { auditLog, AUDIT_ACTIONS } from "@/lib/audit";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -55,6 +56,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             .where(eq(repliesTable.id, parsedReplyId))
             .returning();
 
+        void auditLog({
+            actorEmail: email,
+            targetEmail: reply.userEmail,
+            action: AUDIT_ACTIONS.REPLY_EDITED,
+            resourceType: "reply",
+            resourceId: parsedReplyId,
+            metadata: {
+                doubtId: reply.doubtId,
+                changedFields: {
+                    content: content !== undefined,
+                    imageUrl: imageUrl !== undefined,
+                },
+            },
+        });
+
         return NextResponse.json(updated[0]);
     } catch (error) {
         console.error("Error updating reply:", error);
@@ -98,6 +114,18 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         }
 
         await db.delete(repliesTable).where(eq(repliesTable.id, replyId));
+
+        void auditLog({
+            actorEmail: email,
+            targetEmail: reply.userEmail,
+            action: AUDIT_ACTIONS.REPLY_DELETED,
+            resourceType: "reply",
+            resourceId: replyId,
+            metadata: {
+                doubtId: reply.doubtId,
+            },
+        });
+
         return NextResponse.json({ message: "Reply deleted successfully" });
     } catch (error) {
         console.error("Error deleting reply:", error);

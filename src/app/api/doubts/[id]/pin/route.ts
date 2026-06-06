@@ -3,6 +3,7 @@ import { doubtsTable, classroomsTable } from "@/configs/schema";
 import { and, eq, count } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
+import { auditLog, AUDIT_ACTIONS } from "@/lib/audit";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -39,6 +40,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             .where(eq(doubtsTable.id, doubtId))
             .returning();
 
+        void auditLog({
+            actorEmail: email,
+            action: AUDIT_ACTIONS.DOUBT_PINNED,
+            resourceType: "doubt",
+            resourceId: doubtId,
+            metadata: {
+                classroomId: doubt.classroomId,
+            },
+        });
+
         return NextResponse.json(updated[0]);
     } catch (error) {
         console.error("Error pinning doubt:", error);
@@ -71,6 +82,16 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             .set({ isPinned: false })
             .where(eq(doubtsTable.id, doubtId))
             .returning();
+
+        void auditLog({
+            actorEmail: email,
+            action: AUDIT_ACTIONS.DOUBT_UNPINNED,
+            resourceType: "doubt",
+            resourceId: doubtId,
+            metadata: {
+                classroomId: doubt.classroomId,
+            },
+        });
 
         return NextResponse.json(updated[0]);
     } catch (error) {
