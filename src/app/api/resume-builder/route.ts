@@ -4,6 +4,8 @@ import { resumesTable } from "@/configs/schema";
 import { eq, and } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { resumeBuilderSchema } from "@/lib/validations/career";
 
 export async function POST(req: NextRequest) {
     try {
@@ -21,7 +23,9 @@ export async function POST(req: NextRequest) {
         const { isBlocked, errorResponse } = await checkUserBlock(userEmail);
         if (isBlocked) return errorResponse;
 
-        const { id, resumeName, resumeData } = await req.json();
+        const { errorResponse, data } = await parseAndValidateRequest(req, resumeBuilderSchema);
+        if (errorResponse) return errorResponse;
+        const { id, resumeName, resumeData } = data;
 
         if (id) {
             // Update existing

@@ -3,6 +3,8 @@ import { tagsTable } from "@/configs/schema";
 import { and, desc, eq, ilike, isNull, or, type SQL } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { buildErrorResponse } from "@/lib/error-handler";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { createTagSchema } from "@/lib/validations/tags";
 import {
     parseOptionalClassroomId,
     requireAuth,
@@ -48,13 +50,11 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const { email } = await requireAuth();
-        const { name, classroomId: rawClassroomId } = await req.json();
+        const { errorResponse, data } = await parseAndValidateRequest(req, createTagSchema);
+        if (errorResponse) return errorResponse;
+        const { name, classroomId: rawClassroomId } = data;
         const normalizedName = normalizeTagName(name || "");
         const classroomId = parseOptionalClassroomId(rawClassroomId);
-
-        if (!normalizedName) {
-            return NextResponse.json({ error: "Tag name is required" }, { status: 400 });
-        }
 
         if (classroomId) {
             await requireMembership(email, classroomId);

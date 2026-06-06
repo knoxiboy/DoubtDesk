@@ -4,6 +4,8 @@ import { and, eq, isNull, desc, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { buildErrorResponse } from "@/lib/error-handler";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { similarityCheckSchema } from "@/lib/validations/similarity";
 import {
   parseOptionalClassroomId,
   requireAuth,
@@ -25,11 +27,9 @@ export interface SimilarDoubt {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { content, classroomId: rawClassroomId } = body as {
-      content: string;
-      classroomId?: unknown;
-    };
+    const { errorResponse, data } = await parseAndValidateRequest(req, similarityCheckSchema);
+    if (errorResponse) return errorResponse;
+    const { content, classroomId: rawClassroomId } = data;
     const classroomId = parseOptionalClassroomId(rawClassroomId);
 
     if (classroomId) {

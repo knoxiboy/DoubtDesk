@@ -4,6 +4,8 @@ import { db } from "@/configs/db";
 import { chatHistoryTable } from "@/configs/schema";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { saveChatHistorySchema } from "@/lib/validations/career-chat";
 
 export async function GET(req: NextRequest) {
     try {
@@ -65,12 +67,9 @@ export async function POST(req: NextRequest) {
         const { isBlocked, errorResponse } = await checkUserBlock(email);
         if (isBlocked) return errorResponse;
 
-        const body = await req.json();
-        const { role, content, chatId, chatTitle } = body;
-
-        if (!role || !content || !chatId) {
-            return NextResponse.json({ error: "Role, content, and chatId are required" }, { status: 400 });
-        }
+        const { errorResponse, data } = await parseAndValidateRequest(req, saveChatHistorySchema);
+        if (errorResponse) return errorResponse;
+        const { role, content, chatId, chatTitle } = data;
 
         const [savedMessage] = await db
             .insert(chatHistoryTable)
