@@ -5,6 +5,8 @@ import { eq, or, inArray } from "drizzle-orm";
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, membershipsTable, classroomsTable, usersTable } from "@/configs/schema";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { updateProfileSchema } from "@/lib/validations/profile";
 import type { ProfileClassroom } from "@/types/profile";
 
 export async function GET(req: Request) {
@@ -104,8 +106,9 @@ export async function POST(req: NextRequest) {
 
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
 
-        const body = await req.json();
-        const { emailNotificationsEnabled, notificationPreference } = body;
+        const { errorResponse, data } = await parseAndValidateRequest(req, updateProfileSchema);
+        if (errorResponse) return errorResponse;
+        const { emailNotificationsEnabled, notificationPreference } = data;
 
         const updateData:  {
             emailNotificationsEnabled?: boolean;

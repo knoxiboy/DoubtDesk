@@ -3,6 +3,8 @@ import { db } from '@/configs/db';
 import { usersTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { parseAndValidateRequest } from '@/lib/validations/validate';
+import { onboardSchema } from '@/lib/validations/user';
 
 export async function POST(req: Request) {
     try {
@@ -28,11 +30,9 @@ export async function POST(req: Request) {
         if (!email) {
             return NextResponse.json({ error: 'User email not found' }, { status: 401 });
         }
-        const { university, year, role, collegeEmail } = await req.json();
-
-        if (!university || !role || !collegeEmail) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-        }
+        const { errorResponse, data } = await parseAndValidateRequest(req, onboardSchema);
+        if (errorResponse) return errorResponse;
+        const { university, year, role, collegeEmail } = data;
 
         const finalYear = role === 'student' ? year : 'Staff/Faculty';
 

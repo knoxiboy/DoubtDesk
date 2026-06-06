@@ -19,3 +19,8 @@ export const createClassroomInviteSchema = z.object({
     .default(168),
   maxUses: z.coerce.number().int().min(1).max(10000).optional(),
 });
+
+export const updateClassroomSchema = z.object({
+  pedagogyLevel: trimmedString.min(1).max(255),
+  targetGradeLevel: z.coerce.number().int().positive(),
+});

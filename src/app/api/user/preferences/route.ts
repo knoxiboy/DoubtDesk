@@ -3,6 +3,8 @@ import { eq } from "drizzle-orm";
 import { db } from "@/configs/db";
 import { usersTable } from "@/configs/schema";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { preferencesSchema } from "@/lib/validations/user";
 
 const VALID_THEMES = ["light", "dark", "system"] as const;
 type Theme = (typeof VALID_THEMES)[number];
@@ -54,15 +56,9 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const body = await req.json();
-        const { themePreference } = body;
-
-        if (!VALID_THEMES.includes(themePreference)) {
-            return NextResponse.json(
-                { error: "Invalid theme. Must be 'light', 'dark', or 'system'" },
-                { status: 400 }
-            );
-        }
+        const { errorResponse, data } = await parseAndValidateRequest(req, preferencesSchema);
+        if (errorResponse) return errorResponse;
+        const { themePreference } = data;
 
         await db
             .update(usersTable)

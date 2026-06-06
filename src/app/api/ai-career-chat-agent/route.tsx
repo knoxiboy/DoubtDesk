@@ -2,6 +2,8 @@ import axios from "axios";
 import { NextResponse, type NextRequest } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { careerChatInputSchema } from "@/lib/validations/career-chat";
 
 export async function POST(req: NextRequest) {
     try {
@@ -18,12 +20,9 @@ export async function POST(req: NextRequest) {
         const { errorResponse } = await checkUserBlock(email);
         if (errorResponse) return errorResponse;
 
-        const body = await req.json();
-        const userInput = body.userInput;
-
-        if (!userInput) {
-            return NextResponse.json({ error: "userInput is required" }, { status: 400 });
-        }
+        const { errorResponse, data } = await parseAndValidateRequest(req, careerChatInputSchema);
+        if (errorResponse) return errorResponse;
+        const { userInput } = data;
 
         const systemPrompt = `
 You are Mentorix AI, an expert career advisor designed to help students and early professionals plan and grow their careers in technology and related fields.

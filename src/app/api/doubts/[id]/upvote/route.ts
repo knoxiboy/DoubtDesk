@@ -4,7 +4,8 @@ import { db } from "@/configs/db";
 import { repliesTable, replyLikesTable } from "@/configs/schema";
 import { eq, and, sql } from "drizzle-orm"; 
 import { inngest } from "@/inngest/client";
-
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { upvoteReplySchema } from "@/lib/validations/vote";
 import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(
@@ -32,12 +33,9 @@ export async function POST(
             return NextResponse.json({ error: "Invalid doubt id" }, { status: 400 });
         }
 
-        const body = await req.json();
-        const { replyId } = body as { replyId: number };
-
-        if (!replyId) {
-            return NextResponse.json({ error: "replyId is required" }, { status: 400 });
-        }
+        const { errorResponse, data } = await parseAndValidateRequest(req, upvoteReplySchema);
+        if (errorResponse) return errorResponse;
+        const { replyId } = data;
 
         // ── 3. DATA INTEGRITY CHECK (THREAD VALIDATION) ──────────────────────
         const [targetReply] = await db

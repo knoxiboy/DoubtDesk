@@ -3,6 +3,8 @@ import { db } from "@/configs/db";
 import { notificationsTable } from "@/configs/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { updateNotificationSchema } from "@/lib/validations/notifications";
 
 export async function GET(req: Request) {
     try {
@@ -44,8 +46,9 @@ export async function PATCH(req: Request) {
 
         const userEmail = user.primaryEmailAddress.emailAddress;
         
-        const body = await req.json();
-        const { notificationId, markAllRead } = body;
+        const { errorResponse, data } = await parseAndValidateRequest(req, updateNotificationSchema);
+        if (errorResponse) return errorResponse;
+        const { notificationId, markAllRead } = data;
 
         if (markAllRead) {
             await db.update(notificationsTable)
@@ -58,8 +61,6 @@ export async function PATCH(req: Request) {
                     eq(notificationsTable.id, notificationId),
                     eq(notificationsTable.userEmail, userEmail)
                 ));
-        } else {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
 
         return NextResponse.json({ success: true });
