@@ -23,6 +23,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const { id } = await params;
         const doubtId = parseInt(id);
 
+        
         if (isNaN(doubtId)) {
             return NextResponse.json({ error: "Invalid doubt ID" }, { status: 400 });
         }
