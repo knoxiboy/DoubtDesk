@@ -19,8 +19,11 @@ import {
     isAllowedAiImageMimeType,
 } from '@/lib/ai-image-validation';
 import 'katex/dist/katex.min.css';
+import { MentorModeToggle } from './MentorModeToggle';
+import type { AIMode, MentorMessage, SocraticResponse } from '@/types/mentor';
 
 type SolveType = 'standard' | 'simple' | 'exam' | 'eli10';
+
 function useCopyToClipboard(timeout = 2000) {
     const [copied, setCopied] = useState<string | null>(null);
 
@@ -37,6 +40,7 @@ function useCopyToClipboard(timeout = 2000) {
 
     return { copied, copy };
 }
+
 const SECTION_META: Record<string, { icon: React.ReactNode; color: string; badge: string }> = {
     'Step-by-step explanation': {
         icon: <ListOrdered className="w-5 h-5" />,
@@ -65,14 +69,57 @@ function parseSections(text: string): { title: string; content: string }[] {
     });
 }
 
-const EXAMPLE_PROMPTS = [
-    "Solve x² - 5x + 6 = 0 using the quadratic formula",
-    "Explain Newton's Second Law of Motion",
-    "What is Ohm's Law? Give an example.",
-];
+function SocraticHintCard({ data }: { data: SocraticResponse }) {
+    return (
+        <div className="rounded-3xl border border-blue-500/20 bg-white/60 dark:bg-slate-900/60 overflow-hidden shadow-lg">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-200 dark:border-white/5 bg-blue-500/5">
+                <Brain className="w-5 h-5 text-blue-400" />
+                <h2 className="text-slate-900 dark:text-white font-black tracking-tight text-sm uppercase italic">
+                    Mentor Hint
+                </h2>
+                <span className="ml-auto text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400">
+                    Socratic Mode
+                </span>
+            </div>
+            <div className="p-6 space-y-4">
+                <div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                    <p className="text-slate-700 dark:text-slate-300 text-sm">{data.validation}</p>
+                </div>
+                <div className="flex items-start gap-3 p-4 rounded-2xl bg-yellow-500/10 border border-yellow-500/20">
+                    <AlertCircle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
+                    <p className="text-slate-700 dark:text-slate-300 text-sm">{data.nudge}</p>
+                </div>
+                <div className="flex items-start gap-3 p-4 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+                    <Lightbulb className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+                    <p className="text-blue-300 text-sm font-semibold">{data.question}</p>
+                </div>
+            </div>
+        </div>
+    );
+}
 
-export default function AskAIView({ classroomId = null, onSuccess, initialDoubt }: { 
-    classroomId?: number | null, 
+function SolvedCard({ takeaway }: { takeaway: string }) {
+    return (
+        <div className="rounded-3xl border border-emerald-500/30 bg-emerald-500/10 overflow-hidden shadow-lg">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-emerald-500/20">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                <h2 className="text-slate-900 dark:text-white font-black tracking-tight text-sm uppercase italic">
+                    🎉 You got it!
+                </h2>
+            </div>
+            <div className="p-6">
+                <p className="text-slate-700 dark:text-slate-300 text-sm">
+                    <span className="font-bold text-emerald-400">Takeaway: </span>
+                    {takeaway}
+                </p>
+            </div>
+        </div>
+    );
+}
+
+export default function AskAIView({ classroomId = null, onSuccess, initialDoubt }: {
+    classroomId?: number | null,
     onSuccess?: () => void,
     initialDoubt?: Doubt | null
 }) {
@@ -88,7 +135,12 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
     const [isVideoLoading, setIsVideoLoading] = useState(false);
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-const { copied, copy } = useCopyToClipboard();
+    const { copied, copy } = useCopyToClipboard();
+
+    const [aiMode, setAiMode] = useState<AIMode>('direct');
+    const [mentorHistory, setMentorHistory] = useState<MentorMessage[]>([]);
+    const [socraticData, setSocraticData] = useState<SocraticResponse | null>(null);
+    const [isSolved, setIsSolved] = useState(false);
 
     useEffect(() => {
         if (initialDoubt) {
@@ -98,16 +150,17 @@ const { copied, copy } = useCopyToClipboard();
             setErrorMsg(null);
             setErrorCode(null);
             setVideoUrl(null);
+            setSocraticData(null);
+            setIsSolved(false);
+            setMentorHistory([]);
 
-            // Fetch the solution from replies
             const fetchSolution = async () => {
                 setIsLoading(true);
                 try {
                     const res = await fetch(`/api/replies?doubtId=${initialDoubt.id}`);
                     const data = await res.json();
                     if (res.ok && data.length > 0) {
-                        // Find the AI solution reply
-                        const solution = data.find((r: { type?: string; userName?: string }) => r.type === 'solution' || r.userName === 'DoubtDesk AI');
+                        const solution = data.find((r: { type?: string; userName?: string; content: string }) => r.type === 'solution' || r.userName === 'DoubtDesk AI');
                         if (solution) {
                             setResponse(solution.content);
                         } else {
@@ -116,7 +169,7 @@ const { copied, copy } = useCopyToClipboard();
                     } else {
                         setErrorMsg("Could not retrieve the solution.");
                     }
-                } catch (err) {
+                } catch {
                     setErrorMsg("Connection error while fetching solution.");
                 } finally {
                     setIsLoading(false);
@@ -124,8 +177,6 @@ const { copied, copy } = useCopyToClipboard();
             };
 
             fetchSolution();
-            
-            // Smooth scroll to the top of the component
             containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     }, [initialDoubt]);
@@ -138,9 +189,9 @@ const { copied, copy } = useCopyToClipboard();
             const res = await fetch('/api/video/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    content: response || prompt, 
-                    imageUrl: imageBase64 
+                body: JSON.stringify({
+                    content: response || prompt,
+                    imageUrl: imageBase64
                 })
             });
             const data = await res.json();
@@ -191,7 +242,6 @@ const { copied, copy } = useCopyToClipboard();
                 setImageBase64(reader.result);
                 return;
             }
-
             const message = 'Could not read this image. Please try another file.';
             setErrorMsg(message);
             toast.error(message);
@@ -207,6 +257,8 @@ const { copied, copy } = useCopyToClipboard();
         setErrorMsg(null);
         setErrorCode(null);
         setResponse(null);
+        setSocraticData(null);
+        setIsSolved(false);
         try {
             const res = await fetch('/api/ask-ai', {
                 method: 'POST',
@@ -229,19 +281,76 @@ const { copied, copy } = useCopyToClipboard();
         }
     };
 
+    const handleSocraticAsk = async () => {
+        if (!prompt.trim()) return;
+        setIsLoading(true);
+        setErrorMsg(null);
+        setErrorCode(null);
+        setResponse(null);
+        setSocraticData(null);
+        setIsSolved(false);
+        try {
+            const res = await fetch('/api/ask-ai/socratic', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    doubt: prompt,
+                    messages: mentorHistory,
+                }),
+            });
+            const data: SocraticResponse = await res.json();
+            if (!res.ok) throw new Error('Mentor Mode request failed.');
+
+            setMentorHistory(prev => [
+                ...prev,
+                { role: 'user', content: prompt },
+                {
+                    role: 'assistant',
+                    content: `${data.validation} ${data.nudge} ${data.question}`,
+                },
+            ]);
+
+            if (data.isSolved) {
+                setIsSolved(true);
+                setSocraticData(data);
+                if (onSuccess) onSuccess();
+            } else {
+                setSocraticData(data);
+            }
+        } catch (err: unknown) {
+            const error = err instanceof Error ? err : new Error(String(err));
+            setErrorMsg(error.message || "Mentor Mode failed. Please try again.");
+            toast.error(error.message || "Failed to process Mentor Mode request.");
+        } finally {
+            setIsLoading(false);
+            setPrompt('');
+        }
+    };
+
+    const handleSubmit = (type: SolveType = 'standard') => {
+        if (aiMode === 'socratic') {
+            handleSocraticAsk();
+        } else {
+            handleAskAI(type);
+        }
+    };
+
     const sections = response ? parseSections(response) : [];
 
     return (
         <div ref={containerRef} className="space-y-8 text-left scroll-mt-24">
             <div className="bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-white/8 rounded-3xl overflow-hidden shadow-2xl">
+
                 <div className="flex border-b border-slate-200 dark:border-white/5">
                     <button
+                        type="button"
                         onClick={() => { setInputMode('text'); setImageBase64(null); }}
                         className={`flex-1 flex items-center justify-center gap-2 py-4 text-xs font-black uppercase tracking-widest transition-all ${inputMode === 'text' ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-500/5' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                         <Type className="w-4 h-4" /> Type Question
                     </button>
                     <button
+                        type="button"
                         onClick={() => { setInputMode('image'); setPrompt(''); }}
                         className={`flex-1 flex items-center justify-center gap-2 py-4 text-xs font-black uppercase tracking-widest transition-all ${inputMode === 'image' ? 'text-purple-400 border-b-2 border-purple-500 bg-purple-500/5' : 'text-slate-500 hover:text-slate-300'}`}
                     >
@@ -250,22 +359,47 @@ const { copied, copy } = useCopyToClipboard();
                 </div>
 
                 <div className="p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            Response Mode
+                        </span>
+                        <MentorModeToggle mode={aiMode} onChange={(mode) => {
+                            setAiMode(mode);
+                            setMentorHistory([]);
+                            setSocraticData(null);
+                            setIsSolved(false);
+                            setResponse(null);
+                        }} />
+                    </div>
+
+                    {aiMode === 'socratic' && (
+                        <div className="flex items-start gap-3 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20">
+                            <Lightbulb className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+                            <p className="text-blue-300 text-[11px] leading-relaxed">
+                                <span className="font-black">Mentor Mode ON —</span> Type your attempt or current understanding. The AI will guide you with hints, not answers.
+                            </p>
+                        </div>
+                    )}
+
                     {inputMode === 'text' ? (
-                        <>
-                            <textarea
-                                value={prompt}
-                                onChange={(e) => setPrompt(e.target.value)}
-                                placeholder="Type your doubt here..."
-                                rows={4}
-                                className="w-full bg-white/60 dark:bg-slate-950/60 border border-slate-200 dark:border-white/8 rounded-2xl px-5 py-4 text-slate-900 dark:text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all resize-none font-medium text-sm leading-relaxed"
-                                disabled={isLoading}
-                            />
-                        </>
+                        <textarea
+                            value={prompt}
+                            onChange={(e) => setPrompt(e.target.value)}
+                            placeholder={
+                                aiMode === 'socratic'
+                                    ? "Describe your attempt or what you've tried so far..."
+                                    : "Type your doubt here..."
+                            }
+                            rows={4}
+                            className="w-full bg-white/60 dark:bg-slate-950/60 border border-slate-200 dark:border-white/8 rounded-2xl px-5 py-4 text-slate-900 dark:text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all resize-none font-medium text-sm leading-relaxed"
+                            disabled={isLoading}
+                        />
                     ) : (
                         <>
                             <input type="file" accept={AI_IMAGE_ALLOWED_MIME_TYPES.join(',')} className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
                             {!imageBase64 ? (
                                 <button
+                                    type="button"
                                     onClick={() => fileInputRef.current?.click()}
                                     className="w-full h-44 border-2 border-dashed border-slate-200 dark:border-white/10 rounded-2xl flex flex-col items-center justify-center gap-3 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all group"
                                 >
@@ -279,8 +413,10 @@ const { copied, copy } = useCopyToClipboard();
                                 </button>
                             ) : (
                                 <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950">
-                                    <img src={imageBase64} alt="Uploaded" className="w-full max-h-64 object-contain" />
+                                    {/* FIXED: Added clear semantic alternative text description for accessibility guidelines */}
+                                    <img src={imageBase64} alt="Uploaded problem question representation" className="w-full max-h-64 object-contain" />
                                     <button
+                                        type="button"
                                         onClick={() => { setImageBase64(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                                         className="absolute top-3 right-3 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg"
                                         aria-label="Remove image"
@@ -293,22 +429,52 @@ const { copied, copy } = useCopyToClipboard();
                     )}
 
                     <div className="flex flex-wrap gap-2 justify-end">
+                        {aiMode === 'direct' && (
+                            <button
+                                type="button"
+                                onClick={() => handleSubmit('eli10')}
+                                disabled={isLoading || (!prompt.trim() && !imageBase64)}
+                                className="flex items-center gap-2 px-5 py-3 bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 border border-pink-500/20 rounded-2xl font-black uppercase tracking-widest text-[9px] transition-all disabled:opacity-40"
+                            >
+                                {isLoading && currentType === 'eli10' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Brain className="w-3 h-3" />} ELI 10
+                            </button>
+                        )}
+
                         <button
-                            onClick={() => handleAskAI('eli10')}
-                            disabled={isLoading || (!prompt.trim() && !imageBase64)}
-                            className="flex items-center gap-2 px-5 py-3 bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 border border-pink-500/20 rounded-2xl font-black uppercase tracking-widest text-[9px] transition-all disabled:opacity-40"
-                        >
-                            {isLoading && currentType === 'eli10' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Brain className="w-3 h-3" />} ELI 10
-                        </button>
-                        <button
-                            onClick={() => handleAskAI('standard')}
+                            type="button"
+                            onClick={() => handleSubmit('standard')}
                             disabled={isLoading || (!prompt.trim() && !imageBase64)}
                             className="flex items-center gap-2.5 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-600/20 disabled:opacity-40"
                         >
-                            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                            Solve Scoped
+                            {isLoading
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : aiMode === 'socratic'
+                                    ? <Lightbulb className="w-4 h-4" />
+                                    : <Send className="w-4 h-4" />
+                            }
+                            {aiMode === 'socratic' ? 'Get Hint' : 'Solve Scoped'}
                         </button>
                     </div>
+
+                    {aiMode === 'socratic' && mentorHistory.length > 0 && (
+                        <div className="flex items-center justify-between pt-1">
+                            <span className="text-[10px] text-slate-500 font-medium">
+                                {Math.floor(mentorHistory.length / 2)} hint{mentorHistory.length > 2 ? 's' : ''} given this session
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setMentorHistory([]);
+                                    setSocraticData(null);
+                                    setIsSolved(false);
+                                    toast.success("Mentor session reset.");
+                                }}
+                                className="flex items-center gap-1.5 text-[10px] text-slate-500 hover:text-red-400 transition-colors font-bold uppercase tracking-widest"
+                            >
+                                <RefreshCcw className="w-3 h-3" /> Reset Session
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -342,32 +508,41 @@ const { copied, copy } = useCopyToClipboard();
                 <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3 text-red-500 text-xs font-bold">
                     <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                     <div>
-                        <p>{errorCode === "IMAGE_QUALITY_LOW" ? "Image quality issue" : "Unable to solve this doubt"}</p>
+                        <p>{errorCode === "IMAGE_QUALITY_LOW" ? "Image quality issue" : "Unable to process request"}</p>
                         <p className="mt-1 text-red-400/75 font-medium">{errorMsg}</p>
                     </div>
                 </div>
             )}
 
-            {response && (
-    <div className="space-y-4">
-        <div className="flex justify-end">
-            <button
-                onClick={() => copy(response, "full-response")}
-                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-bold uppercase tracking-tighter text-[9px] transition-all text-slate-400 hover:text-white"
-                aria-label="Copy full response"
-            >
-                {copied === "full-response" ? (
-                    <><Check className="w-3 h-3 text-green-400" /> All Copied!</>
-                ) : (
-                    <><Copy className="w-3 h-3" /> Copy All</>
-                )}
-            </button>
-        </div>
-        {sections.map((sec, idx) => {
+            {aiMode === 'socratic' && socraticData && !isSolved && (
+                <SocraticHintCard data={socraticData} />
+            )}
+
+            {aiMode === 'socratic' && isSolved && socraticData?.takeaway && (
+                <SolvedCard takeaway={socraticData.takeaway} />
+            )}
+
+            {aiMode === 'direct' && response && (
+                <div className="space-y-4">
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => copy(response, "full-response")}
+                            className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-bold uppercase tracking-tighter text-[9px] transition-all text-slate-400 hover:text-white"
+                            aria-label="Copy full response"
+                        >
+                            {copied === "full-response" ? (
+                                <><Check className="w-3 h-3 text-green-400" /> All Copied!</>
+                            ) : (
+                                <><Copy className="w-3 h-3" /> Copy All</>
+                            )}
+                        </button>
+                    </div>
+                    {sections.map((sec, idx) => {
                         const meta = SECTION_META[sec.title];
                         return (
                             <div key={idx} className="bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-white/8 rounded-3xl overflow-hidden shadow-lg">
-                                <div className={`flex items-center gap-3 px-6 py-4 border-b border-slate-200 dark:border-white/5`}>
+                                <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-200 dark:border-white/5">
                                     {meta && (
                                         <div className={`flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/5 border ${meta.badge}`}>
                                             {meta.icon}
@@ -375,35 +550,40 @@ const { copied, copy } = useCopyToClipboard();
                                     )}
                                     <h2 className="text-slate-900 dark:text-white font-black tracking-tight text-sm uppercase italic">{sec.title}</h2>
                                     <div className="ml-auto flex items-center gap-2">
-    <button
-        onClick={() => copy(sec.content, `section-${idx}`)}
-        className="flex items-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-bold uppercase tracking-tighter text-[9px] transition-all text-slate-400 hover:text-white"
-        aria-label="Copy section content"
-        title="Copy to clipboard"
-    >
-        {copied === `section-${idx}` ? (
-            <><Check className="w-3 h-3 text-green-400" /> Copied!</>
-        ) : (
-            <><Copy className="w-3 h-3" /> Copy</>
-        )}
-    </button>
-    {idx === 0 && (
-        <button
-            onClick={handleGenerateVideo}
-            disabled={isVideoLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-slate-900 dark:text-white rounded-xl font-bold uppercase tracking-tighter text-[9px] shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50"
-         aria-label="Interactive button">
-            {isVideoLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3 text-yellow-400 fill-yellow-400" />} {isVideoLoading ? "Generating..." : "Generate Video"}
-        </button>
-    )}
-</div>
+                                        <button
+                                            type="button"
+                                            onClick={() => copy(sec.content, `section-${idx}`)}
+                                            className="flex items-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-bold uppercase tracking-tighter text-[9px] transition-all text-slate-400 hover:text-white"
+                                            aria-label="Copy section content"
+                                            title="Copy to clipboard"
+                                        >
+                                            {copied === `section-${idx}` ? (
+                                                <><Check className="w-3 h-3 text-green-400" /> Copied!</>
+                                            ) : (
+                                                <><Copy className="w-3 h-3" /> Copy</>
+                                            )}
+                                        </button>
+                                        {idx === 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={handleGenerateVideo}
+                                                disabled={isVideoLoading}
+                                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-slate-900 dark:text-white rounded-xl font-bold uppercase tracking-tighter text-[9px] shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50"
+                                                aria-label="Interactive button"
+                                            >
+                                                {isVideoLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3 text-yellow-400 fill-yellow-400" />}
+                                                {isVideoLoading ? "Generating..." : "Generate Video"}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="px-6 py-6 prose prose-invert max-w-none">
+                                <div className="px-6 py-6 prose prose-invert max-w-none text-slate-900 dark:text-white">
+                                    {/* FIXED: Passed a unique key structure string fallback value to avoid parsing crashes on empty array components */}
                                     <ReactMarkdown
                                         remarkPlugins={[remarkMath, remarkGfm]}
                                         rehypePlugins={[rehypeKatex]}
                                     >
-                                        {sec.content}
+                                        {sec.content || ""}
                                     </ReactMarkdown>
                                 </div>
                             </div>
