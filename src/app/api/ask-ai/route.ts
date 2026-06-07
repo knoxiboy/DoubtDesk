@@ -9,6 +9,10 @@ import {
 } from '@/lib/auth/membership-guard';
 import { aiLimiter } from '@/lib/ratelimit';
 import {
+    buildAiProviderErrorResponse,
+    enforceAiAvailability,
+} from '@/lib/ai/kill-switch';
+import {
     AI_REQUEST_MAX_BYTES,
     AI_REQUEST_MAX_SIZE_LABEL,
     validateAiImageDataUrl,
