@@ -1,8 +1,8 @@
-name: PR Lifecycle Handler
+name: PR Lifecycle
 
-# Handles all pull_request_target:closed events in one place:
-#   - Merged PR  → add approval labels, remove size/* and review-needed
-#   - Closed without merge → replace all labels with invalid
+# Handles PR close events:
+#   - Merged  → add approval labels, clean up transient labels
+#   - Closed without merge → clean up transient labels only (NO 'invalid' cascade)
 
 on:
   pull_request_target:
@@ -11,8 +11,8 @@ on:
 permissions: {}
 
 jobs:
-  # ── PR merged ────────────────────────────────────────────────────────────────
-  handle_merged_pr:
+  # ── PR Merged ────────────────────────────────────────────────────────────────
+  handle-merged:
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -20,12 +20,13 @@ jobs:
     if: github.event.pull_request.merged == true
     steps:
       - name: Apply post-merge labels and clean up
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const number = context.payload.pull_request.number;
 
+            // Add approval labels
             await github.rest.issues.addLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -33,14 +34,22 @@ jobs:
               labels: ['gssoc:approved', 'mentor:knoxiboy', 'quality:clean'],
             });
 
+            // Remove transient labels
             const { data: labels } = await github.rest.issues.listLabelsOnIssue({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: number,
             });
 
+            const transientLabels = ['review-needed', 'needs-maintainer-approval'];
+
             for (const label of labels) {
-              if (!label.name.startsWith('size/') && label.name !== 'review-needed') continue;
+              const shouldRemove =
+                label.name.startsWith('size/') ||
+                transientLabels.includes(label.name);
+
+              if (!shouldRemove) continue;
+
               try {
                 await github.rest.issues.removeLabel({
                   owner: context.repo.owner,
@@ -50,29 +59,58 @@ jobs:
                 });
                 console.log(`Removed label: ${label.name}`);
               } catch (e) {
-                console.log(`Failed to remove label ${label.name}`, e);
+                console.log(`Failed to remove ${label.name}: ${e.message}`);
               }
             }
 
-  # ── PR closed without merge ──────────────────────────────────────────────────
-  handle_unmerged_pr:
+            console.log(`✅ PR #${number} merged — labels updated.`);
+
+  # ── PR Closed Without Merge ──────────────────────────────────────────────────
+  handle-unmerged:
     runs-on: ubuntu-latest
     permissions:
+      issues: write
       pull-requests: write
     if: github.event.pull_request.merged == false
     steps:
-      - name: Replace all labels with invalid
-        uses: actions/github-script@v6
+      - name: Clean up transient labels only
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const number = context.payload.pull_request.number;
 
-            await github.rest.issues.setLabels({
+            // IMPORTANT: Do NOT add 'invalid' label here.
+            // The old workflow replaced ALL labels with 'invalid', which triggered
+            // label-enforcer's dup/invalid handler → posted an unwanted comment
+            // and re-closed the PR. We only clean up transient labels.
+
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: number,
-              labels: ['invalid'],
             });
 
-            console.log(`PR #${number} closed without merge — labels replaced with [invalid].`);
+            const transientLabels = ['review-needed', 'needs-maintainer-approval'];
+
+            for (const label of labels) {
+              const shouldRemove =
+                label.name.startsWith('size/') ||
+                transientLabels.includes(label.name);
+
+              if (!shouldRemove) continue;
+
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                  name: label.name,
+                });
+                console.log(`Removed transient label: ${label.name}`);
+              } catch (e) {
+                console.log(`Failed to remove ${label.name}: ${e.message}`);
+              }
+            }
+
+            console.log(`PR #${number} closed without merge — transient labels cleaned.`);
