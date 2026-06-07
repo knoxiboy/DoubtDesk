@@ -73,7 +73,7 @@ jobs:
     env:
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_placeholder' }}
       CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY || 'sk_test_placeholder' }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://localhost/test' }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://user:password@localhost.neon.tech/testdb?sslmode=require' }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder' }}
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY || 'placeholder' }}
