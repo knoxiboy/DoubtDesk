@@ -3,6 +3,7 @@ const missingDatabaseUrlError = 'DATABASE_URL is required. Please check your .en
 describe('getDatabaseUrl', () => {
     const originalDatabaseUrl = process.env.DATABASE_URL;
     const originalPublicDatabaseUrl = process.env.NEXT_PUBLIC_NEON_DB_CONNECTION_STRING;
+    const originalNextPhase = process.env.NEXT_PHASE;
 
     afterEach(() => {
         if (originalDatabaseUrl) {
@@ -15,6 +16,12 @@ describe('getDatabaseUrl', () => {
             process.env.NEXT_PUBLIC_NEON_DB_CONNECTION_STRING = originalPublicDatabaseUrl;
         } else {
             delete process.env.NEXT_PUBLIC_NEON_DB_CONNECTION_STRING;
+        }
+
+        if (originalNextPhase) {
+            process.env.NEXT_PHASE = originalNextPhase;
+        } else {
+            delete process.env.NEXT_PHASE;
         }
     });
 
@@ -45,6 +52,15 @@ describe('getDatabaseUrl', () => {
         const { getDatabaseUrl } = require('@/configs/database-url');
 
         expect(() => getDatabaseUrl()).toThrow(missingDatabaseUrlError);
+    });
+
+    it('uses a dummy URL only during the production build', () => {
+        delete process.env.DATABASE_URL;
+        process.env.NEXT_PHASE = 'phase-production-build';
+
+        const { getDatabaseUrl } = require('@/configs/database-url');
+
+        expect(getDatabaseUrl()).toBe('postgresql://dummy:dummy@localhost/dummy');
     });
 });
 
