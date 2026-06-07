@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+<<<<<<< HEAD
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
 import { 
@@ -10,6 +11,17 @@ import {
     membershipsTable, 
     classroomsTable, 
     tagsTable 
+=======
+import { db } from "@/configs/db";
+import {
+  bookmarksTable,
+  doubtTagsTable,
+  doubtsTable,
+  likesTable,
+  repliesTable,
+  tagsTable,
+  membershipsTable,
+>>>>>>> upstream/main
 } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
 import { and, eq, inArray, isNull, or, not, sql, SQL, ilike, desc, getTableColumns } from "drizzle-orm";
@@ -20,6 +32,12 @@ import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createDoubtSchema } from "@/lib/validations/doubt";
 import { createClassroomDoubtNotifications } from "@/lib/notifications/service";
 import { inngest } from "@/inngest/client"; 
+<<<<<<< HEAD
+=======
+import { canTeach } from "@/lib/auth/membership-guard";
+import { currentUser } from "@clerk/nextjs/server";
+
+>>>>>>> upstream/main
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
@@ -27,7 +45,10 @@ export async function GET(req: Request) {
     const search = searchParams.get("search");
     const userName = searchParams.get("userName");
     const classroomIdStr = searchParams.get("classroomId");
+<<<<<<< HEAD
     const classroomId = classroomIdStr ? parseInt(classroomIdStr, 10) : null;
+=======
+>>>>>>> upstream/main
     const type = searchParams.get("type") || "community";
     const tag = searchParams.get("tag");
     const sort = searchParams.get("sort") || "newest";
@@ -35,6 +56,7 @@ export async function GET(req: Request) {
 
     try {
         const user = await currentUser();
+<<<<<<< HEAD
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         const email = user.primaryEmailAddress?.emailAddress;
         if (!email) return NextResponse.json({ error: "Email target missing" }, { status: 400 });
@@ -50,6 +72,22 @@ export async function GET(req: Request) {
         }
 
         const conditions: SQL[] = [];
+=======
+        const email = user?.primaryEmailAddress?.emailAddress ?? null;
+        const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
+
+        if (classroomId) {
+            if (!email) {
+                return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            }
+        }
+
+        if ((type === "ai" || bookmarked) && !email) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const conditions: SQL[] = [isNull(doubtsTable.deletedAt)];
+>>>>>>> upstream/main
 
         if (classroomId) {
             conditions.push(eq(doubtsTable.classroomId, classroomId));
@@ -57,6 +95,7 @@ export async function GET(req: Request) {
             conditions.push(isNull(doubtsTable.classroomId));
         }
 
+<<<<<<< HEAD
         const [room] = classroomId
             ? await db.select().from(classroomsTable).where(eq(classroomsTable.id, classroomId))
             : [null];
@@ -64,6 +103,35 @@ export async function GET(req: Request) {
 
         if (!isTeacher) {
             const teacherCondition = or(not(eq(doubtsTable.type, "teacher")), eq(doubtsTable.userEmail, email));
+=======
+        let isTeacher = false;
+
+        if (classroomId && email) {
+            const [membership] = await db
+                .select()
+                .from(membershipsTable)
+                .where(
+                    and(
+                        eq(membershipsTable.userEmail, email),
+                        eq(membershipsTable.classroomId, classroomId)
+                    )
+                );
+
+            if (!membership) {
+                return NextResponse.json(
+                    { error: "Access denied" },
+                    { status: 403 }
+                );
+            }
+
+            isTeacher = canTeach(membership.role);
+            }
+
+        if (!isTeacher) {
+            const teacherCondition = email
+                ? or(not(eq(doubtsTable.type, "teacher")), eq(doubtsTable.userEmail, email))
+                : not(eq(doubtsTable.type, "teacher"));
+>>>>>>> upstream/main
             if (teacherCondition) conditions.push(teacherCondition);
         }
 
@@ -82,12 +150,20 @@ export async function GET(req: Request) {
 
         if (type && type !== "All") {
             conditions.push(eq(doubtsTable.type, type));
+<<<<<<< HEAD
             if (type === "ai") {
+=======
+            if (type === "ai" && email) {
+>>>>>>> upstream/main
                 conditions.push(eq(doubtsTable.userEmail, email));
             }
         }
 
+<<<<<<< HEAD
         if (bookmarked) {
+=======
+        if (bookmarked && email) {
+>>>>>>> upstream/main
             const userBookmarks = await db
                 .select({ doubtId: bookmarksTable.doubtId })
                 .from(bookmarksTable)
@@ -163,7 +239,11 @@ export async function GET(req: Request) {
             }));
         }
 
+<<<<<<< HEAD
         if (doubts.length > 0) {
+=======
+        if (doubts.length > 0 && email) {
+>>>>>>> upstream/main
             const userBookmarks = await db
                 .select({ doubtId: bookmarksTable.doubtId })
                 .from(bookmarksTable)
@@ -175,6 +255,10 @@ export async function GET(req: Request) {
                 hasBookmarked: bookmarkedIds.has(doubt.id)
             }));
 
+<<<<<<< HEAD
+=======
+        if (doubts.length > 0) {
+>>>>>>> upstream/main
             const tagRows = await db
                 .select({
                     doubtId: doubtTagsTable.doubtId,
@@ -212,27 +296,52 @@ export async function POST(req: Request) {
         
         const { userName, subject, content, imageUrl, classroomId, type, tags } = data;
         const doubtType = type ?? "community";
+<<<<<<< HEAD
         const parsedClassroomId = classroomId ? parseInt(classroomId.toString(), 10) : null;
 
+=======
+        const parsedClassroomId = classroomId;
+>>>>>>> upstream/main
         const user = await currentUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const email = user?.primaryEmailAddress?.emailAddress;
 
-        const email = user.primaryEmailAddress?.emailAddress;
-        if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+        if (!email) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
         const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
         if (isBlocked) return blockResponse;
 
         if (parsedClassroomId) {
             const [membership] = await db
+<<<<<<< HEAD
                 .select()
                 .from(membershipsTable)
                 .where(and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, parsedClassroomId)));
+=======
+            .select()
+            .from(membershipsTable)
+            .where(
+                and(
+                    eq(membershipsTable.userEmail, email),
+                    eq(membershipsTable.classroomId, parsedClassroomId)
+                )
+            );
+
+>>>>>>> upstream/main
             if (!membership) {
-                return NextResponse.json({ error: "Access denied: You are not a member of this classroom" }, { status: 403 });
+                return NextResponse.json(
+                    { error: "Access denied" },
+                    { status: 403 }
+                );
             }
+<<<<<<< HEAD
         }
         
+=======
+        }                                
+
+>>>>>>> upstream/main
         if (content) {
             const moderation = await moderateContent(content);
             const violationError = await handleModerationViolation(email, content, moderation);
@@ -243,6 +352,23 @@ export async function POST(req: Request) {
 
         const subTopic = await categorizeDoubt(content || "", subject, imageUrl);
 
+<<<<<<< HEAD
+=======
+        let parsedCreatedAt: Date | undefined = undefined;
+        if (data.createdAt) {
+            const d = new Date(data.createdAt);
+            if (isNaN(d.getTime())) {
+                return NextResponse.json({ error: "Invalid createdAt date format" }, { status: 400 });
+            }
+            const now = new Date();
+            const age = now.getTime() - d.getTime();
+            const maxOfflineDuration = 30 * 24 * 60 * 60 * 1000; // 30 days
+            if (age >= -300000 && age <= maxOfflineDuration) {
+                parsedCreatedAt = d;
+            }
+        }
+
+>>>>>>> upstream/main
         const [newDoubt] = await db
             .insert(doubtsTable)
             .values({
@@ -253,7 +379,12 @@ export async function POST(req: Request) {
                 content,
                 imageUrl,
                 classroomId: parsedClassroomId,
+<<<<<<< HEAD
                 type: doubtType
+=======
+                type: doubtType,
+                createdAt: parsedCreatedAt
+>>>>>>> upstream/main
             })
             .returning();
 

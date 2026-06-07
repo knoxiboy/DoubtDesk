@@ -92,11 +92,7 @@ export async function removeFromQueue(id: string): Promise<void> {
 
 let isSyncing = false;
 
-export async function syncOfflineQueue(): Promise<void> {
-    if (isSyncing) return;
-    if (typeof navigator !== "undefined" && !navigator.onLine) return;
-    
-    isSyncing = true;
+async function runSyncQueue(): Promise<void> {
     try {
         const queue = await getQueue();
         if (queue.length === 0) return;
@@ -116,8 +112,13 @@ export async function syncOfflineQueue(): Promise<void> {
                         window.dispatchEvent(new CustomEvent("sync-auth-required", { detail: item }));
                     }
                     break; // Stop sync queue to prevent dropping/failing subsequent items due to auth
-                } else if (response.status === 400 || response.status === 422) {
-                    // Remove client validation errors that will never succeed
+                } else if (
+                    response.status === 400 ||
+                    response.status === 403 ||
+                    response.status === 404 ||
+                    response.status === 422
+                ) {
+                    // Remove client validation/permission/missing errors that will never succeed
                     console.error(`Removing invalid sync item ${item.id} (Status: ${response.status})`);
                     await removeFromQueue(item.id);
                 } else {
@@ -127,8 +128,39 @@ export async function syncOfflineQueue(): Promise<void> {
                 break; // Network errors, stop and retry later
             }
         }
+    } catch (error) {
+        console.error("Error in runSyncQueue:", error);
+    }
+}
+
+async function runSyncQueueWithLocalLock(): Promise<void> {
+    if (isSyncing) return;
+    isSyncing = true;
+    try {
+        await runSyncQueue();
     } finally {
         isSyncing = false;
+    }
+}
+
+export async function syncOfflineQueue(): Promise<void> {
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+    
+    if (typeof navigator !== "undefined" && navigator.locks) {
+        try {
+            await navigator.locks.request("syncOfflineQueueLock", { ifAvailable: true }, async (lock) => {
+                if (!lock) {
+                    // Lock could not be acquired (already held by another tab or service worker)
+                    return;
+                }
+                await runSyncQueue();
+            });
+        } catch (error) {
+            console.error("Lock acquisition failed, running with local memory lock:", error);
+            await runSyncQueueWithLocalLock();
+        }
+    } else {
+        await runSyncQueueWithLocalLock();
     }
 }
 
@@ -152,7 +184,7 @@ export async function getPendingDoubts(): Promise<any[]> {
 export async function getPendingReplies(doubtId: number): Promise<any[]> {
     const queue = await getQueue();
     return queue
-        .filter(item => item.url === "/api/replies" && item.payload.doubtId === doubtId)
+        .filter(item => item.url === "/api/replies" && Number(item.payload.doubtId) === Number(doubtId))
         .map(item => ({
             id: `pending-${item.id}`,
             doubtId,
@@ -175,3 +207,4 @@ if (typeof window !== "undefined") {
         syncOfflineQueue();
     });
 }
+

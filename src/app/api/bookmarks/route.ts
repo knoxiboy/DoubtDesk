@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { db } from "@/configs/db";
 import { doubtsTable, bookmarksTable, likesTable, repliesTable } from "@/configs/schema";
-import { and, eq, desc, sql, inArray } from "drizzle-orm";
+import { and, eq, desc, sql, inArray, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
 
         // Fetch doubts
         let doubts = await db.select().from(doubtsTable)
-            .where(inArray(doubtsTable.id, doubtIds))
+            .where(and(inArray(doubtsTable.id, doubtIds), isNull(doubtsTable.deletedAt)))
             .orderBy(desc(doubtsTable.createdAt));
 
         // Add hasLiked and hasBookmarked status

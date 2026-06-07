@@ -1,45 +1,23 @@
 import { NextResponse } from "next/server";
 import { db } from "@/configs/db";
-import { doubtsTable, classroomsTable, membershipsTable, repliesTable } from "@/configs/schema";
-import { and, eq, desc, gte, lte, sql } from "drizzle-orm";
-import { currentUser } from "@clerk/nextjs/server";
+import { doubtsTable, classroomsTable, repliesTable } from "@/configs/schema";
+import { and, eq, desc, gte, lte, sql, isNull } from "drizzle-orm";
+import { buildErrorResponse } from "@/lib/error-handler";
+import {
+    parseClassroomId,
+    requireAuth,
+    requireTeacher,
+} from "@/lib/auth/membership-guard";
 
 export async function GET(
     req: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        // 1. Authenticate via Clerk
-        const user = await currentUser();
-        if (!user || !user.primaryEmailAddress?.emailAddress) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        const email = user.primaryEmailAddress.emailAddress;
+        const { email } = await requireAuth();
         const { id } = await params;
-        const classroomId = parseInt(id);
-
-        if (isNaN(classroomId)) {
-            return NextResponse.json({ error: "Invalid classroom ID" }, { status: 400 });
-        }
-
-        // 2. Verify user is a teacher of this classroom
-        const [membership] = await db
-            .select()
-            .from(membershipsTable)
-            .where(
-                and(
-                    eq(membershipsTable.userEmail, email),
-                    eq(membershipsTable.classroomId, classroomId)
-                )
-            );
-
-        if (!membership || membership.role !== "teacher") {
-            return NextResponse.json(
-                { error: "Forbidden: Only teachers can export classroom doubts" },
-                { status: 403 }
-            );
-        }
+        const classroomId = parseClassroomId(id);
+        await requireTeacher(email, classroomId);
 
         // 3. Get classroom info
         const [classroom] = await db
@@ -58,7 +36,7 @@ export async function GET(
         const to = searchParams.get("to"); // ISO date string
 
         // 5. Build query conditions
-        const conditions = [eq(doubtsTable.classroomId, classroomId)];
+        const conditions = [eq(doubtsTable.classroomId, classroomId), isNull(doubtsTable.deletedAt)];
 
         if (status === "resolved") {
             conditions.push(eq(doubtsTable.isSolved, "solved"));
@@ -110,8 +88,7 @@ export async function GET(
             doubts: doubtsWithReplies,
         });
     } catch (error: unknown) {
-        console.error("Error exporting doubts:", error);
-        const message = error instanceof Error ? error.message : "Internal Server Error";
-        return NextResponse.json({ error: message }, { status: 500 });
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }
