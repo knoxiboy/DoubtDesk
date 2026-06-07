@@ -32,7 +32,7 @@ const insertBuilder = {
 const mockDoubt = {
     id: 1,
     type: "community",
-    isSolved: DOUBT_STATUS.UNSOLVED,
+    isSolved: DOUBT_STATUS.UNSOLVED as string,
     userEmail: "owner@example.com",
     classroomId: null,
 };

@@ -16,7 +16,7 @@ jest.mock("@clerk/nextjs/server", () => ({
 
 const membershipResults: Array<Record<string, string>[]> = [];
 
-const createMembershipQuery = (): any => {
+const createMembershipQuery = () => {
     const query: any = {
         from: jest.fn(() => query),
         where: jest.fn(() => query),

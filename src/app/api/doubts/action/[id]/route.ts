@@ -27,7 +27,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             return NextResponse.json({ error: "Invalid doubt ID" }, { status: 400 });
         }
 
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+        const [doubt] = await db.select().from(doubtsTable).where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
         // Security: Verify doubt visibility/classroom membership
@@ -259,7 +259,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         const { id } = await params;
         const doubtId = parseInt(id);
 
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+        const [doubt] = await db.select().from(doubtsTable).where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
         const isOwner = email && doubt.userEmail === email;
@@ -284,7 +284,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             return NextResponse.json({ error: "Unauthorized to delete this doubt" }, { status: 403 });
         }
 
-        await db.delete(doubtsTable).where(eq(doubtsTable.id, doubtId));
+        await db.update(doubtsTable).set({ deletedAt: new Date() }).where(eq(doubtsTable.id, doubtId));
         return NextResponse.json({ message: "Doubt deleted successfully" });
     } catch (error) {
         console.error("Error deleting doubt:", error);

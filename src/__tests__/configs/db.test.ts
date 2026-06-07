@@ -1,8 +1,10 @@
-const missingDatabaseUrlError = 'DATABASE_URL is required. Please check your .env file.';
-
 describe('getDatabaseUrl', () => {
     const originalDatabaseUrl = process.env.DATABASE_URL;
     const originalPublicDatabaseUrl = process.env.NEXT_PUBLIC_NEON_DB_CONNECTION_STRING;
+
+    beforeEach(() => {
+        jest.resetModules();
+    });
 
     afterEach(() => {
         if (originalDatabaseUrl) {
@@ -18,7 +20,7 @@ describe('getDatabaseUrl', () => {
         }
     });
 
-    it.each([undefined, '', '   '])('throws when DATABASE_URL is %p', (databaseUrl) => {
+    it.each([undefined, '', '   '])('returns dummy URL when DATABASE_URL is %p', (databaseUrl) => {
         if (databaseUrl === undefined) {
             delete process.env.DATABASE_URL;
         } else {
@@ -65,7 +67,7 @@ describe('database configuration', () => {
         }
     });
 
-    it('throws a clear error when DATABASE_URL is missing', () => {
-        require('@/configs/db'); // should not throw
+    it('initializes db successfully without throwing even when DATABASE_URL is missing (uses dummy)', () => {
+        expect(() => require('@/configs/db')).not.toThrow();
     });
 });

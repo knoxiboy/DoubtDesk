@@ -203,7 +203,6 @@ export async function POST(req: Request) {
         return NextResponse.json(result);
     } catch (error: any) {
         console.error('Error in Ask AI Route:', error);
-        
         const { status, body } = buildErrorResponse(error);
         
         if (error.code) {

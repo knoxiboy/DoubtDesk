@@ -1,9 +1,9 @@
-name: Label Manager
+name: Label Enforcer
 
-# Handles all label lifecycle events in one place:
-#   1. duplicate/invalid label added → close issue/PR as not_planned + comment
-#   2. level:* or size/* label added → remove conflicting labels of same group
-#   3. level:beginner label added to issue → add good first issue + beginner friendly
+# Handles all label lifecycle events:
+#   1. duplicate/invalid label added → close + comment (idempotent)
+#   2. level:* or size/* added → remove conflicting labels of same group
+#   3. level:beginner added to issue → add 'good first issue' + 'beginner friendly'
 #   4. Issue closed as not_planned → strip all labels except duplicate/invalid
 
 on:
@@ -15,33 +15,58 @@ on:
 permissions: {}
 
 jobs:
-  # ── duplicate or invalid label added → close + comment ───────────────────────
-  handle_duplicate_invalid_label:
+  # ── duplicate/invalid label → close + comment ───────────────────────────────
+  handle-dup-invalid:
     runs-on: ubuntu-latest
     permissions:
       issues: write
       pull-requests: write
     if: |
-      (github.event_name == 'issues' && github.event.action == 'labeled') ||
-      github.event_name == 'pull_request_target'
+      (
+        (github.event_name == 'issues' && github.event.action == 'labeled') ||
+        (github.event_name == 'pull_request_target' && github.event.action == 'labeled')
+      ) && (
+        github.event.label.name == 'duplicate' ||
+        github.event.label.name == 'invalid'
+      )
     steps:
-      - name: Close and comment on duplicate/invalid
-        uses: actions/github-script@v6
+      - name: Handle duplicate/invalid label (idempotent)
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const labelName = context.payload.label.name;
-            if (labelName !== 'duplicate' && labelName !== 'invalid') return;
-
             const isPR = !!context.payload.pull_request;
-            const number = isPR ? context.payload.pull_request.number : context.issue.number;
+            const number = isPR
+              ? context.payload.pull_request.number
+              : context.issue.number;
             const typeStr = isPR ? 'pull request' : 'issue';
 
-            const message = labelName === 'duplicate'
-              ? `Hi there! Thanks for your contribution. However, this ${typeStr} has been marked as a **duplicate** of an existing one. We are closing it to keep our tracker organized.\n\n*(Maintainers: To explicitly state which issue this duplicates, use the command \`/duplicate #123\` in a comment!)*`
-              : `Hi there! Thanks for reaching out. This ${typeStr} has been marked as **invalid**. This usually means it does not follow our contributing guidelines, is out of scope for the project, or lacks necessary information. It will now be closed.`;
+            // Skip if this was triggered by a bot (prevent cascades)
+            const actor = context.actor;
+            if (actor === 'github-actions[bot]' || actor === 'github-actions') {
+              console.log('Label was added by a bot — skipping to prevent cascade.');
+              return;
+            }
 
-            // Set label to only the single duplicate/invalid label
+            const marker = `<!-- label-enforcer-${labelName} -->`;
+
+            // Check idempotency
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+            });
+            if (comments.some(c => c.body && c.body.includes(marker))) {
+              console.log(`Already handled ${labelName} for #${number} — skipping.`);
+              return;
+            }
+
+            const message = labelName === 'duplicate'
+              ? `${marker}\nThis ${typeStr} has been marked as a **duplicate** of an existing one. Closing to keep our tracker organized.\n\n*(Maintainers: To state which issue this duplicates, use \`/duplicate #123\` in a comment!)*`
+              : `${marker}\nThis ${typeStr} has been marked as **invalid**. This usually means it does not follow our contributing guidelines, is out of scope, or lacks necessary information.`;
+
+            // Set labels to just the one label
             await github.rest.issues.setLabels({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -64,8 +89,10 @@ jobs:
               state_reason: 'not_planned',
             });
 
-  # ── level:* or size/* added → enforce one-per-group ──────────────────────────
-  enforce_exclusive_labels:
+            console.log(`Closed #${number} as ${labelName}.`);
+
+  # ── Exclusive labels: level:* and size/* ─────────────────────────────────────
+  enforce-exclusive:
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -73,7 +100,7 @@ jobs:
     if: |
       (
         (github.event_name == 'issues' && github.event.action == 'labeled') ||
-        github.event_name == 'pull_request_target'
+        (github.event_name == 'pull_request_target' && github.event.action == 'labeled')
       ) && (
         startsWith(github.event.label.name, 'level:') ||
         startsWith(github.event.label.name, 'Level:') ||
@@ -83,100 +110,86 @@ jobs:
         startsWith(github.event.label.name, 'Size:')
       )
     steps:
-      - name: Remove conflicting labels of the same group
-        uses: actions/github-script@v6
+      - name: Remove conflicting labels of same group
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const addedLabel = context.payload.label.name;
             const addedLabelLower = addedLabel.toLowerCase();
             const isPR = !!context.payload.pull_request;
-            const number = isPR ? context.payload.pull_request.number : context.issue.number;
+            const number = isPR
+              ? context.payload.pull_request.number
+              : context.issue.number;
 
             const isLevel = addedLabelLower.startsWith('level:');
-            const isSize  = addedLabelLower.startsWith('size/') || addedLabelLower.startsWith('size:');
+            const isSize = addedLabelLower.startsWith('size/') || addedLabelLower.startsWith('size:');
 
             if (!isLevel && !isSize) return;
 
-            // Define standard size mapping (normalize e.g. size:M to size/m)
+            // Normalize non-standard formats
             const sizeMapping = {
-              'size:xs': 'size/xs',
-              'size:s': 'size/s',
-              'size:m': 'size/m',
-              'size:l': 'size/l',
-              'size:xl': 'size/xl',
-              'size:xxl': 'size/xxl',
-              'size/xs': 'size/xs',
-              'size/s': 'size/s',
-              'size/m': 'size/m',
-              'size/l': 'size/l',
-              'size/xl': 'size/xl',
-              'size/xxl': 'size/xxl',
+              'size:xs': 'size/xs', 'size:s': 'size/s', 'size:m': 'size/m',
+              'size:l': 'size/l', 'size:xl': 'size/xl', 'size:xxl': 'size/xxl',
             };
-
-            // Define standard level mapping (normalize level casing)
             const levelMapping = {
               'level:beginner': 'level:beginner',
               'level:intermediate': 'level:intermediate',
               'level:advanced': 'level:advanced',
-              'level:critical': 'level:critical'
+              'level:critical': 'level:critical',
             };
 
             let targetLabel = addedLabel;
 
-            // 1. Normalize non-standard size labels to standard format (size/m)
-            if (isSize) {
+            // Normalize size labels (size:M → size/m)
+            if (isSize && sizeMapping[addedLabelLower] && sizeMapping[addedLabelLower] !== addedLabel) {
               const mapped = sizeMapping[addedLabelLower];
-              if (mapped && mapped !== addedLabel) {
-                console.log(`Normalizing size label "${addedLabel}" to "${mapped}"`);
-                await github.rest.issues.addLabels({
+              console.log(`Normalizing "${addedLabel}" to "${mapped}"`);
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+                labels: [mapped],
+              });
+              try {
+                await github.rest.issues.removeLabel({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: number,
-                  labels: [mapped],
+                  name: addedLabel,
                 });
-                try {
-                  await github.rest.issues.removeLabel({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: number,
-                    name: addedLabel,
-                  });
-                } catch (e) {
-                  console.log(`Could not remove non-standard label "${addedLabel}": ${e.message}`);
-                }
-                targetLabel = mapped;
+              } catch (e) {
+                console.log(`Could not remove "${addedLabel}": ${e.message}`);
               }
+              targetLabel = mapped;
             }
 
-            // 2. Normalize non-standard level labels to standard format (level:critical)
-            if (isLevel) {
+            // Normalize level labels (Level:Beginner → level:beginner)
+            if (isLevel && levelMapping[addedLabelLower] && levelMapping[addedLabelLower] !== addedLabel) {
               const mapped = levelMapping[addedLabelLower];
-              if (mapped && mapped !== addedLabel) {
-                console.log(`Normalizing level label "${addedLabel}" to "${mapped}"`);
-                await github.rest.issues.addLabels({
+              console.log(`Normalizing "${addedLabel}" to "${mapped}"`);
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+                labels: [mapped],
+              });
+              try {
+                await github.rest.issues.removeLabel({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
                   issue_number: number,
-                  labels: [mapped],
+                  name: addedLabel,
                 });
-                try {
-                  await github.rest.issues.removeLabel({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: number,
-                    name: addedLabel,
-                  });
-                } catch (e) {
-                  console.log(`Could not remove non-standard label "${addedLabel}": ${e.message}`);
-                }
-                targetLabel = mapped;
+              } catch (e) {
+                console.log(`Could not remove "${addedLabel}": ${e.message}`);
               }
+              targetLabel = mapped;
             }
 
             const targetLabelLower = targetLabel.toLowerCase();
 
-            // Fetch current labels to remove conflicts
+            // Remove conflicting labels
             const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -185,12 +198,12 @@ jobs:
 
             for (const label of currentLabels) {
               if (label.name.toLowerCase() === targetLabelLower) continue;
-              
-              const labelNameLower = label.name.toLowerCase();
+
+              const labelLower = label.name.toLowerCase();
               const shouldRemove =
-                (isLevel && labelNameLower.startsWith('level:')) ||
-                (isSize && (labelNameLower.startsWith('size/') || labelNameLower.startsWith('size:')));
-              
+                (isLevel && labelLower.startsWith('level:')) ||
+                (isSize && (labelLower.startsWith('size/') || labelLower.startsWith('size:')));
+
               if (!shouldRemove) continue;
 
               try {
@@ -200,14 +213,14 @@ jobs:
                   issue_number: number,
                   name: label.name,
                 });
-                console.log(`Removed conflicting label "${label.name}" (replaced by "${targetLabel}")`);
+                console.log(`Removed conflicting "${label.name}" (replaced by "${targetLabel}")`);
               } catch (e) {
                 console.log(`Could not remove "${label.name}": ${e.message}`);
               }
             }
 
-  # ── level:beginner added to issue → add beginner-friendly tags ───────────────
-  sync_beginner_tags:
+  # ── level:beginner on issue → add beginner-friendly tags ─────────────────────
+  sync-beginner-tags:
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -216,8 +229,8 @@ jobs:
       github.event.action == 'labeled' &&
       github.event.label.name == 'level:beginner'
     steps:
-      - name: Add good first issue and beginner friendly labels
-        uses: actions/github-script@v6
+      - name: Add beginner-friendly labels
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -228,8 +241,8 @@ jobs:
               labels: ['good first issue', 'beginner friendly'],
             });
 
-  # ── Issue closed as not_planned → strip all labels except duplicate/invalid ──
-  cleanup_not_planned_labels:
+  # ── Issue closed as not_planned → strip labels ──────────────────────────────
+  cleanup-not-planned:
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -239,7 +252,7 @@ jobs:
       github.event.issue.state_reason == 'not_planned'
     steps:
       - name: Strip all labels except duplicate/invalid
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -261,6 +274,6 @@ jobs:
                 });
                 console.log(`Removed label: ${label.name}`);
               } catch (e) {
-                console.log(`Could not remove label ${label.name}: ${e.message}`);
+                console.log(`Could not remove ${label.name}: ${e.message}`);
               }
             }

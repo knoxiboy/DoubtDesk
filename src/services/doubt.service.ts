@@ -211,10 +211,11 @@ export interface CreateDoubtParams {
     classroomId?: number | null;
     type?: string;
     tags?: string[];
+    createdAt?: Date;
 }
 
 export async function createDoubt(db: any, params: CreateDoubtParams) {
-    const { email, userName, subject, content, imageUrl, classroomId, type, tags } = params;
+    const { email, userName, subject, content, imageUrl, classroomId, type, tags, createdAt } = params;
     const doubtType = type ?? "community";
 
     const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
@@ -256,7 +257,8 @@ export async function createDoubt(db: any, params: CreateDoubtParams) {
             content,
             imageUrl,
             classroomId: classroomId,
-            type: doubtType
+            type: doubtType,
+            createdAt
         })
         .returning();
 

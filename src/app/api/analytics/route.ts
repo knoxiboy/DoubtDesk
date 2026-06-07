@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
+
 import { buildErrorResponse } from '@/lib/error-handler';
 import { parseOptionalClassroomId, requireAuth } from '@/lib/auth/membership-guard';
 import { getDashboardAnalytics } from "@/services/analytics.service";

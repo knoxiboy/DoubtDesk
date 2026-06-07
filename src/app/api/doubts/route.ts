@@ -26,6 +26,16 @@ export async function GET(req: Request) {
         const email = user?.primaryEmailAddress?.emailAddress ?? null;
         const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
 
+        if (classroomId) {
+            if (!email) {
+                return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            }
+        }
+
+        if ((type === "ai" || bookmarked) && !email) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const doubts = await getDoubts(db, {
             email,
             subject,
@@ -49,8 +59,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        const { errorResponse, data } = await parseAndValidateRequest(req, createDoubtSchema);
-        if (errorResponse) return errorResponse;
+        const { errorResponse: validationResponse, data } = await parseAndValidateRequest(req, createDoubtSchema);
+        if (validationResponse) return validationResponse;
         
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
@@ -61,6 +71,20 @@ export async function POST(req: Request) {
 
         const parsedClassroomId = data.classroomId ? parseInt(data.classroomId.toString(), 10) : null;
 
+        let parsedCreatedAt: Date | undefined = undefined;
+        if (data.createdAt) {
+            const d = new Date(data.createdAt);
+            if (isNaN(d.getTime())) {
+                return NextResponse.json({ error: "Invalid createdAt date format" }, { status: 400 });
+            }
+            const now = new Date();
+            const age = now.getTime() - d.getTime();
+            const maxOfflineDuration = 30 * 24 * 60 * 60 * 1000; // 30 days
+            if (age >= -300000 && age <= maxOfflineDuration) {
+                parsedCreatedAt = d;
+            }
+        }
+
         const newDoubt = await createDoubt(db, {
             email,
             userName: data.userName,
@@ -69,7 +93,8 @@ export async function POST(req: Request) {
             imageUrl: data.imageUrl,
             classroomId: parsedClassroomId,
             type: data.type,
-            tags: data.tags
+            tags: data.tags,
+            createdAt: parsedCreatedAt
         });
 
         return NextResponse.json(newDoubt);
