@@ -16,6 +16,7 @@ const createQueryMock = (data: any) => {
     const chain: any = {
         from: () => chain,
         where: () => chain,
+        orderBy: () => chain,
         limit: () => chain,
         offset: () => chain,
         then: (resolve: any) => Promise.resolve(resolve(data)),

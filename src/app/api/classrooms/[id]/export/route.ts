@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { doubtsTable, classroomsTable, repliesTable } from "@/configs/schema";
-import { and, eq, desc, gte, lte, sql } from "drizzle-orm";
+import { and, eq, desc, gte, lte, sql, isNull } from "drizzle-orm";
 import { buildErrorResponse } from "@/lib/error-handler";
 import {
     parseClassroomId,
@@ -36,7 +36,7 @@ export async function GET(
         const to = searchParams.get("to"); // ISO date string
 
         // 5. Build query conditions
-        const conditions = [eq(doubtsTable.classroomId, classroomId)];
+        const conditions = [eq(doubtsTable.classroomId, classroomId), isNull(doubtsTable.deletedAt)];
 
         if (status === "resolved") {
             conditions.push(eq(doubtsTable.isSolved, "solved"));

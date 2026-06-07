@@ -96,7 +96,11 @@ export default function ClassroomPage() {
   const [doubtFilter, setDoubtFilter] = useState<
     "unsolved" | "in-progress" | "solved"
   >("unsolved");
-  const [searchVal, setSearchVal] = useState("");
+  const [searchVal, setSearchVal] = useState(searchParams.get("search") || "");
+  useEffect(() => {
+    const urlSearch = searchParams.get("search");
+    if (urlSearch) setSearchVal(urlSearch);
+  }, [searchParams]);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [pedagogyLevel, setPedagogyLevel] = useState("");
   const [targetGrade, setTargetGrade] = useState("");
@@ -116,7 +120,7 @@ export default function ClassroomPage() {
     return () => clearTimeout(timer);
   }, [searchVal]);
 
-  useEffect(() => {
+ useEffect(() => {
     if (
       notificationTab === "community" ||
       notificationTab === "teacher-doubts" ||
@@ -125,7 +129,10 @@ export default function ClassroomPage() {
     ) {
       setActiveTab(notificationTab);
     }
-  }, [notificationTab]);
+    if (searchParams.get("search") && !notificationTab) {
+      setActiveTab("community");
+    }
+  }, [notificationTab, searchParams]);
 
   const type =
     activeTab === "teacher-doubts"

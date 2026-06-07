@@ -1,6 +1,6 @@
 import { db } from "@/configs/db";
-import { tagsTable } from "@/configs/schema";
-import { and, desc, eq, ilike, isNull, or, type SQL } from "drizzle-orm";
+import { membershipsTable, tagsTable, doubtsTable, doubtTagsTable } from "@/configs/schema";
+import { and, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { buildErrorResponse } from "@/lib/error-handler";
 import {
@@ -18,10 +18,78 @@ export async function GET(req: Request) {
         const { searchParams } = new URL(req.url);
         const classroomIdParam = searchParams.get("classroomId");
         const query = searchParams.get("q")?.trim();
+        const subject = searchParams.get("subject")?.trim();
         const classroomId = parseOptionalClassroomId(classroomIdParam);
 
         if (classroomId) {
             await requireMembership(email, classroomId);
+        }
+
+        if (subject) {
+            // Query to return top 5 tags ordered by frequency under the selected subject
+            const popularTags = await db.select({
+                id: tagsTable.id,
+                name: tagsTable.name,
+                normalizedName: tagsTable.normalizedName,
+                classroomId: tagsTable.classroomId,
+                createdByEmail: tagsTable.createdByEmail,
+                createdAt: tagsTable.createdAt
+            })
+            .from(tagsTable)
+            .innerJoin(doubtTagsTable, eq(tagsTable.id, doubtTagsTable.tagId))
+            .innerJoin(doubtsTable, eq(doubtTagsTable.doubtId, doubtsTable.id))
+            .where(
+                and(
+                    eq(doubtsTable.subject, subject),
+                    classroomId
+                        ? or(isNull(tagsTable.classroomId), eq(tagsTable.classroomId, classroomId))
+                        : isNull(tagsTable.classroomId)
+                )
+            )
+            .groupBy(tagsTable.id)
+            .orderBy(desc(sql`count(${doubtTagsTable.id})`))
+            .limit(5);
+
+            if (popularTags.length > 0) {
+                return NextResponse.json(popularTags);
+            }
+
+            // Fallback: overall most popular tags across the entire platform
+            const fallbackTags = await db.select({
+                id: tagsTable.id,
+                name: tagsTable.name,
+                normalizedName: tagsTable.normalizedName,
+                classroomId: tagsTable.classroomId,
+                createdByEmail: tagsTable.createdByEmail,
+                createdAt: tagsTable.createdAt
+            })
+            .from(tagsTable)
+            .innerJoin(doubtTagsTable, eq(tagsTable.id, doubtTagsTable.tagId))
+            .where(
+                classroomId
+                    ? or(isNull(tagsTable.classroomId), eq(tagsTable.classroomId, classroomId))
+                    : isNull(tagsTable.classroomId)
+            )
+            .groupBy(tagsTable.id)
+            .orderBy(desc(sql`count(${doubtTagsTable.id})`))
+            .limit(5);
+
+            if (fallbackTags.length > 0) {
+                return NextResponse.json(fallbackTags);
+            }
+
+            // Fallback 2: if there are no popular tags at all (e.g. fresh DB), get the 5 most recently created tags
+            const recentTags = await db.select()
+                .from(tagsTable)
+                .where(
+                    classroomId
+                        ? or(isNull(tagsTable.classroomId), eq(tagsTable.classroomId, classroomId))
+                        : isNull(tagsTable.classroomId)
+                )
+                .orderBy(desc(tagsTable.createdAt))
+                .limit(5);
+
+            return NextResponse.json(recentTags);
         }
 
         const conditions: SQL<unknown>[] = [

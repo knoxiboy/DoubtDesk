@@ -1,9 +1,21 @@
 import { currentUser } from "@clerk/nextjs/server";
 
 import { POST } from "@/app/api/doubts/check-similarity/route";
+import { getAnonymousQuotaIdentifier } from "@/lib/request-identity";
+import { getSafeErrorDetails } from "@/lib/safe-error-details";
 
 jest.mock("@clerk/nextjs/server", () => ({
   currentUser: jest.fn(),
+}));
+
+jest.mock("@/lib/ai/kill-switch", () => ({
+  buildAiProviderErrorResponse: jest.fn(
+    () =>
+      new Response(JSON.stringify({ error: "AI provider unavailable" }), {
+        status: 503,
+      }),
+  ),
+  enforceAiAvailability: jest.fn().mockResolvedValue(null),
 }));
 
 const createQueryMock = () => {
@@ -56,6 +68,40 @@ describe("Doubt similarity API endpoint", () => {
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ similarDoubts: [] });
     expect(currentUserMock).not.toHaveBeenCalled();
+  });
+
+  it("ignores spoofable forwarded IP values for anonymous quota keys", () => {
+    const req = new Request("http://localhost/api/doubts/check-similarity", {
+      headers: { "x-forwarded-for": "203.0.113.1" },
+    });
+
+    expect(getAnonymousQuotaIdentifier(req)).toBe("anonymous");
+  });
+
+  it("uses a validated trusted proxy IP for anonymous quota keys", () => {
+    const req = new Request("http://localhost/api/doubts/check-similarity", {
+      headers: {
+        "x-forwarded-for": "spoofed",
+        "x-real-ip": "203.0.113.7",
+      },
+    });
+
+    expect(getAnonymousQuotaIdentifier(req)).toBe("ip:203.0.113.7");
+  });
+
+  it("keeps sensitive provider metadata out of error logs", () => {
+    const error = {
+      message: "provider failed",
+      code: "ETIMEDOUT",
+      response: { status: 503, config: { headers: { Authorization: "secret" } } },
+      config: { headers: { Authorization: "secret" } },
+    };
+
+    expect(getSafeErrorDetails(error)).toEqual({
+      message: "provider failed",
+      status: 503,
+      code: "ETIMEDOUT",
+    });
   });
 
   it("requires authentication for classroom similarity checks", async () => {

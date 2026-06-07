@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { doubtsTable } from '@/configs/schema';
-import { and, eq, desc } from 'drizzle-orm';
+import { and, eq, desc, isNull } from 'drizzle-orm';
 import Groq from 'groq-sdk';
 import { buildErrorResponse } from '@/lib/error-handler';
 import {
@@ -35,7 +35,8 @@ export async function GET(req: Request) {
         .where(
             and(
                 eq(doubtsTable.classroomId, classroomId),
-                eq(doubtsTable.userEmail, email)
+                eq(doubtsTable.userEmail, email),
+                isNull(doubtsTable.deletedAt)
             )
         )
         .orderBy(desc(doubtsTable.createdAt));

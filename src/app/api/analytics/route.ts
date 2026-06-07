@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { doubtsTable, repliesTable, membershipsTable, classroomsTable } from '@/configs/schema';
-import { desc, sql, and, eq, count, countDistinct, ne, inArray } from 'drizzle-orm';
+import { desc, sql, and, eq, count, countDistinct, ne, inArray, isNull } from 'drizzle-orm';
 import { checkUserBlock } from '@/lib/auth-utils';
 import { buildErrorResponse } from '@/lib/error-handler';
 import {
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
 
         if (classroomId) {
             await requireMembership(email, classroomId);
-            classroomFilter = eq(doubtsTable.classroomId, classroomId);
+            classroomFilter = and(eq(doubtsTable.classroomId, classroomId), isNull(doubtsTable.deletedAt));
         } else {
             const userMemberships = await db.select({ classroomId: membershipsTable.classroomId })
                 .from(membershipsTable)
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
                 });
             }
 
-            classroomFilter = inArray(doubtsTable.classroomId, userClassroomIds);
+            classroomFilter = and(inArray(doubtsTable.classroomId, userClassroomIds), isNull(doubtsTable.deletedAt));
         }
 
         // Run all queries in parallel to eliminate sequential query latency
