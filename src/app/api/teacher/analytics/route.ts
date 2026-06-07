@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, classroomsTable, membershipsTable, usersTable } from "@/configs/schema";
-import { and, eq, inArray, gte, lte } from "drizzle-orm";
+import { and, eq, inArray, gte, lte, isNull } from "drizzle-orm";
 import { DoubtRecord, ReplyRecord } from "@/types";
 import {
     parseOptionalClassroomId,
@@ -107,7 +107,8 @@ export async function GET(req: NextRequest) {
                     and(
                         inArray(doubtsTable.classroomId, selectedClassroomIds),
                         gte(doubtsTable.createdAt, startDate),
-                        lte(doubtsTable.createdAt, endDate)
+                        lte(doubtsTable.createdAt, endDate),
+                        isNull(doubtsTable.deletedAt)
                     )
                 );
 

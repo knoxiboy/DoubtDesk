@@ -5,7 +5,7 @@ import { doubtsTable, repliesTable, usersTable, classroomsTable } from '@/config
 import { eq } from 'drizzle-orm';
 import { moderateContent, handleModerationViolation } from '@/lib/moderation';
 import { checkPedagogicalDrift } from '@/lib/pedagogy';
-import { buildErrorResponse } from '@/lib/error-handler';
+import { buildErrorResponse, errorResponse } from '@/lib/error-handler';
 import {
     parseClassroomId,
     requireAuth,
@@ -323,11 +323,9 @@ export async function POST(req: Request) {
                 dbUser.blockedUntil
             ).toDateString();
 
-            return NextResponse.json(
-                {
-                    error: `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`,
-                },
-                { status: 403 }
+            return errorResponse(
+                `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`,
+                403
             );
         }
 
@@ -468,10 +466,7 @@ export async function POST(req: Request) {
                 );
 
             if (violationError) {
-                return NextResponse.json(
-                    { error: violationError },
-                    { status: 400 }
-                );
+                return errorResponse(violationError, 400);
             }
         }
 
@@ -480,10 +475,7 @@ export async function POST(req: Request) {
             !safeImageBase64 &&
             conversationHistory.length === 0
         ) {
-            return NextResponse.json(
-                { error: 'Message content is required' },
-                { status: 400 }
-            );
+            return errorResponse('Message content is required', 400);
         }
 
         // Global formatting rules for mathematical content using KaTeX compatibility
@@ -627,13 +619,9 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
             isVisionRequest &&
             isUnclearVisionReply(reply)
         ) {
-            return NextResponse.json(
-                {
-                    error: IMAGE_QUALITY_ERROR,
-                    code: 'IMAGE_QUALITY_LOW',
-                },
-                { status: 422 }
-            );
+            return errorResponse(IMAGE_QUALITY_ERROR, 422, undefined, {
+                code: 'IMAGE_QUALITY_LOW',
+            });
         }
 
         // Extract and strip the SUBJECT line (only for initial doubt)

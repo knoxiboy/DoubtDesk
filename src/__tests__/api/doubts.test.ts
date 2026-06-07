@@ -87,17 +87,73 @@ const createEmptyChain = () => {
     return chain;
 };
 
+const extractSqlInfo = (val: any): string[] => {
+    const info: string[] = [];
+    const seen = new WeakSet();
+
+    const walk = (x: any) => {
+        if (!x || typeof x !== 'object') {
+            if (typeof x === 'string' || typeof x === 'number') {
+                info.push(String(x));
+            }
+            return;
+        }
+        if (seen.has(x)) return;
+        seen.add(x);
+
+        // If it looks like a Drizzle Column, extract its name and do NOT traverse its properties
+        if (x.name && typeof x.name === 'string' && x.table && typeof x.table === 'object') {
+            info.push(x.name);
+            return;
+        }
+
+        // Recursively walk arrays and non-table objects
+        if (Array.isArray(x)) {
+            x.forEach(walk);
+        } else {
+            for (const key of Object.keys(x)) {
+                // Do not traverse into the table property of any object (to avoid sibling columns)
+                if (key === 'table') continue;
+                walk(x[key]);
+            }
+        }
+    };
+
+    walk(val);
+    return info;
+};
+
+const matchesPattern = (val: any, pattern: string): boolean => {
+    const info = extractSqlInfo(val);
+    return info.some(s => s.toLowerCase().includes(pattern.toLowerCase()));
+};
+
 const createChainWithData = (data: any[]) => {
+    let result = [...data];
     const chain: any = {
         from: () => chain,
-        where: () => chain,
-        orderBy: () => chain,
+        where: (condition: any) => {
+            if (matchesPattern(condition, 'unsolved')) {
+                result = result.filter(d => d.isSolved === 'unsolved');
+            }
+            return chain;
+        },
+        orderBy: (...orderFields: any[]) => {
+            const hasLikes = orderFields.some(f => matchesPattern(f, 'likes'));
+            const hasCount = orderFields.some(f => matchesPattern(f, 'count'));
+            if (hasLikes) {
+                result.sort((a, b) => b.likes - a.likes);
+            } else if (hasCount) {
+                result.sort((a, b) => b.count - a.count);
+            }
+            return chain;
+        },
         limit: () => chain,
         offset: () => chain,
         groupBy: () => chain,
         innerJoin: () => chain,
         leftJoin: () => chain,
-        then: (resolve: any) => Promise.resolve(resolve(data)),
+        then: (resolve: any) => Promise.resolve(resolve(result)),
     };
     return chain;
 };
@@ -210,7 +266,7 @@ describe('Doubts API Endpoints', () => {
                 content: 'New doubt'
             })
         });
-        const res = await POST(req);
+        const res = (await POST(req))!;
         const json = await res.json();
         expect(res.status).toBe(200);
         expect(json.id).toBe(2);

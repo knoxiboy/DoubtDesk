@@ -51,7 +51,7 @@ describe('Replies Action API Endpoint', () => {
             method: 'DELETE',
         });
 
-        const res = await DELETE(req, { params: Promise.resolve({ id: '2' }) });
+        const res = (await DELETE(req as any, { params: Promise.resolve({ id: '2' }) }))!;
         const json = await res.json();
 
         expect(res.status).toBe(401);
@@ -67,7 +67,7 @@ describe('Replies Action API Endpoint', () => {
             method: 'DELETE',
         });
 
-        const res = await DELETE(req, { params: Promise.resolve({ id: '2' }) });
+        const res = (await DELETE(req as any, { params: Promise.resolve({ id: '2' }) }))!;
         const json = await res.json();
 
         expect(res.status).toBe(400);
@@ -91,7 +91,7 @@ describe('Replies Action API Endpoint', () => {
             body: JSON.stringify({ content: 'updated content' }),
         });
 
-        const res = await PATCH(req, { params: Promise.resolve({ id: '2' }) });
+        const res = (await PATCH(req as any, { params: Promise.resolve({ id: '2' }) }))!;
         const json = await res.json();
 
         expect(res.status).toBe(403);
@@ -113,7 +113,7 @@ describe('Replies Action API Endpoint', () => {
             method: 'DELETE',
         });
 
-        const res = await DELETE(req, { params: Promise.resolve({ id: '2' }) });
+        const res = (await DELETE(req as any, { params: Promise.resolve({ id: '2' }) }))!;
         const json = await res.json();
         const dbMock = (globalThis as any).__repliesActionDbMock;
 
