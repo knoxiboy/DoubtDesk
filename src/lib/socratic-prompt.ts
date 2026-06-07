@@ -17,18 +17,22 @@ CRITICAL RULES:
 5. If the student's latest message contains the correct solution or fix, set isSolved to true and fill takeaway with a one-sentence concept summary. Still set validation, nudge, and question to empty strings when solved.
 6. NEVER break the JSON structure. Output only raw JSON — no markdown, no backticks.`;
 
-// Groq does not support Anthropic-style prompt caching natively,
-// but we isolate the system prompt here so it's easy to swap to
-// a provider that does (e.g. Anthropic Claude via cache_control).
 export function buildSocraticMessages(
-  // FIXED: Changed Array<{role: string}> to ChatCompletionMessageParam[] 
-  // This satisfies CodeAnt's strict type checks and aligns perfectly with Groq SDK types.
   conversationHistory: ChatCompletionMessageParam[],
   newUserMessage: string
 ): ChatCompletionMessageParam[] {
+  
+  // RUNTIME PROTECTION: Ensure conversationHistory is a valid array before handling
+  const safeHistory = Array.isArray(conversationHistory) ? conversationHistory : [];
+
+  // SECURE: Filter the history to sanitize and allow only safe roles ('user' or 'assistant')
+  const sanitizedHistory = safeHistory.filter(
+    (msg) => msg && (msg.role === "user" || msg.role === "assistant")
+  );
+
   return [
     { role: "system", content: SOCRATIC_TUTOR_SYSTEM_PROMPT },
-    ...conversationHistory,
+    ...sanitizedHistory,
     { role: "user", content: newUserMessage },
   ];
 }

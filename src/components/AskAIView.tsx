@@ -19,7 +19,7 @@ import {
     isAllowedAiImageMimeType,
 } from '@/lib/ai-image-validation';
 import 'katex/dist/katex.min.css';
-import { MentorModeToggle } from './MentorModeToggle';
+import {MentorModeToggle} from './MentorModeToggle';
 import type { AIMode, MentorMessage, SocraticResponse } from '@/types/mentor';
 
 type SolveType = 'standard' | 'simple' | 'exam' | 'eli10';
@@ -298,8 +298,11 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                     messages: mentorHistory,
                 }),
             });
-            const data: SocraticResponse = await res.json();
-            if (!res.ok) throw new Error('Mentor Mode request failed.');
+            // FIX 1: Type the response to include a possible `error` field so
+            // non-OK responses surface the backend's actionable error text
+            // instead of being collapsed to a generic fallback string.
+            const data: SocraticResponse & { error?: string } = await res.json();
+            if (!res.ok) throw new Error(data?.error || 'Mentor Mode request failed.');
 
             setMentorHistory(prev => [
                 ...prev,
@@ -337,6 +340,15 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
 
     const sections = response ? parseSections(response) : [];
 
+    // FIX 2: Socratic mode requires a non-empty prompt — image-only input must
+    // not enable the button because handleSocraticAsk returns immediately when
+    // prompt is empty, producing a silent no-op for the user.
+    const isSubmitDisabled = isLoading || (
+        aiMode === 'socratic'
+            ? !prompt.trim()
+            : (!prompt.trim() && !imageBase64)
+    );
+
     return (
         <div ref={containerRef} className="space-y-8 text-left scroll-mt-24">
             <div className="bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-white/8 rounded-3xl overflow-hidden shadow-2xl">
@@ -363,7 +375,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                             Response Mode
                         </span>
-                        <MentorModeToggle mode={aiMode} onChange={(mode) => {
+                        <MentorModeToggle mode={aiMode} onChange={(mode: AIMode) => {
                             setAiMode(mode);
                             setMentorHistory([]);
                             setSocraticData(null);
@@ -376,7 +388,8 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                         <div className="flex items-start gap-3 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/20">
                             <Lightbulb className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
                             <p className="text-blue-300 text-[11px] leading-relaxed">
-                                <span className="font-black">Mentor Mode ON —</span> Type your attempt or current understanding. The AI will guide you with hints, not answers.
+                                <span className="font-black">Mentor Mode ON —</span> Type your attempt or current understanding. The AI will guide you with hints, not answers. 
+                                {inputMode === 'image' && <span className="block mt-1 text-purple-300 font-bold">Note: Please provide a description or question text along with your image upload.</span>}
                             </p>
                         </div>
                     )}
@@ -412,17 +425,28 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                                     </div>
                                 </button>
                             ) : (
-                                <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950">
-                                    {/* FIXED: Added clear semantic alternative text description for accessibility guidelines */}
-                                    <img src={imageBase64} alt="Uploaded problem question representation" className="w-full max-h-64 object-contain" />
-                                    <button
-                                        type="button"
-                                        onClick={() => { setImageBase64(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                                        className="absolute top-3 right-3 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg"
-                                        aria-label="Remove image"
-                                    >
-                                        <X className="w-4 h-4 text-slate-900 dark:text-white" />
-                                    </button>
+                                <div className="space-y-4">
+                                    <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-950">
+                                        <img src={imageBase64} alt="Uploaded problem question representation" className="w-full max-h-64 object-contain" />
+                                        <button
+                                            type="button"
+                                            onClick={() => { setImageBase64(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                                            className="absolute top-3 right-3 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shadow-lg"
+                                            aria-label="Remove image"
+                                        >
+                                            <X className="w-4 h-4 text-slate-900 dark:text-white" />
+                                        </button>
+                                    </div>
+                                    {aiMode === 'socratic' && (
+                                        <textarea
+                                            value={prompt}
+                                            onChange={(e) => setPrompt(e.target.value)}
+                                            placeholder="What have you tried or noticed in this image? Describe your process..."
+                                            rows={2}
+                                            className="w-full bg-white/60 dark:bg-slate-950/60 border border-slate-200 dark:border-white/8 rounded-2xl px-5 py-3 text-slate-900 dark:text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/40 transition-all resize-none font-medium text-sm leading-relaxed"
+                                            disabled={isLoading}
+                                        />
+                                    )}
                                 </div>
                             )}
                         </>
@@ -443,7 +467,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                         <button
                             type="button"
                             onClick={() => handleSubmit('standard')}
-                            disabled={isLoading || (!prompt.trim() && !imageBase64)}
+                            disabled={isSubmitDisabled}
                             className="flex items-center gap-2.5 px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl shadow-blue-600/20 disabled:opacity-40"
                         >
                             {isLoading
@@ -544,7 +568,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                             <div key={idx} className="bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-white/8 rounded-3xl overflow-hidden shadow-lg">
                                 <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-200 dark:border-white/5">
                                     {meta && (
-                                        <div className={`flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/5 border ${meta.badge}`}>
+                                        <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/5 border ${meta.badge}">
                                             {meta.icon}
                                         </div>
                                     )}
@@ -554,7 +578,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                                             type="button"
                                             onClick={() => copy(sec.content, `section-${idx}`)}
                                             className="flex items-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-bold uppercase tracking-tighter text-[9px] transition-all text-slate-400 hover:text-white"
-                                            aria-label="Copy section content"
+                                            aria-label={`Copy ${sec.title} section`}
                                             title="Copy to clipboard"
                                         >
                                             {copied === `section-${idx}` ? (
@@ -569,7 +593,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                                                 onClick={handleGenerateVideo}
                                                 disabled={isVideoLoading}
                                                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-slate-900 dark:text-white rounded-xl font-bold uppercase tracking-tighter text-[9px] shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50"
-                                                aria-label="Interactive button"
+                                                aria-label="Generate video explanation for this solution"
                                             >
                                                 {isVideoLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3 text-yellow-400 fill-yellow-400" />}
                                                 {isVideoLoading ? "Generating..." : "Generate Video"}
@@ -578,7 +602,6 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                                     </div>
                                 </div>
                                 <div className="px-6 py-6 prose prose-invert max-w-none text-slate-900 dark:text-white">
-                                    {/* FIXED: Passed a unique key structure string fallback value to avoid parsing crashes on empty array components */}
                                     <ReactMarkdown
                                         remarkPlugins={[remarkMath, remarkGfm]}
                                         rehypePlugins={[rehypeKatex]}

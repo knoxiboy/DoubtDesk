@@ -199,13 +199,11 @@ export const doubtsTable = pgTable("doubts", {
         subjectIndex: index("subject_idx").on(table.subject),
         createdAtIndex: index("idx_doubts_created").on(table.createdAt),
         isSolvedIndex: index("idx_doubts_solved").on(table.isSolved),
-<<<<<<< HEAD
-=======
+        // FIXED: Kept the newly added compound optimization index from upstream/main cleanly
         userEmailClassroomIdIndex: index("doubts_userEmail_classroomId_idx").on(
             table.userEmail,
             table.classroomId,
         ),
->>>>>>> upstream/main
         userEmailFk: foreignKey({
             columns: [table.userEmail],
             foreignColumns: [usersTable.email],

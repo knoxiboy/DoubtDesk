@@ -4,18 +4,10 @@ import { db } from "@/configs/db";
 import { usersTable, karmaTransactionsTable, userBadgesTable, badgeDefinitionsTable } from "@/configs/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { checkAndAwardBadges } from "@/lib/karma-utils";
-<<<<<<< HEAD
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-
-// ── KARMA LEVEL THRESHOLDS ────────────────────────────────────────────────────
-export const KARMA_LEVELS = [
-=======
 import { currentUser } from "@clerk/nextjs/server";
 
 // ── KARMA LEVEL THRESHOLDS ────────────────────────────────────────────────────
-const KARMA_LEVELS = [
->>>>>>> upstream/main
+export const KARMA_LEVELS = [
     { level: 1, label: "Newbie",      minKarma: 0,    icon: "🌱" },
     { level: 2, label: "Contributor", minKarma: 100,  icon: "⚡" },
     { level: 3, label: "Scholar",     minKarma: 300,  icon: "📚" },
@@ -24,11 +16,7 @@ const KARMA_LEVELS = [
 ];
 
 // Karma point metrics per event definition
-<<<<<<< HEAD
 export const KARMA_POINTS: Record<string, number> = {
-=======
-const KARMA_POINTS: Record<string, number> = {
->>>>>>> upstream/main
     answer_upvoted:       +10,
     answer_accepted:      +25,
     spam_report_accepted: -15,
@@ -37,19 +25,8 @@ const KARMA_POINTS: Record<string, number> = {
 };
 
 // ── GET /api/karma ────────────────────────────────────────────────────────────
-<<<<<<< HEAD
-export async function GET(req: NextRequest) {
-    const session = await getServerSession(authOptions);
-    let email = session?.user?.email;
-
-    if (!email) {
-        email = req.nextUrl.searchParams.get("email") || "";
-    }
-
-    if (!email) {
-        return NextResponse.json({ error: "Unauthorized: Missing identity reference." }, { status: 401 });
-=======
 export async function GET() {
+    // 1. Strict Authentication Guard via Clerk (Identity Source of Truth)
     const userContext = await currentUser();
     if (!userContext) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -57,10 +34,10 @@ export async function GET() {
 
     const email = userContext.primaryEmailAddress?.emailAddress;
     if (!email) {
-        return NextResponse.json({ error: "User email not found" }, { status: 400 });
->>>>>>> upstream/main
+        return NextResponse.json({ error: "User email not found within session contexts" }, { status: 400 });
     }
 
+    // 2. Data Retrieval bounded strictly to the authenticated user's email
     const [user] = await db
         .select({
             karmaScore:    usersTable.karmaScore,
@@ -72,7 +49,7 @@ export async function GET() {
         .limit(1);
 
     if (!user) {
-        return NextResponse.json({ error: "User profile not found." }, { status: 404 });
+        return NextResponse.json({ error: "User profile not found inside the dataset." }, { status: 404 });
     }
 
     const earnedBadges = await db
@@ -90,9 +67,6 @@ export async function GET() {
         .orderBy(desc(userBadgesTable.awardedAt));
 
     const recentHistory = await db
-<<<<<<< HEAD
-        .select()
-=======
         .select({
             id:        karmaTransactionsTable.id,
             points:    karmaTransactionsTable.points,
@@ -100,7 +74,6 @@ export async function GET() {
             note:      karmaTransactionsTable.note,
             createdAt: karmaTransactionsTable.createdAt,
         })
->>>>>>> upstream/main
         .from(karmaTransactionsTable)
         .where(eq(karmaTransactionsTable.userEmail, email))
         .orderBy(desc(karmaTransactionsTable.createdAt))
@@ -150,8 +123,6 @@ export async function POST(req: NextRequest) {
         }
 
         // ── 2. TRANSACTION MUTATION MANAGEMENT ───────────────────────────────────
-        // FIX: Wrap all mutation procedures within an explicit database-level transaction.
-        // If anything fails or throws an integrity error, the whole execution rolls back cleanly.
         const result = await db.transaction(async (tx) => {
             const targetScoreSql = sql`${usersTable.karmaScore} + ${points}`;
             const atomicLevelCaseSql = sql`CASE 
@@ -175,7 +146,6 @@ export async function POST(req: NextRequest) {
                     karmaLevel: usersTable.karmaLevel 
                 });
 
-            // If the user profile isn't found, we throw an explicit error string to auto-rollback the transaction context
             if (!updatedUser) {
                 throw new Error("USER_NOT_FOUND");
             }
@@ -205,12 +175,10 @@ export async function POST(req: NextRequest) {
         });
 
     } catch (error: any) {
-        // Intercept explicit missing profile lookups safely 
         if (error instanceof Error && error.message === "USER_NOT_FOUND") {
             return NextResponse.json({ error: "Target user profile was not found inside the dataset." }, { status: 404 });
         }
 
-        // Intercept structural foreign key violations cleanly (e.g., bad replyId or doubtId format)
         if (error?.code === "23503") {
             return NextResponse.json({ 
                 error: "Data Integrity Failure: Associated reference values do not exist in parent tables." 

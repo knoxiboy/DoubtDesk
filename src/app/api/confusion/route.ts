@@ -1,19 +1,5 @@
 // src/app/api/confusion/route.ts
 import { NextResponse } from "next/server";
-<<<<<<< HEAD
-import { auth, currentUser } from "@clerk/nextjs/server";
-import { db } from "@/configs/db";
-import { confusionAlertsTable, membershipsTable } from "@/configs/schema"; 
-import { and, eq, desc } from "drizzle-orm";
-
-export async function GET(req: Request) {
-    try {
-        const { userId } = await auth();
-        const user = await currentUser();
-        if (!userId || !user) {
-            return new NextResponse("Unauthorized", { status: 401 });
-        }
-=======
 import { db } from "@/configs/db";
 import { confusionAlertsTable } from "@/configs/schema";
 import { and, eq, desc } from "drizzle-orm";
@@ -25,10 +11,11 @@ import {
     requireTeacher,
 } from "@/lib/auth/membership-guard";
 
+// ── GET /api/confusion ────────────────────────────────────────────────────────
 export async function GET(req: Request) {
     try {
+        // Enforce user authentication context
         const { email } = await requireAuth();
->>>>>>> upstream/main
 
         const { searchParams } = new URL(req.url);
         const roomIdString = searchParams.get("roomId");
@@ -37,40 +24,13 @@ export async function GET(req: Request) {
             return new NextResponse("Missing roomId parameter", { status: 400 });
         }
 
-<<<<<<< HEAD
-        // ✅ Explicitly parse string to Number directly since schema defines it as integer()
-        const classroomId = Number(roomIdString);
-        if (isNaN(classroomId)) {
-            return new NextResponse("Invalid roomId parameter", { status: 400 });
-        }
-
-        const userEmail = user.emailAddresses[0]?.emailAddress;
-        if (!userEmail) {
-            return new NextResponse("User email not found", { status: 400 });
-        }
-
-        // 🛡️ Authorization Check via userEmail
-        const [isMember] = await db
-            .select()
-            .from(membershipsTable)
-            .where(
-                and(
-                    eq(membershipsTable.classroomId, classroomId),
-                    eq(membershipsTable.userEmail, userEmail) 
-                )
-            )
-            .limit(1);
-
-        if (!isMember) {
-            return new NextResponse("Access denied: You are not enrolled in this classroom", { status: 403 });
-        }
-
-        // ✅ Querying valid varchar 'status' column directly ('isRead' completely omitted)
-=======
+        // Parse and validate room identifier format
         const classroomId = parseClassroomId(roomIdString);
+        
+        // Enforce that the user belongs to the classroom before granting access
         await requireMembership(email, classroomId);
 
->>>>>>> upstream/main
+        // Fetch the most recent active confusion warning inside the room
         const [latestAlert] = await db
             .select()
             .from(confusionAlertsTable)
@@ -85,27 +45,16 @@ export async function GET(req: Request) {
 
         return NextResponse.json(latestAlert || null);
     } catch (error) {
-<<<<<<< HEAD
-        console.error("GET_CONFUSION_ALERT_ERROR", error);
-        return new NextResponse("Internal Server Error", { status: 500 });
-=======
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });
->>>>>>> upstream/main
     }
 }
 
+// ── PATCH /api/confusion ──────────────────────────────────────────────────────
 export async function PATCH(req: Request) {
     try {
-<<<<<<< HEAD
-        const { userId } = await auth();
-        const user = await currentUser();
-        if (!userId || !user) {
-            return new NextResponse("Unauthorized", { status: 401 });
-        }
-=======
+        // Enforce user authentication context
         const { email } = await requireAuth();
->>>>>>> upstream/main
 
         const { searchParams } = new URL(req.url);
         const alertIdString = searchParams.get("id");
@@ -114,24 +63,12 @@ export async function PATCH(req: Request) {
             return new NextResponse("Missing alert id parameter", { status: 400 });
         }
 
-<<<<<<< HEAD
-        // ✅ No runtime typeof checks on types! Direct numerical parsing for schema column compatibility
-=======
->>>>>>> upstream/main
         const targetId = Number(alertIdString);
         if (isNaN(targetId)) {
             return new NextResponse("Invalid alert id", { status: 400 });
         }
 
-<<<<<<< HEAD
-        const userEmail = user.emailAddresses[0]?.emailAddress;
-        if (!userEmail) {
-            return new NextResponse("User email not found", { status: 400 });
-        }
-
-=======
->>>>>>> upstream/main
-        // Fetch alert context for authorization validation
+        // Fetch alert context to figure out which classroom it points to
         const [targetAlert] = await db
             .select({ classroomId: confusionAlertsTable.classroomId })
             .from(confusionAlertsTable)
@@ -142,49 +79,23 @@ export async function PATCH(req: Request) {
             return new NextResponse("Alert not found", { status: 404 });
         }
 
-<<<<<<< HEAD
-        // Authorization check via membership mapping
-        const [hasModificationRights] = await db
-            .select()
-            .from(membershipsTable)
-            .where(
-                and(
-                    eq(membershipsTable.classroomId, targetAlert.classroomId),
-                    eq(membershipsTable.userEmail, userEmail)
-                )
-            )
-            .limit(1);
-
-        if (!hasModificationRights) {
-            return new NextResponse("Access denied: Action requires classroom clearance privileges", { status: 403 });
-        }
-
-        // ✅ Safely updating the valid varchar 'status' column to 'acknowledged'
-=======
+        // --- FIXED PRIVILEGE ESCALATION ---
+        // Rather than simple membership validation, enforce elevated teacher access rights
         await requireTeacher(email, targetAlert.classroomId);
 
->>>>>>> upstream/main
+        // Commit status modification safely
         await db
             .update(confusionAlertsTable)
             .set({ 
                 status: "acknowledged",
                 acknowledgedAt: new Date(),
-<<<<<<< HEAD
-                acknowledgedBy: userEmail
-=======
                 acknowledgedBy: email
->>>>>>> upstream/main
             })
             .where(eq(confusionAlertsTable.id, targetId));
 
         return NextResponse.json({ success: true });
     } catch (error) {
-<<<<<<< HEAD
-        console.error("PATCH_CONFUSION_ALERT_ERROR", error);
-        return new NextResponse("Internal Server Error", { status: 500 });
-=======
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });
->>>>>>> upstream/main
     }
 }

@@ -1,27 +1,14 @@
+// src/app/api/doubts/route.ts
 import { NextResponse } from "next/server";
-<<<<<<< HEAD
-import { currentUser } from "@clerk/nextjs/server";
-import { db } from "@/configs/db";
-import { 
-    bookmarksTable, 
-    doubtTagsTable, 
-    doubtsTable, 
-    likesTable, 
-    repliesTable, 
-    membershipsTable, 
-    classroomsTable, 
-    tagsTable 
-=======
 import { db } from "@/configs/db";
 import {
-  bookmarksTable,
-  doubtTagsTable,
-  doubtsTable,
-  likesTable,
-  repliesTable,
-  tagsTable,
-  membershipsTable,
->>>>>>> upstream/main
+    bookmarksTable,
+    doubtTagsTable,
+    doubtsTable,
+    likesTable,
+    repliesTable,
+    tagsTable,
+    membershipsTable,
 } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
 import { and, eq, inArray, isNull, or, not, sql, SQL, ilike, desc, getTableColumns } from "drizzle-orm";
@@ -32,62 +19,37 @@ import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createDoubtSchema } from "@/lib/validations/doubt";
 import { createClassroomDoubtNotifications } from "@/lib/notifications/service";
 import { inngest } from "@/inngest/client"; 
-<<<<<<< HEAD
-=======
 import { canTeach } from "@/lib/auth/membership-guard";
 import { currentUser } from "@clerk/nextjs/server";
 
->>>>>>> upstream/main
-
+// ── GET /api/doubts ───────────────────────────────────────────────────────────
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const subject = searchParams.get("subject");
     const search = searchParams.get("search");
     const userName = searchParams.get("userName");
     const classroomIdStr = searchParams.get("classroomId");
-<<<<<<< HEAD
-    const classroomId = classroomIdStr ? parseInt(classroomIdStr, 10) : null;
-=======
->>>>>>> upstream/main
     const type = searchParams.get("type") || "community";
     const tag = searchParams.get("tag");
     const sort = searchParams.get("sort") || "newest";
     const bookmarked = searchParams.get("bookmarked") === "true";
 
     try {
+        // Optional Auth: Don't throw 401 globally if user is missing
         const user = await currentUser();
-<<<<<<< HEAD
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        const email = user.primaryEmailAddress?.emailAddress;
-        if (!email) return NextResponse.json({ error: "Email target missing" }, { status: 400 });
-
-        if (classroomId) {
-            const [membership] = await db
-                .select()
-                .from(membershipsTable)
-                .where(and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, classroomId)));
-            if (!membership) {
-                return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
-            }
-        }
-
-        const conditions: SQL[] = [];
-=======
         const email = user?.primaryEmailAddress?.emailAddress ?? null;
-        const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
+        const classroomId = classroomIdStr ? parseInt(classroomIdStr, 10) : null;
 
-        if (classroomId) {
-            if (!email) {
-                return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-            }
+        // --- ENHANCEMENT 1: Contextual Authentication Enforcements ---
+        if (classroomId && !email) {
+            return NextResponse.json({ error: "Unauthorized: Classroom content requires identity." }, { status: 401 });
         }
-
         if ((type === "ai" || bookmarked) && !email) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "Unauthorized: Requested scope requires an active session." }, { status: 401 });
         }
 
+        // --- ENHANCEMENT 2: Reinstate Soft-Delete Filter Baseline ---
         const conditions: SQL[] = [isNull(doubtsTable.deletedAt)];
->>>>>>> upstream/main
 
         if (classroomId) {
             conditions.push(eq(doubtsTable.classroomId, classroomId));
@@ -95,17 +57,8 @@ export async function GET(req: Request) {
             conditions.push(isNull(doubtsTable.classroomId));
         }
 
-<<<<<<< HEAD
-        const [room] = classroomId
-            ? await db.select().from(classroomsTable).where(eq(classroomsTable.id, classroomId))
-            : [null];
-        const isTeacher = room && room.teacherEmail === email;
-
-        if (!isTeacher) {
-            const teacherCondition = or(not(eq(doubtsTable.type, "teacher")), eq(doubtsTable.userEmail, email));
-=======
+        // --- ENHANCEMENT 4: Multi-Role Teacher Evaluation Matrix ---
         let isTeacher = false;
-
         if (classroomId && email) {
             const [membership] = await db
                 .select()
@@ -118,23 +71,21 @@ export async function GET(req: Request) {
                 );
 
             if (!membership) {
-                return NextResponse.json(
-                    { error: "Access denied" },
-                    { status: 403 }
-                );
+                return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
             }
 
+            // Correctly derive permissions via roles (Co-teacher, Admin, Owner)
             isTeacher = canTeach(membership.role);
-            }
+        }
 
         if (!isTeacher) {
             const teacherCondition = email
                 ? or(not(eq(doubtsTable.type, "teacher")), eq(doubtsTable.userEmail, email))
                 : not(eq(doubtsTable.type, "teacher"));
->>>>>>> upstream/main
             if (teacherCondition) conditions.push(teacherCondition);
         }
 
+        // Apply filters
         if (subject && subject !== "All") {
             conditions.push(eq(doubtsTable.subject, subject));
         }
@@ -150,20 +101,12 @@ export async function GET(req: Request) {
 
         if (type && type !== "All") {
             conditions.push(eq(doubtsTable.type, type));
-<<<<<<< HEAD
-            if (type === "ai") {
-=======
             if (type === "ai" && email) {
->>>>>>> upstream/main
                 conditions.push(eq(doubtsTable.userEmail, email));
             }
         }
 
-<<<<<<< HEAD
-        if (bookmarked) {
-=======
         if (bookmarked && email) {
->>>>>>> upstream/main
             const userBookmarks = await db
                 .select({ doubtId: bookmarksTable.doubtId })
                 .from(bookmarksTable)
@@ -172,7 +115,7 @@ export async function GET(req: Request) {
             if (bookmarkedIds.length > 0) {
                 conditions.push(inArray(doubtsTable.id, bookmarkedIds));
             } else {
-                conditions.push(eq(doubtsTable.id, -1));
+                conditions.push(eq(doubtsTable.id, -1)); // Force empty results safely
             }
         }
 
@@ -201,8 +144,7 @@ export async function GET(req: Request) {
             conditions.push(eq(doubtsTable.isSolved, "unsolved"));
         }
 
-        // Clean mapping chunk evaluation token to avoid standard database drivers cast bugs
-        const replyCountSql = sql<number>`coalesce((SELECT count(*)::int FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`.mapWith(Number);
+        const replyCountSql = sql<number>`coalesce((SELECT count(*)::int FROM ${repliesTable} WHERE ${repliesTable}.doubtId = ${doubtsTable.id}), 0)`.mapWith(Number);
 
         const query = db
             .select({
@@ -226,6 +168,7 @@ export async function GET(req: Request) {
             .limit(limit)
             .offset(offset);
 
+        // Map engagement interactions (Likes / Bookmarks)
         if (userName && doubts.length > 0) {
             const userLikes = await db
                 .select({ doubtId: likesTable.doubtId })
@@ -239,11 +182,7 @@ export async function GET(req: Request) {
             }));
         }
 
-<<<<<<< HEAD
-        if (doubts.length > 0) {
-=======
         if (doubts.length > 0 && email) {
->>>>>>> upstream/main
             const userBookmarks = await db
                 .select({ doubtId: bookmarksTable.doubtId })
                 .from(bookmarksTable)
@@ -254,11 +193,10 @@ export async function GET(req: Request) {
                 ...doubt,
                 hasBookmarked: bookmarkedIds.has(doubt.id)
             }));
+        }
 
-<<<<<<< HEAD
-=======
+        // Append Related Relational Tag Objects
         if (doubts.length > 0) {
->>>>>>> upstream/main
             const tagRows = await db
                 .select({
                     doubtId: doubtTagsTable.doubtId,
@@ -289,6 +227,7 @@ export async function GET(req: Request) {
     }
 }
 
+// ── POST /api/doubts ──────────────────────────────────────────────────────────
 export async function POST(req: Request) {
     try {
         const { errorResponse, data } = await parseAndValidateRequest(req, createDoubtSchema);
@@ -296,12 +235,8 @@ export async function POST(req: Request) {
         
         const { userName, subject, content, imageUrl, classroomId, type, tags } = data;
         const doubtType = type ?? "community";
-<<<<<<< HEAD
         const parsedClassroomId = classroomId ? parseInt(classroomId.toString(), 10) : null;
 
-=======
-        const parsedClassroomId = classroomId;
->>>>>>> upstream/main
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
 
@@ -314,34 +249,20 @@ export async function POST(req: Request) {
 
         if (parsedClassroomId) {
             const [membership] = await db
-<<<<<<< HEAD
                 .select()
                 .from(membershipsTable)
-                .where(and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, parsedClassroomId)));
-=======
-            .select()
-            .from(membershipsTable)
-            .where(
-                and(
-                    eq(membershipsTable.userEmail, email),
-                    eq(membershipsTable.classroomId, parsedClassroomId)
-                )
-            );
-
->>>>>>> upstream/main
-            if (!membership) {
-                return NextResponse.json(
-                    { error: "Access denied" },
-                    { status: 403 }
+                .where(
+                    and(
+                        eq(membershipsTable.userEmail, email), 
+                        eq(membershipsTable.classroomId, parsedClassroomId)
+                    )
                 );
+
+            if (!membership) {
+                return NextResponse.json({ error: "Access denied" }, { status: 403 });
             }
-<<<<<<< HEAD
-        }
-        
-=======
         }                                
 
->>>>>>> upstream/main
         if (content) {
             const moderation = await moderateContent(content);
             const violationError = await handleModerationViolation(email, content, moderation);
@@ -352,8 +273,7 @@ export async function POST(req: Request) {
 
         const subTopic = await categorizeDoubt(content || "", subject, imageUrl);
 
-<<<<<<< HEAD
-=======
+        // Parse and validate custom offline client timestamps
         let parsedCreatedAt: Date | undefined = undefined;
         if (data.createdAt) {
             const d = new Date(data.createdAt);
@@ -368,7 +288,7 @@ export async function POST(req: Request) {
             }
         }
 
->>>>>>> upstream/main
+        // --- ENHANCEMENT 3: Persist Validated Offline Client Timestamp ---
         const [newDoubt] = await db
             .insert(doubtsTable)
             .values({
@@ -379,15 +299,12 @@ export async function POST(req: Request) {
                 content,
                 imageUrl,
                 classroomId: parsedClassroomId,
-<<<<<<< HEAD
-                type: doubtType
-=======
                 type: doubtType,
-                createdAt: parsedCreatedAt
->>>>>>> upstream/main
+                createdAt: parsedCreatedAt // Restored mapping to keep chronicle sequence intact
             })
             .returning();
 
+        // Background Events Processing
         if (parsedClassroomId) {
             inngest.send({
                 name: "doubt/created",
@@ -404,6 +321,7 @@ export async function POST(req: Request) {
             }).catch((err) => console.error("Notification trigger async failure:", err));
         }
 
+        // Deduplicate and Normalize Incoming Request Tags
         const normalizedTags: string[] = Array.from(
             new Set(
                 (Array.isArray(tags) ? tags : [])

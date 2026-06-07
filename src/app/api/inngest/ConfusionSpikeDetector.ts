@@ -1,5 +1,5 @@
 // src/app/api/inngest/ConfusionSpikeDetector.ts
-import { inngest } from "./client";
+import { inngest } from "@/inngest/client"; // FIXED: Verified absolute layout resolution mapping
 import { db } from "@/configs/db";
 import { doubtsTable, confusionAlertsTable } from "@/configs/schema"; 
 import { and, gte, eq, desc } from "drizzle-orm";
@@ -7,12 +7,20 @@ import Groq from "groq-sdk";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Explicit interface mapping to clear compiler type-inference ambiguities
+// Explicit interface representing the database row structure before JSON serialization
 interface DoubtPayload {
     id: number;
     content: string | null;
     subject: string | null;
     createdAt: Date;
+}
+
+// Represents the shape AFTER step.run serialization where Date converts to a string
+interface SerializedDoubtPayload {
+    id: number;
+    content: string | null;
+    subject: string | null;
+    createdAt: string; 
 }
 
 interface AnalysisResult {
@@ -23,17 +31,20 @@ interface AnalysisResult {
 }
 
 export const detectConfusionSpikes = inngest.createFunction(
+    // Argument 1: Complete Configuration and Triggers Object (Inngest v4 Style)
     { 
         id: "detect-confusion-spikes", 
         name: "Detect Confusion Spikes",
-        // Native architectural debounce drops back-to-back spam requests gracefully
         debounce: {
             key: "event.data.classroomId",
             period: "60s"
-        }
+        },
+        triggers: [
+            { event: "doubt/created" }
+        ]
     },
-    { event: "doubt/created" },
-    async ({ event, step }) => {
+    // Argument 2: The Functional Workflow Execution Block
+    async ({ event, step }) => { 
         const { classroomId } = event.data;
 
         if (!classroomId) return { skipped: "No classroomId provided" };
@@ -61,7 +72,7 @@ export const detectConfusionSpikes = inngest.createFunction(
             return { skipped: "Cooldown window active for this classroom" };
         }
 
-        // 2. Threshold Check: Explicit type declarations applied on functional return
+        // 2. Threshold Check
         const dynamicDoubts = await step.run("fetch-recent-classroom-doubts", async (): Promise<DoubtPayload[]> => {
             const lookbackTime = new Date(Date.now() - 30 * 60 * 1000);
             
@@ -88,10 +99,10 @@ export const detectConfusionSpikes = inngest.createFunction(
             };
         }
 
-        // 3. Groq LLM Processing with safe structure validation traps
+        // 3. Groq LLM Processing
         const clusteringAnalysis = await step.run("cluster-doubts-with-groq", async (): Promise<AnalysisResult> => {
-            const formattedDoubts = dynamicDoubts
-                .map((d, index) => `${index + 1}. [Subject: ${d.subject || 'General'}] ${d.content || ''}`)
+            const formattedDoubts = (dynamicDoubts as unknown as SerializedDoubtPayload[])
+                .map((d: SerializedDoubtPayload, index: number) => `${index + 1}. [Subject: ${d.subject || 'General'}] ${d.content || ''}`)
                 .join("\n");
 
             const systemPrompt = `You are an advanced academic internal tracking assistant analyzing real-time classroom friction points. 
@@ -137,23 +148,24 @@ Return a valid, strict JSON object with this exact shape:
             return { status: "Analyzed, but no significant thematic confusion spike detected." };
         }
 
-        // 4. Fully isolated deterministic database log execution (SYNCED WITH SCHEMA)
+        // 4. Fully isolated deterministic database log execution
         await step.run("persist-confusion-alert-log", async () => {
             const executionTimestamp = new Date();
             
-            // Generate standard fallbacks for missing values safely
             const computedAction = `Consider hosting a brief interactive discussion or query resolution session regarding "${clusteringAnalysis.coreConcept || 'this topic'}".`;
-            const mappedIds = dynamicDoubts ? dynamicDoubts.slice(0, 5).map(d => d.id) : [];
+            
+            const serializedArray = dynamicDoubts as unknown as SerializedDoubtPayload[];
+            const mappedIds = serializedArray ? serializedArray.slice(0, 5).map((d: SerializedDoubtPayload) => d.id) : [];
 
             await db.insert(confusionAlertsTable).values({
-                classroomId: Number(classroomId),                     // Explicit cast to integer
-                topic: clusteringAnalysis.coreConcept || "General Confusion Spike", // Explicit fallback mapping
+                classroomId: Number(classroomId),                     
+                topic: clusteringAnalysis.coreConcept || "General Confusion Spike", 
                 summary: clusteringAnalysis.summary || "Multiple students are exhibiting core structural concept doubts.",
-                suggestedAction: computedAction,                     // Fully satisfies required field mapping
-                confidence: Math.round((clusteringAnalysis.confidenceScore || 0) * 100), // Scale conversion to safe integer
-                doubtCount: dynamicDoubts ? dynamicDoubts.length : 0, // Fallback tracking for notNull mapping
-                sampleDoubtIds: JSON.stringify(mappedIds),           // Stringified valid payload array
-                status: "active",                                     // Strict status constraint mapping
+                suggestedAction: computedAction,                     
+                confidence: Math.round((clusteringAnalysis.confidenceScore || 0) * 100), 
+                doubtCount: dynamicDoubts.length, 
+                sampleDoubtIds: JSON.stringify(mappedIds),           
+                status: "active",                                     
                 createdAt: executionTimestamp
             });
             
