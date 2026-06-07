@@ -71,7 +71,7 @@ jobs:
       contents: read
     if: github.event_name == 'pull_request'
     env:
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_placeholder' }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA' }}
       CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY || 'sk_test_placeholder' }}
       DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://user:password@localhost.neon.tech/testdb?sslmode=require' }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
