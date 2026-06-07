@@ -76,6 +76,7 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://user:password@localhost.neon.tech/testdb?sslmode=require' }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder' }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY || 'placeholder' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
