@@ -4,11 +4,10 @@ import { and, eq, isNull, desc, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { buildErrorResponse } from "@/lib/error-handler";
-import {
-  parseOptionalClassroomId,
-  requireAuth,
-  requireMembership,
-} from "@/lib/auth/membership-guard";
+import { requireAuth, requireMembership } from "@/lib/auth/membership-guard";
+import { aiLimiter } from "@/lib/ratelimit";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { checkSimilaritySchema } from "@/lib/validations/sim";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || "dummy_key",
@@ -25,24 +24,29 @@ export interface SimilarDoubt {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { content, classroomId: rawClassroomId } = body as {
-      content: string;
-      classroomId?: unknown;
-    };
-    const classroomId = parseOptionalClassroomId(rawClassroomId);
+    const { errorResponse, data } = await parseAndValidateRequest(
+      req,
+      checkSimilaritySchema,
+    );
+    if (errorResponse) return errorResponse;
+
+    const { content, classroomId } = data;
 
     if (classroomId) {
       const { email } = await requireAuth();
       await requireMembership(email, classroomId);
-    }
 
-    if (
-      typeof content !== "string" ||
-      content.trim().length < 10 ||
-      content.length > 2000
-    ) {
-      return NextResponse.json({ similarDoubts: [] });
+      const rateLimit = await aiLimiter.limit(email);
+      if (!rateLimit.success) {
+        const retryAfter = Math.max(
+          1,
+          Math.ceil((rateLimit.reset - Date.now()) / 1000),
+        );
+        return NextResponse.json(
+          { error: "Too many similarity check requests. Please try again shortly." },
+          { status: 429, headers: { "Retry-After": String(retryAfter) } },
+        );
+      }
     }
 
     // Fetch the last 20 doubts from the same room/community
