@@ -4,18 +4,10 @@ import { db } from "@/configs/db";
 import { usersTable, karmaTransactionsTable, userBadgesTable, badgeDefinitionsTable } from "@/configs/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { checkAndAwardBadges } from "@/lib/karma-utils";
-<<<<<<< HEAD
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-
-// ── KARMA LEVEL THRESHOLDS ────────────────────────────────────────────────────
-export const KARMA_LEVELS = [
-=======
 import { currentUser } from "@clerk/nextjs/server";
 
 // ── KARMA LEVEL THRESHOLDS ────────────────────────────────────────────────────
 const KARMA_LEVELS = [
->>>>>>> upstream/main
     { level: 1, label: "Newbie",      minKarma: 0,    icon: "🌱" },
     { level: 2, label: "Contributor", minKarma: 100,  icon: "⚡" },
     { level: 3, label: "Scholar",     minKarma: 300,  icon: "📚" },
@@ -24,11 +16,7 @@ const KARMA_LEVELS = [
 ];
 
 // Karma point metrics per event definition
-<<<<<<< HEAD
-export const KARMA_POINTS: Record<string, number> = {
-=======
 const KARMA_POINTS: Record<string, number> = {
->>>>>>> upstream/main
     answer_upvoted:       +10,
     answer_accepted:      +25,
     spam_report_accepted: -15,
@@ -37,18 +25,6 @@ const KARMA_POINTS: Record<string, number> = {
 };
 
 // ── GET /api/karma ────────────────────────────────────────────────────────────
-<<<<<<< HEAD
-export async function GET(req: NextRequest) {
-    const session = await getServerSession(authOptions);
-    let email = session?.user?.email;
-
-    if (!email) {
-        email = req.nextUrl.searchParams.get("email") || "";
-    }
-
-    if (!email) {
-        return NextResponse.json({ error: "Unauthorized: Missing identity reference." }, { status: 401 });
-=======
 export async function GET() {
     const userContext = await currentUser();
     if (!userContext) {
@@ -58,7 +34,6 @@ export async function GET() {
     const email = userContext.primaryEmailAddress?.emailAddress;
     if (!email) {
         return NextResponse.json({ error: "User email not found" }, { status: 400 });
->>>>>>> upstream/main
     }
 
     const [user] = await db
@@ -90,9 +65,6 @@ export async function GET() {
         .orderBy(desc(userBadgesTable.awardedAt));
 
     const recentHistory = await db
-<<<<<<< HEAD
-        .select()
-=======
         .select({
             id:        karmaTransactionsTable.id,
             points:    karmaTransactionsTable.points,
@@ -100,7 +72,6 @@ export async function GET() {
             note:      karmaTransactionsTable.note,
             createdAt: karmaTransactionsTable.createdAt,
         })
->>>>>>> upstream/main
         .from(karmaTransactionsTable)
         .where(eq(karmaTransactionsTable.userEmail, email))
         .orderBy(desc(karmaTransactionsTable.createdAt))

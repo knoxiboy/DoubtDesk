@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock, Loader2 } from "lucide-react";
+import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock, Loader2, Link2 } from "lucide-react";
 import AskDoubt from "./AskDoubt";
 import DoubtRepliesModal from "./DoubtRepliesModal";
 import { toast } from "sonner";
@@ -44,9 +44,11 @@ interface DoubtCardProps {
     ) => void;
     role?: string;
     openRepliesOnMount?: boolean;
+    disableModal?: boolean;
+    onCommentClick?: () => void;
 }
 
-export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, openRepliesOnMount = false }: DoubtCardProps) {
+export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, openRepliesOnMount = false, disableModal = false, onCommentClick }: DoubtCardProps) {
     const { isSignedIn } = useUser();
     const [isOwner, setIsOwner] = useState(false);
     const [isLiking, setIsLiking] = useState(false);
@@ -183,6 +185,12 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
         }
     };
 
+    const handleShare = () => {
+        const url = `${window.location.origin}/doubts/${doubt.id}`;
+        navigator.clipboard.writeText(url);
+        toast.success("Link copied!");
+    };
+
     return (
         <TooltipProvider>
         <>
@@ -223,6 +231,8 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                         aria-label={doubt.isPinned ? ARIA_LABELS.UNPIN_DOUBT : ARIA_LABELS.PIN_DOUBT}
                                         aria-busy={isPinning}
                                         className={`p-2 rounded-xl border transition-all ${ doubt.isPinned ? "bg-blue-600/20 border-blue-500/40 text-blue-400" : "bg-white/5 border-white/10 text-slate-500 hover:text-blue-400" }`}
+                                        title={doubt.isPinned ? "Unpin doubt" : "Pin doubt to top"}
+                                         aria-label="Interactive button"
                                     >
                                         <Pin className={`w-4 h-4 ${doubt.isPinned ? 'fill-blue-400' : ''} ${isPinning ? 'animate-pulse' : ''}`} />
                                     </button>
@@ -330,6 +340,15 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                 </Tooltip>
                             )}
 
+                            <button
+                                onClick={handleShare}
+                                className="flex items-center justify-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5 transition-all"
+                                title="Share doubt"
+                                aria-label="Share doubt"
+                            >
+                                <Link2 className="w-4 h-4" />
+                            </button>
+
                             {((isOwner && doubt.type !== 'ai') || isTeacher) && doubt.isSolved !== "solved" && (
                                 <button
                                     onClick={() => handleAction("solve")}
@@ -346,7 +365,9 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                     onClick={() => {
                                         if (doubt.type === 'ai' && onViewAISolution) {
                                             onViewAISolution(doubt);
-                                        } else {
+                                        } else if (onCommentClick) {
+                                            onCommentClick();
+                                        } else if (!disableModal) {
                                             setIsRepliesOpen(true);
                                         }
                                     }}
@@ -382,6 +403,13 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                             <button
                                 onClick={() => setIsRepliesOpen(true)}
                                 aria-label={ARIA_LABELS.VIEW_REPLIES(doubt.replyCount || 0)}
+                                onClick={() => {
+                                    if (onCommentClick) {
+                                        onCommentClick();
+                                    } else if (!disableModal) {
+                                        setIsRepliesOpen(true);
+                                    }
+                                }}
                                 className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-white/5 active:scale-95 group/msg"
                             >
                                 <MessageSquare className="w-5 h-5 group-hover/msg:scale-110 transition-transform" />
@@ -403,13 +431,15 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                     />
                 )}
 
-                <DoubtRepliesModal
-                    doubt={doubt}
-                    isOpen={isRepliesOpen}
-                    onClose={() => setIsRepliesOpen(false)}
-                    onReplyChange={onUpdate}
-                    isTeacher={isTeacher}
-                />
+                {!disableModal && (
+                    <DoubtRepliesModal
+                        doubt={doubt}
+                        isOpen={isRepliesOpen}
+                        onClose={() => setIsRepliesOpen(false)}
+                        onReplyChange={onUpdate}
+                        isTeacher={isTeacher}
+                    />
+                )}
             </div>
 
             {/* Fullscreen Image Overlay */}

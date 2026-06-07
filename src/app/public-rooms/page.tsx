@@ -8,6 +8,7 @@ import DoubtSortSelect, { DoubtSortValue } from "@/components/DoubtSortSelect";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import useSWRInfinite from "swr/infinite";
 import { useInView } from "react-intersection-observer";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 import { Doubt } from "@/types";
 import { useUser } from "@clerk/nextjs";
 
@@ -457,7 +458,7 @@ export default function PublicRoomsPage() {
 
             {isAskModalOpen && (
                 <AskDoubt
-                    defaultSubject={filter !== "All" ? filter : "Math"}
+                    defaultSubject={(filter !== "All" && filter !== "Bookmarked") ? filter : "Math"}
                     isOpen={isAskModalOpen}
                     onClose={() => setIsAskModalOpen(false)}
                     onSuccess={() => {

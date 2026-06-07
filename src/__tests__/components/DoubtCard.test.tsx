@@ -37,6 +37,9 @@ const mockDoubt = {
     classroomId: null,
     isPinned: false,
     isPendingSync: false,
+    isSolved: 'unsolved' as const,
+    type: 'community' as const,
+    isPinned: false,
 };
 
 describe('DoubtCard Component', () => {
