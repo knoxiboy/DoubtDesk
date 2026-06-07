@@ -189,6 +189,7 @@ export const doubtsTable = pgTable("doubts", {
     solvedReplyId: integer(),
     type: varchar({ length: 20 }).default("community"),
     isPinned: boolean().default(false),
+    deletedAt: timestamp(),
     createdAt: timestamp().defaultNow().notNull(),
 }, (table) => {
     return {

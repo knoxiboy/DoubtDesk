@@ -26,6 +26,7 @@ export const detectConfusionSpikes = inngest.createFunction(
     { 
         id: "detect-confusion-spikes", 
         name: "Detect Confusion Spikes",
+        // Native architectural debounce drops back-to-back spam requests gracefully
         debounce: {
             key: "event.data.classroomId",
             period: "60s"
@@ -60,8 +61,7 @@ export const detectConfusionSpikes = inngest.createFunction(
             return { skipped: "Cooldown window active for this classroom" };
         }
 
-        // 2. Threshold Check: Explicit type declarations applied on functional return
-        const dynamicDoubts = await step.run("fetch-recent-classroom-doubts", async (): Promise<DoubtPayload[]> => {
+        const dynamicDoubts: DoubtPayload[] = await step.run("fetch-recent-classroom-doubts", async (): Promise<DoubtPayload[]> => {
             const lookbackTime = new Date(Date.now() - 30 * 60 * 1000);
             
             return await db
@@ -87,7 +87,6 @@ export const detectConfusionSpikes = inngest.createFunction(
             };
         }
 
-        // 3. Groq LLM Processing with safe structure validation traps
         const clusteringAnalysis = await step.run("cluster-doubts-with-groq", async (): Promise<AnalysisResult> => {
             const formattedDoubts = dynamicDoubts
                 .map((d: DoubtPayload, index: number) => `${index + 1}. [Subject: ${d.subject || 'General'}] ${d.content || ''}`)

@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { db } from "@/configs/db";
 import { doubtsTable } from "@/configs/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { buildErrorResponse } from "@/lib/error-handler";
 import {
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
         const classroomId = parseClassroomId(classroomIdStr);
         await requireTeacher(email, classroomId);
 
-        const classroomFilter = eq(doubtsTable.classroomId, classroomId);
+        const classroomFilter = and(eq(doubtsTable.classroomId, classroomId), isNull(doubtsTable.deletedAt));
 
         // 1. Top Confusion Topics (by doubt count)
         const topTopics = await db
