@@ -3,8 +3,13 @@
 import { MessageSquare, Loader2, ChevronDown } from "lucide-react";
 import DoubtCard from "@/components/DoubtCard";
 import useSWRInfinite from "swr/infinite";
+import { DoubtCardSkeleton } from "@/components/ToolSkeletons";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to fetch");
+  return res.json();
+};
 
 interface InfiniteDoubtFeedProps {
     classroomId?: number;
@@ -63,10 +68,12 @@ export default function InfiniteDoubtFeed({
     const isReachingEnd = isEmpty || (data && !data[data.length - 1]?.pagination?.hasMore);
     const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
 
-    if (isLoading && doubts.length === 0) {
+    if ((isLoading || isValidating) && doubts.length === 0){
         return (
-            <div className="flex justify-center p-12">
-                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-12">
+                {[...Array(4)].map((_, i) => (
+                    <DoubtCardSkeleton key={i} />
+                ))}
             </div>
         );
     }

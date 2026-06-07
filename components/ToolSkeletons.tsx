@@ -115,3 +115,64 @@ export function CoverLetterSkeleton() {
         </div>
     )
 }
+export const DoubtCardSkeleton = () => (
+  <div className="rounded-[2.5rem] border border-slate-200 dark:border-white/5 p-8 space-y-6 animate-pulse">
+
+    {/* Header */}
+    <div className="flex items-start justify-between">
+      <div className="flex items-center gap-4">
+        <Skeleton className="w-12 h-12 rounded-2xl" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-32 rounded-md" />
+          <Skeleton className="h-3 w-20 rounded-md" />
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <Skeleton className="h-6 w-16 rounded-full" />
+        <Skeleton className="h-6 w-16 rounded-full" />
+      </div>
+    </div>
+
+    {/* Content */}
+    <div className="space-y-3">
+      <Skeleton className="h-4 w-full rounded-md" />
+      <Skeleton className="h-4 w-full rounded-md" />
+      <Skeleton className="h-4 w-4/5 rounded-md" />
+    </div>
+
+    {/* Tags */}
+    <div className="flex flex-wrap gap-2">
+      <Skeleton className="h-6 w-16 rounded-full" />
+      <Skeleton className="h-6 w-20 rounded-full" />
+      <Skeleton className="h-6 w-14 rounded-full" />
+    </div>
+
+    {/* Footer */}
+    <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-white/5">
+      <div className="flex gap-2">
+        <Skeleton className="h-10 w-20 rounded-xl" />
+        <Skeleton className="h-10 w-10 rounded-xl" />
+        <Skeleton className="h-10 w-24 rounded-xl" />
+      </div>
+
+      <Skeleton className="h-10 w-28 rounded-xl" />
+    </div>
+
+  </div>
+);
+export const AnalyticsWidgetSkeleton = () => (
+  <div className="border border-slate-200 dark:border-white/5 rounded-2xl p-6 space-y-4 animate-pulse">
+
+    <Skeleton className="h-5 w-2/5 rounded-md" />
+
+    <Skeleton className="h-40 w-full rounded-xl" />
+
+    <div className="flex gap-4">
+      <Skeleton className="h-5 w-20 rounded-md" />
+      <Skeleton className="h-5 w-20 rounded-md" />
+      <Skeleton className="h-5 w-20 rounded-md" />
+    </div>
+
+  </div>
+);
