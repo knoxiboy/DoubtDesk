@@ -231,8 +231,6 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                         aria-label={doubt.isPinned ? ARIA_LABELS.UNPIN_DOUBT : ARIA_LABELS.PIN_DOUBT}
                                         aria-busy={isPinning}
                                         className={`p-2 rounded-xl border transition-all ${ doubt.isPinned ? "bg-blue-600/20 border-blue-500/40 text-blue-400" : "bg-white/5 border-white/10 text-slate-500 hover:text-blue-400" }`}
-                                        title={doubt.isPinned ? "Unpin doubt" : "Pin doubt to top"}
-                                         aria-label="Interactive button"
                                     >
                                         <Pin className={`w-4 h-4 ${doubt.isPinned ? 'fill-blue-400' : ''} ${isPinning ? 'animate-pulse' : ''}`} />
                                     </button>
@@ -401,7 +399,6 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                 </div>
                             )}
                             <button
-                                onClick={() => setIsRepliesOpen(true)}
                                 aria-label={ARIA_LABELS.VIEW_REPLIES(doubt.replyCount || 0)}
                                 onClick={() => {
                                     if (onCommentClick) {
