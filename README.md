@@ -160,14 +160,13 @@ Joins/Creates a Classroom (via invite code)
 
 > Screenshots are located in the `screenshots/` directory and will be updated as the UI evolves.
 
-[![Landing Page](https://github.com/navyamittal2245/DoubtDesk/blob/c6c7b24540c613b9b71ee825ba36e1b15d7eb617/screenshots/screenshot-1780079477082.png)
+![Landing Page](https://github.com/navyamittal2245/DoubtDesk/blob/c6c7b24540c613b9b71ee825ba36e1b15d7eb617/screenshots/screenshot-1780079477082.png)
 
+![AI Solver](https://github.com/navyamittal2245/DoubtDesk/blob/858dfb0064c6c67287e5892bba0fd4824a591f9a/screenshots/ai%20solver%20ss%20updated.png)
 
-[![AI Solver](https://github.com/knoxiboy/DoubtDesk/raw/main/screenshots/ai-solver.png)](https://github.com/knoxiboy/DoubtDesk/blob/main/screenshots/ai-solver.png)
+![Classroom View](https://github.com/navyamittal2245/DoubtDesk/blob/858dfb0064c6c67287e5892bba0fd4824a591f9a/screenshots/classroom%20ss%20updated.png)
 
-[![Classroom View](https://github.com/knoxiboy/DoubtDesk/raw/main/screenshots/classroom.png)](https://github.com/knoxiboy/DoubtDesk/blob/main/screenshots/classroom.png)
-
-[![Analytics Dashboard](https://github.com/knoxiboy/DoubtDesk/raw/main/screenshots/analytics.png)](https://github.com/knoxiboy/DoubtDesk/blob/main/screenshots/analytics.png)
+![Analytics Dashboard](https://github.com/navyamittal2245/DoubtDesk/blob/858dfb0064c6c67287e5892bba0fd4824a591f9a/screenshots/dashboard%20screenshot.png)
 
 ---
 
@@ -225,6 +224,45 @@ cp .env.example .env
 npm run dev
 # Open http://localhost:3000
 ```
+
+### Docker
+
+Run DoubtDesk in a container using [Docker](https://www.docker.com/) and Docker Compose v2. External services (Neon, Clerk, Groq) are **not** containerized — configure them in `.env` as usual.
+
+**Prerequisites:** Docker Desktop or Docker Engine with Compose v2.
+
+```bash
+# 1. Configure environment (required before first run)
+cp .env.example .env
+# Fill in Neon, Clerk, Groq, and other required keys
+
+# 2. Apply database migrations against your Neon instance (one-time / as needed)
+npx drizzle-kit migrate
+
+# 3. Build and run the production image
+docker compose build
+docker compose up
+# Open http://localhost:3000
+
+# Stop containers
+docker compose down
+```
+
+**Development with hot reload:**
+
+```bash
+docker compose --profile dev up app-dev
+```
+
+| Topic | Notes |
+|-------|-------|
+| **Required env vars** | Same as [`.env.example`](.env.example) and [`docs/SETUP.md`](docs/SETUP.md) |
+| **Not containerized** | Neon PostgreSQL, Clerk, Groq, Inngest, Upstash, Resend |
+| **Clerk redirects** | Use `http://localhost:3000` in Clerk dashboard and `NEXT_PUBLIC_APP_URL` |
+| **Build-time vars** | `NEXT_PUBLIC_*` values are baked at image build; rebuild after changing them |
+| **Migrations** | Run `npx drizzle-kit migrate` locally before first Docker run |
+| **Inngest webhooks** | `/api/inngest` needs a public tunnel (e.g. ngrok) to test background jobs locally |
+| **Video generation** | Remotion/ffmpeg may need extra system libraries; test natively if Docker video fails |
 
 ### Environment Variables
 

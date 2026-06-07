@@ -68,6 +68,12 @@ interface Classroom {
   role: string;
 }
 
+const TEACHER_ROLES = new Set(["teacher", "owner", "admin"]);
+const CLASSROOM_ANALYTICS_UNAVAILABLE_MESSAGE =
+  "Classroom analytics are unavailable right now.";
+
+const isTeacherRole = (role?: string) => TEACHER_ROLES.has(role ?? "");
+
 export default function ClassroomPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -100,6 +106,7 @@ export default function ClassroomPage() {
   const [tagFilter, setTagFilter] = useState("");
   const sort = (searchParams.get("sort") as DoubtSortValue) || "newest";
   const notificationTab = searchParams.get("tab");
+  const hasTeacherAccess = isTeacherRole(classroom?.role);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -326,10 +333,10 @@ export default function ClassroomPage() {
               <ExportButton
                 classroomId={String(id)}
                 classroomName={classroom?.name || ""}
-                isTeacher={classroom?.role === "teacher"}
+                isTeacher={hasTeacherAccess}
               />
 
-              {classroom?.role === "teacher" && (
+              {hasTeacherAccess && (
                 <button
                   onClick={() => setIsCodeModalOpen(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:text-slate-900 dark:hover:text-white transition-all duration-300 shadow-sm shrink-0"
@@ -382,7 +389,7 @@ export default function ClassroomPage() {
                 {
                   id: "teacher-doubts",
                   label:
-                    classroom?.role === "teacher"
+                    hasTeacherAccess
                       ? "Students Doubt"
                       : "Ask Teacher",
                   icon: GraduationCap,
@@ -701,7 +708,7 @@ export default function ClassroomPage() {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 p-4 rounded-xl shadow-sm">
               <h2 className="text-lg font-bold tracking-tight px-2">
-                {classroom?.role === "teacher" ? (
+                {hasTeacherAccess ? (
                   <>Students Doubts</>
                 ) : (
                   <>Direct Teacher Doubts</>
@@ -745,7 +752,7 @@ export default function ClassroomPage() {
                     Clear
                   </button>
                 )}
-                {classroom?.role !== "teacher" && (
+                {!hasTeacherAccess && (
                   <button
                     onClick={() => setIsAskModalOpen(true)}
                     className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-md shadow-purple-600/10 flex items-center gap-2 shrink-0"
@@ -827,11 +834,11 @@ export default function ClassroomPage() {
                         <div className="col-span-full py-24 text-center space-y-4 bg-slate-100 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[2.5rem]">
                           <GraduationCap className="w-12 h-12 text-slate-700 mx-auto" />
                           <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">
-                            {classroom?.role === "teacher"
+                            {hasTeacherAccess
                               ? "No unsolved doubts from students."
                               : "No unsolved teacher doubts."}
                           </p>
-                          {classroom?.role !== "teacher" && (
+                          {!hasTeacherAccess && (
                             <button
                               onClick={() => setIsAskModalOpen(true)}
                               className="text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider text-xs hover:underline underline-offset-4"
@@ -959,7 +966,7 @@ export default function ClassroomPage() {
       )}
 
       {/* INVITE STUDENTS MODAL */}
-      {isCodeModalOpen && classroom?.role === "teacher" && (
+      {isCodeModalOpen && hasTeacherAccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl bg-white/60 dark:bg-black/60 animate-in fade-in duration-300">
           <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-900 w-full max-w-lg rounded-2xl p-6 md:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-slate-900 dark:text-zinc-100">
             <div className="flex items-center justify-between">
@@ -1096,20 +1103,23 @@ function ClassroomInsightsView({
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isTeacher = role === "teacher";
+  const isTeacher = isTeacherRole(role);
 
-  const fetchData = () => {
+  const fetchData = async () => {
     setLoading(true);
-    fetch(`/api/analytics?classroomId=${classroomId}`)
-      .then((res) => res.json())
-      .then((d) => {
-        setData(d);
-      })
-      .catch((err) => {
-        console.error("Failed to load analytics:", err);
-        toast.error("Failed to load analytics data");
-      })
-      .finally(() => setLoading(false));
+    try {
+      const res = await fetch(`/api/analytics?classroomId=${classroomId}`);
+      if (!res.ok) {
+        throw new Error(`Analytics request failed with status ${res.status}`);
+      }
+      setData(await res.json());
+    } catch (error) {
+      console.error("Error loading classroom analytics:", error);
+      toast.error("Failed to load analytics data");
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -1120,6 +1130,13 @@ function ClassroomInsightsView({
     return (
       <div className="flex justify-center p-20">
         <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
+      </div>
+    );
+
+  if (!data)
+    return (
+      <div role="status" className="rounded-2xl border border-slate-200 dark:border-zinc-900 p-8 text-center text-sm text-slate-500 dark:text-zinc-400">
+        {CLASSROOM_ANALYTICS_UNAVAILABLE_MESSAGE}
       </div>
     );
 
@@ -1534,34 +1551,6 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
   );
   const [loading, setLoading] = useState(true);
 
-<<<<<<< HEAD
-    useEffect(() => {
-        setLoading(true);
-        fetch(`/api/analytics/personal?classroomId=${classroomId}`)
-            .then(res => res.json())
-            .then(d => {
-                setPersonalData(d).catch(err => console.error(err));
-                setLoading(false);
-            });
-    }, [classroomId]);
-
-    if (loading) return (
-        <div className="bg-slate-50/50 dark:bg-zinc-950/10 border border-slate-200 dark:border-zinc-900 rounded-2xl p-8 text-center shadow-inner">
-            <Loader2 className="w-6 h-6 text-purple-500 animate-spin mx-auto mb-2" />
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">Consulting AI Learning Mentor...</p>
-        </div>
-    );
-
-    if (!personalData?.isEngaged) return (
-        <div className="bg-purple-500/[0.01] border border-dashed border-slate-200 dark:border-zinc-900 rounded-2xl p-8 text-center space-y-2 shadow-sm backdrop-blur-sm">
-            <Sparkles className="w-8 h-8 text-purple-500/30 mx-auto animate-pulse" />
-            <h3 className="text-lg font-bold text-slate-800 dark:text-zinc-300 tracking-tight">Unlock Your AI Mentor</h3>
-            <p className="text-xs text-slate-400 dark:text-zinc-500 max-w-sm mx-auto leading-relaxed font-medium">
-                {personalData?.message || "Ask more doubts to unlock personalized AI Weak Topic Detection!"}
-            </p>
-        </div>
-    );
-=======
   useEffect(() => {
     setLoading(true);
     fetch(`/api/analytics/personal?classroomId=${classroomId}`)
@@ -1569,9 +1558,12 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
       .then((d) => {
         setPersonalData(d);
         setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load personal analytics:", err);
+        setLoading(false);
       });
   }, [classroomId]);
->>>>>>> upstream/main
 
   if (loading)
     return (

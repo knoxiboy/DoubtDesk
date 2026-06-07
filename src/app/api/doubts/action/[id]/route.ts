@@ -8,6 +8,7 @@ import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { updateDoubtActionSchema } from "@/lib/validations/doubt";
 import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubtStatus";
 import type { Tag } from "@/types";
+import { canTeach } from "@/lib/auth/membership-guard";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -26,7 +27,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             return NextResponse.json({ error: "Invalid doubt ID" }, { status: 400 });
         }
 
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+        const [doubt] = await db.select().from(doubtsTable).where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
         // Security: Verify doubt visibility/classroom membership
@@ -45,9 +46,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const isOwner = email && doubt.userEmail === email;
         let isTeacher = false;
 
-        if (doubt.classroomId) {
-            const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId));
-            isTeacher = !!(room && email && room.teacherEmail === email);
+        if (doubt.classroomId && email) {
+            const [membership] = await db
+            .select()
+            .from(membershipsTable)
+            .where(
+                and(
+                    eq(membershipsTable.userEmail, email),
+                    eq(membershipsTable.classroomId, doubt.classroomId)
+                )
+            );
+
+            isTeacher = !!(membership && canTeach(membership.role));    
         }
 
         if (action === "like") {
@@ -249,15 +259,24 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         const { id } = await params;
         const doubtId = parseInt(id);
 
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+        const [doubt] = await db.select().from(doubtsTable).where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
         const isOwner = email && doubt.userEmail === email;
         let isTeacher = false;
 
-        if (doubt.classroomId) {
-            const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId));
-            isTeacher = !!(room && email && room.teacherEmail === email);
+        if (doubt.classroomId && email) {
+            const [membership] = await db
+            .select()
+            .from(membershipsTable)
+            .where(
+                and(
+                    eq(membershipsTable.userEmail, email),
+                    eq(membershipsTable.classroomId, doubt.classroomId)
+                )
+            );
+
+            isTeacher = !!(membership && canTeach(membership.role));
         }
 
         // Only owner or teacher can delete
@@ -265,7 +284,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             return NextResponse.json({ error: "Unauthorized to delete this doubt" }, { status: 403 });
         }
 
-        await db.delete(doubtsTable).where(eq(doubtsTable.id, doubtId));
+        await db.update(doubtsTable).set({ deletedAt: new Date() }).where(eq(doubtsTable.id, doubtId));
         return NextResponse.json({ message: "Doubt deleted successfully" });
     } catch (error) {
         console.error("Error deleting doubt:", error);

@@ -80,7 +80,7 @@ describe('Reply Vote API Endpoint', () => {
             body: JSON.stringify({ replyId: 1, userName: 'Impersonated User' }),
         });
 
-        const res = await POST(req);
+        const res = (await POST(req))!;
         const json = await res.json();
         const dbMock = (globalThis as any).__voteDbMock;
 

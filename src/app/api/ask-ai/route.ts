@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
-import { currentUser } from '@clerk/nextjs/server';
 import { db } from '@/configs/db';
 import { doubtsTable, repliesTable, usersTable, classroomsTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';
 import { moderateContent, handleModerationViolation } from '@/lib/moderation';
 import { checkPedagogicalDrift } from '@/lib/pedagogy';
+import { buildErrorResponse } from '@/lib/error-handler';
+import {
+    parseClassroomId,
+    requireAuth,
+    requireMembership,
+} from '@/lib/auth/membership-guard';
 import { aiLimiter } from '@/lib/ratelimit';
 import {
     AI_REQUEST_MAX_BYTES,
@@ -296,30 +301,13 @@ async function callGroqWithFallback(
  */
 export async function POST(req: Request) {
     try {
-        const user = await currentUser();
-
-        if (!user) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            );
-        }
+        const { user, email } = await requireAuth();
 
         const fullName =
             user.fullName ||
             (user.firstName && user.lastName
                 ? `${user.firstName} ${user.lastName}`
                 : 'Academic Student');
-
-        const email =
-            user.primaryEmailAddress?.emailAddress;
-
-        if (!email) {
-            return NextResponse.json(
-                { error: 'Email required' },
-                { status: 400 }
-            );
-        }
 
         // 0. Check if user is blocked
         const [dbUser] = await db
@@ -386,20 +374,19 @@ export async function POST(req: Request) {
         let classroomIdValue: number | null = null;
 
         if (classroomId !== undefined && classroomId !== null) {
-            const parsedClassroomId =
-                typeof classroomId === 'string' || typeof classroomId === 'number'
-                    ? Number(classroomId)
-                    : Number.NaN;
-
-            if (!Number.isSafeInteger(parsedClassroomId) || parsedClassroomId <= 0) {
+            try {
+                classroomIdValue = parseClassroomId(classroomId);
+            } catch {
                 return jsonError(
                     'Invalid classroomId.',
                     422,
                     'INVALID_CLASSROOM_ID'
                 );
             }
+        }
 
-            classroomIdValue = parsedClassroomId;
+        if (classroomIdValue) {
+            await requireMembership(email, classroomIdValue);
         }
 
         const validatedImage = imageBase64
@@ -739,11 +726,7 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
             error
         );
 
-        return NextResponse.json(
-            {
-                error: 'The AI service is currently overloaded or experiencing issues. Please try again in 30 seconds.',
-            },
-            { status: 500 }
-        );
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }
