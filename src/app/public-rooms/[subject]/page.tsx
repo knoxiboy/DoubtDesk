@@ -10,6 +10,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import useSWRInfinite from "swr/infinite";
 import { useInView } from "react-intersection-observer";
 
+const PAGE_SIZE = 20;
 
 export default function PublicRoomPage() {
   const params = useParams();
@@ -35,12 +36,17 @@ export default function PublicRoomPage() {
     setSize(1);
   };
 
-  const getKey = (pageIndex: number, previousPageData: any[]) => {
-    if (previousPageData && !previousPageData.length) return null;
+  const getKey = (pageIndex: number, previousPageData: any) => {
+    if (previousPageData) {
+      const hasMore = Array.isArray(previousPageData)
+        ? previousPageData.length === PAGE_SIZE
+        : previousPageData.hasMore;
+      if (!hasMore) return null;
+    }
     const params = new URLSearchParams({
       subject,
       page: String(pageIndex + 1),
-      limit: "20",
+      limit: String(PAGE_SIZE),
     });
 
     if (sort !== "newest") {
@@ -54,9 +60,22 @@ export default function PublicRoomPage() {
     revalidateFirstPage: false
   });
 
-  const doubts = data ? [].concat(...data) : [];
+  const doubts = data
+    ? data.flatMap((page: any) =>
+        page
+          ? Array.isArray(page)
+            ? page
+            : (page.doubts || [])
+          : []
+      )
+    : [];
   const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined");
-  const isReachingEnd = data && data[data.length - 1]?.length < 20;
+  const lastPage = data ? data[data.length - 1] : null;
+  const isReachingEnd =
+    data &&
+    (Array.isArray(lastPage)
+      ? lastPage.length < PAGE_SIZE
+      : !lastPage?.hasMore);
 
   const { ref: loadMoreRef, inView } = useInView();
 

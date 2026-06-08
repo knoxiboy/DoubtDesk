@@ -13,6 +13,10 @@ import {
 } from '@/lib/auth/membership-guard';
 import { aiLimiter } from '@/lib/ratelimit';
 import {
+    buildAiProviderErrorResponse,
+    enforceAiAvailability,
+} from '@/lib/ai/kill-switch';
+import {
     AI_REQUEST_MAX_BYTES,
     AI_REQUEST_MAX_SIZE_LABEL,
     validateAiImageDataUrl,
@@ -299,8 +303,24 @@ async function callGroqWithFallback(
 /**
  * Main AI Solver API Route.
  */
+// Maximum allowed Content-Length for this route in bytes.
+// imageBase64 payloads are read entirely into memory before the slice, so a
+// large body allocates the full payload on the server heap before any truncation
+// occurs. Enforcing this limit early keeps memory usage predictable under load.
+const MAX_BODY_BYTES = 512 * 1024; // 512 KB
+
 export async function POST(req: Request) {
     try {
+        // Reject oversized payloads before parsing JSON to avoid loading
+        // a multi-megabyte body into memory only to discard most of it.
+        const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10);
+        if (contentLength > MAX_BODY_BYTES) {
+            return NextResponse.json(
+                { error: 'Request payload too large. Maximum size is 512 KB.' },
+                { status: 413 }
+            );
+        }
+
         const { user, email } = await requireAuth();
 
         const fullName =
@@ -453,6 +473,9 @@ export async function POST(req: Request) {
             }
         }
 
+        const availabilityResponse = await enforceAiAvailability(email);
+        if (availabilityResponse) return availabilityResponse;
+
         // 1. AI Moderation Check for Prompts
         if (prompt) {
             const moderation =
@@ -603,13 +626,17 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
             });
         }
 
-        const {
-            completion,
-            modelUsed,
-        } = await callGroqWithFallback(
-            messages,
-            isVisionRequest
-        );
+        let completion: Awaited<ReturnType<typeof callGroqWithFallback>>["completion"];
+        let modelUsed: Awaited<ReturnType<typeof callGroqWithFallback>>["modelUsed"];
+
+        try {
+            ({ completion, modelUsed } = await callGroqWithFallback(
+                messages,
+                isVisionRequest
+            ));
+        } catch (providerError: unknown) {
+            return buildAiProviderErrorResponse(providerError);
+        }
 
         let reply =
             completion.choices[0]?.message?.content ||

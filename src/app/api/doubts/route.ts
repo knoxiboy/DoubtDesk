@@ -20,6 +20,7 @@ import { createClassroomDoubtNotifications } from "@/lib/notifications/service";
 import { inngest } from "@/inngest/client"; 
 import { canTeach } from "@/lib/auth/membership-guard";
 import { currentUser } from "@clerk/nextjs/server";
+import { parsePositiveInt } from "@/lib/utils";
 
 
 export async function GET(req: Request) {
@@ -122,9 +123,12 @@ export async function GET(req: Request) {
         const pageStr = searchParams.get("page");
         const offsetStr = searchParams.get("offset");
         const limitStr = searchParams.get("limit");
-        const page = pageStr ? parseInt(pageStr, 10) : 1;
-        const limit = limitStr ? parseInt(limitStr, 10) : 20;
-        const offset = offsetStr ? parseInt(offsetStr, 10) : (page - 1) * limit;
+
+        const limit = parsePositiveInt(limitStr, 20);
+        const offset = offsetStr
+            ? parsePositiveInt(offsetStr, 0)
+            : (pageStr ? (parsePositiveInt(pageStr, 1) - 1) * limit : 0);
+        const page = Math.floor(offset / limit) + 1;
 
         if (tag && tag !== "All") {
             const normalizedTag = tag.trim().replace(/\s+/g, " ").toLowerCase();
@@ -146,6 +150,12 @@ export async function GET(req: Request) {
 
         // Clean mapping chunk evaluation token to avoid standard database drivers cast bugs
         const replyCountSql = sql<number>`coalesce((SELECT count(*)::int FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`.mapWith(Number);
+
+        const [totalCountRow] = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(doubtsTable)
+            .where(and(...conditions));
+        const totalCount = totalCountRow?.count ?? 0;
 
         const query = db
             .select({
@@ -219,7 +229,15 @@ export async function GET(req: Request) {
             }));
         }
 
-        return NextResponse.json(doubts);
+        const hasMore = offset + doubts.length < totalCount;
+
+        return NextResponse.json({
+            doubts,
+            hasMore,
+            totalCount,
+            page,
+            limit
+        });
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });
