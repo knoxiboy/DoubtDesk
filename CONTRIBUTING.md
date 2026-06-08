@@ -15,6 +15,65 @@ Please read the [Code of Conduct](./CODE_OF_CONDUCT.md) before participating in 
 - [Code Style Guidelines](#code-style-guidelines)
 - [Issue Reporting Guidelines](#issue-reporting-guidelines)
 - [Need Help?](#need-help)
+- [GSSoC 2026 Contributors](#gssoc-2026-contributors) 
+
+## GSSoC 2026 Contributors
+
+Welcome, GSSoC 2026 contributors! This section covers everything you need to know to contribute effectively to DoubtDesk during the program.
+
+## Before You Start
+
+- Star the [DoubtDesk repository](https://github.com/knoxiboy/DoubtDesk) — this is **mandatory** before raising any PR. Our CI/CD bot will block your PR if you haven't starred the repo.
+- Comment `/assign` on the issue you want to work on and **wait for official assignment** before starting.
+- Do not work on multiple issues simultaneously unless explicitly permitted by a maintainer.
+
+## Contribution Levels
+
+| Level | Points | Expectations |
+| --- | --- | --- |
+| Level 1 | 10 pts | Documentation updates, minor UI fixes, small CSS changes |
+| Level 2 | 25 pts | New features, bug fixes with tests, component additions |
+| Level 3 | 45 pts | Complex features, performance improvements, architecture changes |
+
+## PR Requirements by Level
+
+**Level 1**
+- Clear description of what was changed and why
+- Screenshots for any UI changes
+- Issue number linked with `Closes #<issue-number>`
+
+**Level 2**
+- Everything in Level 1, plus:
+- Explanation of technical approach
+- Confirmation that `npm run lint` and `npm run build` pass locally
+
+**Level 3**
+- Everything in Level 2, plus:
+- Before/after screenshots or screen recordings
+- Notes on edge cases considered
+
+## Claiming Issues
+
+1. Find an open, unassigned issue labeled `gssoc` or `gssoc26`.
+2. Leave a comment with `/assign` to request assignment.
+3. Wait for a maintainer to officially assign it — do **not** start working before assignment.
+4. Once assigned, you have **7 days** to submit a PR. If you need more time, comment on the issue to let the maintainer know.
+
+## Timeline
+
+| Date | Milestone |
+| --- | --- |
+| May 15, 2026 | GSSoC 2026 begins |
+| August 14, 2026 | GSSoC 2026 ends |
+| Rolling | PRs merged and points credited within 48 hours of merge |
+
+## Tips for a Successful Contribution
+
+- Read the issue carefully and ask for clarification before starting.
+- Keep your PR focused — one issue per PR.
+- Test your changes locally before submitting.
+- Respond promptly to review comments.
+- Check the [leaderboard](https://gssoc.girlscript.tech/leaderboard) to track your points after your PR is merged.
 
 ## Getting Started
 
