@@ -5,7 +5,7 @@ import { doubtsTable, confusionAlertsTable } from "@/configs/schema";
 import { and, gte, eq, desc } from "drizzle-orm";
 import Groq from "groq-sdk";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_key" });
 
 // Explicit interface mapping to clear compiler type-inference ambiguities
 interface DoubtPayload {

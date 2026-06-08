@@ -3,16 +3,15 @@ import { doubtsTable, repliesTable } from "@/configs/schema";
 import { and, eq, isNull, desc, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
-<<<<<<< 534
 import { findSemanticDuplicates } from "@/lib/ai/embeddings";
-=======
 import { buildErrorResponse } from "@/lib/error-handler";
+import { getAnonymousQuotaIdentifier } from "@/lib/request-identity";
+import { getSafeErrorDetails } from "@/lib/safe-error-details";
 import {
   parseOptionalClassroomId,
   requireAuth,
   requireMembership,
 } from "@/lib/auth/membership-guard";
->>>>>>> main
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || "dummy_key",
@@ -35,10 +34,12 @@ export async function POST(req: Request) {
       classroomId?: unknown;
     };
     const classroomId = parseOptionalClassroomId(rawClassroomId);
+    let aiQuotaIdentifier = getAnonymousQuotaIdentifier(req);
 
     if (classroomId) {
       const { email } = await requireAuth();
       await requireMembership(email, classroomId);
+      aiQuotaIdentifier = email;
     }
 
     if (
@@ -96,6 +97,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ similarDoubts: [] });
     }
 
+    const availabilityResponse = await enforceAiAvailability(aiQuotaIdentifier);
+    if (availabilityResponse) return availabilityResponse;
+
     // Build a compact list for Groq to compare
     const doubtList = recentDoubts
       .map(
@@ -126,8 +130,8 @@ Do not include any explanation or markdown.`;
         max_tokens: 300,
       });
     } catch (err) {
-      console.error("Groq API failed:", err);
-      return NextResponse.json({ similarDoubts: [] });
+      console.error("Groq API failed:", getSafeErrorDetails(err));
+      return buildAiProviderErrorResponse(err);
     }
 
     const raw = completion.choices[0]?.message?.content?.trim() || "[]";

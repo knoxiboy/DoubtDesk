@@ -71,6 +71,7 @@ interface Classroom {
 const TEACHER_ROLES = new Set(["teacher", "owner", "admin"]);
 const CLASSROOM_ANALYTICS_UNAVAILABLE_MESSAGE =
   "Classroom analytics are unavailable right now.";
+const PAGE_SIZE = 20;
 
 const isTeacherRole = (role?: string) => TEACHER_ROLES.has(role ?? "");
 
@@ -95,7 +96,11 @@ export default function ClassroomPage() {
   const [doubtFilter, setDoubtFilter] = useState<
     "unsolved" | "in-progress" | "solved"
   >("unsolved");
-  const [searchVal, setSearchVal] = useState("");
+  const [searchVal, setSearchVal] = useState(searchParams.get("search") || "");
+  useEffect(() => {
+    const urlSearch = searchParams.get("search");
+    if (urlSearch) setSearchVal(urlSearch);
+  }, [searchParams]);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [pedagogyLevel, setPedagogyLevel] = useState("");
   const [targetGrade, setTargetGrade] = useState("");
@@ -115,7 +120,7 @@ export default function ClassroomPage() {
     return () => clearTimeout(timer);
   }, [searchVal]);
 
-  useEffect(() => {
+ useEffect(() => {
     if (
       notificationTab === "community" ||
       notificationTab === "teacher-doubts" ||
@@ -124,7 +129,10 @@ export default function ClassroomPage() {
     ) {
       setActiveTab(notificationTab);
     }
-  }, [notificationTab]);
+    if (searchParams.get("search") && !notificationTab) {
+      setActiveTab("community");
+    }
+  }, [notificationTab, searchParams]);
 
   const type =
     activeTab === "teacher-doubts"
@@ -151,15 +159,20 @@ export default function ClassroomPage() {
     setSize(1);
   };
 
-  const getKey = (pageIndex: number, previousPageData: Doubt[]) => {
-    if (previousPageData && !previousPageData.length) return null; // reached the end
+  const getKey = (pageIndex: number, previousPageData: any) => {
+    if (previousPageData) {
+      const hasMore = Array.isArray(previousPageData)
+        ? previousPageData.length === PAGE_SIZE
+        : previousPageData.hasMore;
+      if (!hasMore) return null;
+    }
     if (activeTab === "insights") return null;
     const params = new URLSearchParams({
       classroomId: String(id),
       userName: userName || "",
       type: String(type),
       page: String(pageIndex + 1),
-      limit: "20",
+      limit: String(PAGE_SIZE),
     });
     if (tagFilter.trim()) params.append("tag", tagFilter.trim());
     if (searchQuery) params.append("search", searchQuery);
@@ -178,11 +191,24 @@ export default function ClassroomPage() {
     revalidateFirstPage: false,
   });
 
-  const doubts = data ? [].concat(...data) : ([] as Doubt[]);
+  const doubts = data
+    ? data.flatMap((page: any) =>
+        page
+          ? Array.isArray(page)
+            ? page
+            : (page.doubts || [])
+          : []
+      )
+    : ([] as Doubt[]);
   const isLoadingMore =
     doubtsLoading ||
     (size > 0 && data && typeof data[size - 1] === "undefined");
-  const isReachingEnd = data && data[data.length - 1]?.length < 20;
+  const lastPage = data ? data[data.length - 1] : null;
+  const isReachingEnd =
+    data &&
+    (Array.isArray(lastPage)
+      ? lastPage.length < PAGE_SIZE
+      : !lastPage?.hasMore);
 
   const { ref: loadMoreRef, inView } = useInView();
 
