@@ -15,7 +15,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const { errorResponse, data } = await parseAndValidateRequest(req, updateDoubtActionSchema);
         if (errorResponse) return errorResponse;
 
-        const { action, content, subject, imageUrl, userName, replyId, tags = [] } = data;
+        const { action, content, subject, imageUrl, userName, replyId, tags = [], status } = data;
 
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
