@@ -57,16 +57,17 @@ export async function GET(req: Request) {
             return errorResponse("Access denied to this classroom's doubt replies", 403);
         }
 
-        if (doubt.type === 'teacher') {
-            const [membership] = await db
-            .select()
-            .from(membershipsTable)
-            .where(
-                and(
-                    eq(membershipsTable.userEmail, email),
-                    eq(membershipsTable.classroomId, doubt.classroomId!)
-                )
-            );
+     if (doubt.type === 'teacher') {
+    if (!email) return errorResponse("Unauthorized", 401);
+    const [membership] = await db
+    .select()
+    .from(membershipsTable)
+    .where(
+        and(
+            eq(membershipsTable.userEmail, email),
+            eq(membershipsTable.classroomId, doubt.classroomId!)
+        )
+    );
 
                 const isTeacher = membership ? canTeach(membership.role) : false;
                 const isOwner = doubt.userEmail === email;

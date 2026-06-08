@@ -229,14 +229,15 @@ describe('Doubts API Endpoints', () => {
     });
 
     it('GET should support popular sorting', async () => {
-        mockQueryDoubts = [...mockDoubts].sort((a, b) => b.likes - a.likes);
-        const req = new Request('http://localhost/api/doubts?subject=Physics&sort=popular');
-        const res = await GET(req);
-        const json = await res.json();
+    mockQueryDoubts = [...mockDoubts].sort((a, b) => b.likes - a.likes);
+    const req = new Request('http://localhost/api/doubts?subject=Physics&sort=popular');
+    const res = await GET(req);
+    const json = await res.json();
 
     expect(res.status).toBe(200);
     expect(Array.isArray(json)).toBe(true);
     expect(json.length).toBeGreaterThan(0);
+    expect(json[0].id).toBe(2); // most-liked doubt (10 likes) should come first
 });
 
     it('GET should support most-replied sorting', async () => {
