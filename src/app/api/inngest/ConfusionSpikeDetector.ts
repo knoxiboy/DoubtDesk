@@ -5,7 +5,7 @@ import { doubtsTable, confusionAlertsTable } from "@/configs/schema";
 import { and, gte, eq, desc } from "drizzle-orm";
 import Groq from "groq-sdk";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_key" });
 
 // Explicit interface representing the database row structure before JSON serialization
 interface DoubtPayload {

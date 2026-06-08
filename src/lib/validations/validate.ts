@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodSchema } from "zod";
+import { validationErrorResponse } from "@/lib/error-handler";
 
 export async function parseAndValidateRequest<T>(req: Request, schema: ZodSchema<T>) {
   let body;
@@ -18,14 +19,7 @@ export async function parseAndValidateRequest<T>(req: Request, schema: ZodSchema
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return {
-      errorResponse: NextResponse.json(
-        {
-          success: false,
-          error: "Validation failed",
-          details: parsed.error.flatten(),
-        },
-        { status: 400 }
-      ),
+      errorResponse: validationErrorResponse(parsed.error),
       data: null,
     };
   }
