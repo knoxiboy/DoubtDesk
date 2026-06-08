@@ -33,7 +33,7 @@ describe('Footer Component', () => {
 
     it('uses a working contact destination instead of a missing contact page', () => {
         render(<Footer />);
-        expect(screen.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', 'mailto:karankmt.tripathi@gmail.com');
+        expect(screen.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', '/contact');
     });
 
     it('renders current year copyright', () => {

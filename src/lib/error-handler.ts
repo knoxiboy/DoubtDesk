@@ -1,11 +1,14 @@
 /**
- * Centralised error handling utility.
+ * Centralised API response helpers.
  *
  * - In production (NODE_ENV === 'production'): sanitises all errors into a
  *   generic message so that no stack traces, SQL fragments, or internal
  *   library details ever reach the client.
  * - In development: includes the error message / stack to aid local debugging.
  */
+
+import { NextResponse } from "next/server";
+import type { ZodError } from "zod";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -62,4 +65,30 @@ export function buildErrorResponse(error: unknown) {
     if (result.stack !== undefined) body.stack = result.stack;
     const status = result.statusCode;
     return { status, body } as { status: number; body: Record<string, unknown> };
+}
+
+export function successResponse<T>(data: T, status = 200) {
+    return NextResponse.json(data, { status });
+}
+
+export function errorResponse(
+    message: string,
+    status = 500,
+    details?: unknown,
+    extraFields: Record<string, unknown> = {}
+) {
+    const body: Record<string, unknown> = { error: message, ...extraFields };
+    if (details !== undefined) body.details = details;
+    return NextResponse.json(body, { status });
+}
+
+export function validationErrorResponse(error: ZodError) {
+    return NextResponse.json(
+        {
+            success: false,
+            error: "Validation failed",
+            details: error.flatten(),
+        },
+        { status: 400 }
+    );
 }

@@ -82,12 +82,7 @@ async function executeKarmaTransaction(payload: {
 
 // ── 1. Answer Upvoted (+10 karma) ─────────────────────────────────────────────
 export const onAnswerUpvoted = inngest.createFunction(
-<<<<<<< HEAD
-    { id: "karma-answer-upvoted" },
-    { event: "karma/answer.upvoted" },
-=======
     { id: "karma-answer-upvoted", triggers: [{ event: "karma/answer.upvoted" }] },
->>>>>>> upstream/main
     async ({ event }) => {
         const { replyAuthorEmail, replyId, doubtId } = event.data as {
             replyAuthorEmail: string;
@@ -109,12 +104,7 @@ export const onAnswerUpvoted = inngest.createFunction(
 
 // ── 2. Answer Accepted (+25 karma) ───────────────────────────────────────────
 export const onAnswerAccepted = inngest.createFunction(
-<<<<<<< HEAD
-    { id: "karma-answer-accepted" },
-    { event: "karma/answer.accepted" },
-=======
     { id: "karma-answer-accepted", triggers: [{ event: "karma/answer.accepted" }] },
->>>>>>> upstream/main
     async ({ event }) => {
         const { replyAuthorEmail, replyId, doubtId } = event.data as {
             replyAuthorEmail: string;
@@ -136,12 +126,7 @@ export const onAnswerAccepted = inngest.createFunction(
 
 // ── 3. Spam Report Accepted (-15 karma) ──────────────────────────────────────
 export const onSpamAccepted = inngest.createFunction(
-<<<<<<< HEAD
-    { id: "karma-spam-accepted" },
-    { event: "karma/spam.accepted" },
-=======
     { id: "karma-spam-accepted", triggers: [{ event: "karma/spam.accepted" }] },
->>>>>>> upstream/main
     async ({ event }) => {
         const { offenderEmail, replyId, doubtId } = event.data as {
             offenderEmail: string;
@@ -166,13 +151,8 @@ export const dailyStreakProcessor = inngest.createFunction(
     {
         id:          "karma-daily-streak",
         concurrency: { limit: 10 }, 
-<<<<<<< HEAD
-    },
-    { cron: "0 0 * * *" },
-=======
         triggers: [{ cron: "0 0 * * *" }]
     },
->>>>>>> upstream/main
     async () => {
         const users = await db
             .select({ 

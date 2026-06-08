@@ -39,7 +39,7 @@ describe('Notification test seed API endpoint', () => {
     });
 
     afterEach(() => {
-        process.env.NODE_ENV = originalNodeEnv;
+        (process.env as any).NODE_ENV = originalNodeEnv;
     });
 
     it('does not seed notifications from GET requests', async () => {
@@ -54,7 +54,7 @@ describe('Notification test seed API endpoint', () => {
     });
 
     it('hides the seed route from GET requests in production', async () => {
-        process.env.NODE_ENV = 'production';
+        (process.env as any).NODE_ENV = 'production';
 
         const res = await GET();
         const json = await res.json();
@@ -67,7 +67,7 @@ describe('Notification test seed API endpoint', () => {
     });
 
     it('hides the seed route from POST requests in production', async () => {
-        process.env.NODE_ENV = 'production';
+        (process.env as any).NODE_ENV = 'production';
 
         const res = await POST();
         const json = await res.json();
