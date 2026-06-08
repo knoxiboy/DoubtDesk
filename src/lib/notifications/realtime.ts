@@ -17,6 +17,7 @@ type NotificationSubscriber = {
 type SubscriberBucket = Set<NotificationSubscriber>;
 
 const notificationSubscribers = new Map<string, SubscriberBucket>();
+let totalSubscribers = 0;
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
@@ -25,16 +26,6 @@ const encoder = new TextEncoder();
 
 function formatEvent(eventName: string, data: unknown) {
     return `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;
-}
-
-function getTotalSubscribers() {
-    let count = 0;
-
-    for (const bucket of notificationSubscribers.values()) {
-        count += bucket.size;
-    }
-
-    return count;
 }
 
 function startHeartbeat() {
@@ -69,11 +60,13 @@ function removeSubscriber(
     const bucket = notificationSubscribers.get(userEmail);
     if (!bucket) return;
 
-    bucket.delete(subscriber);
+    if (bucket.delete(subscriber)) {
+        totalSubscribers--;
+    }
     if (bucket.size === 0) {
         notificationSubscribers.delete(userEmail);
     }
-    if (getTotalSubscribers() === 0) {
+    if (totalSubscribers === 0) {
         stopHeartbeat();
     }
 }
@@ -91,6 +84,8 @@ export function subscribeToNotifications(
         notificationSubscribers.get(userEmail) ?? new Set<NotificationSubscriber>();
     bucket.add(subscriber);
     notificationSubscribers.set(userEmail, bucket);
+
+    totalSubscribers++;
 
     startHeartbeat(); // start the heartbeat func
 
