@@ -15,15 +15,19 @@ concurrency:
   group: pr-validation-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
-permissions: {}
+# FIXED: Granting write permissions to issues and pull requests
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
 
 jobs:
-  # ── Step 1: Assignment Check ─────────────────────────────────────────────────
   check-assignment:
     runs-on: ubuntu-latest
     permissions:
+      contents: read
+      issues: write
       pull-requests: write
-      issues: read
     outputs:
       valid: ${{ steps.check.outputs.valid }}
     steps:
