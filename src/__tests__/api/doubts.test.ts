@@ -243,9 +243,9 @@ describe('Doubts API Endpoints', () => {
     const json = await res.json();
 
     expect(res.status).toBe(200);
-    expect(Array.isArray(json)).toBe(true);
-    expect(json.length).toBeGreaterThan(0);
-    expect(json[0].id).toBe(2); // most-liked doubt (10 likes) should come first
+    expect(Array.isArray(json.doubts)).toBe(true);
+    expect(json.doubts.length).toBeGreaterThan(0);
+    expect(json.doubts[0].id).toBe(2);
 });
 
     it('GET should support most-replied sorting', async () => {
