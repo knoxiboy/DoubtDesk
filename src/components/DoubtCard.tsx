@@ -32,7 +32,7 @@ interface DoubtCardProps {
     onCommentClick?: () => void;
 }
 
-export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, openRepliesOnMount = false }: DoubtCardProps) {
+export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, openRepliesOnMount = false, disableModal = false, onCommentClick }: DoubtCardProps) {
 
     const [isOwner, setIsOwner] = useState(false);
     const [isLiking, setIsLiking] = useState(false);
