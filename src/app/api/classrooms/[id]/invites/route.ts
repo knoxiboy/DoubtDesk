@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 
 import { db } from "@/configs/db";
 import {
@@ -30,23 +31,22 @@ export async function POST(
     if (errorResponse) return errorResponse;
 
     const user = await currentUser();
-    if (!user || !user.primaryEmailAddress?.emailAddress) {
+    const email = user?.primaryEmailAddress?.emailAddress;
+
+    if (!email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const email = user.primaryEmailAddress.emailAddress;
 
     const { isBlocked, errorResponse: blockErrorResponse } =
       await checkUserBlock(email);
     if (isBlocked) return blockErrorResponse;
 
     const { id } = await params;
-    const classroomId = parseInt(id);
-
-    if (isNaN(classroomId)) {
+    const classroomId = parseInt(id, 10);
+    if (Number.isNaN(classroomId)) {
       return NextResponse.json(
         { error: "Invalid classroom ID" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -69,7 +69,10 @@ export async function POST(
         and(
           eq(membershipsTable.userEmail, email),
           eq(membershipsTable.classroomId, classroomId),
-          eq(membershipsTable.role, "teacher"),
+          inArray(
+            membershipsTable.role,
+            ["owner", "teacher", "co-teacher"]
+          ),
         ),
       );
 

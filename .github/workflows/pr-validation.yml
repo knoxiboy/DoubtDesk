@@ -1,0 +1,399 @@
+name: PR Validation
+
+# Chained validation pipeline for pull requests:
+#   1. check-assignment → is PR author assigned to linked issue?
+#   2. check-star       → has author starred the repo?
+#   3. assign-reviewers → request maintainer + Copilot + CodeRabbit reviews
+#
+# Jobs are chained: if assignment check fails, everything downstream is skipped.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+concurrency:
+  group: pr-validation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  # ── Step 1: Assignment Check ─────────────────────────────────────────────────
+  check-assignment:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: read
+    outputs:
+      valid: ${{ steps.check.outputs.valid }}
+    steps:
+      - name: Verify PR author is assigned to linked issue
+        id: check
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prAuthor = context.payload.pull_request.user.login;
+            const prBody = context.payload.pull_request.body || '';
+            const prNumber = context.payload.pull_request.number;
+
+            // Skip check for repo owner/maintainers
+            try {
+              const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: prAuthor,
+              });
+              if (['admin', 'write'].includes(perm.permission)) {
+                console.log(`${prAuthor} is a maintainer — skipping assignment check.`);
+                core.setOutput('valid', 'true');
+                return;
+              }
+            } catch (e) {
+              console.log('Could not check permission:', e.message);
+            }
+
+            // Extract linked issue numbers from PR body only
+            // Matches: closes #123, fixes #123, resolves #123
+            const bodyMatches = prBody.matchAll(
+              /(?:closes?|fixes?|resolves?)\s+#(\d+)/gi
+            );
+            const linkedIssuesSet = new Set(
+              [...bodyMatches].map(m => parseInt(m[1]))
+            );
+
+            // Also check branch name, but ONLY leading numbers after optional prefix
+            // e.g., "514-add-feature" → 514, "fix/514-bug" → 514
+            // But NOT "update-node-20" or "fix/mobile-classroom-navigation-clean-v2"
+            const prBranch = context.payload.pull_request.head.ref || '';
+            const branchMatch = prBranch.match(/(?:^|\/|-)(\d+)(?:-|$)/);
+            if (branchMatch) {
+              const num = parseInt(branchMatch[1], 10);
+              if (num > 0 && num < 10000) {
+                linkedIssuesSet.add(num);
+              }
+            }
+
+            const linkedIssues = Array.from(linkedIssuesSet);
+
+            // No linked issues → skip (ci.yml quality gate warns about this)
+            if (linkedIssues.length === 0) {
+              console.log('No linked issues found. Skipping assignment check.');
+              core.setOutput('valid', 'true');
+              return;
+            }
+
+            console.log(`PR #${prNumber} by @${prAuthor} links to issues: ${linkedIssues.join(', ')}`);
+
+            const violations = [];
+
+            for (const issueNumber of linkedIssues) {
+              let issue;
+              try {
+                const { data } = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                });
+                issue = data;
+              } catch (e) {
+                // If the issue doesn't exist, it might be from branch name parsing
+                // Don't count it as a violation
+                console.log(`Could not fetch issue #${issueNumber}: ${e.message} — skipping.`);
+                continue;
+              }
+
+              // Check if the PR author is assigned
+              const assignees = issue.assignees.map(a => a.login.toLowerCase());
+              const isAssigned = assignees.includes(prAuthor.toLowerCase());
+
+              console.log(`Issue #${issueNumber} assignees: [${assignees.join(', ')}] — @${prAuthor} assigned: ${isAssigned}`);
+
+              if (!isAssigned) {
+                violations.push({
+                  issueNumber,
+                  assignees: issue.assignees.map(a => a.login),
+                  reason: assignees.length === 0
+                    ? `Issue #${issueNumber} has no assignees. Please request assignment before submitting a PR.`
+                    : `Issue #${issueNumber} is assigned to @${issue.assignees.map(a => a.login).join(', @')} — not to @${prAuthor}.`,
+                });
+              }
+            }
+
+            if (violations.length === 0) {
+              console.log(`✅ @${prAuthor} is assigned to all linked issues.`);
+              core.setOutput('valid', 'true');
+              return;
+            }
+
+            // ── Rejection: post comment (idempotent) and close PR ──
+            core.setOutput('valid', 'false');
+
+            const marker = '<!-- pr-assignment-check -->';
+            const violationLines = violations
+              .map(v => `- **#${v.issueNumber}**: ${v.reason}`)
+              .join('\n');
+
+            const comment = [
+              marker,
+              `## ❌ PR Rejected — Issue Assignment Check Failed`,
+              ``,
+              `Hi @${prAuthor}! This PR has been **closed** because you are not assigned to the issue(s) it references:`,
+              ``,
+              violationLines,
+              ``,
+              `**What to do:**`,
+              `1. Comment \`/assign\` on the issue to request assignment from a maintainer.`,
+              `2. Wait until you are officially assigned.`,
+              `3. Then re-open or re-submit your PR.`,
+              ``,
+              `> PRs that fix issues not assigned to the author cannot be accepted — this ensures fair contribution tracking.`,
+            ].join('\n');
+
+            // Check for existing comment to update instead of creating duplicate
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: comment,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: comment,
+              });
+            }
+
+            // Add invalid label
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                labels: ['invalid'],
+              });
+            } catch (e) {
+              console.log(`Failed to add invalid label: ${e.message}`);
+            }
+
+            // Close the PR
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              state: 'closed',
+            });
+
+            console.log(`❌ Closed PR #${prNumber} — @${prAuthor} not assigned.`);
+
+  # ── Step 2: Star Check (only on open/reopen, not synchronize) ────────────────
+  check-star:
+    runs-on: ubuntu-latest
+    needs: check-assignment
+    if: |
+      needs.check-assignment.outputs.valid == 'true' &&
+      github.event.action != 'synchronize'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Verify author has starred repo (idempotent)
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const author = context.payload.pull_request.user.login;
+            const prNumber = context.payload.pull_request.number;
+
+            // Check if we already left a star-check review on this PR
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+            const existingStarReview = reviews.find(
+              r => r.user.login === 'github-actions[bot]' &&
+                   r.body && r.body.includes('Please star the DoubtDesk repository')
+            );
+
+            // Use REST API to check if user has starred the repo
+            let hasStarred = false;
+            try {
+              await github.rest.activity.getRepoSubscription({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              });
+            } catch (e) {
+              // Ignore subscription errors
+            }
+
+            // Check stargazer status using REST API with pagination
+            try {
+              let page = 1;
+              const perPage = 100;
+              let found = false;
+
+              while (page <= 100) { // Safety limit: 10,000 stargazers max
+                const { data: stargazers } = await github.rest.activity.listStargazersForRepo({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  per_page: perPage,
+                  page: page,
+                });
+
+                if (stargazers.length === 0) break;
+
+                if (stargazers.some(s => s.login.toLowerCase() === author.toLowerCase())) {
+                  found = true;
+                  break;
+                }
+
+                if (stargazers.length < perPage) break;
+                page++;
+              }
+
+              hasStarred = found;
+            } catch (e) {
+              console.error('Error checking stargazers:', e.message);
+              // On error, don't block the PR
+              hasStarred = true;
+            }
+
+            if (hasStarred) {
+              console.log(`✅ @${author} has starred the repository.`);
+
+              // If there was a previous star-check review requesting changes,
+              // dismiss it now that the user has starred
+              if (existingStarReview && existingStarReview.state === 'CHANGES_REQUESTED') {
+                try {
+                  await github.rest.pulls.dismissReview({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: prNumber,
+                    review_id: existingStarReview.id,
+                    message: 'Star verified ✅',
+                  });
+                } catch (e) {
+                  console.log('Could not dismiss old star review:', e.message);
+                }
+              }
+
+              // Add review-needed label
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  labels: ['review-needed'],
+                });
+              } catch (e) {
+                console.log('Could not add review-needed label:', e.message);
+              }
+            } else {
+              // Only post review if we haven't already
+              if (!existingStarReview) {
+                await github.rest.pulls.createReview({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                  body: `### ⭐ Star Required\n\nHi @${author}! Thank you for your contribution to DoubtDesk.\n\nBefore we can complete the review and merge this pull request, please **star the DoubtDesk repository**.\n\nOnce you have starred the repository, please drop a comment here saying "done" and we will proceed with reviewing your PR. Thank you!`,
+                  event: 'REQUEST_CHANGES',
+                });
+                console.log(`⭐ Requested @${author} to star the repo.`);
+              } else {
+                console.log('Star-check review already exists — skipping.');
+              }
+            }
+
+  # ── Step 3: Assign Reviewers (only on open/reopen, not synchronize) ──────────
+  assign-reviewers:
+    runs-on: ubuntu-latest
+    needs: [check-assignment, check-star]
+    if: |
+      needs.check-assignment.outputs.valid == 'true' &&
+      github.event.action != 'synchronize'
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Assign author and request reviews (idempotent)
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const maintainers = ['knoxiboy'];
+            const author = context.payload.pull_request.user.login;
+            const prNumber = context.payload.pull_request.number;
+
+            // Assign PR author
+            try {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                assignees: [author],
+              });
+            } catch (e) {
+              console.log('Could not assign author:', e.message);
+            }
+
+            // Request review from maintainers (excluding author)
+            const reviewers = maintainers.filter(m => m !== author);
+            if (reviewers.length > 0) {
+              try {
+                await github.rest.pulls.requestReviewers({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                  reviewers,
+                });
+                console.log(`Requested review from: ${reviewers.join(', ')}`);
+              } catch (e) {
+                console.log('Could not assign human reviewers:', e.message);
+              }
+            }
+
+            // Request Copilot review
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                reviewers: ['copilot'],
+              });
+              console.log('Requested review from GitHub Copilot');
+            } catch (e) {
+              console.log('Could not request Copilot review:', e.message);
+            }
+
+            // CodeRabbit review (idempotent — check for existing comment)
+            const marker = '<!-- coderabbit-trigger -->';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+            const hasCodeRabbitComment = comments.some(
+              c => c.body.includes(marker) || c.body.includes('@coderabbitai review')
+            );
+
+            if (!hasCodeRabbitComment) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `${marker}\n@coderabbitai review`,
+              });
+              console.log('Requested CodeRabbit review');
+            } else {
+              console.log('CodeRabbit review already requested — skipping.');
+            }

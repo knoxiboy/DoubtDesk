@@ -64,7 +64,7 @@ describe('Teacher Insights API Endpoint', () => {
         const json = await res.json();
 
         expect(res.status).toBe(400);
-        expect(json.error).toBe('classroomId is required');
+        expect(json.error).toBe('Invalid classroom ID');
     });
 
     it('returns 403 when the user is not the teacher of the classroom', async () => {
@@ -72,14 +72,14 @@ describe('Teacher Insights API Endpoint', () => {
             primaryEmailAddress: { emailAddress: 'teacher@example.com' },
         });
 
-        selectResultsQueue.push([]);
+        selectResultsQueue.push([], []);
 
         const req = new NextRequest('http://localhost/api/teacher/insights?classroomId=7');
         const res = await GET(req);
         const json = await res.json();
 
         expect(res.status).toBe(403);
-        expect(json.error).toBe('Forbidden: not the teacher of this classroom');
+        expect(json.error).toBe('Access denied to this classroom');
     });
 
     it('returns classroom-scoped insights for the teacher', async () => {
@@ -88,7 +88,7 @@ describe('Teacher Insights API Endpoint', () => {
         });
 
         selectResultsQueue.push(
-            [{ id: 7 }],
+            [{ role: 'teacher' }],
             [
                 { topic: 'Loops', subject: 'Programming', count: 4 },
                 { topic: 'Fractions', subject: 'Math', count: 2 },

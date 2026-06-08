@@ -4,6 +4,7 @@ Welcome to the DoubtDesk local environment setup guide! DoubtDesk connects to se
 
 To run the project locally, you must configure your `.env` file correctly. This guide will walk you through the setup order, what is strictly required, and how to verify your setup before starting the development server.
 
+> **Docker:** You can also run the app in a container. See the [Docker section in README.md](../README.md#docker) for `docker compose` commands. The same `.env` variables and external services apply.
 ---
 
 ## 1. Setup Order (Which services to configure first)

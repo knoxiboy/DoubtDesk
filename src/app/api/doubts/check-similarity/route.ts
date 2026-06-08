@@ -2,9 +2,17 @@ import { db } from "@/configs/db";
 import { doubtsTable, repliesTable } from "@/configs/schema";
 import { and, eq, isNull, desc, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs/server";
 import Groq from "groq-sdk";
+<<<<<<< 534
 import { findSemanticDuplicates } from "@/lib/ai/embeddings";
+=======
+import { buildErrorResponse } from "@/lib/error-handler";
+import {
+  parseOptionalClassroomId,
+  requireAuth,
+  requireMembership,
+} from "@/lib/auth/membership-guard";
+>>>>>>> main
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || "dummy_key",
@@ -21,16 +29,17 @@ export interface SimilarDoubt {
 
 export async function POST(req: Request) {
   try {
-    const user = await currentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await req.json();
-    const { content, classroomId } = body as {
+    const { content, classroomId: rawClassroomId } = body as {
       content: string;
-      classroomId?: number | null;
+      classroomId?: unknown;
     };
+    const classroomId = parseOptionalClassroomId(rawClassroomId);
+
+    if (classroomId) {
+      const { email } = await requireAuth();
+      await requireMembership(email, classroomId);
+    }
 
     if (
       typeof content !== "string" ||
@@ -196,7 +205,7 @@ Do not include any explanation or markdown.`;
 
     return NextResponse.json({ similarDoubts });
   } catch (error) {
-    console.error("Similarity check failed:", error);
-    return NextResponse.json({ similarDoubts: [] });
+    const { status, body } = buildErrorResponse(error);
+    return NextResponse.json(body, { status });
   }
 }
