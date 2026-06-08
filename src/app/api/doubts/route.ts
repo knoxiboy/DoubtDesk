@@ -148,7 +148,8 @@ export async function GET(req: Request) {
             conditions.push(eq(doubtsTable.isSolved, "unsolved"));
         }
 
-        const replyCountSql = sql<number>`coalesce((SELECT count(*)::int FROM ${repliesTable} WHERE ${repliesTable}.doubtId = ${doubtsTable.id}), 0)`.mapWith(Number);
+        // ─── FIXED COLUMN REFERENCE INTERPOLATION HERE ───────────────────
+        const replyCountSql = sql<number>`coalesce((SELECT count(*)::int FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`.mapWith(Number);
 
         const [totalCountRow] = await db
             .select({ count: sql<number>`count(*)::int` })
@@ -279,7 +280,7 @@ export async function POST(req: Request) {
             if (!membership) {
                 return NextResponse.json({ error: "Access denied" }, { status: 403 });
             }
-        }                                
+        }                                        
 
         if (content) {
             const moderation = await moderateContent(content);
