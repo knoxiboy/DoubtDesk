@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { notificationsTable } from "@/configs/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { parsePositiveInt } from "@/lib/utils";
 
 export async function GET(req: Request) {
     try {
@@ -13,20 +14,55 @@ export async function GET(req: Request) {
 
         const userEmail = user.primaryEmailAddress.emailAddress;
 
+        const { searchParams } = new URL(req.url);
+        const pageStr = searchParams.get("page");
+        const offsetStr = searchParams.get("offset");
+        const limitStr = searchParams.get("limit");
+
+        const limit = parsePositiveInt(limitStr, 50);
+        const offset = offsetStr
+            ? parsePositiveInt(offsetStr, 0)
+            : (pageStr ? (parsePositiveInt(pageStr, 1) - 1) * limit : 0);
+        const page = Math.floor(offset / limit) + 1;
+
+        // Calculate total count globally
+        const [totalCountRow] = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(notificationsTable)
+            .where(eq(notificationsTable.userEmail, userEmail));
+        const totalCount = totalCountRow?.count ?? 0;
+
+        // Calculate unread count globally
+        const [unreadCountRow] = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(notificationsTable)
+            .where(and(
+                eq(notificationsTable.userEmail, userEmail),
+                eq(notificationsTable.isRead, false)
+            ));
+        const unreadCount = unreadCountRow?.count ?? 0;
+
         // Fetch user's notifications, ordered by most recent first
         const notifications = await db.select()
             .from(notificationsTable)
             .where(eq(notificationsTable.userEmail, userEmail))
-            .orderBy(desc(notificationsTable.createdAt))
-            .limit(50); // Get last 50 notifications
+            .orderBy(
+                desc(notificationsTable.createdAt),
+                desc(notificationsTable.id)
+            )
+            .limit(limit)
+            .offset(offset);
 
-        // Calculate unread count
-        const unreadCount = notifications.filter(n => !n.isRead).length;
+        const hasMore = offset + notifications.length < totalCount;
 
         return NextResponse.json({ 
             success: true, 
             notifications, 
-            unreadCount 
+            unreadCount,
+            hasMore,
+            totalCount,
+            page,
+            limit
         });
 
     } catch (error: unknown) {
@@ -34,6 +70,7 @@ export async function GET(req: Request) {
         return NextResponse.json({ error: "Failed to fetch notifications" }, { status: 500 });
     }
 }
+
 
 export async function PATCH(req: Request) {
     try {

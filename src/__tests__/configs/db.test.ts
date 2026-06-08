@@ -29,7 +29,7 @@ describe('getDatabaseUrl', () => {
 
         const { getDatabaseUrl } = require('@/configs/database-url');
 
-        expect(getDatabaseUrl()).toBe('postgresql://dummy:dummy@localhost/dummy');
+        expect(getDatabaseUrl()).toBe('postgresql://dummy:dummy@ep-cool-darkness-123456.us-east-2.aws.neon.tech/neondb?sslmode=require');
     });
 
     it('returns a trimmed DATABASE_URL when configured', () => {
@@ -46,7 +46,7 @@ describe('getDatabaseUrl', () => {
 
         const { getDatabaseUrl } = require('@/configs/database-url');
 
-        expect(getDatabaseUrl()).toBe('postgresql://dummy:dummy@localhost/dummy');
+        expect(getDatabaseUrl()).toBe('postgresql://dummy:dummy@ep-cool-darkness-123456.us-east-2.aws.neon.tech/neondb?sslmode=require');
     });
 });
 

@@ -19,8 +19,11 @@ export async function GET(req: Request) {
 
         const { searchParams } = new URL(req.url);
         const classroomIdStr = searchParams.get("classroomId");
-        if (!classroomIdStr || !/^[1-9]\d*$/.test(classroomIdStr)) {
+        if (!classroomIdStr) {
             return NextResponse.json({ error: "classroomId is required" }, { status: 400 });
+        }
+        if (!/^[1-9]\d*$/.test(classroomIdStr)) {
+            return NextResponse.json({ error: "Invalid classroom ID" }, { status: 400 });
         }
 
         const classroomId = Number(classroomIdStr);
@@ -31,7 +34,7 @@ export async function GET(req: Request) {
             .where(and(eq(classroomsTable.id, classroomId), eq(classroomsTable.teacherEmail, email)));
 
         if (!classroom) {
-            return NextResponse.json({ error: "Forbidden: not the teacher of this classroom" }, { status: 403 });
+            return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
         }
 
         const classroomFilter = eq(doubtsTable.classroomId, classroomId);

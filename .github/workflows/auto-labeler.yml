@@ -123,22 +123,22 @@ jobs:
 
             // ── 2. AREA DETECTION (issues only) ───────────────────────
             const areaSignals = {
-              'area:backend': [
+              'backend': [
                 'api', 'route', 'endpoint', 'server', 'database', 'query',
                 'drizzle', 'neon', 'postgres', 'migration', 'schema',
                 'middleware', 'auth check', 'rate limit'
               ],
-              'area:frontend': [
+              'frontend': [
                 'component', 'page', 'ui', 'button', 'modal', 'sidebar',
                 'navbar', 'layout', 'css', 'tailwind', 'responsive',
                 'landing page', 'dashboard', 'form'
               ],
-              'area:ai': [
+              'ai': [
                 'ai', 'groq', 'llama', 'gpt', 'prompt', 'model', 'inference',
                 'moderation', 'embedding', 'vector', 'similarity',
                 'video generation', 'tts', 'ocr', 'remotion'
               ],
-              'area:database': [
+              'database': [
                 'schema', 'table', 'migration', 'foreign key', 'index',
                 'constraint', 'cascade', 'drizzle', 'neon', 'orphan',
                 'integrity', 'relation'
