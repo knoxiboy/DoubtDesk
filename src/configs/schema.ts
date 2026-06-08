@@ -1,5 +1,5 @@
 // configs/schema.ts
-import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique, vector } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -188,7 +188,7 @@ export const doubtsTable = pgTable("doubts", {
 
     // Semantic duplicate detection
     // NOTE: stored as pgvector embedding(1536)
-    embedding: any(),
+    embedding: vector({ dimensions: 1536 }),
 }, (table) => {
     return {
         classroomIdIndex: index("doubt_classroomId_idx").on(table.classroomId),

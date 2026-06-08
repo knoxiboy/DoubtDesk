@@ -51,12 +51,12 @@ export async function GET(req: Request) {
             .from(membershipsTable)
             .where(eq(membershipsTable.classroomId, classroomId));
 
-        const total = totalMembersResult[0].count;
+        const total = totalMembersResult[0]?.count || 0;
 
-        
         // Fetch paginated members of this classroom
         const members = await db
             .select({
+                id: membershipsTable.id,
                 userEmail: membershipsTable.userEmail,
                 role: membershipsTable.role,
                 joinedAt: membershipsTable.joinedAt,
@@ -66,8 +66,26 @@ export async function GET(req: Request) {
             .limit(limit)
             .offset(offset);
 
+        const PRIVILEGED_MEMBER_ROLES = new Set(['teacher', 'admin']);
+        const canViewEmails = PRIVILEGED_MEMBER_ROLES.has(membership.role.toLowerCase());
+
+        const formattedMembers = members.map((m) => {
+            if (canViewEmails) {
+                return {
+                    userEmail: m.userEmail,
+                    role: m.role,
+                    joinedAt: m.joinedAt,
+                };
+            }
+            return {
+                displayName: `${m.role === 'student' ? 'Student' : 'Member'}_${m.id}`,
+                role: m.role,
+                joinedAt: m.joinedAt,
+            };
+        });
+
         return NextResponse.json({
-            members,
+            members: formattedMembers,
             pagination: {
                 total,
                 page,

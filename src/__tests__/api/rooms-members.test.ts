@@ -16,6 +16,8 @@ const createQueryMock = (data: any) => {
     const chain: any = {
         from: () => chain,
         where: () => chain,
+        limit: () => chain,
+        offset: () => chain,
         then: (resolve: any) => Promise.resolve(resolve(data)),
     };
 
@@ -67,6 +69,7 @@ describe('Room Members API Endpoint', () => {
         checkUserBlockMock.mockResolvedValue({ isBlocked: false });
         selectResultQueue.push(
             [{ id: 1, userEmail: 'student@example.com', role: 'student', classroomId: 1 }],
+            [{ count: 2 }],
             [
                 {
                     id: 1,
@@ -85,9 +88,12 @@ describe('Room Members API Endpoint', () => {
 
         const res = (await GET(new Request('http://localhost/api/rooms/members?classroomId=1')))!;
         const json = await res.json();
+        if (res.status !== 200) {
+            console.error("DEBUG student res:", json);
+        }
 
         expect(res.status).toBe(200);
-        expect(json).toEqual([
+        expect(json.members).toEqual([
             {
                 displayName: 'Student_1',
                 role: 'student',
@@ -99,8 +105,14 @@ describe('Room Members API Endpoint', () => {
                 joinedAt: '2026-01-02T00:00:00.000Z',
             },
         ]);
-        expect(JSON.stringify(json)).not.toContain('userEmail');
-        expect(JSON.stringify(json)).not.toContain('classmate@example.com');
+        expect(json.pagination).toEqual({
+            total: 2,
+            page: 1,
+            limit: 20,
+            totalPages: 1,
+        });
+        expect(JSON.stringify(json.members)).not.toContain('userEmail');
+        expect(JSON.stringify(json.members)).not.toContain('classmate@example.com');
     });
 
     it('includes member emails for teacher requesters', async () => {
@@ -110,6 +122,7 @@ describe('Room Members API Endpoint', () => {
         checkUserBlockMock.mockResolvedValue({ isBlocked: false });
         selectResultQueue.push(
             [{ id: 1, userEmail: 'teacher@example.com', role: 'teacher', classroomId: 1 }],
+            [{ count: 2 }],
             [
                 {
                     id: 1,
@@ -128,9 +141,12 @@ describe('Room Members API Endpoint', () => {
 
         const res = (await GET(new Request('http://localhost/api/rooms/members?classroomId=1')))!;
         const json = await res.json();
+        if (res.status !== 200) {
+            console.error("DEBUG teacher res:", json);
+        }
 
         expect(res.status).toBe(200);
-        expect(json).toEqual([
+        expect(json.members).toEqual([
             {
                 userEmail: 'teacher@example.com',
                 role: 'teacher',
@@ -142,5 +158,11 @@ describe('Room Members API Endpoint', () => {
                 joinedAt: '2026-01-02T00:00:00.000Z',
             },
         ]);
+        expect(json.pagination).toEqual({
+            total: 2,
+            page: 1,
+            limit: 20,
+            totalPages: 1,
+        });
     });
 });
