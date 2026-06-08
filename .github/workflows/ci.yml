@@ -1,0 +1,261 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, master]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  # ─── Unit Tests ──────────────────────────────────────────────────────────────
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npm test -- --passWithNoTests
+        env:
+          CI: true
+
+  # ─── TypeScript ──────────────────────────────────────────────────────────────
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+        continue-on-error: true
+
+  # ─── ESLint ──────────────────────────────────────────────────────────────────
+  lint:
+    name: ESLint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npx eslint . --ext .ts,.tsx --max-warnings=20
+        continue-on-error: true
+
+  # ─── Build ───────────────────────────────────────────────────────────────────
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: github.event_name == 'pull_request'
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_placeholder' }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY || 'sk_test_placeholder' }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://placeholder' }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        continue-on-error: true
+
+  # ─── Security Scan ──────────────────────────────────────────────────────────
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for security issues
+        id: scan
+        run: |
+          ISSUES=""
+          if git diff origin/main...HEAD -- '*.ts' '*.tsx' '*.js' '*.jsx' | grep -iE "(password|secret|api_key|apikey|token)\s*=\s*['\"][^'\"]{8,}" ; then
+            ISSUES="$ISSUES\n- ⚠️ Possible hardcoded secret detected"
+          fi
+          if git diff origin/main...HEAD | grep -iE "NEXT_PUBLIC_(DATABASE_URL|SECRET|PASSWORD|PRIVATE)" ; then
+            ISSUES="$ISSUES\n- ⚠️ Sensitive variable exposed via NEXT_PUBLIC_ prefix"
+          fi
+          if git diff origin/main...HEAD -- '*.ts' '*.tsx' '*.js' '*.jsx' | grep -iE "console\.(log|error)\(.*?(password|token|secret|key)" ; then
+            ISSUES="$ISSUES\n- ⚠️ Possible sensitive data in console output"
+          fi
+          if [ -n "$ISSUES" ]; then
+            echo "found=true" >> $GITHUB_OUTPUT
+            # Use a delimiter for multiline output
+            echo "issues<<EOF" >> $GITHUB_OUTPUT
+            echo -e "$ISSUES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "found=false" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+
+      - name: Post security findings (idempotent)
+        if: steps.scan.outputs.found == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const marker = '<!-- ci-security-scan -->';
+            const body = `${marker}\n## 🔒 Security Scan Warning\n\nPotential security issues detected:\n\n${{ steps.scan.outputs.issues }}\n\nPlease review before merging. @knoxiboy`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  # ─── PR Quality Gate ─────────────────────────────────────────────────────────
+  pr-quality:
+    name: PR Quality Gate
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check PR quality (idempotent)
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            const title = pr.title || '';
+            const body = pr.body || '';
+            const issues = [];
+
+            // 1. Title format
+            const prefixes = ['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'perf', 'ci', 'build', 'revert'];
+            if (!prefixes.some(p => title.toLowerCase().startsWith(p))) {
+              issues.push(`**Title format**: Should start with a conventional commit prefix (e.g. \`feat:\`, \`fix:\`). Current: \`${title}\``);
+            }
+
+            // 2. Description length
+            if (body.trim().length < 50) {
+              issues.push('**Description**: PR description is too short. Please describe what changes were made and why.');
+            }
+
+            // 3. Linked issue
+            if (!/closes?\s+#\d+|fixes?\s+#\d+|resolves?\s+#\d+/i.test(body)) {
+              issues.push('**Linked Issue**: No linked issue found. Please add `Closes #<issue-number>` to your PR description.');
+            }
+
+            // 4. Testing mention
+            if (!/test|spec|jest|vitest|playwright/i.test(body)) {
+              issues.push('**Testing**: No mention of tests. Please describe how you tested your changes.');
+            }
+
+            const marker = '<!-- ci-pr-quality -->';
+
+            if (issues.length > 0) {
+              const comment = `${marker}\n## 📋 PR Quality Check\n\nThe following items need attention:\n\n${issues.map(i => `- ${i}`).join('\n')}\n\n> These are suggestions to improve PR quality. The PR can still be merged after review.`;
+
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+              });
+              const existing = comments.find(c => c.body.includes(marker));
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                  body: comment,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: comment,
+                });
+              }
+            } else {
+              // If all checks pass, clean up any old quality comment
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+              });
+              const existing = comments.find(c => c.body.includes(marker));
+              if (existing) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: existing.id,
+                });
+              }
+              console.log('PR passed all quality checks');
+            }
+
+  # ─── Dependency Audit ────────────────────────────────────────────────────────
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Check for new dependencies
+        run: git diff origin/main...HEAD -- package.json | grep "^+" | grep -v "^+++" | grep -E '"[^"]+"\s*:\s*"' || echo "No new dependencies"
+      - name: Audit high severity
+        run: npm audit --audit-level=high
+        continue-on-error: true
