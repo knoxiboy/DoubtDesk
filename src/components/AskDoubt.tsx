@@ -3,9 +3,25 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Loader2, Upload, File, Eye, EyeOff, Bold, Italic, Code, List, Tags, Sparkles, FileText, ExternalLink, AlertCircle, CheckCircle2, Search } from "lucide-react";
 import { toast } from "sonner";
+import useSWR from "swr";
 import MarkdownRenderer from "./MarkdownRenderer";
 import type { Doubt, Tag } from "@/types";
 import { OFFLINE_DOUBT_QUEUED } from "@/lib/copy-constants";
+
+const fetcher = async (url: string) => {
+    const res = await fetch(url);
+    if (!res.ok) {
+        const error = new Error("An error occurred while fetching the data.");
+        try {
+            (error as any).info = await res.json();
+        } catch (_) {
+            (error as any).info = { error: res.statusText };
+        }
+        (error as any).status = res.status;
+        throw error;
+    }
+    return res.json();
+};
 
 interface SimilarDoubt {
     id: number;
@@ -97,6 +113,17 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
     const [userName, setUserName] = useState("");
     const [tags, setTags] = useState<string[]>(doubtToEdit?.tags?.map((tag: Tag) => tag.name) || []);
     const [tagDraft, setTagDraft] = useState("");
+
+    const { data: suggestedTagsData } = useSWR<any[]>(
+        isOpen && subject
+            ? `/api/tags?subject=${encodeURIComponent(subject)}&classroomId=${classroomId || ""}`
+            : null,
+        fetcher
+    );
+
+    const suggestedTags = (Array.isArray(suggestedTagsData) ? suggestedTagsData : []).filter(
+        (rec) => !tags.some((t) => t.toLowerCase() === rec.name.toLowerCase())
+    );
     const [subjectWasEdited, setSubjectWasEdited] = useState(false);
     const [suggestedSubject, setSuggestedSubject] = useState("");
     const [isDragging, setIsDragging] = useState(false);
@@ -521,6 +548,21 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                 Add
                             </button>
                         </div>
+                        {suggestedTags.length > 0 && (
+                            <div className="flex flex-wrap gap-2 items-center px-1 py-1">
+                                <span className="text-[9px] text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest">Recommended:</span>
+                                {suggestedTags.map((tag) => (
+                                    <button
+                                        type="button"
+                                        key={tag.id}
+                                        onClick={() => addTag(tag.name)}
+                                        className="px-3 py-1 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 hover:border-blue-500/40 text-blue-400 hover:text-blue-300 text-[10px] font-semibold rounded-full transition-all duration-300"
+                                    >
+                                        + {tag.name}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                         {tags.length > 0 && (
                             <div className="flex flex-wrap gap-2">
                                 {tags.map((tag) => (

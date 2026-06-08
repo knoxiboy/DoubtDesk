@@ -27,6 +27,7 @@ type AnalyticsData = {
 }
 
 const COLORS = ["#8b5cf6", "#3b82f6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4"];
+const ANALYTICS_UNAVAILABLE_MESSAGE = "Analytics are unavailable right now.";
 
 function DashboardSkeleton() {
     return (
@@ -60,10 +61,14 @@ export default function Dashboard() {
     const fetchAnalytics = async () => {
         try {
             const res = await fetch('/api/analytics');
+            if (!res.ok) {
+                throw new Error(`Analytics request failed with status ${res.status}`);
+            }
             const result = await res.json();
             setData(result);
         } catch (error) {
             console.error("Error loading analytics:", error);
+            setData(null);
         } finally {
             setLoading(false);
         }
@@ -75,6 +80,21 @@ export default function Dashboard() {
 
     if (loading) {
         return <DashboardSkeleton />;
+    }
+
+    if (!data) {
+        return (
+            <>
+                <SignedIn>
+                    <div role="status" className="p-10 text-center text-sm text-slate-500 dark:text-zinc-400">
+                        {ANALYTICS_UNAVAILABLE_MESSAGE}
+                    </div>
+                </SignedIn>
+                <SignedOut>
+                    <RedirectToSignIn />
+                </SignedOut>
+            </>
+        );
     }
 
     const solvedCount = data?.solvedStats?.find((s: any) => s.status === 'solved')?.count || 0;

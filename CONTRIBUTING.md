@@ -174,6 +174,13 @@ Keep commit messages clear, concise, and written in the imperative mood.
 - Make UI changes responsive across mobile, tablet, and desktop.
 - Do not include unrelated formatting, refactoring, generated files, or dependency changes in your PR.
 
+### API Response Contract
+
+- Use `successResponse(data, status?)` from `src/lib/error-handler.ts` for successful API responses while preserving the route's existing payload shape.
+- Use `errorResponse(message, status, details?)` for explicit client errors such as unauthorized, forbidden, missing input, or moderation failures.
+- Use `validationErrorResponse(zodError)` for Zod validation failures so clients consistently receive `{ success: false, error, details }`.
+- In `catch` blocks, prefer `buildErrorResponse(error)` so production responses stay sanitized and development responses remain debuggable.
+
 ## Issue Reporting Guidelines
 
 Before opening a new issue:

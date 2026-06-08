@@ -10,7 +10,8 @@ import {
     Bookmark,
     MessageSquare,
     Zap,
-    BarChart3
+    BarChart3,
+    Network
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
@@ -34,6 +35,10 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     const pathname = usePathname()
     const { appUser } = useAppUser()
+
+    const chatSystemUrl = process.env.NEXT_PUBLIC_CHAT_SYSTEM_URL?.replace(/\/$/, "")
+    const classroomChatHref = chatSystemUrl ? `${chatSystemUrl}/chat` : '/chat'
+    const peerToPeerHref = chatSystemUrl ? `${chatSystemUrl}/chat/peer-to-peer` : '/chat/peer-to-peer'
 
     const linkClasses = (isActive: boolean) =>
         `
@@ -148,6 +153,25 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <Link
+                                                href={classroomChatHref}
+                                                onClick={onClose}
+                                                className={linkClasses(pathname === '/chat')}
+                                            >
+                                                <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
+                                                    <MessageSquare className="w-3.5 h-3.5 text-cyan-400" />
+                                                </div>
+
+                                                <span className="text-xs font-bold uppercase tracking-wider">
+                                                    Classroom Chat
+                                                </span>
+                                            </Link>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" className="bg-zinc-900 text-white border-zinc-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md">Classroom Chat</TooltipContent>
+                                    </Tooltip>
+
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Link
                                                 href="/public-rooms"
                                                 onClick={onClose}
                                                 className={linkClasses(pathname === '/public-rooms')}
@@ -162,6 +186,25 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                             </Link>
                                         </TooltipTrigger>
                                         <TooltipContent side="right" className="bg-zinc-900 text-white border-zinc-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md">Public Doubts</TooltipContent>
+                                    </Tooltip>
+
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Link
+                                                href={peerToPeerHref}
+                                                onClick={onClose}
+                                                className={linkClasses(pathname === '/chat/peer-to-peer')}
+                                            >
+                                                <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
+                                                    <Network className="w-3.5 h-3.5 text-blue-400" />
+                                                </div>
+
+                                                <span className="text-xs font-bold uppercase tracking-wider">
+                                                    Peer to Peer Discussion
+                                                </span>
+                                            </Link>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" className="bg-zinc-900 text-white border-zinc-800 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md shadow-md">Peer to Peer Discussion</TooltipContent>
                                     </Tooltip>
                                 </div>
                             </div>

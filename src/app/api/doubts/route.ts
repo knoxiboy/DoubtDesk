@@ -1,26 +1,27 @@
 import { NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
-import { 
-    bookmarksTable, 
-    doubtTagsTable, 
-    doubtsTable, 
-    likesTable, 
-    repliesTable, 
-    membershipsTable, 
-    classroomsTable, 
-    tagsTable 
+import {
+  bookmarksTable,
+  doubtTagsTable,
+  doubtsTable,
+  likesTable,
+  repliesTable,
+  tagsTable,
+  membershipsTable,
 } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
 import { and, eq, inArray, isNull, or, not, sql, SQL, desc, getTableColumns } from "drizzle-orm";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { buildErrorResponse, errorResponse } from "@/lib/error-handler";
 import { checkUserBlock } from "@/lib/auth-utils";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createDoubtSchema } from "@/lib/validations/doubt";
 import { createClassroomDoubtNotifications } from "@/lib/notifications/service";
 import { inngest } from "@/inngest/client";
 import { buildSearchCondition, buildRankOrder } from "@/lib/search"; // NEW
+import { canTeach } from "@/lib/auth/membership-guard";
+import { currentUser } from "@clerk/nextjs/server";
+
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
@@ -28,7 +29,6 @@ export async function GET(req: Request) {
     const search = searchParams.get("search");
     const userName = searchParams.get("userName");
     const classroomIdStr = searchParams.get("classroomId");
-    const classroomId = classroomIdStr ? parseInt(classroomIdStr, 10) : null;
     const type = searchParams.get("type") || "community";
     const tag = searchParams.get("tag");
     const sort = searchParams.get("sort") || "newest";
@@ -36,21 +36,20 @@ export async function GET(req: Request) {
 
     try {
         const user = await currentUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        const email = user.primaryEmailAddress?.emailAddress;
-        if (!email) return NextResponse.json({ error: "Email target missing" }, { status: 400 });
+        const email = user?.primaryEmailAddress?.emailAddress ?? null;
+        const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
 
         if (classroomId) {
-            const [membership] = await db
-                .select()
-                .from(membershipsTable)
-                .where(and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, classroomId)));
-            if (!membership) {
-                return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
+            if (!email) {
+                return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
             }
         }
 
-        const conditions: SQL[] = [];
+        if ((type === "ai" || bookmarked) && !email) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const conditions: SQL[] = [isNull(doubtsTable.deletedAt)];
 
         if (classroomId) {
             conditions.push(eq(doubtsTable.classroomId, classroomId));
@@ -58,13 +57,33 @@ export async function GET(req: Request) {
             conditions.push(isNull(doubtsTable.classroomId));
         }
 
-        const [room] = classroomId
-            ? await db.select().from(classroomsTable).where(eq(classroomsTable.id, classroomId))
-            : [null];
-        const isTeacher = room && room.teacherEmail === email;
+        let isTeacher = false;
+
+        if (classroomId && email) {
+            const [membership] = await db
+                .select()
+                .from(membershipsTable)
+                .where(
+                    and(
+                        eq(membershipsTable.userEmail, email),
+                        eq(membershipsTable.classroomId, classroomId)
+                    )
+                );
+
+            if (!membership) {
+                return NextResponse.json(
+                    { error: "Access denied" },
+                    { status: 403 }
+                );
+            }
+
+            isTeacher = canTeach(membership.role);
+            }
 
         if (!isTeacher) {
-            const teacherCondition = or(not(eq(doubtsTable.type, "teacher")), eq(doubtsTable.userEmail, email));
+            const teacherCondition = email
+                ? or(not(eq(doubtsTable.type, "teacher")), eq(doubtsTable.userEmail, email))
+                : not(eq(doubtsTable.type, "teacher"));
             if (teacherCondition) conditions.push(teacherCondition);
         }
 
@@ -83,12 +102,12 @@ export async function GET(req: Request) {
 
         if (type && type !== "All") {
             conditions.push(eq(doubtsTable.type, type));
-            if (type === "ai") {
+            if (type === "ai" && email) {
                 conditions.push(eq(doubtsTable.userEmail, email));
             }
         }
 
-        if (bookmarked) {
+        if (bookmarked && email) {
             const userBookmarks = await db
                 .select({ doubtId: bookmarksTable.doubtId })
                 .from(bookmarksTable)
@@ -169,7 +188,7 @@ export async function GET(req: Request) {
             }));
         }
 
-        if (doubts.length > 0) {
+        if (doubts.length > 0 && email) {
             const userBookmarks = await db
                 .select({ doubtId: bookmarksTable.doubtId })
                 .from(bookmarksTable)
@@ -180,7 +199,9 @@ export async function GET(req: Request) {
                 ...doubt,
                 hasBookmarked: bookmarkedIds.has(doubt.id)
             }));
+        }
 
+        if (doubts.length > 0) {
             const tagRows = await db
                 .select({
                     doubtId: doubtTagsTable.doubtId,
@@ -213,41 +234,64 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        const { errorResponse, data } = await parseAndValidateRequest(req, createDoubtSchema);
-        if (errorResponse) return errorResponse;
+        const { errorResponse: validationResponse, data } = await parseAndValidateRequest(req, createDoubtSchema);
+        if (validationResponse) return validationResponse;
         
         const { userName, subject, content, imageUrl, classroomId, type, tags } = data;
         const doubtType = type ?? "community";
-        const parsedClassroomId = classroomId ? parseInt(classroomId.toString(), 10) : null;
-
+        const parsedClassroomId = classroomId;
         const user = await currentUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const email = user?.primaryEmailAddress?.emailAddress;
 
-        const email = user.primaryEmailAddress?.emailAddress;
-        if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+        if (!email) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
         const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
         if (isBlocked) return blockResponse;
 
         if (parsedClassroomId) {
             const [membership] = await db
-                .select()
-                .from(membershipsTable)
-                .where(and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, parsedClassroomId)));
+            .select()
+            .from(membershipsTable)
+            .where(
+                and(
+                    eq(membershipsTable.userEmail, email),
+                    eq(membershipsTable.classroomId, parsedClassroomId)
+                )
+            );
+
             if (!membership) {
-                return NextResponse.json({ error: "Access denied: You are not a member of this classroom" }, { status: 403 });
+                return NextResponse.json(
+                    { error: "Access denied" },
+                    { status: 403 }
+                );
             }
-        }
-        
+        }                                
+
         if (content) {
             const moderation = await moderateContent(content);
             const violationError = await handleModerationViolation(email, content, moderation);
             if (violationError) {
-                return NextResponse.json({ error: violationError }, { status: 400 });
+                return errorResponse(violationError, 400);
             }
         }
 
         const subTopic = await categorizeDoubt(content || "", subject, imageUrl);
+
+        let parsedCreatedAt: Date | undefined = undefined;
+        if (data.createdAt) {
+            const d = new Date(data.createdAt);
+            if (isNaN(d.getTime())) {
+                return NextResponse.json({ error: "Invalid createdAt date format" }, { status: 400 });
+            }
+            const now = new Date();
+            const age = now.getTime() - d.getTime();
+            const maxOfflineDuration = 30 * 24 * 60 * 60 * 1000; // 30 days
+            if (age >= -300000 && age <= maxOfflineDuration) {
+                parsedCreatedAt = d;
+            }
+        }
 
         const [newDoubt] = await db
             .insert(doubtsTable)
@@ -259,7 +303,8 @@ export async function POST(req: Request) {
                 content,
                 imageUrl,
                 classroomId: parsedClassroomId,
-                type: doubtType
+                type: doubtType,
+                createdAt: parsedCreatedAt
             })
             .returning();
 

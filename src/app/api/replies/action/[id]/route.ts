@@ -1,12 +1,18 @@
 import { db } from "@/configs/db";
-import { repliesTable, doubtsTable, classroomsTable } from "@/configs/schema";
-import { eq } from "drizzle-orm";
+import {
+  repliesTable,
+  doubtsTable,
+  classroomsTable,
+  membershipsTable,
+} from "@/configs/schema";
+import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { updateReplyActionSchema } from "@/lib/validations/reply";
+import { canTeach } from "@/lib/auth/membership-guard";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -34,11 +40,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (!reply) return NextResponse.json({ error: "Reply not found" }, { status: 404 });
 
         let isTeacher = false;
+
         if (reply.doubtId) {
-            const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, reply.doubtId)).limit(1);
+            const [doubt] = await db
+                .select()
+                .from(doubtsTable)
+                .where(eq(doubtsTable.id, reply.doubtId))
+                .limit(1);
+
             if (doubt?.classroomId) {
-                const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId)).limit(1);
-                isTeacher = !!(room && email && room.teacherEmail === email);
+                const [membership] = await db
+                    .select()   
+                    .from(membershipsTable)
+                    .where(    
+                        and(
+                            eq(membershipsTable.userEmail, email),
+                            eq(membershipsTable.classroomId, doubt.classroomId)
+                        )
+                    );
+                isTeacher = !!(membership && canTeach(membership.role));
             }
         }
 
@@ -93,11 +113,25 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         if (!reply) return NextResponse.json({ error: "Reply not found" }, { status: 404 });
 
         let isTeacher = false;
+
         if (reply.doubtId) {
-            const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, reply.doubtId)).limit(1);
+            const [doubt] = await db
+                .select()
+                .from(doubtsTable)
+                .where(eq(doubtsTable.id, reply.doubtId))
+                .limit(1);
+
             if (doubt?.classroomId) {
-                const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId)).limit(1);
-                isTeacher = !!(room && email && room.teacherEmail === email);
+                const [membership] = await db
+                    .select()
+                    .from(membershipsTable)
+                    .where(    
+                        and(
+                            eq(membershipsTable.userEmail, email),
+                            eq(membershipsTable.classroomId, doubt.classroomId)
+                        )
+                    );
+                isTeacher = !!(membership && canTeach(membership.role));
             }
         }
 
