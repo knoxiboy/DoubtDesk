@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { findSemanticDuplicates } from "@/lib/ai/embeddings";
 import { buildErrorResponse } from "@/lib/error-handler";
+import { enforceAiAvailability, buildAiProviderErrorResponse } from "@/lib/ai/kill-switch";
 import { getAnonymousQuotaIdentifier } from "@/lib/request-identity";
 import { getSafeErrorDetails } from "@/lib/safe-error-details";
 import {

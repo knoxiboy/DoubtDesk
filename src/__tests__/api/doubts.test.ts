@@ -245,7 +245,6 @@ describe('Doubts API Endpoints', () => {
     });
 
     it('GET should support most-replied sorting', async () => {
-        currentTestMode = 'most-replied';
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=most-replied');
         const res = await GET(req) as Response;
         const json = await res.json();
