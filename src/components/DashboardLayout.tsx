@@ -25,6 +25,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
 
   const { signOut } = useClerk();
@@ -72,6 +73,7 @@ export default function DashboardLayout({
     <div className="flex h-screen overflow-hidden bg-white dark:bg-black text-slate-900 dark:text-zinc-100 transition-colors duration-500">
       <Sidebar
         isOpen={isSidebarOpen}
+        isCollapsed={isSidebarCollapsed}
         onClose={() => setIsSidebarOpen(false)}
       />
 
@@ -80,9 +82,16 @@ export default function DashboardLayout({
           <div className="flex flex-1 items-center justify-between px-4 md:px-6">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-900 transition-all duration-300"
-                aria-label="Open sidebar"
+                onClick={() => {
+                  if (window.innerWidth >= 1024) {
+                    setIsSidebarCollapsed((value) => !value);
+                  } else {
+                    setIsSidebarOpen(true);
+                  }
+                }}
+                className="p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-900 transition-all duration-300"
+                aria-label={isSidebarCollapsed ? "Expand sidebar" : "Open sidebar"}
+                aria-expanded={!isSidebarCollapsed}
               >
                 <Menu className="w-5 h-5" />
               </button>

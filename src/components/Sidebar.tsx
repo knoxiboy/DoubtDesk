@@ -34,10 +34,11 @@ const menuItems = [
 
 interface SidebarProps {
     isOpen: boolean
+    isCollapsed?: boolean
     onClose: () => void
 }
 
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ isOpen, isCollapsed = false, onClose }: SidebarProps) {
     const pathname = usePathname()
     const { appUser } = useAppUser()
 
@@ -73,13 +74,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
             <TooltipProvider>
                 <aside
-                    className={`fixed lg:sticky lg:top-0 lg:h-screen shrink-0 inset-y-0 left-0 z-40 w-72 bg-white dark:bg-black border-r border-slate-100 dark:border-zinc-900/60 shadow-xl lg:shadow-none transform transition-all duration-300 ease-out ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
+                    className={`fixed lg:sticky lg:top-0 lg:h-screen shrink-0 inset-y-0 left-0 z-40 w-72 bg-white dark:bg-black border-r border-slate-100 dark:border-zinc-900/60 shadow-xl lg:shadow-none transform transition-all duration-300 ease-out ${isCollapsed ? 'lg:w-24' : 'lg:w-72'} ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
                 >
                     <div className="flex flex-col h-full">
-                        <div className="flex items-center justify-between px-6 border-b border-slate-100 dark:border-zinc-900/60 h-16 md:h-20">
+                        <div className={`flex items-center justify-between border-b border-slate-100 dark:border-zinc-900/60 h-16 md:h-20 ${isCollapsed ? 'lg:px-4 px-6' : 'px-6'}`}>
                             <Link
                                 href="/"
-                                className="flex items-center gap-3 hover:opacity-90 transition-opacity"
+                                className={`flex items-center gap-3 hover:opacity-90 transition-opacity ${isCollapsed ? 'lg:w-full lg:justify-center' : ''}`}
+                                aria-label="DoubtDesk home"
                             >
                                 <div className="w-10 h-10 rounded-xl overflow-hidden relative shadow-md shadow-blue-500/10 bg-slate-50 dark:bg-zinc-900 flex items-center justify-center">
                                     <Image
@@ -92,7 +94,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                     />
                                 </div>
 
-                                <div className="flex flex-col">
+                                <div className={`flex flex-col ${isCollapsed ? 'lg:hidden' : ''}`}>
                                     <h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-white leading-none">
                                         DoubtDesk
                                     </h1>
@@ -126,17 +128,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                     href={item.href}
                                                     onClick={onClose}
                                                     aria-label={item.name}
-                                                    className={linkClasses(isActive)}
+                                                    className={`${linkClasses(isActive)} ${isCollapsed ? 'lg:justify-center lg:px-3' : ''}`}
                                                 >
                                                     <Icon
                                                         className={`w-4 h-4 transition-colors ${isActive ? 'text-purple-600 dark:text-purple-400' : 'text-slate-400 dark:text-zinc-500 group-hover:text-slate-900 dark:group-hover:text-white'}`}
                                                     />
 
-                                                    <span className="text-xs font-bold uppercase tracking-wider">
+                                                    <span className={`text-xs font-bold uppercase tracking-wider ${isCollapsed ? 'lg:hidden' : ''}`}>
                                                         {item.name}
                                                     </span>
 
-                                                    {isActive && (
+                                                    {isActive && !isCollapsed && (
                                                         <div className="ml-auto w-1.5 h-1.5 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.4)]" />
                                                     )}
                                                 </Link>
@@ -148,7 +150,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             </div>
 
                             <div className="space-y-3">
-                                <div className="px-4">
+                                <div className={`px-4 ${isCollapsed ? 'lg:hidden' : ''}`}>
                                     <h2 className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 mb-2">
                                         Community
                                     </h2>
@@ -161,13 +163,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                             <Link
                                                 href={classroomChatHref}
                                                 onClick={onClose}
-                                                className={linkClasses(pathname === '/chat')}
+                                                className={`${linkClasses(pathname === '/chat')} ${isCollapsed ? 'lg:justify-center lg:px-3' : ''}`}
                                             >
                                                 <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
                                                     <MessageSquare className="w-3.5 h-3.5 text-cyan-400" />
                                                 </div>
 
-                                                <span className="text-xs font-bold uppercase tracking-wider">
+                                                <span className={`text-xs font-bold uppercase tracking-wider ${isCollapsed ? 'lg:hidden' : ''}`}>
                                                     Classroom Chat
                                                 </span>
                                             </Link>
@@ -181,13 +183,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                 href="/public-rooms"
                                                 onClick={onClose}
                                                 aria-label="Public Doubts"
-                                                className={linkClasses(pathname === '/public-rooms')}
+                                                className={`${linkClasses(pathname === '/public-rooms')} ${isCollapsed ? 'lg:justify-center lg:px-3' : ''}`}
                                             >
                                                 <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
                                                     <MessageSquare className="w-3.5 h-3.5" />
                                                 </div>
 
-                                                <span className="text-xs font-bold uppercase tracking-wider">
+                                                <span className={`text-xs font-bold uppercase tracking-wider ${isCollapsed ? 'lg:hidden' : ''}`}>
                                                     Public Doubts
                                                 </span>
                                             </Link>
@@ -200,13 +202,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                             <Link
                                                 href={peerToPeerHref}
                                                 onClick={onClose}
-                                                className={linkClasses(pathname === '/chat/peer-to-peer')}
+                                                className={`${linkClasses(pathname === '/chat/peer-to-peer')} ${isCollapsed ? 'lg:justify-center lg:px-3' : ''}`}
                                             >
                                                 <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
                                                     <Network className="w-3.5 h-3.5 text-blue-400" />
                                                 </div>
 
-                                                <span className="text-xs font-bold uppercase tracking-wider">
+                                                <span className={`text-xs font-bold uppercase tracking-wider ${isCollapsed ? 'lg:hidden' : ''}`}>
                                                     Peer to Peer Discussion
                                                 </span>
                                             </Link>
@@ -217,7 +219,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             </div>
 
                             <div className="space-y-3">
-                                <div className="px-4">
+                                <div className={`px-4 ${isCollapsed ? 'lg:hidden' : ''}`}>
                                     <h2 className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-2 flex items-center gap-1.5">
                                         <Zap className="w-3.5 h-3.5" />
                                         AI Tools
@@ -232,13 +234,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                 href="/ask-ai"
                                                 onClick={onClose}
                                                 aria-label="Ask AI Solver"
-                                                className={linkClasses(pathname === '/ask-ai')}
+                                                className={`${linkClasses(pathname === '/ask-ai')} ${isCollapsed ? 'lg:justify-center lg:px-3' : ''}`}
                                             >
                                                 <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
                                                     <Zap className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                                                 </div>
 
-                                                <span className="text-xs font-bold uppercase tracking-wider">
+                                                <span className={`text-xs font-bold uppercase tracking-wider ${isCollapsed ? 'lg:hidden' : ''}`}>
                                                     Ask AI Solver
                                                 </span>
                                             </Link>
@@ -250,7 +252,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
                             {appUser?.role === 'student' && (
                                 <div className="space-y-3">
-                                    <div className="px-4">
+                                    <div className={`px-4 ${isCollapsed ? 'lg:hidden' : ''}`}>
                                         <h2 className="text-[10px] font-bold uppercase tracking-wider text-green-600 dark:text-green-400 mb-2 flex items-center gap-1.5">
                                             <GraduationCap className="w-3.5 h-3.5" />
                                             Student Toolkit
@@ -265,12 +267,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                     href="/ai-career-chat"
                                                     onClick={onClose}
                                                     aria-label="AI Career Chat"
-                                                    className={linkClasses(pathname === '/ai-career-chat')}
+                                                    className={`${linkClasses(pathname === '/ai-career-chat')} ${isCollapsed ? 'lg:justify-center lg:px-3' : ''}`}
                                                 >
                                                     <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
                                                         <Bot className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                                                     </div>
-                                                    <span className="text-xs font-bold uppercase tracking-wider">
+                                                    <span className={`text-xs font-bold uppercase tracking-wider ${isCollapsed ? 'lg:hidden' : ''}`}>
                                                         AI Career Chat
                                                     </span>
                                                 </Link>
@@ -284,12 +286,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                     href="/resume-analyzer"
                                                     onClick={onClose}
                                                     aria-label="Resume Analyzer"
-                                                    className={linkClasses(pathname === '/resume-analyzer')}
+                                                    className={`${linkClasses(pathname === '/resume-analyzer')} ${isCollapsed ? 'lg:justify-center lg:px-3' : ''}`}
                                                 >
                                                     <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
                                                         <FileText className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                                                     </div>
-                                                    <span className="text-xs font-bold uppercase tracking-wider">
+                                                    <span className={`text-xs font-bold uppercase tracking-wider ${isCollapsed ? 'lg:hidden' : ''}`}>
                                                         Resume Analyzer
                                                     </span>
                                                 </Link>
@@ -303,12 +305,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                     href="/resume-builder"
                                                     onClick={onClose}
                                                     aria-label="Resume Builder"
-                                                    className={linkClasses(pathname === '/resume-builder')}
+                                                    className={`${linkClasses(pathname === '/resume-builder')} ${isCollapsed ? 'lg:justify-center lg:px-3' : ''}`}
                                                 >
                                                     <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
                                                         <PenTool className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                                                     </div>
-                                                    <span className="text-xs font-bold uppercase tracking-wider">
+                                                    <span className={`text-xs font-bold uppercase tracking-wider ${isCollapsed ? 'lg:hidden' : ''}`}>
                                                         Resume Builder
                                                     </span>
                                                 </Link>
@@ -322,12 +324,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                     href="/cover-letter"
                                                     onClick={onClose}
                                                     aria-label="Cover Letter Generator"
-                                                    className={linkClasses(pathname === '/cover-letter')}
+                                                    className={`${linkClasses(pathname === '/cover-letter')} ${isCollapsed ? 'lg:justify-center lg:px-3' : ''}`}
                                                 >
                                                     <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
                                                         <MessageSquare className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                                                     </div>
-                                                    <span className="text-xs font-bold uppercase tracking-wider">
+                                                    <span className={`text-xs font-bold uppercase tracking-wider ${isCollapsed ? 'lg:hidden' : ''}`}>
                                                         Cover Letter
                                                     </span>
                                                 </Link>
@@ -341,12 +343,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                     href="/roadmaps"
                                                     onClick={onClose}
                                                     aria-label="Career Roadmaps"
-                                                    className={linkClasses(pathname === '/roadmaps')}
+                                                    className={`${linkClasses(pathname === '/roadmaps')} ${isCollapsed ? 'lg:justify-center lg:px-3' : ''}`}
                                                 >
                                                     <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
                                                         <Map className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                                                     </div>
-                                                    <span className="text-xs font-bold uppercase tracking-wider">
+                                                    <span className={`text-xs font-bold uppercase tracking-wider ${isCollapsed ? 'lg:hidden' : ''}`}>
                                                         Roadmaps
                                                     </span>
                                                 </Link>
@@ -359,7 +361,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
                             {(appUser?.role === 'teacher' || appUser?.role === 'admin') && (
                                 <div className="space-y-3">
-                                    <div className="px-4">
+                                    <div className={`px-4 ${isCollapsed ? 'lg:hidden' : ''}`}>
                                         <h2 className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 mb-2 flex items-center gap-1.5">
                                             <BarChart3 className="w-3.5 h-3.5" />
                                             Teacher Panel
@@ -374,13 +376,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                                     href="/dashboard/analytics"
                                                     onClick={onClose}
                                                     aria-label="Class Analytics"
-                                                    className={linkClasses(pathname === '/dashboard/analytics')}
+                                                    className={`${linkClasses(pathname === '/dashboard/analytics')} ${isCollapsed ? 'lg:justify-center lg:px-3' : ''}`}
                                                 >
                                                     <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
                                                         <BarChart3 className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
                                                     </div>
 
-                                                    <span className="text-xs font-bold uppercase tracking-wider">
+                                                    <span className={`text-xs font-bold uppercase tracking-wider ${isCollapsed ? 'lg:hidden' : ''}`}>
                                                         Class Analytics
                                                     </span>
                                                 </Link>
