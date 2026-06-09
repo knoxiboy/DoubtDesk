@@ -52,7 +52,7 @@ const normalizePage = (page: any) => {
 
     return {
         doubts: page?.doubts ?? [],
-        hasMore: Boolean(page?.pagination?.hasMore),
+        hasMore: page?.hasMore ?? Boolean(page?.pagination?.hasMore),
         error: page?.error,
     };
 };
@@ -69,7 +69,7 @@ export default function InfiniteDoubtFeed({
     emptyAction,
     emptyActionLabel
 }: InfiniteDoubtFeedProps) {
-    const getKey = (pageIndex: number, previousPageData:  null | { pagination?: { hasMore?: boolean } }) => {
+    const getKey = (pageIndex: number, previousPageData: any) => {
         if (previousPageData && !normalizePage(previousPageData).hasMore) return null;
 
 

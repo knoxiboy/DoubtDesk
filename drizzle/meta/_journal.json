@@ -43,6 +43,20 @@
       "when": 1780032370230,
       "tag": "0005_hot_phantom_reporter",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780835724341,
+      "tag": "0006_brainy_solo",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780838344008,
+      "tag": "0007_tidy_electro",
+      "breakpoints": true
     }
   ]
 }

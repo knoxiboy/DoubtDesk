@@ -2,6 +2,11 @@ import axios from "axios";
 import { NextResponse, type NextRequest } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
+import {
+    buildAiProviderErrorResponse,
+    enforceAiAvailability,
+} from "@/lib/ai/kill-switch";
+import { getSafeErrorDetails } from "@/lib/safe-error-details";
 
 export async function POST(req: NextRequest) {
     try {
@@ -18,12 +23,29 @@ export async function POST(req: NextRequest) {
         const { errorResponse } = await checkUserBlock(email);
         if (errorResponse) return errorResponse;
 
-        const body = await req.json();
+        let body: { userInput?: unknown };
+        try {
+            const parsed = await req.json();
+            if (
+                typeof parsed !== "object" ||
+                parsed === null ||
+                Array.isArray(parsed)
+            ) {
+                return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+            }
+            body = parsed as { userInput?: unknown };
+        } catch {
+            return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+        }
+
         const userInput = body.userInput;
 
-        if (!userInput) {
+        if (typeof userInput !== "string" || !userInput.trim()) {
             return NextResponse.json({ error: "userInput is required" }, { status: 400 });
         }
+
+        const availabilityResponse = await enforceAiAvailability(email);
+        if (availabilityResponse) return availabilityResponse;
 
         const systemPrompt = `
 You are Mentorix AI, an expert career advisor designed to help students and early professionals plan and grow their careers in technology and related fields.
@@ -82,34 +104,34 @@ Strict Focus Rules:
 Always focus on helping the user move one step closer to their career goal.
 `;
 
-        const response = await axios.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            {
-                model: "llama-3.3-70b-versatile",
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user", content: userInput }
-                ],
-            },
-            {
-                headers: {
-                    "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
-                    "Content-Type": "application/json",
+        try {
+            const response = await axios.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                {
+                    model: "llama-3.3-70b-versatile",
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: userInput }
+                    ],
                 },
-            }
-        );
+                {
+                    headers: {
+                        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+                        "Content-Type": "application/json",
+                    },
+                    timeout: 15_000,
+                }
+            );
 
-        const aiResponse = response.data.choices[0].message.content;
+            const aiResponse = response.data.choices[0].message.content;
 
-        return NextResponse.json({ output: aiResponse });
+            return NextResponse.json({ output: aiResponse });
+        } catch (error: unknown) {
+            console.error("AI Career Chat Provider Error:", getSafeErrorDetails(error));
+            return buildAiProviderErrorResponse(error);
+        }
     } catch (error: unknown) {
-        const err = error as {
-            response?: { data?: { error?: { message?: string } } };
-            message?: string;
-        };
-        console.error("AI Career Chat Error:", err.response?.data || err.message);
-        return NextResponse.json({
-            error: err.response?.data?.error?.message || err.message || "Internal Server Error"
-        }, { status: 500 });
+        console.error("AI Career Chat Error:", getSafeErrorDetails(error));
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

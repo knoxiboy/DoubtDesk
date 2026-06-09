@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { eq, or, inArray } from "drizzle-orm";
+import { eq, or, inArray, isNull, and } from "drizzle-orm";
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, membershipsTable, classroomsTable, usersTable } from "@/configs/schema";
 import { auth, currentUser } from "@clerk/nextjs/server";
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 
         const [dbUserResults, doubts, replies, memberships] = await Promise.all([
             db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1),
-            db.select().from(doubtsTable).where(eq(doubtsTable.userEmail, email)),
+            db.select().from(doubtsTable).where(and(eq(doubtsTable.userEmail, email), isNull(doubtsTable.deletedAt))),
             db.select().from(repliesTable).where(or(eq(repliesTable.userEmail, email), eq(repliesTable.userName, name))),
             db.select().from(membershipsTable).where(eq(membershipsTable.userEmail, email))
         ]);
