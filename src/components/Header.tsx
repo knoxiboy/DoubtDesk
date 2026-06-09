@@ -62,12 +62,12 @@ export default function Header() {
 
   return (
     <header className="sticky inset-x-0 top-0 z-50 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-slate-200 dark:border-zinc-900 transition-colors duration-500">
-      <div className="max-w-7xl mx-auto h-16 sm:h-20 flex items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
+      <div className="max-w-7xl mx-auto h-16 sm:h-20 flex items-center justify-between px-4 sm:px-6 lg:px-8 gap-3 lg:gap-5">
         
         {/* Back Button - Always on left */}
         <button
           onClick={handleBackClick}
-          className={`hidden md:flex items-center justify-center p-2 rounded-xl transition-all duration-300 flex-shrink-0 ${
+          className={`hidden xl:flex items-center justify-center p-2 rounded-xl transition-all duration-300 flex-shrink-0 ${
             canGoBack
               ? "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
               : "text-slate-400 dark:text-zinc-600 opacity-50 cursor-default"
@@ -80,24 +80,24 @@ export default function Header() {
         </button>
 
         {/* Logo and Brand */}
-        <Link href="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity shrink-0 group relative z-50">
+        <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity shrink-0 group relative z-50">
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
             <img src="/logo.png" alt="DoubtDesk logo" className="h-6 w-6 sm:h-7 sm:w-7 object-contain" />
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white drop-shadow-sm transition-colors duration-300">
+          <h1 className="truncate text-lg sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white drop-shadow-sm transition-colors duration-300">
             DoubtDesk
           </h1>
         </Link>
 
         {/* Desktop Navigation Links */}
-        <div className="hidden md:flex items-center gap-4 flex-wrap">
+        <div className="hidden xl:flex min-w-0 flex-1 items-center justify-center gap-3 2xl:gap-4">
           {pageLinks.map((link) => {
             const scrollId = link.href.startsWith("#") ? link.href.slice(1) : null;
             return scrollId ? (
               <button
                 key={link.href}
                 onClick={() => handleScrollNavigation(scrollId)}
-                className="text-sm font-medium text-slate-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-white transition-colors duration-300 cursor-pointer bg-transparent border-0"
+                className="whitespace-nowrap text-sm font-medium text-slate-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-white transition-colors duration-300 cursor-pointer bg-transparent border-0"
               >
                 {link.label}
               </button>
@@ -105,7 +105,7 @@ export default function Header() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-slate-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-white transition-colors duration-300"
+                className="whitespace-nowrap text-sm font-medium text-slate-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-white transition-colors duration-300"
               >
                 {link.label}
               </Link>
@@ -114,17 +114,17 @@ export default function Header() {
         </div>
 
         {/* Desktop Right Section */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden xl:flex items-center gap-3 2xl:gap-4 shrink-0">
           <ThemeToggle />
           
           <SignedOut>
             <Link href="/sign-in">
-              <button className="px-4 py-2 bg-white dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-200 rounded-xl text-sm font-semibold border border-slate-200 dark:border-zinc-800 transition-all duration-300 hover:shadow-sm" >
+              <button className="px-3 2xl:px-4 py-2 bg-white dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-200 rounded-xl text-sm font-semibold border border-slate-200 dark:border-zinc-800 transition-all duration-300 hover:shadow-sm" >
                 Sign In
               </button>
             </Link>
             <Link href="/sign-up">
-              <button className="px-4 py-2 bg-blue-600 dark:bg-[#5E8CFF] hover:bg-blue-700 dark:hover:bg-[#8BB8FF] text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/10 dark:shadow-[#5E8CFF]/10 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]" >
+              <button className="px-3 2xl:px-4 py-2 bg-blue-600 dark:bg-[#5E8CFF] hover:bg-blue-700 dark:hover:bg-[#8BB8FF] text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/10 dark:shadow-[#5E8CFF]/10 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]" >
                 Join DoubtDesk
               </button>
             </Link>
@@ -159,7 +159,7 @@ export default function Header() {
         </div>
 
         {/* Mobile Menu Toggle and Theme */}
-        <div className="flex lg:hidden items-center gap-3 relative z-50 ml-auto">
+        <div className="flex xl:hidden items-center gap-3 relative z-50 ml-auto">
           <ThemeToggle />
           <button
             onClick={() => setIsOpen(!isOpen)}
@@ -174,7 +174,7 @@ export default function Header() {
 
       {/* Mobile Menu */}
       <div
-        className={`fixed inset-0 h-screen w-screen z-40 bg-white dark:bg-black transform transition-transform duration-300 ease-in-out lg:hidden flex flex-col pt-24 px-6 pb-8 gap-8 ${
+        className={`fixed inset-0 h-screen w-screen z-40 bg-white dark:bg-black transform transition-transform duration-300 ease-in-out xl:hidden flex flex-col pt-24 px-6 pb-8 gap-8 ${
           isOpen ? "translate-y-0" : "-translate-y-full"
         }`}
       >
