@@ -122,7 +122,7 @@ describe('Ask AI API Endpoint', () => {
             })
         });
 
-        const res = await POST(req);
+        const res = (await POST(req)) as Response;
         const json = await res.json();
         
         expect(res.status).toBe(200);
@@ -142,7 +142,7 @@ describe('Ask AI API Endpoint', () => {
             })
         });
 
-        const res = await POST(req);
+        const res = (await POST(req)) as Response;
         const json = await res.json();
 
         expect(res.status).toBe(403);
@@ -165,7 +165,7 @@ describe('Ask AI API Endpoint', () => {
             }),
         });
 
-        const res = await POST(req);
+        const res = (await POST(req)) as Response;
         const json = await res.json();
 
         expect(res.status).toBe(429);
@@ -186,7 +186,7 @@ describe('Ask AI API Endpoint', () => {
             }),
         });
 
-        const res = await POST(req);
+        const res = (await POST(req)) as Response;
         const json = await res.json();
 
         expect(res.status).toBe(422);
@@ -206,7 +206,7 @@ describe('Ask AI API Endpoint', () => {
             }),
         });
 
-        const res = await POST(req);
+        const res = (await POST(req)) as Response;
         const json = await res.json();
 
         expect(res.status).toBe(422);
@@ -225,7 +225,7 @@ describe('Ask AI API Endpoint', () => {
             }),
         });
 
-        const res = await POST(req);
+        const res = (await POST(req)) as Response;
         const json = await res.json();
 
         expect(res.status).toBe(413);

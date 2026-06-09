@@ -72,7 +72,9 @@ describe('Teacher Insights API Endpoint', () => {
             primaryEmailAddress: { emailAddress: 'teacher@example.com' },
         });
 
-        selectResultsQueue.push([], []);
+        // Return empty array for the teacher check (no membership found)
+        // This simulates the user not being a teacher of this classroom
+        selectResultsQueue.push([]);
 
         const req = new NextRequest('http://localhost/api/teacher/insights?classroomId=7');
         const res = await GET(req);
