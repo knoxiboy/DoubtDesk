@@ -57,20 +57,6 @@
       "when": 1780838344008,
       "tag": "0007_tidy_electro",
       "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1781073519210,
-      "tag": "0008_serious_scarlet_spider",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1781073519211,
-      "tag": "0009_fulltext_search",
-      "breakpoints": true
     }
   ]
 }
