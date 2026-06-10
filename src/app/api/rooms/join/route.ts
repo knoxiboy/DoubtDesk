@@ -36,6 +36,21 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Invalid invite code' }, { status: 404 });
         }
 
+        // 1a. Check if invite code has expired
+        if (classroom.inviteCodeExpiresAt && new Date(classroom.inviteCodeExpiresAt) < new Date()) {
+            return NextResponse.json({ error: 'Invite code has expired' }, { status: 410 });
+        }
+
+        // 1b. Check email domain restrictions if set
+        if (classroom.allowedEmailDomains && classroom.allowedEmailDomains.length > 0) {
+            const emailDomain = email.split('@')[1]?.toLowerCase();
+            if (!emailDomain || !classroom.allowedEmailDomains.some(d => emailDomain === d.toLowerCase())) {
+                return NextResponse.json({
+                    error: `Only email addresses from ${classroom.allowedEmailDomains.join(', ')} domains can join this classroom`
+                }, { status: 403 });
+            }
+        }
+
         // 2. Check if already a member
         const [existingMember] = await db
             .select()
