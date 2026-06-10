@@ -10,14 +10,15 @@ import {
   membershipsTable,
 } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
-import { and, eq, inArray, isNull, or, not, sql, SQL, ilike, desc, getTableColumns } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, not, sql, SQL, desc, getTableColumns } from "drizzle-orm";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 import { buildErrorResponse, errorResponse } from "@/lib/error-handler";
 import { checkUserBlock } from "@/lib/auth-utils";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createDoubtSchema } from "@/lib/validations/doubt";
 import { createClassroomDoubtNotifications } from "@/lib/notifications/service";
-import { inngest } from "@/inngest/client"; 
+import { inngest } from "@/inngest/client";
+import { buildSearchCondition, buildRankOrder } from "@/lib/search"; // NEW
 import { canTeach } from "@/lib/auth/membership-guard";
 import { currentUser } from "@clerk/nextjs/server";
 import { parsePositiveInt } from "@/lib/utils";
@@ -91,13 +92,13 @@ export async function GET(req: Request) {
             conditions.push(eq(doubtsTable.subject, subject));
         }
 
+        // NEW: Replace ilike sequential scan with indexed full-text search
+        // Falls back gracefully — if search is empty, no condition is added
         if (search) {
-            const searchCondition = or(
-                ilike(doubtsTable.content, `%${search}%`),
-                ilike(doubtsTable.subject, `%${search}%`),
-                ilike(doubtsTable.userName, `%${search}%`)
-            );
-            if (searchCondition) conditions.push(searchCondition);
+            const searchCondition = buildSearchCondition(search);
+            if (searchCondition) {
+                conditions.push(searchCondition);
+            }
         }
 
         if (type && type !== "All") {
@@ -148,7 +149,6 @@ export async function GET(req: Request) {
             conditions.push(eq(doubtsTable.isSolved, "unsolved"));
         }
 
-        // Clean mapping chunk evaluation token to avoid standard database drivers cast bugs
         const replyCountSql = sql<number>`coalesce((SELECT count(*)::int FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`.mapWith(Number);
 
         const [totalCountRow] = await db
@@ -165,6 +165,12 @@ export async function GET(req: Request) {
             .from(doubtsTable);
 
         const orderByFields: SQL[] = [desc(doubtsTable.isPinned)];
+
+        // NEW: When searching, rank by relevance first, then fall through to sort
+        if (search) {
+            const rankOrder = buildRankOrder(search);
+            if (rankOrder) orderByFields.push(rankOrder);
+        }
 
         if (sort === "popular") {
             orderByFields.push(desc(doubtsTable.likes));

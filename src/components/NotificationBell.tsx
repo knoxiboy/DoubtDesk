@@ -30,6 +30,11 @@ const NOTIFICATIONS_KEY = '/api/notifications'
 const NOTIFICATION_LOAD_ERROR_MESSAGE = "Could not load notifications."
 const NOTIFICATION_RETRY_BUTTON_LABEL = "Try again"
 
+const NOTIFICATION_ARIA_LABELS = {
+  notifications: "Notifications",
+  unread: "unread",
+} as const;
+
 const fetcher = async (url: string) => {
     const res = await fetch(url)
 
@@ -183,6 +188,7 @@ export default function NotificationBell() {
                 <Button 
                     variant="ghost" 
                     size="icon" 
+                    aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
                     className="relative rounded-full hover:bg-accent transition-colors"
                  >
                     <Bell className="h-5 w-5 text-muted-foreground" />
@@ -202,7 +208,7 @@ export default function NotificationBell() {
                             size="sm" 
                             onClick={markAllAsRead}
                             className="h-auto px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-                         aria-label="Interactive button">
+                         aria-label="Mark all notifications as read">
                             <Check className="h-3 w-3 mr-1" />
                             Mark all as read
                         </Button>
