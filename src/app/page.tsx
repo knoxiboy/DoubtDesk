@@ -37,6 +37,8 @@ import ShapeGrid from "@/components/ShapeGrid";
 import { Inter, Staatliches } from "next/font/google";
 import LiveCampusThreadPanel from "@/components/LiveCampusThreadPanel";
 
+import TestimonialsMarquee from "@/components/TestimonialsMarquee"; //Testimonials marquee
+
 const inter = Inter({ subsets: ["latin"] });
 const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 
@@ -114,19 +116,63 @@ export default function Home() {
 
   const testimonials = [
     {
+      id: "1",
       name: "Aarav Sharma",
       role: "B.Tech Student",
-      text: "DoubtDesk made it so easy to clear my doubts during exam prep. The AI explanations are super clear.",
+      institution: "DTU",
+      avatarUrl: "/avatars/aarav.jpg",
+      quote:
+        "DoubtDesk helped me resolve doubts 3x faster during exams. The AI explanations are incredibly clear.",
+      rating: 5,
     },
     {
+      id: "2",
       name: "Neha Verma",
       role: "CS Student",
-      text: "No more messy WhatsApp groups. Everything is structured and easy to follow.",
+      institution: "Punjab University",
+      avatarUrl: "/avatars/neha.jpg",
+      quote:
+        "Everything is organized in one place. No more scrolling through endless chat groups.",
+      rating: 5,
     },
     {
+      id: "3",
       name: "Rohit Mehta",
       role: "Teaching Assistant",
-      text: "Analytics help me understand where students struggle the most.",
+      institution: "NIT Jalandhar",
+      avatarUrl: "/avatars/rohit.jpg",
+      quote:
+        "Analytics help me quickly identify where students struggle the most.",
+      rating: 5,
+    },
+    {
+      id: "4",
+      name: "Priya Singh",
+      role: "MBA Student",
+      institution: "IIM Indore",
+      avatarUrl: "/avatars/priya.jpg",
+      quote:
+        "My exam preparation became much more efficient after switching to DoubtDesk.",
+      rating: 5,
+    },
+    {
+      id: "5",
+      name: "Karan Gupta",
+      role: "Engineering Student",
+      institution: "PEC Chandigarh",
+      avatarUrl: "/avatars/karan.jpg",
+      quote:
+        "Instant answers saved hours of searching through notes and forums.",
+      rating: 5,
+    },
+    {
+      id: "6",
+      name: "Ananya Kapoor",
+      role: "Professor",
+      institution: "Chitkara University",
+      avatarUrl: "/avatars/ananya.jpg",
+      quote: "Managing classroom discussions has become significantly easier.",
+      rating: 5,
     },
   ];
 
@@ -373,28 +419,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-6">
-              {testimonials.map((t, index) => (
-                <div
-                  key={t.name}
-                  style={{ animationDelay: `${index * 200}ms` }}
-                  className="p-6 rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 backdrop-blur-md hover:border-blue-400 dark:hover:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-900/60 transition-all duration-500 flex flex-col justify-between shadow-sm dark:shadow-none hover:shadow-xl hover:-translate-y-1 animate-in fade-in slide-in-from-bottom-6 fill-mode-both"
-                >
-                  <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed italic transition-colors duration-300">
-                    “{t.text}”
-                  </p>
-
-                  <div className="mt-6 pt-4 border-t border-slate-100 dark:border-zinc-800/60 flex flex-col">
-                    <div className="text-slate-950 dark:text-slate-100 font-bold tracking-tight transition-colors duration-300">
-                      {t.name}
-                    </div>
-                    <div className="text-xs font-medium text-slate-400 dark:text-zinc-500 mt-0.5 transition-colors duration-300">
-                      {t.role}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <TestimonialsMarquee testimonials={testimonials} />
           </div>
         </section>
       </main>
