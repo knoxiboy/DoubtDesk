@@ -71,6 +71,15 @@ export async function GET(req: Request) {
                 );
                 membership = res[0];
             }
+            const [membership] = await db
+            .select()
+            .from(membershipsTable)
+            .where(
+                and(
+                    eq(membershipsTable.userEmail, email as string),
+                    eq(membershipsTable.classroomId, doubt.classroomId as number)
+                )
+            );
 
             const isTeacher = membership ? canTeach(membership.role) : false;
             const isOwner = email ? doubt.userEmail === email : false;
