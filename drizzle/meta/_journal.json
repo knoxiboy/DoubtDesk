@@ -57,6 +57,13 @@
       "when": 1780838344008,
       "tag": "0007_tidy_electro",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781077831112,
+      "tag": "0008_smiling_argent",
+      "breakpoints": true
     }
   ]
 }

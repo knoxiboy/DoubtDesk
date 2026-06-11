@@ -418,6 +418,9 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                             className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500/50 font-bold text-sm"
                             required
                         />
+                        {subjectWasEdited && !subject.trim() && (
+                        <p className="text-red-400 text-xs font-semibold px-1 mt-1">Subject is required.</p>
+                        )}
                         {suggestedSubject && (
                             <div className="flex items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-widest text-blue-300">
                                 <Sparkles className="w-3 h-3" />
