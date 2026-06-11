@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 
 type Member = {
     userEmail: string;
@@ -41,6 +42,11 @@ export default function MembersListView() {
 
     return (
         <div className="space-y-3 min-h-[400px] flex flex-col justify-between">
+            <div className="flex items-center gap-2 mb-2">
+                <Link href={`/rooms/${id}`} className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-bold uppercase tracking-wider">
+                    <ChevronLeft className="w-4 h-4" /> Back to Classroom
+                </Link>
+            </div>
             {/* Main Content Area */}
             <div className="flex-1 space-y-3">
                 {loading ? (

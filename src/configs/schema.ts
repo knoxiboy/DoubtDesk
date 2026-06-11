@@ -1,5 +1,5 @@
 // configs/schema.ts
-import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique, vector } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -36,6 +36,8 @@ export const classroomsTable = pgTable(
         year: varchar({ length: 50 }).notNull(),
         teacherEmail: varchar({ length: 255 }).notNull(),
         inviteCode: varchar({ length: 10 }).notNull().unique(),
+        inviteCodeExpiresAt: timestamp("invite_code_expires_at", { withTimezone: true }),
+        allowedEmailDomains: text("allowed_email_domains").array(),
         pedagogyLevel: varchar({ length: 50 }).default("Undergraduate (Freshman)").notNull(),
         targetGradeLevel: integer().default(13).notNull(),
         createdAt: timestamp().defaultNow().notNull(),
@@ -192,6 +194,10 @@ export const doubtsTable = pgTable("doubts", {
     isPinned: boolean().default(false),
     deletedAt: timestamp(),
     createdAt: timestamp().defaultNow().notNull(),
+
+    // Semantic duplicate detection
+    // NOTE: stored as pgvector embedding(1536)
+    embedding: vector({ dimensions: 1536 }),
 }, (table) => {
     return {
         classroomIdIndex: index("doubt_classroomId_idx").on(table.classroomId),

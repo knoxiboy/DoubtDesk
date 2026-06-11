@@ -24,6 +24,9 @@ import {
   Calendar,
   ArrowRight,
   Clock,
+  RefreshCw,
+  Globe,
+  Save,
   Activity,
   Lightbulb,
   Layers,
@@ -65,6 +68,10 @@ interface Classroom {
   year: string;
   teacherEmail: string;
   inviteCode: string;
+  inviteCodeExpiresAt?: string | null;
+  allowedEmailDomains?: string[] | null;
+  pedagogyLevel?: string;
+  targetGradeLevel?: number;
   role: string;
 }
 
@@ -101,7 +108,6 @@ export default function ClassroomPage() {
     const urlSearch = searchParams.get("search");
     if (urlSearch) setSearchVal(urlSearch);
   }, [searchParams]);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [pedagogyLevel, setPedagogyLevel] = useState("");
   const [targetGrade, setTargetGrade] = useState("");
   const [pedagogyProfile, setPedagogyProfile] = useState<any>(null);
@@ -260,7 +266,11 @@ export default function ClassroomPage() {
     if (classroom?.id) {
       fetch(`/api/classroom/pedagogy?classroomId=${classroom.id}`)
         .then((r) => r.json())
-        .then(setPedagogyProfile);
+        .then(setPedagogyProfile)
+        .catch((err) => {
+          console.error(err);
+          toast.error("Failed to load pedagogy profile");
+        });
     }
   }, [classroom?.id]);
 
@@ -404,7 +414,7 @@ export default function ClassroomPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 scrollbar-hide w-full xl:w-auto max-w-full">
+            <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap flex-nowrap pb-1 scrollbar-hide w-full xl:w-auto max-w-full">
               {[
                 { id: "ask-ai", label: "Ask AI", icon: Brain },
                 { id: "community", label: "Community", icon: MessageSquare },
@@ -505,7 +515,7 @@ export default function ClassroomPage() {
                 Classroom Board
               </h2>
 
-              <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800">
+              <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 w-full sm:w-auto overflow-x-auto flex-nowrap scrollbar-hide whitespace-nowrap">
                 <button
                   onClick={() => setDoubtFilter("unsolved")}
                   className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${doubtFilter === "unsolved" ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200"}`}
@@ -737,7 +747,7 @@ export default function ClassroomPage() {
                 )}
               </h2>
 
-              <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800">
+              <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 w-full sm:w-auto overflow-x-auto flex-nowrap scrollbar-hide whitespace-nowrap">
                 <button
                   onClick={() => setDoubtFilter("unsolved")}
                   className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${doubtFilter === "unsolved" ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200"}`}
@@ -945,7 +955,7 @@ export default function ClassroomPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold tracking-tight">Insights</h2>
               <button
-                onClick={() => setIsSettingsModalOpen(true)}
+                onClick={() => setIsCodeModalOpen(true)}
                 className="flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-zinc-400 hover:text-purple-600 dark:hover:text-purple-400 transition"
               >
                 <Sliders className="w-4 h-4" /> Settings
@@ -987,17 +997,17 @@ export default function ClassroomPage() {
         />
       )}
 
-      {/* INVITE STUDENTS MODAL */}
+      {/* SETTINGS MODAL */}
       {isCodeModalOpen && hasTeacherAccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl bg-white/60 dark:bg-black/60 animate-in fade-in duration-300">
           <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-900 w-full max-w-lg rounded-2xl p-6 md:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-slate-900 dark:text-zinc-100">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <h2 className="text-xl font-bold tracking-tight">
-                  Invite Students
+                  Classroom Settings
                 </h2>
                 <p className="text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[10px]">
-                  Generate a secure join link
+                  Invite code & access controls
                 </p>
               </div>
               <button
@@ -1009,102 +1019,136 @@ export default function ClassroomPage() {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/20 p-4">
-                <div className="flex items-start gap-3">
-                  <Sparkles className="mt-0.5 h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                      Secure Invite Link
-                    </h3>
-                    <p className="text-xs font-medium leading-relaxed text-slate-600 dark:text-zinc-400">
-                      This creates a non-guessable invite link that expires in 7
-                      days. Students can use it to join this classroom directly.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={generateInviteLink}
-                disabled={isGeneratingInvite}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98]"
-                aria-label="Generate secure invite link"
-              >
-                {isGeneratingInvite ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" /> Generate Secure Invite Link
-                  </>
-                )}
-              </button>
-
-              {inviteUrl && (
-                <div className="space-y-3">
-                  <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 p-4">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                      Invite link
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        value={inviteUrl}
-                        readOnly
-                        className="min-w-0 flex-1 rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-xs font-medium text-slate-700 dark:text-zinc-300 outline-none"
-                      />
-                      <button
-                        onClick={copyInviteLink}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold uppercase tracking-wider text-[10px] transition-all duration-300"
-                        aria-label="Copy invite link"
-                      >
-                        {inviteCopied ? (
-                          <>
-                            <Check className="w-3.5 h-3.5" /> Copied
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" /> Copy
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {inviteExpiresAt && (
-                    <p className="text-center text-[11px] font-semibold text-slate-500 dark:text-zinc-500">
-                      Expires on {new Date(inviteExpiresAt).toLocaleString()}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="border-t border-slate-200 dark:border-zinc-900 pt-5 space-y-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                Existing class code fallback
-              </p>
-
-              <div className="bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between gap-4 relative group overflow-hidden shadow-inner">
-                <code className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-wider relative z-10">
+            <div className="space-y-5">
+              {/* Current Invite Code */}
+              <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 p-4">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                  Current Invite Code
+                </p>
+                <code className="text-2xl font-black text-blue-600 dark:text-blue-400 tracking-wider">
                   {classroom?.inviteCode}
                 </code>
+              </div>
 
+              {/* Regenerate Invite Code */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                  Regenerate Invite Code
+                </label>
                 <button
-                  onClick={copyCode}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98] relative z-10"
-                  aria-label="Interactive button"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/rooms/${id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ regenerateInviteCode: true }),
+                      });
+                      if (res.ok) {
+                        const updated = await res.json();
+                        setClassroom(prev => prev ? { ...prev, inviteCode: updated.inviteCode } : prev);
+                        toast.success('Invite code regenerated!');
+                      } else {
+                        const err = await res.json();
+                        toast.error(err.error || 'Failed to regenerate');
+                      }
+                    } catch {
+                      toast.error('Network error. Please try again.');
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 active:scale-[0.98]"
                 >
-                  {copied ? (
-                    <>
-                      <Check className="w-3.5 h-3.5" /> Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" /> Copy Key
-                    </>
-                  )}
+                  <RefreshCw className="w-3.5 h-3.5" /> Regenerate Code
+                </button>
+              </div>
+
+              {/* Invite Code Expiry */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 flex items-center gap-1.5">
+                  <Clock className="w-3 h-3" /> Invite Code Expiry
+                </label>
+                <input
+                  type="datetime-local"
+                  defaultValue={classroom?.inviteCodeExpiresAt
+                    ? new Date(classroom.inviteCodeExpiresAt)
+                        .toLocaleString('sv-SE', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })
+                        .slice(0, 16)
+                    : ''}
+                  id="expiry-input"
+                  className="w-full rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
+                />
+                <button
+                  onClick={async () => {
+                    try {
+                      const input = document.getElementById('expiry-input') as HTMLInputElement;
+                      const val = input?.value;
+                      const localDate = val ? new Date(val) : null;
+                      const res = await fetch(`/api/rooms/${id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          inviteCodeExpiresAt: localDate ? localDate.toISOString() : null,
+                        }),
+                      });
+                      if (res.ok) {
+                        const updated = await res.json();
+                        setClassroom(prev => prev ? { ...prev, inviteCodeExpiresAt: updated.inviteCodeExpiresAt } : prev);
+                        toast.success('Expiry updated!');
+                      } else {
+                        const err = await res.json();
+                        toast.error(err.error || 'Failed to update');
+                      }
+                    } catch {
+                      toast.error('Network error. Please try again.');
+                    }
+                  }}
+                  className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 active:scale-[0.98]"
+                >
+                  <Save className="w-3.5 h-3.5" /> Save Expiry
+                </button>
+              </div>
+
+              {/* Allowed Email Domains */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 flex items-center gap-1.5">
+                  <Globe className="w-3 h-3" /> Allowed Email Domains
+                </label>
+                <p className="text-[11px] text-slate-400 dark:text-zinc-500">
+                  Restrict joining to specific email domains (e.g. university.edu). Leave empty to allow any domain.
+                </p>
+                <input
+                  type="text"
+                  defaultValue={(classroom?.allowedEmailDomains || []).join(', ')}
+                  placeholder="e.g. university.edu, college.ac.in"
+                  id="domains-input"
+                  className="w-full rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
+                />
+                <button
+                  onClick={async () => {
+                    try {
+                      const input = document.getElementById('domains-input') as HTMLInputElement;
+                      const domains = input?.value
+                        ? input.value.split(',').map(d => d.trim()).filter(Boolean)
+                        : null;
+                      const res = await fetch(`/api/rooms/${id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ allowedEmailDomains: domains }),
+                      });
+                      if (res.ok) {
+                        const updated = await res.json();
+                        setClassroom(prev => prev ? { ...prev, allowedEmailDomains: updated.allowedEmailDomains } : prev);
+                        toast.success('Domain restrictions updated!');
+                      } else {
+                        const err = await res.json();
+                        toast.error(err.error || 'Failed to update');
+                      }
+                    } catch {
+                      toast.error('Network error. Please try again.');
+                    }
+                  }}
+                  className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 active:scale-[0.98]"
+                >
+                  <Save className="w-3.5 h-3.5" /> Save Domains
                 </button>
               </div>
             </div>
@@ -1137,6 +1181,7 @@ function ClassroomInsightsView({
       setData(await res.json());
     } catch (error) {
       console.error("Error loading classroom analytics:", error);
+      toast.error("Failed to load analytics data");
       setData(null);
     } finally {
       setLoading(false);
@@ -1578,6 +1623,10 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
       .then((res) => res.json())
       .then((d) => {
         setPersonalData(d);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load personal analytics:", err);
         setLoading(false);
       });
   }, [classroomId]);

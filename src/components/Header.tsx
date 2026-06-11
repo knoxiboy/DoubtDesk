@@ -159,7 +159,7 @@ export default function Header() {
         </div>
 
         {/* Mobile Menu Toggle and Theme */}
-        <div className="flex lg:hidden items-center gap-3 relative z-50 ml-auto">
+        <div className="flex md:hidden items-center gap-3 relative z-50 ml-auto">
           <ThemeToggle />
           <button
             onClick={() => setIsOpen(!isOpen)}
@@ -172,9 +172,8 @@ export default function Header() {
 
       </div>
 
-      {/* Mobile Menu */}
       <div
-        className={`fixed inset-0 h-screen w-screen z-40 bg-white dark:bg-black transform transition-transform duration-300 ease-in-out lg:hidden flex flex-col pt-24 px-6 pb-8 gap-8 ${
+        className={`fixed inset-0 h-screen w-screen z-40 bg-white dark:bg-black transform transition-transform duration-300 ease-in-out md:hidden flex flex-col pt-24 px-6 pb-8 gap-8 overflow-y-auto ${
           isOpen ? "translate-y-0" : "-translate-y-full"
         }`}
       >
