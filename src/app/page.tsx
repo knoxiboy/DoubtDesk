@@ -34,8 +34,7 @@ import ShapeGrid from "@/components/ShapeGrid";
 import { Inter, Staatliches } from "next/font/google";
 import LiveCampusThreadPanel from "@/components/LiveCampusThreadPanel";
 
-// New: Onboarding Tour Components & Logic
-import OnboardingTour from "@/components/OnboardingTour";
+
 
 const inter = Inter({ subsets: ["latin"] });
 const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
@@ -43,9 +42,7 @@ const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  // New: Tour state
-  const [showOnboardingTour, setShowOnboardingTour] = useState(false);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
+
 
   useEffect(() => {
     const handleScroll = () => {
@@ -59,27 +56,7 @@ export default function Home() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // New: Check onboarding status on mount (for signed-in users)
-  useEffect(() => {
-    const checkOnboardingStatus = async () => {
-      // In a real app, fetch from Clerk metadata, localStorage, or your backend
-      const stored = localStorage.getItem("doubtdesk_hasCompletedOnboarding");
-      const completed = stored === "true";
 
-      setHasCompletedOnboarding(completed);
-
-      // Auto-launch tour for first-time signed-in users (demo logic)
-      // In production, use Clerk user metadata or a user preference API
-      if (!completed) {
-        // Small delay to let the page render first
-        setTimeout(() => {
-          setShowOnboardingTour(true);
-        }, 1200);
-      }
-    };
-
-    checkOnboardingStatus();
-  }, []);
 
   const { signOut } = useClerk();
 
@@ -160,18 +137,7 @@ export default function Home() {
     await signOut({ redirectUrl: "/" });
   };
 
-  // New: Tour completion handler
-  const handleTourComplete = () => {
-    setShowOnboardingTour(false);
-    setHasCompletedOnboarding(true);
-    localStorage.setItem("doubtdesk_hasCompletedOnboarding", "true");
-    // In production: Update user metadata via Clerk or your API
-  };
 
-  const handleTourSkip = () => {
-    setShowOnboardingTour(false);
-    // Optionally mark as completed or keep for later restart
-  };
 
   return (
     <div
@@ -203,13 +169,7 @@ export default function Home() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* New: Interactive Onboarding Tour */}
-      <OnboardingTour
-        isOpen={showOnboardingTour}
-        onComplete={handleTourComplete}
-        onSkip={handleTourSkip}
-        onRestart={() => setShowOnboardingTour(true)}
-      />
+
 
       {/* Hero Section */}
       <main className="flex-1 relative overflow-hidden scroll-smooth">
