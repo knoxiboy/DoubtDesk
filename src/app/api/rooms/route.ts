@@ -4,7 +4,7 @@ import { classroomsTable, membershipsTable, usersTable } from '@/configs/schema'
 import { eq, and, notInArray } from 'drizzle-orm';
 import { currentUser } from '@clerk/nextjs/server';
 import { checkUserBlock } from '@/lib/auth-utils';
-import { buildErrorResponse } from '@/lib/error-handler';
+import { buildErrorResponse, errorResponse } from '@/lib/error-handler';
 import { parseAndValidateRequest } from '@/lib/validations/validate';
 import { createClassroomSchema } from '@/lib/validations/classroom';
 import { Classroom } from '@/types';
@@ -14,14 +14,14 @@ export async function GET(req: Request) {
     try {
         const user = await currentUser();
         if (!user || !user.primaryEmailAddress?.emailAddress) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return errorResponse('Unauthorized', 401);
         }
 
         const email = user.primaryEmailAddress.emailAddress;
 
         // 0. Check if user is blocked
-        const { isBlocked, errorResponse } = await checkUserBlock(email);
-        if (isBlocked) return errorResponse;
+        const { isBlocked, errorResponse: blockErrorResponse } = await checkUserBlock(email);
+        if (isBlocked) return blockErrorResponse;
 
         // Fetch classrooms where user is a member
         const joinedRooms = await db
@@ -32,6 +32,8 @@ export async function GET(req: Request) {
                 year: classroomsTable.year,
                 teacherEmail: classroomsTable.teacherEmail,
                 inviteCode: classroomsTable.inviteCode,
+                inviteCodeExpiresAt: classroomsTable.inviteCodeExpiresAt,
+                allowedEmailDomains: classroomsTable.allowedEmailDomains,
                 role: membershipsTable.role,
             })
             .from(classroomsTable)
@@ -77,14 +79,14 @@ if (dbUser && dbUser.university && dbUser.year) {
 // 2. POST: Create a classroom (Teacher Only)
 export async function POST(req: Request) {
     try {
-        const { errorResponse, data } = await parseAndValidateRequest(req, createClassroomSchema);
-        if (errorResponse) return errorResponse;
+        const { errorResponse: validationResponse, data } = await parseAndValidateRequest(req, createClassroomSchema);
+        if (validationResponse) return validationResponse;
 
         const { name, year } = data;
 
         const user = await currentUser();
         if (!user || !user.primaryEmailAddress?.emailAddress) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return errorResponse('Unauthorized', 401);
         }
 
         const email = user.primaryEmailAddress.emailAddress;
@@ -96,7 +98,7 @@ export async function POST(req: Request) {
         // Final check for teacher/admin role in DB
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
         if (!dbUser || (dbUser.role !== 'teacher' && dbUser.role !== 'admin')) {
-            return NextResponse.json({ error: 'Only teachers can create classrooms' }, { status: 403 });
+            return errorResponse('Only teachers can create classrooms', 403);
         }
 
         const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();

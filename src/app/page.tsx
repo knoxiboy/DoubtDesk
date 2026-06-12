@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import {
   SignInButton,
@@ -9,7 +8,6 @@ import {
   useClerk,
   UserButton,
 } from "@clerk/nextjs";
-
 import {
   Map,
   MessageCircle,
@@ -20,7 +18,6 @@ import {
   Users,
   Globe,
 } from "lucide-react";
-
 import Link from "next/link";
 import {
   AlertDialog,
@@ -38,11 +35,14 @@ import { Inter, Staatliches } from "next/font/google";
 import LiveCampusThreadPanel from "@/components/LiveCampusThreadPanel";
 import { scrollToSection } from "@/lib/scroll-to-section";
 
+
+
 const inter = Inter({ subsets: ["latin"] });
 const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 
 export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+
 
   useEffect(() => {
     const scrollFromHash = () => {
@@ -143,6 +143,8 @@ export default function Home() {
     await signOut({ redirectUrl: "/" });
   };
 
+
+
   return (
     <div
       className={`${inter.className} min-h-screen bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-50 flex flex-col selection:bg-blue-500/30 dark:selection:bg-[#5E8CFF]/30 transition-colors duration-500 overflow-x-hidden`}
@@ -173,6 +175,8 @@ export default function Home() {
         </AlertDialogContent>
       </AlertDialog>
 
+
+
       {/* Hero Section */}
       <main className="flex-1 relative overflow-hidden scroll-smooth">
         <div className="absolute inset-0 z-0 pointer-events-none">
@@ -189,7 +193,6 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-b from-blue-50/30 via-transparent to-transparent dark:from-transparent" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(59,130,246,0.08),transparent_35%),radial-gradient(circle_at_70%_60%,rgba(99,102,241,0.05),transparent_40%)] dark:bg-[radial-gradient(circle_at_26%_24%,rgba(125,162,255,0.12),transparent_28%),radial-gradient(circle_at_72%_42%,rgba(170,191,255,0.05),transparent_26%)]" />
         </div>
-
         <section className="px-4 sm:px-6 lg:px-20 pt-32 pb-20 relative z-10">
           <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-[1.1fr_0.9fr] gap-12 xl:gap-16 items-center">
             <div className="text-center xl:text-left space-y-8 animate-in fade-in slide-in-from-left-6 duration-700 ease-out">
@@ -204,7 +207,6 @@ export default function Home() {
                   Collaborative AI.
                 </span>
               </h2>
-
               {/* Description Subtext Stack */}
               <div className="space-y-2 max-w-md sm:max-w-xl mx-auto xl:mx-0 transition-all duration-300">
                 <div
@@ -217,7 +219,6 @@ export default function Home() {
                   smarter learning.
                 </p>
               </div>
-
               {/* Call to Action Button Core Wrappers */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center xl:justify-start gap-4 transition-all duration-300 max-w-md sm:max-w-none mx-auto xl:mx-0">
                 <SignedIn>
@@ -232,7 +233,6 @@ export default function Home() {
                     </button>
                   </Link>
                 </SignedIn>
-
                 <SignedOut>
                   <Link href="/sign-up" className="w-full sm:w-auto">
                     <button className="group w-full sm:w-auto px-10 py-5 bg-white text-slate-950 rounded-2xl text-lg font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]">
@@ -246,7 +246,6 @@ export default function Home() {
                     </button>
                   </Link>
                 </SignedOut>
-
                 <Link href="/public-rooms" className="w-full sm:w-auto">
                   <button className="group w-full sm:w-auto px-10 py-5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white rounded-2xl text-lg font-bold border border-slate-200 dark:border-white/10 transition-all hover:shadow-[0_0_20px_rgba(94,140,255,0.15)] flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98]">
                     <span
@@ -259,7 +258,6 @@ export default function Home() {
                 </Link>
               </div>
             </div>
-
             {/* Right Live Panel Graphic Column */}
             <div className="flex items-center justify-center xl:justify-end w-full pt-4 xl:pt-6 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200 ease-out fill-mode-both">
               <div className="w-full max-w-md xl:max-w-full transition-transform duration-500 hover:scale-[1.01] rounded-[0.9rem]">
@@ -269,6 +267,7 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ... rest of your sections unchanged ... */}
         {/* Features Section */}
         <section
           id="features"
@@ -296,6 +295,7 @@ export default function Home() {
               id="features-grid"
               className="grid gap-6 scroll-mt-20 sm:grid-cols-2 lg:grid-cols-3"
             >
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {features.map((feature, i) => {
                 const Icon = feature.icon;
                 return (
@@ -321,6 +321,7 @@ export default function Home() {
           </div>
         </section>
 
+        {/* How It Works, Testimonials, etc. remain unchanged */}
         {/* How It Works Section */}
         <section
           id="how-it-works"
@@ -340,11 +341,8 @@ export default function Home() {
                 Simple flow from doubt → solution → understanding
               </p>
             </div>
-
             <div className="grid md:grid-cols-3 gap-8 relative">
-              {/* Desktop Connecting Line decoration */}
               <div className="hidden md:block absolute top-12 left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-blue-100 via-indigo-100 to-blue-100 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900 -z-10 transition-colors duration-300" />
-
               {howItWorks.map((step, index) => (
                 <div
                   key={step.title}
@@ -385,7 +383,6 @@ export default function Home() {
                 Real feedback from learners and educators
               </p>
             </div>
-
             <div className="grid md:grid-cols-3 gap-6">
               {testimonials.map((t, index) => (
                 <div
@@ -396,7 +393,6 @@ export default function Home() {
                   <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed italic transition-colors duration-300">
                     “{t.text}”
                   </p>
-
                   <div className="mt-6 pt-4 border-t border-slate-100 dark:border-zinc-800/60 flex flex-col">
                     <div className="text-slate-950 dark:text-slate-100 font-bold tracking-tight transition-colors duration-300">
                       {t.name}
@@ -411,6 +407,44 @@ export default function Home() {
           </div>
         </section>
       </main>
+
+      {/* Scroll to Top Button - unchanged */}
+      {scrollProgress > 5 && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-6 right-6 z-50 w-12 h-12 flex items-center justify-center group active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
+          aria-label="Scroll to top"
+        >
+          <svg
+            className="absolute top-0 left-0 w-12 h-12 -rotate-90"
+            viewBox="0 0 56 56"
+          >
+            <circle
+              cx="28"
+              cy="28"
+              r="24"
+              fill="none"
+              stroke="rgba(94,140,255,0.12)"
+              strokeWidth="4"
+            />
+            <circle
+              cx="28"
+              cy="28"
+              r="24"
+              fill="none"
+              stroke="#5E8CFF"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeDasharray={`${2 * Math.PI * 24}`}
+              strokeDashoffset={`${2 * Math.PI * 24 * (1 - scrollProgress / 100)}`}
+              className="transition-all duration-150"
+            />
+          </svg>
+          <div className="w-8 h-8 rounded-full bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 flex items-center justify-center text-slate-700 dark:text-zinc-300 font-bold text-sm shadow-sm transition-colors group-hover:bg-slate-50 dark:group-hover:bg-zinc-900 group-hover:text-blue-600 dark:group-hover:text-white">
+            &uarr;
+          </div>
+        </button>
+      )}
     </div>
   );
 }

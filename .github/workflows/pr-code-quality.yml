@@ -91,7 +91,8 @@ jobs:
     name: Security Scan
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -139,18 +140,30 @@ jobs:
           fi
         continue-on-error: true
 
-      - name: Comment security findings
+      - name: Save security findings comment
         if: steps.secret-scan.outputs.security_issues == 'true'
         uses: actions/github-script@v6
+        env:
+          SECURITY_ISSUES: ${{ steps.secret-scan.outputs.issues }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `## Security Scan Warning\n\nPotential security issues detected in this PR:\n${{ steps.secret-scan.outputs.issues }}\n\nPlease review before merging. @knoxiboy`
-            });
+            const fs = require('fs');
+            const path = require('path');
+            const dir = './security-warning';
+            if (!fs.existsSync(dir)){
+              fs.mkdirSync(dir, { recursive: true });
+            }
+            const body = `## Security Scan Warning\n\nPotential security issues detected in this PR:\n${process.env.SECURITY_ISSUES}\n\nPlease review before merging. @knoxiboy`;
+            fs.writeFileSync(path.join(dir, 'security-warning.txt'), body);
+
+
+      - name: Upload security findings artifact
+        if: steps.secret-scan.outputs.security_issues == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-warning
+          path: security-warning/
+          if-no-files-found: ignore
 
   # ─────────────────────────────────────────
   # 5. PR quality gate — basic checks
@@ -159,7 +172,8 @@ jobs:
     name: PR Quality Gate
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -202,16 +216,24 @@ jobs:
             // Post results
             if (issues.length > 0) {
               const comment = `## PR Quality Check\n\nThe following items need attention:\n\n${issues.map(i => `- ${i}`).join('\n')}\n\n> These are suggestions to improve PR quality. The PR can still be merged after review.`;
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: comment
-              });
-              console.log('Posted quality gate feedback');
+              const fs = require('fs');
+              const path = require('path');
+              const dir = './quality-gate-warning';
+              if (!fs.existsSync(dir)){
+                fs.mkdirSync(dir, { recursive: true });
+              }
+              fs.writeFileSync(path.join(dir, 'quality-gate-warning.txt'), comment);
+              console.log('Saved quality gate feedback to file');
             } else {
               console.log('PR passed all quality checks');
             }
+
+      - name: Upload quality gate warning artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-gate-warning
+          path: quality-gate-warning/
+          if-no-files-found: ignore
 
   # ─────────────────────────────────────────
   # 6. Dependency audit

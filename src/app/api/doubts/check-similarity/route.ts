@@ -3,7 +3,11 @@ import { doubtsTable, repliesTable } from "@/configs/schema";
 import { and, eq, isNull, desc, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { findSemanticDuplicates } from "@/lib/ai/embeddings";
 import { buildErrorResponse } from "@/lib/error-handler";
+import { enforceAiAvailability, buildAiProviderErrorResponse } from "@/lib/ai/kill-switch";
+import { getAnonymousQuotaIdentifier } from "@/lib/request-identity";
+import { getSafeErrorDetails } from "@/lib/safe-error-details";
 import {
   parseOptionalClassroomId,
   requireAuth,
@@ -31,10 +35,12 @@ export async function POST(req: Request) {
       classroomId?: unknown;
     };
     const classroomId = parseOptionalClassroomId(rawClassroomId);
+    let aiQuotaIdentifier = getAnonymousQuotaIdentifier(req);
 
     if (classroomId) {
       const { email } = await requireAuth();
       await requireMembership(email, classroomId);
+      aiQuotaIdentifier = email;
     }
 
     if (
@@ -45,7 +51,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ similarDoubts: [] });
     }
 
-    // Fetch the last 20 doubts from the same room/community
+    // 1) Fast path: embedding + vector similarity search (pgvector)
+    // Only short-circuit when semantic search actually returns usable results.
+    // Empty results can mean embedding generation failed (safeGenerateEmbedding -> null)
+    // or no candidate passed thresholds; in those cases we must fall back to the LLM.
+    try {
+      const similarDoubts = await findSemanticDuplicates({
+        content,
+        classroomId: classroomId ?? null,
+        type: "community",
+        similarityThreshold: 80, // 0..100 percentage contract
+        topK: 5,
+      });
+
+      if (similarDoubts.length > 0) {
+        return NextResponse.json({ similarDoubts });
+      }
+    } catch (err) {
+      console.error("Embedding similarity path failed, falling back to LLM:", err);
+    }
+
+
+    // 2) Fallback: Fetch the last 50 doubts from the same room/community
     const recentDoubts = await db
       .select({
         id: doubtsTable.id,
@@ -66,9 +93,13 @@ export async function POST(req: Request) {
       .orderBy(desc(doubtsTable.createdAt))
       .limit(50);
 
+
     if (recentDoubts.length === 0) {
       return NextResponse.json({ similarDoubts: [] });
     }
+
+    const availabilityResponse = await enforceAiAvailability(aiQuotaIdentifier);
+    if (availabilityResponse) return availabilityResponse;
 
     // Build a compact list for Groq to compare
     const doubtList = recentDoubts
@@ -100,8 +131,8 @@ Do not include any explanation or markdown.`;
         max_tokens: 300,
       });
     } catch (err) {
-      console.error("Groq API failed:", err);
-      return NextResponse.json({ similarDoubts: [] });
+      console.error("Groq API failed:", getSafeErrorDetails(err));
+      return buildAiProviderErrorResponse(err);
     }
 
     const raw = completion.choices[0]?.message?.content?.trim() || "[]";

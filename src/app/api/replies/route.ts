@@ -1,32 +1,33 @@
 import { db } from "@/configs/db";
-import { repliesTable, doubtsTable, classroomsTable, replyLikesTable, usersTable, membershipsTable, notificationsTable } from "@/configs/schema";
-import { eq, asc, sql, and } from "drizzle-orm";
+import { repliesTable, doubtsTable, replyLikesTable, usersTable, membershipsTable } from "@/configs/schema";
+import { eq, asc, and, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { buildErrorResponse, errorResponse } from "@/lib/error-handler";
 import { inngest } from "@/inngest/client";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createReplySchema } from "@/lib/validations/reply";
 import { DOUBT_STATUS } from "@/lib/doubtStatus";
 import { createReplyNotification } from "@/lib/notifications/service";
+import { canTeach } from "@/lib/auth/membership-guard";
 
 export async function GET(req: Request) {
     try {
         const user = await currentUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        const email = user.primaryEmailAddress?.emailAddress;
-        const authenticatedUserId = user.id;
-        if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+        const email = user?.primaryEmailAddress?.emailAddress;
+        const authenticatedUserId = user?.id;
 
         // 0. Check if user is blocked
-        const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-        if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
-            const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            const { status, body } = buildErrorResponse(
-                new Error(`Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`)
-            );
-            return NextResponse.json(body, { status });
+        if (email) {
+            const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+            if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
+                const unlockDate = new Date(dbUser.blockedUntil).toDateString();
+                return errorResponse(
+                    `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`,
+                    403
+                );
+            }
         }
 
         const { searchParams } = new URL(req.url);
@@ -35,31 +36,42 @@ export async function GET(req: Request) {
         const userIdentifier = authenticatedUserId || searchParams.get("userName");
 
         if (!doubtIdStr) {
-            return NextResponse.json({ error: "Doubt ID required" }, { status: 400 });
+            return errorResponse("Doubt ID required", 400);
         }
         const doubtId = parseInt(doubtIdStr);
 
         // Security: Verify doubt visibility
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId));
-        if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        const [doubt] = await db.select().from(doubtsTable).where(
+            and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))
+        );
+        if (!doubt) return errorResponse("Doubt not found", 404);
 
         if (doubt.classroomId && email) {
             const [membership] = await db.select().from(membershipsTable).where(
                 and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, doubt.classroomId))
             );
             if (!membership) {
-                return NextResponse.json({ error: "Access denied to this classroom's doubt replies" }, { status: 403 });
+                return errorResponse("Access denied to this classroom's doubt replies", 403);
             }
         } else if (doubt.classroomId && !email) {
-            console.warn(`Anonymous user attempting to access replies for doubt ${doubtId} in classroom ${doubt.classroomId}`);
+            return errorResponse("Access denied to this classroom's doubt replies", 403);
         }
 
         if (doubt.type === 'teacher') {
-            const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId!));
-            const isTeacher = room && email && room.teacherEmail === email;
-            const isOwner = email && doubt.userEmail === email;
+            const [membership] = await db
+            .select()
+            .from(membershipsTable)
+            .where(
+                and(
+                    eq(membershipsTable.userEmail, email as string),
+                    eq(membershipsTable.classroomId, doubt.classroomId as number)
+                )
+            );
+
+                const isTeacher = membership ? canTeach(membership.role) : false;
+                const isOwner = doubt.userEmail === email;
             if (!isTeacher && !isOwner) {
-                return NextResponse.json({ error: "Access denied" }, { status: 403 });
+                return errorResponse("Access denied", 403);
             }
         }
 
@@ -87,24 +99,24 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        const { errorResponse, data } = await parseAndValidateRequest(req, createReplySchema);
-        if (errorResponse) return errorResponse;
+        const { errorResponse: validationResponse, data } = await parseAndValidateRequest(req, createReplySchema);
+        if (validationResponse) return validationResponse;
 
         const { doubtId, userName, type, content, imageUrl } = data;
 
         const user = await currentUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        if (!user) return errorResponse("Unauthorized", 401);
         const email = user.primaryEmailAddress?.emailAddress;
-        if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+        if (!email) return errorResponse("Email required", 400);
 
         // 0. Check if user is blocked
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
         if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
             const unlockDate = new Date(dbUser.blockedUntil).toDateString();
-            const { status, body } = buildErrorResponse(
-                new Error(`Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`)
+            return errorResponse(
+                `Your account is temporarily blocked due to safety violations. Access will be restored on ${unlockDate}.`,
+                403
             );
-            return NextResponse.json(body, { status });
         }
 
         // 1. AI Moderation Check
@@ -112,15 +124,17 @@ export async function POST(req: Request) {
             const moderation = await moderateContent(content);
             const violationError = await handleModerationViolation(email, content, moderation);
             if (violationError) {
-                return NextResponse.json({ error: violationError }, { status: 400 });
+                return errorResponse(violationError, 400);
             }
         }
 
         // Security: Check if it's a teacher doubt and verify classroom membership
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId));
+        const [doubt] = await db.select().from(doubtsTable).where(
+            and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))
+        );
         
         if (!doubt) {
-            return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+            return errorResponse("Doubt not found", 404);
         }
 
         if (doubt.classroomId) {
@@ -128,14 +142,39 @@ export async function POST(req: Request) {
                 and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, doubt.classroomId))
             );
             if (!membership) {
-                return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
+                return errorResponse("Access denied to this classroom", 403);
             }
         }
 
-        if (doubt.type === 'teacher') {
-            const [room] = await db.select().from(classroomsTable).where(eq(classroomsTable.id, doubt.classroomId!));
-            if (room && email && room.teacherEmail !== email) {
-                return NextResponse.json({ error: "Only the teacher can reply to this doubt" }, { status: 403 });
+        if (doubt.type === "teacher") {
+            const [membership] = await db
+            .select()
+            .from(membershipsTable)
+            .where(
+                and(
+                    eq(membershipsTable.userEmail, email),
+                    eq(membershipsTable.classroomId, doubt.classroomId!)
+                )
+            );
+
+            if (doubt.classroomId) {
+                if (!membership || !canTeach(membership.role)) {
+                    return errorResponse("Insufficient permissions to reply to this doubt", 403);
+                }
+            }
+        }
+
+        let parsedCreatedAt: Date | undefined = undefined;
+        if (data.createdAt) {
+            const d = new Date(data.createdAt);
+            if (isNaN(d.getTime())) {
+                return errorResponse("Invalid createdAt date format", 400);
+            }
+            const now = new Date();
+            const age = now.getTime() - d.getTime();
+            const maxOfflineDuration = 30 * 24 * 60 * 60 * 1000; // 30 days
+            if (age >= -300000 && age <= maxOfflineDuration) {
+                parsedCreatedAt = d;
             }
         }
 
@@ -146,6 +185,7 @@ export async function POST(req: Request) {
             type,
             content: content || null,
             imageUrl: imageUrl || null,
+            createdAt: parsedCreatedAt
         }).returning();
 
         createReplyNotification({

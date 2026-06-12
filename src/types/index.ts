@@ -183,6 +183,8 @@ export interface Classroom {
     year: string;
     teacherEmail: string;
     inviteCode: string;
+    inviteCodeExpiresAt?: Date | string | null;
+    allowedEmailDomains?: string[] | null;
     createdAt: Date | string;
 }
 
