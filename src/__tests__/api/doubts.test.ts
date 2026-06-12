@@ -2,6 +2,10 @@ import { GET, POST } from '@/app/api/doubts/route';
 import { db } from '@/configs/db';
 import { currentUser } from '@clerk/nextjs/server';
 
+jest.mock('@/lib/search', () => ({
+    buildSearchCondition: jest.fn().mockReturnValue(null),
+    buildRankOrder: jest.fn().mockReturnValue(null),
+}));
 jest.mock('@clerk/nextjs/server', () => ({
     currentUser: jest.fn()
 }));
@@ -233,21 +237,18 @@ describe('Doubts API Endpoints', () => {
     });
 
     it('GET should support popular sorting', async () => {
-        (db.select as jest.Mock).mockImplementationOnce(() => createChainWithData([{ count: 2 }]))
-                                .mockImplementationOnce(() => createChainWithData([mockDoubts[1], mockDoubts[0]]));
-        const req = new Request('http://localhost/api/doubts?subject=Physics&sort=popular');
-        const res = await GET(req) as Response;
-        const json = await res.json();
+    mockQueryDoubts = [...mockDoubts].sort((a, b) => b.likes - a.likes);
+    const req = new Request('http://localhost/api/doubts?subject=Physics&sort=popular');
+    const res = await GET(req);
+    const json = await res.json();
 
-        expect(res.status).toBe(200);
-        // Most liked doubt (id=2, likes=10) should come first
-        expect(json.doubts[0].id).toBe(2);
-    });
+    expect(res.status).toBe(200);
+    expect(Array.isArray(json.doubts)).toBe(true);
+    expect(json.doubts.length).toBeGreaterThan(0);
+    expect(json.doubts[0].id).toBe(2);
+});
 
     it('GET should support most-replied sorting', async () => {
-        (db.select as jest.Mock).mockImplementationOnce(() => createChainWithData([{ count: 2 }]))
-                                .mockImplementationOnce(() => createChainWithData([mockDoubts[0], mockDoubts[1]]));
-
         const req = new Request('http://localhost/api/doubts?subject=Physics&sort=most-replied');
         const res = await GET(req) as Response;
         const json = await res.json();
@@ -341,3 +342,4 @@ describe('Doubts API Endpoints', () => {
         expect(json.subject).toBe('Physics');
     });
 });
+

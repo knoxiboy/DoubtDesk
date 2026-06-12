@@ -62,8 +62,8 @@ export async function GET(req: Request) {
             .from(membershipsTable)
             .where(
                 and(
-                    eq(membershipsTable.userEmail, email),
-                    eq(membershipsTable.classroomId, doubt.classroomId!)
+                    eq(membershipsTable.userEmail, email as string),
+                    eq(membershipsTable.classroomId, doubt.classroomId as number)
                 )
             );
 

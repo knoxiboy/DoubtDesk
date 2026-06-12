@@ -78,6 +78,13 @@
       "when": 1780032370235,
       "tag": "0010_identity_system_update",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1781077831112,
+      "tag": "0008_smiling_argent",
+      "breakpoints": true
     }
   ]
 }

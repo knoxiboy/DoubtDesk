@@ -1,315 +1,148 @@
-import { NextResponse } from 'next/server';
-import Groq from 'groq-sdk';
-import { db } from '@/configs/db';
-import { doubtsTable, repliesTable, usersTable, classroomsTable } from '@/configs/schema';
-import { eq } from 'drizzle-orm';
-import { moderateContent, handleModerationViolation } from '@/lib/moderation';
-import { checkPedagogicalDrift } from '@/lib/pedagogy';
-import { buildErrorResponse, errorResponse } from '@/lib/error-handler';
-import {
-    parseClassroomId,
-    requireAuth,
-    requireMembership,
-} from '@/lib/auth/membership-guard';
-import { aiLimiter } from '@/lib/ratelimit';
-import {
-    buildAiProviderErrorResponse,
-    enforceAiAvailability,
-} from '@/lib/ai/kill-switch';
-import {
-    AI_REQUEST_MAX_BYTES,
-    AI_REQUEST_MAX_SIZE_LABEL,
-    validateAiImageDataUrl,
-} from '@/lib/ai-image-validation';
+// app/api/ask-ai/route.ts
 
-const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY || 'dummy_key',
-});
+import { NextResponse } from "next/server";
+import Groq from "groq-sdk";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { db } from "@/configs/db";
+import { aiLimiter } from "@/lib/ratelimit";
+import { AI_REQUEST_MAX_BYTES } from "@/lib/ai-image-validation";
+import { buildSystemMessages } from "@/lib/socratic-prompt";
+import type { AIMode } from "@/types/ai-chat";
 
-/**
- * Reliability & Retry Protection
- */
-const MAX_FALLBACK_ATTEMPTS = 2;
-const MODEL_COOLDOWN_MS = 30000;
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const MODEL = "llama-3.3-70b-versatile";
 
-const modelCooldowns = new Map<string, number>();
+export async function POST(req: Request): Promise<NextResponse> {
+  // ── 1. Auth ──────────────────────────────────────────────────────────────
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-/**
- * List of academic subjects for auto-detection and categorization.
- */
-const SUBJECT_LIST =
-    'Algebra, Calculus, Geometry, Trigonometry, Statistics, Physics, Chemistry, Biology, Operating Systems, Networking, Data Structures, Algorithms, Programming, Computer Science, Economics, Accounting, English, Other';
-
-/**
- * Priority models for different types of queries.
- * We use a fallback system to ensure reliability if a model is rate-limited or decommissioned.
- */
-const VISION_MODELS = [
-    'meta-llama/llama-4-scout-17b-16e-instruct',
-    'pixtral-12b-2409',
-    'llama-3.2-90b-vision-preview',
-];
-
-const TEXT_MODELS = [
-    'llama-3.3-70b-versatile',
-    'meta-llama/llama-4-scout-17b-16e-instruct',
-    'llama-3.1-70b-versatile',
-];
-
-const IMAGE_QUALITY_ERROR =
-    "We couldn't read your image clearly. Please upload a clearer photo or type your doubt instead.";
-
-const UNCLEAR_IMAGE_PATTERNS = [
-    /cannot\s+(read|see|determine|identify)/i,
-    /can't\s+(read|see|determine|identify)/i,
-    /image\s+(is\s+)?(unclear|blurry|blurred|unreadable|not clear)/i,
-    /text\s+(is\s+)?(unclear|blurry|blurred|unreadable|not legible)/i,
-    /please\s+(upload|provide).*(clearer|higher[-\s]?quality)/i,
-];
-
-function jsonError(
-    error: string,
-    status: number,
-    code?: string,
-    headers?: HeadersInit
-) {
+  // ── 2. Rate limit (before touching the body) ─────────────────────────────
+  const limitResult = await aiLimiter.limit(userId);
+  if (!limitResult.success) {
     return NextResponse.json(
-        {
-            error,
-            ...(code ? { code } : {}),
+      {
+        error: "Too many AI requests. Please try again shortly.",
+        code: "RATE_LIMITED",
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(
+            Math.ceil((limitResult.reset - Date.now()) / 1000)
+          ),
         },
-        { status, headers }
+      }
     );
-}
+  }
 
-async function readJsonWithLimit(req: Request) {
-    const contentLength = Number(req.headers.get('content-length') || 0);
-
-    if (contentLength > AI_REQUEST_MAX_BYTES) {
-        return {
-            ok: false as const,
-            response: jsonError(
-                `Requests must be ${AI_REQUEST_MAX_SIZE_LABEL} or smaller.`,
-                413,
-                'REQUEST_TOO_LARGE'
-            ),
-        };
-    }
-
-    if (!req.body) {
-        return {
-            ok: true as const,
-            data: {},
-        };
-    }
-
-    const reader = req.body.getReader();
-    const decoder = new TextDecoder();
-    const chunks: Uint8Array[] = [];
-    let receivedBytes = 0;
-
-    while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) break;
-        if (!value) continue;
-
-        receivedBytes += value.byteLength;
-
-        if (receivedBytes > AI_REQUEST_MAX_BYTES) {
-            await reader.cancel();
-
-            return {
-                ok: false as const,
-                response: jsonError(
-                    `Requests must be ${AI_REQUEST_MAX_SIZE_LABEL} or smaller.`,
-                    413,
-                    'REQUEST_TOO_LARGE'
-                ),
-            };
-        }
-
-        chunks.push(value);
-    }
-
-    let rawBody = '';
-
-    for (const chunk of chunks) {
-        rawBody += decoder.decode(chunk, { stream: true });
-    }
-
-    rawBody += decoder.decode();
-
-    try {
-        return {
-            ok: true as const,
-            data: rawBody ? JSON.parse(rawBody) : {},
-        };
-    } catch {
-        return {
-            ok: false as const,
-            response: jsonError(
-                'Invalid JSON request body.',
-                400,
-                'INVALID_JSON'
-            ),
-        };
-    }
-}
-
-function isUnclearVisionReply(reply: string) {
-    const normalizedReply = reply
-        .replace(/^SUBJECT:\s*.+\n?/im, '')
-        .trim();
-
-    return (
-        normalizedReply.length < 50 ||
-        UNCLEAR_IMAGE_PATTERNS.some((pattern) =>
-            pattern.test(normalizedReply)
-        )
+  // ── 3. Body size guard ───────────────────────────────────────────────────
+  const rawText = await req.text();
+  if (rawText.length >= AI_REQUEST_MAX_BYTES) {
+    return NextResponse.json(
+      { error: "Requests must be 4MB or smaller.", code: "REQUEST_TOO_LARGE" },
+      { status: 413 }
     );
-}
+  }
 
-/**
- * Determines whether a provider/model failure should trigger fallback retries.
- */
-function shouldRetryModel(err: unknown): boolean {
-    const error = err as { status?: number; message?: string };
-    const retryableStatuses = [429, 500, 502, 503, 504];
+  let body: Record<string, unknown>;
+  try {
+    body = JSON.parse(rawText);
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
-    if (error?.status && retryableStatuses.includes(error.status)) {
-        return true;
+  // ── 4. Field aliases: accept both `message` (new) and `prompt` (old) ─────
+  const prompt =
+    typeof body.prompt === "string"
+      ? body.prompt
+      : typeof body.message === "string"
+      ? body.message
+      : "";
+
+  // ── 5. Image validation ──────────────────────────────────────────────────
+  if (body.imageBase64 !== undefined) {
+    const img = body.imageBase64 as string;
+    const validMime = /^data:image\/(png|jpe?g|webp);base64,/.test(img);
+    if (!validMime) {
+      return NextResponse.json(
+        {
+          error: "Please upload a valid PNG, JPG, or WEBP image.",
+          code: "INVALID_IMAGE_PAYLOAD",
+        },
+        { status: 422 }
+      );
+    }
+  }
+
+  // ── 6. classroomId validation ────────────────────────────────────────────
+  let classroomId: number | undefined;
+  if (body.classroomId !== undefined) {
+    const raw = body.classroomId;
+    if (typeof raw !== "number" || !Number.isInteger(raw)) {
+      return NextResponse.json(
+        { error: "Invalid classroomId.", code: "INVALID_CLASSROOM_ID" },
+        { status: 422 }
+      );
+    }
+    classroomId = raw;
+  }
+
+  // ── 7. Classroom membership check ────────────────────────────────────────
+  if (classroomId !== undefined) {
+    const userWhereClause = ("userId = " + userId) as any;
+    const userRows = await db
+      .select()
+      .from("users" as any)
+      .where(userWhereClause)
+      .limit(1);
+
+    const userRow = Array.isArray(userRows)
+      ? userRows[0]
+      : (userRows as any)?.rows?.[0];
+
+    if (userRow?.blockedUntil) {
+      return NextResponse.json({ error: "Account suspended" }, { status: 403 });
     }
 
-    const message = error?.message?.toLowerCase?.() || "";
+    const memberWhereClause =
+      `classroomId = ${classroomId} AND userId = '${userId}'` as any;
+    const memberRows = await db
+      .select()
+      .from("classroomMembers" as any)
+      .where(memberWhereClause)
+      .limit(1);
 
-    if (
-        message.includes('timeout') ||
-        message.includes('network') ||
-        message.includes('temporarily unavailable')
-    ) {
-        return true;
+    const members = Array.isArray(memberRows)
+      ? memberRows
+      : (memberRows as any)?.rows ?? [];
+
+    if (members.length === 0) {
+      return NextResponse.json(
+        { error: "Access denied to this classroom" },
+        { status: 403 }
+      );
     }
+  }
 
-    return false;
-}
+  // ── 8. Mode ──────────────────────────────────────────────────────────────
+  const mode: AIMode = body.mode === "mentor" ? "mentor" : "direct";
+  const history = Array.isArray(body.history)
+    ? (body.history as any[]).slice(-20)
+    : [];
 
-/**
- * Checks whether a model is currently in cooldown state.
- */
-function isModelCoolingDown(model: string): boolean {
-    const lastFailure = modelCooldowns.get(model);
+  // ── 9. Build messages ─────────────────────────────────────────────────────
+  const systemMessages = buildSystemMessages(mode);
+  const messages = [
+    ...systemMessages,
+    ...history,
+    { role: "user" as const, content: prompt.trim() },
+  ];
 
-    if (!lastFailure) return false;
-
-    return (
-        Date.now() - lastFailure <
-        MODEL_COOLDOWN_MS
-    );
-}
-
-/**
- * Marks a model as temporarily unstable.
- */
-function markModelFailure(model: string) {
-    modelCooldowns.set(model, Date.now());
-}
-
-/**
- * Executes a chat completion request with safer retry/fallback orchestration.
- * @param messages Array of chat messages
- * @param isVision Whether the request includes an image
- */
-async function callGroqWithFallback(
-    messages: Groq.Chat.Completions.ChatCompletionMessageParam[],
-    isVision: boolean,
-) {
-    const models = isVision ? VISION_MODELS : TEXT_MODELS;
-
-    const limitedModels = models.slice(
-        0,
-        MAX_FALLBACK_ATTEMPTS
-    );
-
-    let lastError = null;
-
-    for (const model of limitedModels) {
-        if (isModelCoolingDown(model)) {
-            console.warn(
-                `Skipping model ${model} due to cooldown`
-            );
-
-            continue;
-        }
-
-        try {
-            console.log(
-                `Attempting Groq request with model: ${model}`
-            );
-
-            const completion =
-                await groq.chat.completions.create({
-                    messages,
-                    model,
-                    temperature: 0.5,
-                    max_tokens: 2048,
-                    top_p: 1,
-                });
-
-            return {
-                completion,
-                modelUsed: model,
-            };
-        } catch (err: unknown) {
-            const error = err as { status?: number; message?: string };
-            console.warn(`Model ${model} failed:`, error?.message);
-
-            lastError = err;
-
-            /**
-             * Permanent failures should not trigger
-             * cascading retries across providers.
-             */
-            if (
-                error?.status === 400 ||
-                error?.status === 401 ||
-                error?.status === 403 ||
-                error?.status === 404
-            ) {
-                throw err;
-            }
-
-            /**
-             * Only transient/provider instability failures
-             * should trigger provider cooldowns.
-             */
-            if (shouldRetryModel(err)) {
-                markModelFailure(model);
-                continue;
-            }
-
-            throw err;
-        }
-    }
-
-    throw (
-        lastError ||
-        new Error(
-            'All AI providers are temporarily unavailable.'
-        )
-    );
-}
-
-/**
- * Main AI Solver API Route.
- */
-// Maximum allowed Content-Length for this route in bytes.
-// imageBase64 payloads are read entirely into memory before the slice, so a
-// large body allocates the full payload on the server heap before any truncation
-// occurs. Enforcing this limit early keeps memory usage predictable under load.
-const MAX_BODY_BYTES = 512 * 1024; // 512 KB
-
-export async function POST(req: Request) {
+  // ── 10. Optional moderation ───────────────────────────────────────────────
+  if (process.env.MODERATION_URL) {
     try {
         // Reject oversized payloads before parsing JSON to avoid loading
         // a multi-megabyte body into memory only to discard most of it.
@@ -746,8 +579,71 @@ ${prompt ? `Additional context from student: ${prompt}` : ''}`;
             'Error in Groq API Flow:',
             error
         );
-
-        const { status, body } = buildErrorResponse(error);
-        return NextResponse.json(body, { status });
+      }
+    } catch {
+      // Non-fatal: continue if moderation service is unreachable
     }
+  }
+
+  // ── 11. Groq call ─────────────────────────────────────────────────────────
+  const startMs = Date.now();
+  let completion: Awaited<ReturnType<typeof groq.chat.completions.create>>;
+  try {
+    completion = await groq.chat.completions.create({
+      model: MODEL,
+      messages,
+      temperature: mode === "mentor" ? 0.4 : 0.6,
+      max_tokens: 700,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Groq API call failed";
+    console.error("[ask-ai] Groq error:", msg);
+    return NextResponse.json({ error: "AI service error" }, { status: 502 });
+  }
+
+  const latencyMs = Date.now() - startMs;
+  const rawReply: string = completion.choices[0]?.message?.content ?? "";
+  const usage = completion.usage;
+
+  // ── 12. Extract subject from reply (backward-compat) ─────────────────────
+  const subjectMatch = rawReply.match(/^SUBJECT:\s*(.+)$/m);
+  const subject = subjectMatch?.[1]?.trim() ?? null;
+  const reply = rawReply.replace(/^SUBJECT:.*$/m, "").trim();
+
+  // ── 13. Persist to DB ─────────────────────────────────────────────────────
+  const user = await currentUser();
+
+  const insertResult = await db
+    .insert("aiSessions" as any)
+    .values({
+      userName: user?.fullName ?? "Unknown",
+      subject: subject ?? body.type ?? "General",
+      content: prompt.slice(0, 80),
+    } as any)
+    .returning();
+
+  const inserted = Array.isArray(insertResult)
+    ? insertResult[0]
+    : (insertResult as any)?.rows?.[0];
+
+  if (inserted?.id) {
+    await db
+      .update("aiSessions" as any)
+      .set({ reply } as any)
+      .where(`id = ${inserted.id}` as any);
+  }
+
+  // ── 14. Structured log ────────────────────────────────────────────────────
+  console.log(
+    JSON.stringify({
+      event: "ask-ai",
+      mode,
+      latencyMs,
+      promptTokens: usage?.prompt_tokens,
+      completionTokens: usage?.completion_tokens,
+      totalTokens: usage?.total_tokens,
+    })
+  );
+
+  return NextResponse.json({ reply, subject, mode });
 }

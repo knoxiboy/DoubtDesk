@@ -28,6 +28,12 @@ const mockDoubt = {
     createdAt: new Date().toISOString(),
     likes: 5,
     replyCount: 2,
+    tags: [],
+    hasBookmarked: false,
+    hasLiked: false,
+    imageUrl: null,
+    classroomId: null,
+    isPendingSync: false,
     isSolved: 'unsolved' as const,
     type: 'community' as const,
     isPinned: false,
@@ -43,7 +49,7 @@ describe('DoubtCard Component', () => {
 
     it('handles like action when thumbs up is clicked', async () => {
         render(<DoubtCard doubt={mockDoubt} onUpdate={jest.fn()} />);
-        const likeButton = screen.getByRole('button', { name: /5/i });
+        const likeButton = screen.getByRole('button', { name: /like this doubt/i });
         fireEvent.click(likeButton);
         await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     });

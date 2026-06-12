@@ -327,7 +327,8 @@ export default function AskAIPage() {
                     <span className="font-bold text-slate-900 dark:text-white">Ask AI Solver</span>
                 </header>
 
-                <div className="max-w-[900px] mx-auto w-full px-4 sm:px-8 py-8 pb-6 space-y-6">
+                <div className="flex-1 overflow-y-auto scroll-smooth scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                    <div className="max-w-[900px] mx-auto w-full px-4 sm:px-8 py-8 pb-6 space-y-6">
 
                     <div className="flex(items-center gap-3 mb-2">
                         <Link href="/" className="flex items-center gap-1.5 text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors text-xs font-black uppercase tracking-widest w-fit shrink-0">
@@ -411,7 +412,7 @@ export default function AskAIPage() {
                                 </>
                             ) : (
                                 <>
-                                    <input type="file" accept={AI_IMAGE_ALLOWED_MIME_TYPES.join(',')} className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
+                                    <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} aria-label="Upload question image" title="Upload question image" />
                                     {!imageBase64 ? (
                                         <button
                                             onClick={() => fileInputRef.current?.click()}
@@ -731,6 +732,7 @@ export default function AskAIPage() {
                         </div>
                     )}
 
+                    </div>
                 </div>
             </main>
         </div>
