@@ -46,10 +46,12 @@ export async function GET(req: Request) {
         );
         if (!doubt) return errorResponse("Doubt not found", 404);
 
+        let membership;
         if (doubt.classroomId && email) {
-            const [membership] = await db.select().from(membershipsTable).where(
+            const res = await db.select().from(membershipsTable).where(
                 and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, doubt.classroomId))
             );
+            membership = res[0];
             if (!membership) {
                 return errorResponse("Access denied to this classroom's doubt replies", 403);
             }
@@ -58,21 +60,6 @@ export async function GET(req: Request) {
         }
 
         if (doubt.type === 'teacher') {
-            let membership;
-            if (email && doubt.classroomId) {
-                const res = await db
-                .select()
-                .from(membershipsTable)
-                .where(
-                    and(
-                        eq(membershipsTable.userEmail, email),
-                        eq(membershipsTable.classroomId, doubt.classroomId)
-                    )
-                );
-                membership = res[0];
-            }
-
-
             const isTeacher = membership ? canTeach(membership.role) : false;
             const isOwner = email ? doubt.userEmail === email : false;
             if (!isTeacher && !isOwner) {
@@ -152,20 +139,21 @@ export async function POST(req: Request) {
         }
 
         if (doubt.type === "teacher") {
-            const [membership] = await db
+            if (!doubt.classroomId) {
+                return errorResponse("Teacher doubts must belong to a classroom", 400);
+            }
+            const [teacherMembership] = await db
             .select()
             .from(membershipsTable)
             .where(
                 and(
                     eq(membershipsTable.userEmail, email),
-                    eq(membershipsTable.classroomId, doubt.classroomId!)
+                    eq(membershipsTable.classroomId, doubt.classroomId)
                 )
             );
 
-            if (doubt.classroomId) {
-                if (!membership || !canTeach(membership.role)) {
-                    return errorResponse("Insufficient permissions to reply to this doubt", 403);
-                }
+            if (!teacherMembership || !canTeach(teacherMembership.role)) {
+                return errorResponse("Insufficient permissions to reply to this doubt", 403);
             }
         }
 
