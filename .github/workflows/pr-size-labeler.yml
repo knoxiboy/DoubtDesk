@@ -31,6 +31,7 @@ jobs:
               "800": "xl",
               "2000": "xxl"
             }
+          ignore: "drizzle/meta/**, drizzle/**"
 
       - name: Clean up conflicting size labels
         uses: actions/github-script@v7
