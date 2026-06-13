@@ -68,7 +68,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
             const secureUserIdentifier = email;
 
-            const result = await db.transaction(async (tx) => {
+            const result = await db.transaction(async (tx: typeof db) => {
+
                 const locked = await tx.execute(
                     sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} FOR UPDATE`
                 );
