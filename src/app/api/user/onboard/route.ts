@@ -6,7 +6,7 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import { z } from 'zod';
 
 const onboardingSchema = z.object({
-    role: z.enum(['student', 'teacher', 'admin']),
+    role: z.enum(['student', 'teacher']),
     university: z.string().min(1, 'University name is required'),
     collegeEmail: z.string().email('Invalid college email address'),
     year: z.string().optional().nullable(),
