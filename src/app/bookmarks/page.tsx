@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bookmark, Loader2, ArrowLeft, RefreshCw } from "lucide-react";
+import { Bookmark, Loader2, ArrowLeft, RefreshCw, Search, X } from "lucide-react";
 import DoubtCard from "@/components/DoubtCard";
 import { useRouter } from "next/navigation";
 import { useAppUser } from "@/app/provider";
@@ -21,6 +21,7 @@ export default function BookmarksPage() {
   const [bookmarks, setBookmarks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const { appUser } = useAppUser();
   const { isLoaded, isSignedIn } = useAuth();
@@ -53,6 +54,15 @@ export default function BookmarksPage() {
 
     fetchBookmarks();
   }, [isLoaded, isSignedIn]);
+
+  const filteredBookmarks = bookmarks.filter((doubt) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      doubt.subject?.toLowerCase().includes(q) ||
+      doubt.content?.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <>
@@ -113,15 +123,52 @@ export default function BookmarksPage() {
                 </button>
               </div>
             ) : bookmarks.length > 0 ? (
-              <div className="flex flex-col gap-6 lg:gap-8">
-                {bookmarks.map((doubt) => (
-                  <DoubtCard
-                    key={doubt.id}
-                    doubt={doubt}
-                    onUpdate={fetchBookmarks}
-                    role={appUser?.role}
+              <div className="space-y-6">
+                <div className="relative w-full max-w-md">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-zinc-500" />
+                  <input
+                    type="text"
+                    placeholder="Search bookmarks by subject or content..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-11 pr-10 py-3 bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-slate-900 dark:text-white"
                   />
-                ))}
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 dark:hover:bg-zinc-800 rounded-full text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-white transition-colors"
+                      aria-label="Clear search query"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {filteredBookmarks.length > 0 ? (
+                  <div className="flex flex-col gap-6 lg:gap-8">
+                    {filteredBookmarks.map((doubt) => (
+                      <DoubtCard
+                        key={doubt.id}
+                        doubt={doubt}
+                        onUpdate={fetchBookmarks}
+                        role={appUser?.role}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-20 bg-slate-50/30 dark:bg-zinc-950/10 border border-dashed border-slate-200 dark:border-zinc-900 rounded-2xl text-center px-6 shadow-sm">
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">No Match Found</h3>
+                    <p className="text-slate-500 dark:text-zinc-400 max-w-sm mx-auto font-medium text-xs leading-relaxed mb-6">
+                      No bookmarks match the search term &quot;{searchQuery}&quot;. Please try a different query or clear the input.
+                    </p>
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-lg shadow-purple-600/10 active:scale-[0.98]"
+                    >
+                      Clear Search
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-20 bg-slate-50/30 dark:bg-zinc-950/10 border border-dashed border-slate-200 dark:border-zinc-900 rounded-2xl text-center px-6 shadow-sm">
