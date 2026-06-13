@@ -304,7 +304,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ... rest of your sections unchanged ... */}
         {/* Features Section */}
         <section
           id="features"
