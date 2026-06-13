@@ -33,6 +33,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import ShapeGrid from "@/components/ShapeGrid";
 import { Inter, Staatliches } from "next/font/google";
 import LiveCampusThreadPanel from "@/components/LiveCampusThreadPanel";
+import { scrollToSection } from "@/lib/scroll-to-section";
 
 
 
@@ -41,57 +42,62 @@ const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 
 export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
 
 
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.scrollY;
-      const docHeight =
-        document.documentElement.scrollHeight - window.innerHeight;
-      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-      setScrollProgress(progress);
+    const scrollFromHash = () => {
+      const hash = window.location.hash.slice(1);
+      if (!hash) return;
+      requestAnimationFrame(() =>
+        scrollToSection(hash, { updateHash: false })
+      );
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    scrollFromHash();
+    window.addEventListener("hashchange", scrollFromHash);
+    return () => window.removeEventListener("hashchange", scrollFromHash);
   }, []);
-
-
 
   const { signOut } = useClerk();
 
   const features = [
     {
+      slug: "collaborative-discussions",
       title: "Real-time collaborative discussions",
       description:
         "Share questions, answers, and classroom updates instantly across study groups.",
       icon: MessageCircle,
     },
     {
+      slug: "classroom-management",
       title: "Smart classroom management",
       description:
         "Organize learning spaces, schedules, and teacher workflows with ease.",
       icon: LayoutGrid,
     },
     {
+      slug: "notes-resource-sharing",
       title: "Notes and resource sharing",
       description:
         "Keep study materials, highlights, and shared guides organized in one hub.",
       icon: Clipboard,
     },
     {
+      slug: "learning-roadmaps",
       title: "Learning roadmaps and guidance",
       description:
         "Follow curated study paths that keep learners focused on milestones.",
       icon: Map,
     },
     {
+      slug: "ai-powered-doubt-solving",
       title: "AI-powered doubt solving",
       description:
         "Get instant, context-aware answers to questions with smart AI support.",
       icon: Activity,
     },
     {
+      slug: "study-collaboration",
       title: "Organized study collaboration",
       description:
         "Coordinate projects, peer review, and group work with clear tools and structure.",
@@ -284,14 +290,20 @@ export default function Home() {
                 single polished platform.
               </p>
             </div>
+
+            <div
+              id="features-grid"
+              className="grid gap-6 scroll-mt-20 sm:grid-cols-2 lg:grid-cols-3"
+            >
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {features.map((feature, i) => {
                 const Icon = feature.icon;
                 return (
                   <div
-                    key={feature.title}
+                    key={feature.slug}
+                    id={`feature-${feature.slug}`}
                     style={{ animationDelay: `${i * 100}ms` }}
-                    className="group relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 p-6 shadow-sm shadow-slate-200/50 dark:shadow-none backdrop-blur-md transition-all duration-500 hover:-translate-y-2 hover:border-blue-400 dark:hover:border-zinc-700 hover:shadow-xl hover:shadow-blue-500/5 dark:hover:bg-zinc-900/70 animate-in fade-in slide-in-from-bottom-6 fill-mode-both flex flex-col items-center text-center"
+                    className="group relative scroll-mt-20 overflow-hidden rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 p-6 shadow-sm shadow-slate-200/50 dark:shadow-none backdrop-blur-md transition-all duration-500 hover:-translate-y-2 hover:border-blue-400 dark:hover:border-zinc-700 hover:shadow-xl hover:shadow-blue-500/5 dark:hover:bg-zinc-900/70 animate-in fade-in slide-in-from-bottom-6 fill-mode-both flex flex-col items-center text-center"
                   >
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 shadow-inner transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white dark:group-hover:bg-blue-500 group-hover:rotate-6">
                       <Icon className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />

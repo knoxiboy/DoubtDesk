@@ -7,6 +7,7 @@ import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 import { ThemeToggle } from "./ThemeToggle";
 import { useAppUser } from "@/app/provider";
 import { Menu, X, ChevronRight, ArrowLeft } from "lucide-react";
+import { scrollToSection } from "@/lib/scroll-to-section";
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,6 +15,7 @@ export default function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { appUser } = useAppUser();
+  const showBackButton = pathname !== "/";
 
   // Determine if back navigation is possible using browser history
   useEffect(() => {
@@ -28,6 +30,7 @@ export default function Header() {
   }, [pathname]);
 
   const pageLinks = [
+    { href: "#features-grid", label: "Features" },
     { href: "#how-it-works", label: "How it works" },
     { href: "#testimonials", label: "Testimonials" },
     { href: "/ask-ai", label: "AI Solver" },
@@ -40,19 +43,9 @@ export default function Header() {
     setIsOpen(false);
 
     if (pathname === "/") {
-      const element = document.getElementById(targetId);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth" });
-      }
+      scrollToSection(targetId);
     } else {
       router.push(`/#${targetId}`);
-      // Scroll after navigation completes
-      setTimeout(() => {
-        const element = document.getElementById(targetId);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth" });
-        }
-      }, 100);
     }
   };
 
@@ -64,20 +57,21 @@ export default function Header() {
     <header className="sticky inset-x-0 top-0 z-50 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-slate-200 dark:border-zinc-900 transition-colors duration-500">
       <div className="max-w-7xl mx-auto h-16 sm:h-20 flex items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
         
-        {/* Back Button - Always on left */}
-        <button
-          onClick={handleBackClick}
-          className={`hidden md:flex items-center justify-center p-2 rounded-xl transition-all duration-300 flex-shrink-0 ${
-            canGoBack
-              ? "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
-              : "text-slate-400 dark:text-zinc-600 opacity-50 cursor-default"
-          }`}
-          disabled={!canGoBack}
-          aria-label="Go back"
-          title="Go back to previous page"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
+        {showBackButton && (
+          <button
+            onClick={handleBackClick}
+            className={`hidden md:flex items-center justify-center p-2 rounded-xl transition-all duration-300 flex-shrink-0 ${
+              canGoBack
+                ? "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
+                : "text-slate-400 dark:text-zinc-600 opacity-50 cursor-default"
+            }`}
+            disabled={!canGoBack}
+            aria-label="Go back"
+            title="Go back to previous page"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        )}
 
         {/* Logo and Brand */}
         <Link href="/" className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity shrink-0 group relative z-50">
@@ -177,25 +171,26 @@ export default function Header() {
           isOpen ? "translate-y-0" : "-translate-y-full"
         }`}
       >
-        {/* Mobile Back Button */}
-        <div className="flex items-center gap-3 -mt-6">
-          <button
-            onClick={() => {
-              handleBackClick();
-              setIsOpen(false);
-            }}
-            className={`flex items-center justify-center p-2 rounded-xl transition-all duration-300 ${
-              canGoBack
-                ? "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
-                : "text-slate-400 dark:text-zinc-600 opacity-50 cursor-default"
-            }`}
-            disabled={!canGoBack}
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <span className="text-xs font-medium text-slate-500 dark:text-zinc-500">Back</span>
-        </div>
+        {showBackButton && (
+          <div className="flex items-center gap-3 -mt-6">
+            <button
+              onClick={() => {
+                handleBackClick();
+                setIsOpen(false);
+              }}
+              className={`flex items-center justify-center p-2 rounded-xl transition-all duration-300 ${
+                canGoBack
+                  ? "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
+                  : "text-slate-400 dark:text-zinc-600 opacity-50 cursor-default"
+              }`}
+              disabled={!canGoBack}
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <span className="text-xs font-medium text-slate-500 dark:text-zinc-500">Back</span>
+          </div>
+        )}
 
         <nav className="flex flex-col gap-1 w-full" aria-label="Mobile navigation container">
           {pageLinks.map((link) => {

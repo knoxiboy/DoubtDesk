@@ -85,6 +85,13 @@
       "when": 1781077831112,
       "tag": "0008_smiling_argent",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781169675345,
+      "tag": "0009_add_doubt_embeddings_pgvector",
+      "breakpoints": true
     }
   ]
 }
