@@ -129,7 +129,7 @@ export default function Home() {
       name: "Aarav Sharma",
       role: "B.Tech Student",
       institution: "DTU",
-      avatarUrl: "/avatars/aarav.jpg",
+      avatarUrl: "/avatars/arav.png",
       quote:
         "DoubtDesk helped me resolve doubts 3x faster during exams. The AI explanations are incredibly clear.",
       rating: 5,
@@ -139,7 +139,7 @@ export default function Home() {
       name: "Neha Verma",
       role: "CS Student",
       institution: "Punjab University",
-      avatarUrl: "/avatars/neha.jpg",
+      avatarUrl: "/avatars/neha.png",
       quote:
         "Everything is organized in one place. No more scrolling through endless chat groups.",
       rating: 5,
@@ -149,7 +149,7 @@ export default function Home() {
       name: "Rohit Mehta",
       role: "Teaching Assistant",
       institution: "NIT Jalandhar",
-      avatarUrl: "/avatars/rohit.jpg",
+      avatarUrl: "/avatars/rohit.png",
       quote:
         "Analytics help me quickly identify where students struggle the most.",
       rating: 5,
@@ -159,7 +159,7 @@ export default function Home() {
       name: "Priya Singh",
       role: "MBA Student",
       institution: "IIM Indore",
-      avatarUrl: "/avatars/priya.jpg",
+      avatarUrl: "/avatars/priya.png",
       quote:
         "My exam preparation became much more efficient after switching to DoubtDesk.",
       rating: 5,
@@ -169,7 +169,7 @@ export default function Home() {
       name: "Karan Gupta",
       role: "Engineering Student",
       institution: "PEC Chandigarh",
-      avatarUrl: "/avatars/karan.jpg",
+      avatarUrl: "/avatars/karan.png",
       quote:
         "Instant answers saved hours of searching through notes and forums.",
       rating: 5,
@@ -179,7 +179,7 @@ export default function Home() {
       name: "Ananya Kapoor",
       role: "Professor",
       institution: "Chitkara University",
-      avatarUrl: "/avatars/ananya.jpg",
+      avatarUrl: "/avatars/ananya.png",
       quote: "Managing classroom discussions has become significantly easier.",
       rating: 5,
     },

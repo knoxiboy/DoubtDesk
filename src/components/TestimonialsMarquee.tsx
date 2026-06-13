@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import TestimonialCard from "./TestimonialCard";
 
 interface Testimonial {
@@ -100,9 +101,12 @@ export default function TestimonialsMarquee({
             Join thousands of students getting answers faster with DoubtDesk.
           </p>
 
-          <button className="px-6 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors">
+          <Link
+            href="/auth/sign-up"
+            className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium"
+          >
             Get Started with DoubtDesk →
-          </button>
+          </Link>
         </div>
       </section>
     </>
