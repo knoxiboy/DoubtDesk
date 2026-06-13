@@ -35,8 +35,6 @@ import { Inter, Staatliches } from "next/font/google";
 import LiveCampusThreadPanel from "@/components/LiveCampusThreadPanel";
 import { scrollToSection } from "@/lib/scroll-to-section";
 
-
-
 import TestimonialsMarquee from "@/components/TestimonialsMarquee"; //Testimonials marquee
 
 const inter = Inter({ subsets: ["latin"] });
@@ -45,14 +43,11 @@ const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
 
-
   useEffect(() => {
     const scrollFromHash = () => {
       const hash = window.location.hash.slice(1);
       if (!hash) return;
-      requestAnimationFrame(() =>
-        scrollToSection(hash, { updateHash: false })
-      );
+      requestAnimationFrame(() => scrollToSection(hash, { updateHash: false }));
     };
 
     scrollFromHash();
@@ -189,8 +184,6 @@ export default function Home() {
     await signOut({ redirectUrl: "/" });
   };
 
-
-
   return (
     <div
       className={`${inter.className} min-h-screen bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-50 flex flex-col selection:bg-blue-500/30 dark:selection:bg-[#5E8CFF]/30 transition-colors duration-500 overflow-x-hidden`}
@@ -220,8 +213,6 @@ export default function Home() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-
 
       {/* Hero Section */}
       <main className="flex-1 relative overflow-hidden scroll-smooth">
@@ -337,10 +328,6 @@ export default function Home() {
               </p>
             </div>
 
-            <div
-              id="features-grid"
-              className="grid gap-6 scroll-mt-20 sm:grid-cols-2 lg:grid-cols-3"
-            >
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {features.map((feature, i) => {
                 const Icon = feature.icon;
@@ -349,9 +336,9 @@ export default function Home() {
                     key={feature.slug}
                     id={`feature-${feature.slug}`}
                     style={{ animationDelay: `${i * 100}ms` }}
-                    className="group relative scroll-mt-20 overflow-hidden rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 p-6 shadow-sm shadow-slate-200/50 dark:shadow-none backdrop-blur-md transition-all duration-500 hover:-translate-y-2 hover:border-blue-400 dark:hover:border-zinc-700 hover:shadow-xl hover:shadow-blue-500/5 dark:hover:bg-zinc-900/70 animate-in fade-in slide-in-from-bottom-6 fill-mode-both flex flex-col items-center text-center"
+                    className="group relative scroll-mt-20 overflow-hidden rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 p-6 shadow-sm shadow-slate-200/60 dark:shadow-none hover:shadow-lg dark:hover:shadow-lg dark:hover:shadow-blue-500/10 hover:border-blue-300/60 dark:hover:border-blue-500/40 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 shadow-inner transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white dark:group-hover:bg-blue-500 group-hover:rotate-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 shadow-inner transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-500/20">
                       <Icon className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
                     </div>
                     <h4 className="mt-5 text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight transition-colors duration-300">
