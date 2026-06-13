@@ -47,15 +47,36 @@
     {
       "idx": 6,
       "version": "7",
-      "when": 1780835724341,
-      "tag": "0006_brainy_solo",
+      "when": 1780032370231,
+      "tag": "0006_replies_anonymization",
       "breakpoints": true
     },
     {
       "idx": 7,
       "version": "7",
-      "when": 1780838344008,
-      "tag": "0007_tidy_electro",
+      "when": 1780032370232,
+      "tag": "0007_environment_cascades",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780032370233,
+      "tag": "0008_classroom_invites",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780032370234,
+      "tag": "0009_query_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780032370235,
+      "tag": "0010_identity_system_update",
       "breakpoints": true
     },
     {

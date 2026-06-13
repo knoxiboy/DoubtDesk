@@ -32,8 +32,7 @@ export async function GET(req: Request) {
 
         const { searchParams } = new URL(req.url);
         const doubtIdStr = searchParams.get("doubtId");
-        // Use stable authenticated id when available; fall back to client-supplied anonymous name
-        const userIdentifier = authenticatedUserId || searchParams.get("userName");
+
 
         if (!doubtIdStr) {
             return errorResponse("Doubt ID required", 400);
@@ -85,8 +84,8 @@ export async function GET(req: Request) {
             .orderBy(asc(repliesTable.createdAt));
 
         let repliesWithVotes = data;
-        if (userIdentifier) {
-            const userUpvotes = await db.select().from(replyLikesTable).where(eq(replyLikesTable.userName, userIdentifier));
+        if (email) {
+            const userUpvotes = await db.select().from(replyLikesTable).where(eq(replyLikesTable.userEmail, email));
             const upvotedReplyIds = new Set(userUpvotes.map((v: any) => v.replyId));
             repliesWithVotes = data.map((reply: any) => ({
                 ...reply,
@@ -106,7 +105,7 @@ export async function POST(req: Request) {
         const { errorResponse: validationResponse, data } = await parseAndValidateRequest(req, createReplySchema);
         if (validationResponse) return validationResponse;
 
-        const { doubtId, userName, type, content, imageUrl } = data;
+        const { doubtId, type, content, imageUrl } = data;
 
         const user = await currentUser();
         if (!user) return errorResponse("Unauthorized", 401);
@@ -184,7 +183,6 @@ export async function POST(req: Request) {
 
         const newReply = await db.insert(repliesTable).values({
             doubtId: doubtId,
-            userName,
             userEmail: email,
             type,
             content: content || null,
@@ -198,7 +196,7 @@ export async function POST(req: Request) {
             doubtOwnerEmail: doubt.userEmail || null,
             replierEmail: email,
             doubtTitle: doubt.subject || doubt.content || "your doubt",
-            replierName: userName,
+            replierName: user.fullName || email,
             replyContent: content || "",
             classroomId: doubt.classroomId || null,
             doubtType: doubt.type ?? 'community',
@@ -238,7 +236,7 @@ export async function POST(req: Request) {
                 data: {
                     doubtId: doubtId,
                     replyId: newReply[0].id,
-                    replierName: userName,
+                    replierName: user.fullName || email,
                     replierEmail: email || "",
                     replyContent: content || ""
                 }
@@ -272,7 +270,7 @@ export async function POST(req: Request) {
                                     doubtId: d.id,
                                     doubtSubject: d.subject,
                                     doubtContent: d.content || "",
-                                    replierName: userName,
+                                    replierName: user.fullName || email,
                                     replyContent: content || ""
                                 }).catch(err => console.error("Immediate dev mailer failed:", err));
                             } else {

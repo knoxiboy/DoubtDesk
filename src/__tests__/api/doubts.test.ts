@@ -44,7 +44,7 @@ const mockDoubts = [
         id: 1,
         doubtId: 1,
         count: 2,
-        userName: 'Student_1',
+
         subject: 'Physics',
         content: 'What is speed of light?',
         createdAt: '2026-01-01T00:00:00.000Z',
@@ -61,7 +61,7 @@ const mockDoubts = [
         id: 2,
         doubtId: 2,
         count: 1,
-        userName: 'Student_2',
+
         subject: 'Physics',
         content: 'How does a lens work?',
         createdAt: '2026-01-02T00:00:00.000Z',
@@ -185,7 +185,7 @@ jest.mock('@/configs/db', () => ({
             values: jest.fn().mockImplementation(() => ({
                 returning: jest.fn().mockResolvedValue([{
                     id: 2,
-                    userName: 'Student_1',
+
                     subject: 'Physics',
                     content: 'New doubt',
                     name: 'Physics',
@@ -330,14 +330,14 @@ describe('Doubts API Endpoints', () => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                userName: 'Student_1',
+
                 subject: 'Physics',
                 content: 'New doubt'
             })
         });
-        const res = (await POST(req))!;
-        const json = await res.json();
-        expect(res.status).toBe(200);
+        const res = await POST(req);
+        const json = await res?.json();
+        expect(res?.status).toBe(200);
         expect(json.id).toBe(2);
         expect(json.subject).toBe('Physics');
     });

@@ -106,7 +106,7 @@ export async function GET(req: Request) {
 
             // 5. Student Engagement
             db.select({
-                totalStudents: countDistinct(doubtsTable.userName),
+                totalStudents: countDistinct(doubtsTable.userEmail),
                 totalDoubts: count(doubtsTable.id)
             })
                 .from(doubtsTable)
@@ -122,16 +122,16 @@ export async function GET(req: Request) {
 
             // 7. Top Contributors (students who reply the most)
             db.select({
-                name: repliesTable.userName,
+                name: sql<string>`split_part(${repliesTable.userEmail}, '@', 1)`,
                 replyCount: count(repliesTable.id)
             })
                 .from(repliesTable)
                 .innerJoin(doubtsTable, eq(repliesTable.doubtId, doubtsTable.id))
                 .where(and(
                     classroomFilter,
-                    ne(repliesTable.userName, 'DoubtDesk AI')
+                    ne(repliesTable.userEmail, 'ai@doubtdesk.com')
                 ))
-                .groupBy(repliesTable.userName)
+                .groupBy(repliesTable.userEmail)
                 .orderBy(desc(count(repliesTable.id)))
                 .limit(5),
 
@@ -152,7 +152,7 @@ export async function GET(req: Request) {
                 .innerJoin(doubtsTable, eq(repliesTable.doubtId, doubtsTable.id))
                 .where(and(
                     classroomFilter,
-                    eq(repliesTable.userName, 'DoubtDesk AI'),
+                    eq(repliesTable.userEmail, 'ai@doubtdesk.com'),
                     eq(repliesTable.type, 'solution')
                 ))
                 .orderBy(desc(repliesTable.createdAt))

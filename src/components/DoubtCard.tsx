@@ -60,7 +60,7 @@ interface DoubtCardProps {
 }
 
 export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, openRepliesOnMount = false, disableModal = false, onCommentClick }: DoubtCardProps) {
-    const { isSignedIn } = useUser();
+
     const [isOwner, setIsOwner] = useState(false);
     const [isLiking, setIsLiking] = useState(false);
     const [isSolving, setIsSolving] = useState(false);
@@ -77,12 +77,13 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
 
     const isTeacher = role === 'teacher';
 
+    const { user, isSignedIn } = useUser();
+
     useEffect(() => {
-        const savedName = localStorage.getItem("anonymous_user");
-        if (savedName === doubt.userName) {
+        if (isSignedIn && user?.primaryEmailAddress?.emailAddress === doubt.userEmail) {
             setIsOwner(true);
         }
-    }, [doubt.userName]);
+    }, [isSignedIn, user, doubt.userEmail]);
 
     useEffect(() => {
         const deepLinkedDoubtId = searchParams ? (Number(searchParams.get("doubtId") || "") || null) : null;
@@ -102,13 +103,13 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
         }
         if (action === "solve") setIsSolving(true);
 
-        const userName = localStorage.getItem("anonymous_user");
+
 
         try {
             const res = await fetch(`/api/doubts/action/${doubt.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action, userName }),
+                body: JSON.stringify({ action }),
             });
 
             const data = await res.json();
@@ -229,11 +230,11 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 sm:mb-8">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform duration-500">
-                            <span className="text-lg font-black text-blue-400">{doubt.userName?.slice(-1)?.toUpperCase() || '?'}</span>
+                            <span className="text-lg font-black text-blue-400">{doubt.userEmail?.charAt(0)?.toUpperCase() || '?'}</span>
                         </div>
                         <div>
                             <h3 className="text-slate-900 dark:text-white font-bold tracking-tight text-sm">
-                                {doubt.userName || 'Anonymous'}
+                                {doubt.userEmail?.split('@')[0] || 'Anonymous'}
                                 {isOwner && <span className="ml-2 text-[10px] bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">You</span>}
                             </h3>
                             <p className="text-[10px] text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
