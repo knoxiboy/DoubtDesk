@@ -54,7 +54,7 @@ describe('Notification test seed API endpoint', () => {
     });
 
     it('hides the seed route from GET requests in production', async () => {
-        process.env.NODE_ENV = 'production';
+        Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', writable: true });
 
         const res = await GET();
         const json = await res.json();
@@ -67,7 +67,7 @@ describe('Notification test seed API endpoint', () => {
     });
 
     it('hides the seed route from POST requests in production', async () => {
-        process.env.NODE_ENV = 'production';
+        Object.defineProperty(process.env, 'NODE_ENV', { value: 'production', writable: true });
 
         const res = await POST();
         const json = await res.json();

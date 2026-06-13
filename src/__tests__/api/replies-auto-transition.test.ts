@@ -165,7 +165,7 @@ describe("POST /api/replies — auto-transition (issue #183)", () => {
 
     test("in-progress doubt is left alone (idempotent)", async () => {
         await callPost({
-            doubt: { ...mockDoubt, isSolved: DOUBT_STATUS.IN_PROGRESS },
+            doubt: { ...mockDoubt, isSolved: DOUBT_STATUS.IN_PROGRESS as any },
             body: { doubtId: 1, userName: "Student_A7X", type: "comment", content: "hi" },
         });
 
@@ -182,7 +182,7 @@ describe("POST /api/replies — auto-transition (issue #183)", () => {
 
     test("solved doubt is NEVER downgraded by a new reply", async () => {
         await callPost({
-            doubt: { ...mockDoubt, isSolved: DOUBT_STATUS.SOLVED },
+            doubt: { ...mockDoubt, isSolved: DOUBT_STATUS.SOLVED as any },
             body: { doubtId: 1, userName: "Student_A7X", type: "comment", content: "hi" },
         });
 
