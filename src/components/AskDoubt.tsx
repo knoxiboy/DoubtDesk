@@ -504,12 +504,16 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                         {!isTooShort && !isTooLong && charCount >= minLength && (
                                             <span className="text-green-400 font-semibold">Looks good!</span>
                                         )}
-                                        {charCount === 0 && (
+                                        {charCount === 0 ? (
                                             <span className="text-slate-500">Min {minLength} · Max {maxLength} characters</span>
+                                        ) : (
+                                            <span className={`font-semibold ${colorClass}`}>
+                                                {charCount} / {maxLength}
+                                            </span>
                                         )}
                                     </div>
                                     <span className={`text-xs font-semibold ${colorClass}`}>
-                                        {charCount} / {maxLength}
+                                        {charCount}/{maxLength}
                                     </span>
                                 </div>
                             </>
