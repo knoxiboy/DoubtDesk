@@ -1,23 +1,32 @@
 "use client";
-
+import AvatarSelector from "@/components/AvatarSelector";
+import BannerSelector from "@/components/BannerSelector";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, MessageSquare, BookOpen, Users, ThumbsUp, ArrowLeft, RefreshCw, AlertTriangle, Mail, CheckCircle2, TrendingUp, Target, Heart } from "lucide-react";
+import { CalendarDays, MessageSquare, BookOpen, Users, ThumbsUp, ArrowLeft, RefreshCw, AlertTriangle, Mail, CheckCircle2, TrendingUp, Target, Heart, Palette } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { ProfileData, ProfileDoubt, ProfileReply, ProfileClassroom, ActivityStats } from "@/types/profile";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+const BANNER_GRADIENTS: Record<string, string> = {
+  none: "bg-slate-100 dark:bg-zinc-900",
+  ocean: "bg-gradient-to-r from-blue-400 to-cyan-400",
+  sunset: "bg-gradient-to-r from-orange-400 to-pink-500",
+  forest: "bg-gradient-to-r from-green-400 to-emerald-600",
+  galaxy: "bg-gradient-to-r from-purple-600 to-indigo-700",
+  fire: "bg-gradient-to-r from-red-500 to-orange-500",
+};
+
 function ProfileSkeleton() {
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-5xl mt-16 animate-pulse bg-white dark:bg-black min-h-screen transition-colors duration-500">
       <div className="h-5 w-24 bg-slate-200 dark:bg-zinc-800 rounded-lg mb-6" />
-
       <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-8 bg-slate-50 dark:bg-zinc-950/40 rounded-xl border border-slate-200 dark:border-zinc-900 p-6">
         <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-zinc-800 shrink-0" />
         <div className="flex-1 space-y-3 w-full text-center md:text-left">
@@ -31,7 +40,6 @@ function ProfileSkeleton() {
         </div>
         <div className="h-24 w-full md:w-[380px] bg-slate-100 dark:bg-zinc-900/40 rounded-xl border border-slate-200 dark:border-zinc-900 shrink-0" />
       </div>
-
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="rounded-xl border border-slate-200 dark:border-zinc-900 bg-slate-50/50 dark:bg-zinc-950/20 p-6 flex flex-col items-center gap-3">
@@ -46,9 +54,7 @@ function ProfileSkeleton() {
           <div className="h-3 w-24 bg-slate-200 dark:bg-zinc-800 rounded-md" />
         </div>
       </div>
-
       <div className="h-12 w-full bg-slate-100 dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800 mb-8" />
-      
       <div className="space-y-4">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="rounded-2xl border border-slate-200 dark:border-zinc-900 bg-slate-50/30 dark:bg-zinc-950/20 p-6 space-y-4">
@@ -88,7 +94,7 @@ function ErrorState({ message, onRetry }: ErrorStateProps) {
       <button
         onClick={onRetry}
         className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 shadow-sm transition-all duration-200 hover:bg-slate-50 dark:hover:bg-zinc-800 active:scale-[0.98]"
-       aria-label="Interactive button">
+        aria-label="Interactive button">
         <RefreshCw className="h-4 w-4" />
         Retry Sync Connection
       </button>
@@ -97,6 +103,9 @@ function ErrorState({ message, onRetry }: ErrorStateProps) {
 }
 
 export default function ProfilePage() {
+  const [avatarPreference, setAvatarPreference] = useState("default");
+  const [bannerPreference, setBannerPreference] = useState("none");
+  const [isSavingPersonalization, setIsSavingPersonalization] = useState(false);
   const { isLoaded, userId } = useAuth();
   const router = useRouter();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
@@ -113,9 +122,7 @@ export default function ProfilePage() {
     try {
       const res = await fetch("/api/profile", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notificationPreference: value }),
       });
       if (res.ok) {
@@ -133,6 +140,26 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSavePersonalization = async () => {
+    setIsSavingPersonalization(true);
+    try {
+      const res = await fetch("/api/profile/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarPreference, bannerPreference }),
+      });
+      if (res.ok) {
+        toast.success("Preferences saved!");
+      } else {
+        toast.error("Failed to save preferences");
+      }
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setIsSavingPersonalization(false);
+    }
+  };
+
   const fetchProfile = () => {
     setLoading(true);
     setError(null);
@@ -145,9 +172,9 @@ export default function ProfilePage() {
       fetch("/api/profile/stats").then((res) => {
         if (!res.ok) throw new Error(`Failed to load stats (${res.status})`);
         return res.json();
-      })
+      }),
     ])
-      .then(([profileRes, statsRes]: [ProfileData, { success: boolean, stats: ActivityStats }]) => {
+      .then(([profileRes, statsRes]: [ProfileData, { success: boolean; stats: ActivityStats }]) => {
         if (profileRes.user && statsRes.success) {
           setProfileData(profileRes);
           setActivityStats(statsRes.stats);
@@ -185,14 +212,8 @@ export default function ProfilePage() {
     }
   }, []);
 
-  if (!isLoaded || loading) {
-    return <ProfileSkeleton />;
-  }
-
-  if (error) {
-    return <ErrorState message={error} onRetry={fetchProfile} />;
-  }
-
+  if (!isLoaded || loading) return <ProfileSkeleton />;
+  if (error) return <ErrorState message={error} onRetry={fetchProfile} />;
   if (!profileData?.user || !activityStats) {
     return (
       <ErrorState
@@ -214,56 +235,61 @@ export default function ProfilePage() {
         Go Back
       </button>
 
-      <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-8 bg-slate-50 dark:bg-zinc-950/40 rounded-xl border border-slate-200 dark:border-zinc-900 p-6 shadow-sm backdrop-blur-md">
-        <Avatar className="w-24 h-24 border-4 border-slate-200 dark:border-zinc-900 shadow-sm">
-          <AvatarImage src={user.imageUrl} />
-          <AvatarFallback className="text-3xl bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200">{user.name.charAt(0)}</AvatarFallback>
-        </Avatar>
+      {/* ── Profile Header with Banner ── */}
+      <div className="mb-8 rounded-xl border border-slate-200 dark:border-zinc-900 overflow-hidden shadow-sm">
+        {/* Banner */}
+        <div className={`w-full h-28 transition-all duration-500 ${BANNER_GRADIENTS[bannerPreference] ?? BANNER_GRADIENTS.none}`} />
 
-        <div className="flex-1 text-center md:text-left space-y-1.5">
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{user.name}</h1>
-          <p className="text-sm text-slate-500 dark:text-zinc-400 flex items-center justify-center md:justify-start gap-2">
-            <CalendarDays className="w-4 h-4 text-blue-500" />
-            Joined {format(new Date(user.joinDate), "MMMM yyyy")}
-          </p>
+        {/* User Info */}
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-6 bg-slate-50 dark:bg-zinc-950/40 p-6 backdrop-blur-md">
+          <Avatar className="w-24 h-24 border-4 border-slate-200 dark:border-zinc-900 shadow-sm -mt-12 md:-mt-14 ring-4 ring-white dark:ring-black">
+            <AvatarImage src={user.imageUrl} />
+            <AvatarFallback className="text-3xl bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200">
+              {user.name.charAt(0)}
+            </AvatarFallback>
+          </Avatar>
 
-          <div className="flex flex-wrap gap-2 pt-2 justify-center md:justify-start">
-            {user.role && <Badge className="bg-blue-50 text-blue-600 dark:bg-zinc-900 dark:text-zinc-300 border border-blue-100 dark:border-zinc-800 hover:bg-blue-100">{user.role}</Badge>}
-            {user.university && <Badge variant="outline" className="border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400">{user.university}</Badge>}
-            {user.year && <Badge variant="outline" className="border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400">{user.year}</Badge>}
+          <div className="flex-1 text-center md:text-left space-y-1.5">
+            <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{user.name}</h1>
+            <p className="text-sm text-slate-500 dark:text-zinc-400 flex items-center justify-center md:justify-start gap-2">
+              <CalendarDays className="w-4 h-4 text-blue-500" />
+              Joined {format(new Date(user.joinDate), "MMMM yyyy")}
+            </p>
+            <div className="flex flex-wrap gap-2 pt-2 justify-center md:justify-start">
+              {user.role && <Badge className="bg-blue-50 text-blue-600 dark:bg-zinc-900 dark:text-zinc-300 border border-blue-100 dark:border-zinc-800 hover:bg-blue-100">{user.role}</Badge>}
+              {user.university && <Badge variant="outline" className="border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400">{user.university}</Badge>}
+              {user.year && <Badge variant="outline" className="border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400">{user.year}</Badge>}
+            </div>
           </div>
-        </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white/60 dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 rounded-xl p-4 md:self-center shadow-sm min-w-[280px] sm:min-w-[380px] w-full sm:w-auto">
-          <div className="flex flex-col max-w-[240px] text-left">
-            <span className="text-sm font-bold text-slate-800 dark:text-zinc-200 flex items-center gap-1.5">
-              <Mail className="w-4 h-4 text-blue-500" />
-              Email Alerts
-            </span>
-            <span className="text-xs text-slate-500 dark:text-zinc-500 mt-0.5 leading-normal">
-              Get notified when someone replies to your doubts.
-            </span>
-          </div>
-          <div className="w-full sm:w-auto sm:ml-auto">
-            <Select
-              value={notificationPreference}
-              onValueChange={handlePrefChange}
-              disabled={isSavingPref}
-            >
-              <SelectTrigger className="w-full sm:w-[160px] border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 focus:ring-blue-500">
-                <SelectValue placeholder="Select frequency" />
-              </SelectTrigger>
-              <SelectContent className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100">
-                <SelectItem value="instant">Instant Alerts</SelectItem>
-                <SelectItem value="daily">Daily Digest</SelectItem>
-                <SelectItem value="weekly">Weekly Digest</SelectItem>
-                <SelectItem value="none">Muted (None)</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white/60 dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 rounded-xl p-4 md:self-center shadow-sm min-w-[280px] sm:min-w-[380px] w-full sm:w-auto">
+            <div className="flex flex-col max-w-[240px] text-left">
+              <span className="text-sm font-bold text-slate-800 dark:text-zinc-200 flex items-center gap-1.5">
+                <Mail className="w-4 h-4 text-blue-500" />
+                Email Alerts
+              </span>
+              <span className="text-xs text-slate-500 dark:text-zinc-500 mt-0.5 leading-normal">
+                Get notified when someone replies to your doubts.
+              </span>
+            </div>
+            <div className="w-full sm:w-auto sm:ml-auto">
+              <Select value={notificationPreference} onValueChange={handlePrefChange} disabled={isSavingPref}>
+                <SelectTrigger className="w-full sm:w-[160px] border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 focus:ring-blue-500">
+                  <SelectValue placeholder="Select frequency" />
+                </SelectTrigger>
+                <SelectContent className="border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100">
+                  <SelectItem value="instant">Instant Alerts</SelectItem>
+                  <SelectItem value="daily">Daily Digest</SelectItem>
+                  <SelectItem value="weekly">Weekly Digest</SelectItem>
+                  <SelectItem value="none">Muted (None)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* ── Stats Grid ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8" aria-label="Profile Statistics">
         <Card className="bg-white dark:bg-zinc-950/20 border-slate-200 dark:border-zinc-900 shadow-sm transition-all duration-300 hover:border-blue-400/40">
           <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
@@ -332,13 +358,19 @@ export default function ProfilePage() {
         </Card>
       </div>
 
+      {/* ── Tabs ── */}
       <Tabs defaultValue="doubts" className="w-full relative z-10">
-        <TabsList className="grid w-full grid-cols-3 mb-8 bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-1 rounded-xl">
+        <TabsList className="grid w-full grid-cols-4 mb-8 bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-1 rounded-xl">
           <TabsTrigger value="doubts" className="rounded-lg text-slate-600 dark:text-zinc-400 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm">My Doubts</TabsTrigger>
           <TabsTrigger value="replies" className="rounded-lg text-slate-600 dark:text-zinc-400 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm">My Replies</TabsTrigger>
           <TabsTrigger value="classrooms" className="rounded-lg text-slate-600 dark:text-zinc-400 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm">My Classrooms</TabsTrigger>
+          <TabsTrigger value="personalization" className="rounded-lg text-slate-600 dark:text-zinc-400 data-[state=active]:bg-white dark:data-[state=active]:bg-zinc-800 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white data-[state=active]:shadow-sm flex items-center gap-1.5">
+            <Palette className="w-3.5 h-3.5" />
+            Style
+          </TabsTrigger>
         </TabsList>
 
+        {/* My Doubts Tab */}
         <TabsContent value="doubts" className="space-y-4 outline-none">
           {activities.doubts.length === 0 ? (
             <Card className="bg-white dark:bg-zinc-950/20 border-slate-200 dark:border-zinc-900 rounded-2xl">
@@ -370,9 +402,7 @@ export default function ProfilePage() {
                     <span className="flex items-center gap-1">
                       <ThumbsUp className="w-3.5 h-3.5 text-emerald-500" /> {doubt.likes || 0}
                     </span>
-                    <span>
-                      {format(new Date(doubt.createdAt), "MMM d, yyyy")}
-                    </span>
+                    <span>{format(new Date(doubt.createdAt), "MMM d, yyyy")}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -380,6 +410,7 @@ export default function ProfilePage() {
           )}
         </TabsContent>
 
+        {/* My Replies Tab */}
         <TabsContent value="replies" className="space-y-4 outline-none">
           {activities.replies.length === 0 ? (
             <Card className="bg-white dark:bg-zinc-950/20 border-slate-200 dark:border-zinc-900 rounded-2xl">
@@ -408,6 +439,7 @@ export default function ProfilePage() {
           )}
         </TabsContent>
 
+        {/* My Classrooms Tab */}
         <TabsContent value="classrooms" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 outline-none">
           {activities.classrooms.length === 0 ? (
             <div className="col-span-full">
@@ -434,13 +466,51 @@ export default function ProfilePage() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-slate-400 dark:text-zinc-500 font-medium">Teacher Allocation:</span>
-                      <span className="text-slate-800 dark:text-zinc-300 truncate max-w-[140px]" title={classroom.teacherEmail}>{classroom.teacherEmail.split('@')[0]}</span>
+                      <span className="text-slate-800 dark:text-zinc-300 truncate max-w-[140px]" title={classroom.teacherEmail}>{classroom.teacherEmail.split("@")[0]}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             ))
           )}
+        </TabsContent>
+
+        {/* Personalization Tab */}
+        <TabsContent value="personalization" className="outline-none">
+          <div className="bg-white dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 rounded-2xl p-6 space-y-8">
+
+            {/* Live Preview */}
+            <div>
+              <h3 className="text-sm font-bold text-slate-700 dark:text-zinc-300 mb-3">Live Preview</h3>
+              <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-800">
+                <div className={`w-full h-20 transition-all duration-500 ${BANNER_GRADIENTS[bannerPreference] ?? BANNER_GRADIENTS.none}`} />
+                <div className="bg-slate-50 dark:bg-zinc-900 px-4 pb-4 flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-full bg-white dark:bg-zinc-800 border-4 border-white dark:border-zinc-900 -mt-7 flex items-center justify-center text-2xl shadow">
+                    {user.name.charAt(0)}
+                  </div>
+                  <div className="mt-1">
+                    <p className="font-bold text-slate-900 dark:text-white text-sm">{user.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-zinc-400">{user.role}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Avatar Selector */}
+            <AvatarSelector selected={avatarPreference} onSelect={setAvatarPreference} />
+
+            {/* Banner Selector */}
+            <BannerSelector selected={bannerPreference} onSelect={setBannerPreference} />
+
+            {/* Save Button */}
+            <button
+              onClick={handleSavePersonalization}
+              disabled={isSavingPersonalization}
+              className="w-full py-3 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSavingPersonalization ? "Saving..." : "Save Preferences"}
+            </button>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
