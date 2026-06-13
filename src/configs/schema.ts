@@ -17,6 +17,9 @@ export const usersTable = pgTable("users", {
     emailNotificationsEnabled: boolean().default(true).notNull(),
     notificationPreference: varchar({ length: 50 }).default("instant").notNull(),
     themePreference: varchar({ length: 10 }).default("system").notNull(),
+    
+    avatarPreference: varchar({ length: 100 }).default("default").notNull(),
+bannerPreference: varchar({ length: 100 }).default("none").notNull(),
     // ── Karma System ──────────────────────────────────────────────────────────
     karmaScore: integer().default(0).notNull(),         // total reputation points
     karmaLevel: integer().default(1).notNull(),          // 1 = Newbie … 5 = Legend
