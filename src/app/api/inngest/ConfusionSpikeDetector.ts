@@ -33,7 +33,7 @@ export const detectConfusionSpikes = inngest.createFunction(
         },
         triggers: [{ event: "doubt/created" }]
     },
-    async ({ event, step }: { event: any; step: any }) => {
+    async ({ event, step }: { event: { data: any }, step: any }) => {
         const { classroomId } = event.data;
 
         if (!classroomId) return { skipped: "No classroomId provided" };
@@ -89,7 +89,7 @@ export const detectConfusionSpikes = inngest.createFunction(
 
         const clusteringAnalysis = await step.run("cluster-doubts-with-groq", async (): Promise<AnalysisResult> => {
             const formattedDoubts = dynamicDoubts
-                .map((d: any, index: number) => `${index + 1}. [Subject: ${d.subject || 'General'}] ${d.content || ''}`)
+                .map((d: DoubtPayload, index: number) => `${index + 1}. [Subject: ${d.subject || 'General'}] ${d.content || ''}`)
                 .join("\n");
 
             const systemPrompt = `You are an advanced academic internal tracking assistant analyzing real-time classroom friction points. 
@@ -141,7 +141,7 @@ Return a valid, strict JSON object with this exact shape:
             
             // Generate standard fallbacks for missing values safely
             const computedAction = `Consider hosting a brief interactive discussion or query resolution session regarding "${clusteringAnalysis.coreConcept || 'this topic'}".`;
-            const mappedIds = dynamicDoubts ? dynamicDoubts.slice(0, 5).map((d: any) => d.id) : [];
+            const mappedIds = dynamicDoubts ? dynamicDoubts.slice(0, 5).map((d: DoubtPayload) => d.id) : [];
 
             await db.insert(confusionAlertsTable).values({
                 classroomId: Number(classroomId),                     // Explicit cast to integer

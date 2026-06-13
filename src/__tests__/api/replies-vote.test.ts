@@ -69,7 +69,7 @@ describe('Reply Vote API Endpoint', () => {
 
         selectResultQueue.push(
             [], // user block check select
-            [{ id: 1, replyId: 1, userName: 'Clerk Teacher' }],
+            [{ id: 1, replyId: 1, userEmail: 'other@example.com' }],
             []
         );
         updateResultQueue.push([{ id: 1, upvotes: 1 }]);
@@ -77,18 +77,18 @@ describe('Reply Vote API Endpoint', () => {
         const req = new Request('http://localhost/api/replies/vote', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ replyId: 1, userName: 'Impersonated User' }),
+            body: JSON.stringify({ replyId: 1 }),
         });
 
-        const res = (await POST(req))!;
-        const json = await res.json();
+        const res = await POST(req);
+        const json = await res?.json();
         const dbMock = (globalThis as any).__voteDbMock;
 
-        expect(res.status).toBe(200);
+        expect(res?.status).toBe(200);
         expect(json.hasUpvoted).toBe(true);
         expect(dbMock.insert).toHaveBeenCalled();
         expect(dbMock.insert.mock.results[0].value.values).toHaveBeenCalledWith({
-            userName: 'clerk_user_id',
+            userEmail: 'teacher@example.com',
             replyId: 1,
         });
     });

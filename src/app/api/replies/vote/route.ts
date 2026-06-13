@@ -20,14 +20,12 @@ export async function POST(req: Request) {
         const user = await currentUser();
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const authenticatedUserId = user.id;
         const email = user.primaryEmailAddress?.emailAddress;
+        if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
 
-        if (email) {
-            const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
-            if (blockResponse) return blockResponse;
-            if (isBlocked) return blockResponse;
-        }
+        const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
+        if (blockResponse) return blockResponse;
+        if (isBlocked) return blockResponse;
 
         // ── 1. FETCH TARGET REPLY & VALIDATE EXISTENCE ──────────────────────
         const [reply] = await db
@@ -57,7 +55,7 @@ export async function POST(req: Request) {
                 .from(replyLikesTable)
                 .where(
                     and(
-                        eq(replyLikesTable.userName, authenticatedUserId),
+                        eq(replyLikesTable.userEmail, email),
                         eq(replyLikesTable.replyId, replyId)
                     )
                 )
@@ -68,7 +66,7 @@ export async function POST(req: Request) {
                 await tx.delete(replyLikesTable)
                     .where(
                         and(
-                            eq(replyLikesTable.userName, authenticatedUserId),
+                            eq(replyLikesTable.userEmail, email),
                             eq(replyLikesTable.replyId, replyId)
                         )
                     );
@@ -90,7 +88,7 @@ export async function POST(req: Request) {
                 // Add vote
                 await tx.insert(replyLikesTable)
                     .values({
-                        userName: authenticatedUserId,
+                        userEmail: email,
                         replyId
                     });
 

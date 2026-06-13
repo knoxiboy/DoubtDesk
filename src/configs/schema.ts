@@ -1,5 +1,5 @@
 // configs/schema.ts
-import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique, vector } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -184,8 +184,7 @@ export const resumesTable = pgTable("resumes", {
 
 export const doubtsTable = pgTable("doubts", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userName: varchar({ length: 255 }).notNull(),
-    userEmail: varchar({ length: 255 }),
+    userEmail: varchar({ length: 255 }).notNull(),
     classroomId: integer(),
     subject: varchar({ length: 100 }).notNull(),
     subTopic: varchar({ length: 255 }),
@@ -198,6 +197,10 @@ export const doubtsTable = pgTable("doubts", {
     isPinned: boolean().default(false),
     deletedAt: timestamp(),
     createdAt: timestamp().defaultNow().notNull(),
+
+    // Semantic duplicate detection
+    // NOTE: stored as pgvector embedding(1536)
+    embedding: vector({ dimensions: 1536 }),
 }, (table) => {
     return {
         classroomIdIndex: index("doubt_classroomId_idx").on(table.classroomId),
@@ -262,8 +265,7 @@ export const doubtTagsTable = pgTable("doubt_tags", {
 export const repliesTable = pgTable("replies", {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     doubtId: integer("doubt_id").notNull(),
-    userName: varchar("user_name", { length: 255 }).notNull(),
-    userEmail: varchar("user_email", { length: 255 }),
+    userEmail: varchar("user_email", { length: 255 }).notNull(),
     type: varchar("type", { length: 20 }).notNull(),
     content: text("content"),
     imageUrl: text("image_url"),
@@ -288,7 +290,7 @@ export const repliesTable = pgTable("replies", {
 
 export const likesTable = pgTable("likes", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userName: varchar({ length: 255 }).notNull(),
+    userEmail: varchar({ length: 255 }).notNull(),
     doubtId: integer().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
 }, (table) => ({
@@ -296,12 +298,16 @@ export const likesTable = pgTable("likes", {
         columns: [table.doubtId],
         foreignColumns: [doubtsTable.id],
     }).onDelete("cascade"),
-    userNameDoubtUnique: unique("likes_userName_doubtId_unique").on(table.userName, table.doubtId),
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+    userEmailDoubtUnique: unique("likes_userEmail_doubtId_unique").on(table.userEmail, table.doubtId),
 }));
 
 export const replyLikesTable = pgTable("reply_likes", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userName: varchar({ length: 255 }).notNull(),
+    userEmail: varchar({ length: 255 }).notNull(),
     replyId: integer().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
 }, (table) => ({
@@ -309,7 +315,11 @@ export const replyLikesTable = pgTable("reply_likes", {
         columns: [table.replyId],
         foreignColumns: [repliesTable.id],
     }).onDelete("cascade"),
-    userNameReplyUnique: unique("reply_likes_userName_replyId_unique").on(table.userName, table.replyId),
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+    userEmailReplyUnique: unique("reply_likes_userEmail_replyId_unique").on(table.userEmail, table.replyId),
 }));
 
 export const moderationLogsTable = pgTable("moderation_logs", {

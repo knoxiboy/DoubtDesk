@@ -12,7 +12,7 @@ export async function getProfileStats(email: string, userName: string) {
     const replyQuery = db.select({
         totalReplies: count(repliesTable.id),
         totalReplyUpvotes: sum(repliesTable.upvotes).mapWith(Number),
-    }).from(repliesTable).where(or(eq(repliesTable.userEmail, email), eq(repliesTable.userName, userName)));
+    }).from(repliesTable).where(eq(repliesTable.userEmail, email));
 
     const subjectQuery = db.select({
         subject: doubtsTable.subject,

@@ -10,7 +10,8 @@ import {
   membershipsTable,
 } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
-import { and, eq, inArray, isNull, or, not, sql, SQL, desc, getTableColumns } from "drizzle-orm";
+import { safeGenerateEmbedding } from "@/lib/ai/embeddings";
+import { and, eq, inArray, isNull, or, not, sql, SQL, ilike, desc, getTableColumns, count } from "drizzle-orm";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 import { buildErrorResponse, errorResponse } from "@/lib/error-handler";
 import { checkUserBlock } from "@/lib/auth-utils";
@@ -28,7 +29,7 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const subject = searchParams.get("subject");
     const search = searchParams.get("search");
-    const userName = searchParams.get("userName");
+
     const classroomIdStr = searchParams.get("classroomId");
     const type = searchParams.get("type") || "community";
     const tag = searchParams.get("tag");
@@ -95,10 +96,12 @@ export async function GET(req: Request) {
         // NEW: Replace ilike sequential scan with indexed full-text search
         // Falls back gracefully — if search is empty, no condition is added
         if (search) {
-            const searchCondition = buildSearchCondition(search);
-            if (searchCondition) {
-                conditions.push(searchCondition);
-            }
+            const searchCondition = or(
+                ilike(doubtsTable.content, `%${search}%`),
+                ilike(doubtsTable.subject, `%${search}%`),
+                ilike(doubtsTable.userEmail, `%${search}%`)
+            );
+            if (searchCondition) conditions.push(searchCondition);
         }
 
         if (type && type !== "All") {
@@ -149,10 +152,11 @@ export async function GET(req: Request) {
             conditions.push(eq(doubtsTable.isSolved, "unsolved"));
         }
 
-        const replyCountSql = sql<number>`coalesce((SELECT count(*)::int FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`.mapWith(Number);
+        // Clean mapping chunk evaluation token to avoid standard database drivers cast bugs
+        const replyCountSql = sql<number>`coalesce((SELECT count(*) FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`.mapWith(Number);
 
         const [totalCountRow] = await db
-            .select({ count: sql<number>`count(*)::int` })
+            .select({ count: count() })
             .from(doubtsTable)
             .where(and(...conditions));
         const totalCount = totalCountRow?.count ?? 0;
@@ -185,11 +189,11 @@ export async function GET(req: Request) {
             .limit(limit)
             .offset(offset);
 
-        if (userName && doubts.length > 0) {
+        if (email && doubts.length > 0) {
             const userLikes = await db
                 .select({ doubtId: likesTable.doubtId })
                 .from(likesTable)
-                .where(eq(likesTable.userName, userName));
+                .where(eq(likesTable.userEmail, email));
 
             const likedIds = new Set(userLikes.map((l) => l.doubtId));
             doubts = doubts.map((doubt) => ({
@@ -255,7 +259,7 @@ export async function POST(req: Request) {
         const { errorResponse: validationResponse, data } = await parseAndValidateRequest(req, createDoubtSchema);
         if (validationResponse) return validationResponse;
         
-        const { userName, subject, content, imageUrl, classroomId, type, tags } = data;
+        const { subject, content, imageUrl, classroomId, type, tags } = data;
         const doubtType = type ?? "community";
         const parsedClassroomId = classroomId;
         const user = await currentUser();
@@ -314,7 +318,6 @@ export async function POST(req: Request) {
         const [newDoubt] = await db
             .insert(doubtsTable)
             .values({
-                userName,
                 userEmail: email,
                 subject,
                 subTopic,
@@ -322,9 +325,24 @@ export async function POST(req: Request) {
                 imageUrl,
                 classroomId: parsedClassroomId,
                 type: doubtType,
-                createdAt: parsedCreatedAt
             })
             .returning();
+
+        // Generate and persist embedding for semantic duplicate detection.
+        // Fail open: doubt creation should not block if embeddings are unavailable.
+        try {
+            const embeddingInput = `${subject}\n${content || ""}`.trim();
+            const embedding = await safeGenerateEmbedding(embeddingInput);
+            if (embedding && Array.isArray(embedding) && embedding.length > 0) {
+                await db
+                    .update(doubtsTable)
+                    .set({ embedding: embedding as any })
+                    .where(eq(doubtsTable.id, newDoubt.id));
+            }
+        } catch (err) {
+            console.error("Failed to generate/store doubt embedding:", err);
+        }
+
 
         if (parsedClassroomId) {
             inngest.send({
@@ -337,7 +355,7 @@ export async function POST(req: Request) {
                 doubtId: newDoubt.id,
                 subject,
                 authorEmail: email,
-                authorName: userName,
+                authorName: user.fullName || email,
                 doubtType: doubtType
             }).catch((err) => console.error("Notification trigger async failure:", err));
         }

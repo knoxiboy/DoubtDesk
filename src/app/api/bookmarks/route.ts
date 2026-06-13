@@ -32,7 +32,7 @@ export async function GET(req: Request) {
         // Add hasLiked and hasBookmarked status
         const userLikes = await db.select({ doubtId: likesTable.doubtId })
             .from(likesTable)
-            .where(eq(likesTable.userName, email)); // Wait, likes use userName. Let's assume it's same or check how likes work.
+            .where(eq(likesTable.userEmail, email));
 
         const likedIds = new Set(userLikes.map(l => l.doubtId));
         const bookmarkedIds = new Set(doubtIds);

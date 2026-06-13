@@ -170,7 +170,7 @@ export async function getPendingDoubts(): Promise<any[]> {
         .filter(item => item.url === "/api/doubts")
         .map(item => ({
             id: `pending-${item.id}`,
-            userName: item.payload.userName || "Anonymous",
+            userEmail: "Pending User",
             subject: item.payload.subject || "Subject",
             content: item.payload.content || "",
             imageUrl: item.payload.imageUrl || "",
@@ -188,7 +188,7 @@ export async function getPendingReplies(doubtId: number): Promise<any[]> {
         .map(item => ({
             id: `pending-${item.id}`,
             doubtId,
-            userName: item.payload.userName || "Anonymous",
+            userEmail: "Pending User",
             type: item.payload.type || "comment",
             content: item.payload.content || "",
             imageUrl: item.payload.imageUrl || "",

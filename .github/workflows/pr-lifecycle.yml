@@ -31,7 +31,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: number,
-              labels: ['gssoc:approved', 'mentor:knoxiboy', 'quality:clean'],
+              labels: ['gssoc:approved', 'quality:clean'],
             });
 
             // Remove transient labels
