@@ -6,12 +6,13 @@ import { toast } from "sonner";
 import MarkdownRenderer from "./MarkdownRenderer";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { Doubt } from "@/types";
+import { useUser } from "@clerk/nextjs";
 
 import { OFFLINE_REPLY_QUEUED } from "@/lib/copy-constants";
 interface Reply {
     id: number;
     doubtId: number;
-    userName: string;
+    userEmail?: string | null;
     type: 'comment' | 'solution';
     content: string | null;
     imageUrl: string | null;
@@ -26,9 +27,10 @@ interface DoubtRepliesModalProps {
     onClose: () => void;
     onReplyChange?: () => void;
     isTeacher?: boolean;
+    inline?: boolean;
 }
 
-export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChange, isTeacher = false }: DoubtRepliesModalProps) {
+export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChange, isTeacher = false, inline = false }: DoubtRepliesModalProps) {
     const [replies, setReplies] = useState<Reply[]>([]);
     const [pendingReplies, setPendingReplies] = useState<any[]>([]);
     const [pendingRepliesError, setPendingRepliesError] = useState<any>(null);
@@ -40,7 +42,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [solutionContent, setSolutionContent] = useState("");
     const [solutionImage, setSolutionImage] = useState("");
     const [fileName, setFileName] = useState("");
-    const [userName, setUserName] = useState("");
+    const { user, isSignedIn } = useUser();
 
     const [isDoubtOwner, setIsDoubtOwner] = useState(false);
     const [isSolving, setIsSolving] = useState(false);
@@ -63,13 +65,13 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen || inline) {
             fetchReplies();
-            const savedName = localStorage.getItem("anonymous_user");
-            if (savedName) setUserName(savedName);
-            if (savedName === doubt.userName) setIsDoubtOwner(true);
+            if (isSignedIn && user?.primaryEmailAddress?.emailAddress === doubt.userEmail) {
+                setIsDoubtOwner(true);
+            }
         }
-    }, [isOpen, doubt.id, doubt.userName]);
+    }, [isOpen, doubt.id, doubt.userEmail, isSignedIn, user]);
 
     useEffect(() => {
         const loadPendingReplies = async () => {
@@ -79,6 +81,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 const { getPendingReplies } = await import("@/lib/offline/syncQueue");
                 const pending = await getPendingReplies(doubt.id);
                 setPendingReplies(pending);
+                await fetchReplies();
             } catch (err) {
                 console.error("Failed to load pending replies:", err);
                 setPendingRepliesError(err);
@@ -87,7 +90,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             }
         };
 
-        if (isOpen) {
+        if (isOpen || inline) {
             loadPendingReplies();
             window.addEventListener("sync-queue-updated", loadPendingReplies);
             window.addEventListener("online", loadPendingReplies);
@@ -97,13 +100,14 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             window.removeEventListener("sync-queue-updated", loadPendingReplies);
             window.removeEventListener("online", loadPendingReplies);
         };
-    }, [isOpen, doubt.id]);
+    }, [isOpen, doubt.id, inline]);
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [replies]);
 
     useEffect(() => {
+        if (inline) return;
         const handleEsc = (e: KeyboardEvent) => {
             if (e.key === "Escape") onClose();
         };
@@ -111,12 +115,11 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             window.addEventListener("keydown", handleEsc);
         }
         return () => window.removeEventListener("keydown", handleEsc);
-    }, [isOpen, onClose]);
+    }, [isOpen, onClose, inline]);
 
     const fetchReplies = async () => {
-        const storedUserName = localStorage.getItem("anonymous_user");
         try {
-            const url = `/api/replies?doubtId=${doubt.id}` + (storedUserName ? `&userName=${encodeURIComponent(storedUserName)}` : "");
+            const url = `/api/replies?doubtId=${doubt.id}`;
             const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
@@ -140,7 +143,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             if (typeof navigator !== "undefined" && !navigator.onLine) {
                 const payload = {
                     doubtId: doubt.id,
-                    userName,
+
                     type,
                     content,
                     imageUrl,
@@ -180,7 +183,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     doubtId: doubt.id,
-                    userName,
+
                     type,
                     content,
                     imageUrl
@@ -343,12 +346,12 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
     const handleMarkAsSolution = async (replyId: number) => {
         setIsSolving(true);
-        const userName = localStorage.getItem("anonymous_user");
+
         try {
             const res = await fetch(`/api/doubts/action/${doubt.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "solve", userName, replyId }),
+                body: JSON.stringify({ action: "solve", replyId }),
             });
             if (res.ok) {
                 if (onReplyChange) onReplyChange();
@@ -417,7 +420,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     };
 
     const ReplyBubble = ({ reply }: { reply: any }) => {
-        const isMe = reply.userName === userName;
+        const isMe = isSignedIn && user?.primaryEmailAddress?.emailAddress === reply.userEmail;
         const isOfficial = doubt.solvedReplyId === reply.id;
 
         return (
@@ -432,7 +435,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     <div className="flex items-center justify-between gap-4 mb-3">
                         <div className="flex items-center gap-2">
                             <span className={`text-[10px] font-black uppercase tracking-widest ${isMe ? 'text-blue-400' : 'text-slate-400'}`}>
-                                {reply.userName} {isMe && "(YOU)"}
+                                {reply.userEmail?.split('@')[0] || 'Anonymous'} {isMe && "(YOU)"}
                             </span>
                             {reply.type === 'solution' && isOfficial && (
                                 <div className="bg-emerald-500 text-slate-900 dark:text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-full shadow-lg shadow-emerald-500/20 flex items-center gap-1">
@@ -619,11 +622,11 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
         );
     };
 
-    if (!isOpen) return null;
+    if (!isOpen && !inline) return null;
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/60 dark:bg-slate-950/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+    const discussionContent = (
+        <>
+            <div className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] w-full flex flex-col overflow-hidden shadow-2xl ${inline ? 'max-w-none h-full min-h-[60vh]' : 'max-w-3xl h-[85vh] animate-in zoom-in-95 duration-200'}`}>
                 {/* Header */}
                 <div className="p-5 sm:p-8 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-white/[0.02]">
                     <div className="flex items-center gap-4">
@@ -640,9 +643,11 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             </p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-3 hover:bg-slate-100 dark:hover:bg-white/5 rounded-2xl text-slate-600 dark:text-slate-400 transition-colors" aria-label="Close modal">
-                        <X className="w-6 h-6" />
-                    </button>
+                    {!inline && (
+                        <button onClick={onClose} className="p-3 hover:bg-slate-100 dark:hover:bg-white/5 rounded-2xl text-slate-600 dark:text-slate-400 transition-colors" aria-label="Close modal">
+                            <X className="w-6 h-6" />
+                        </button>
+                    )}
                 </div>
 
                 {/* Tab Navigation - Hidden for 'Ask Teacher' Doubts */}
@@ -683,16 +688,19 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-4 sm:space-y-6 bg-white/50 dark:bg-slate-900/50">
+                    {pendingRepliesError && (
+                        <div className="flex items-center gap-2.5 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-xs font-bold animate-in fade-in duration-300">
+                            <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+                            <div>
+                                <p className="font-bold">Failed to load offline replies.</p>
+                                <p className="text-[9px] uppercase font-black tracking-widest text-slate-500 mt-0.5">Please refresh or check connection.</p>
+                            </div>
+                        </div>
+                    )}
                     {isLoading ? (
                         <div className="h-full flex flex-col items-center justify-center gap-4">
                             <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-500">Loading Thread...</p>
-                        </div>
-                    ) : pendingRepliesError ? (
-                        <div className="h-full flex flex-col items-center justify-center text-center opacity-50">
-                            <AlertTriangle className="w-10 h-10 text-red-500 mb-4 animate-bounce" />
-                            <p className="text-sm font-bold text-red-500">Failed to load offline replies.</p>
-                            <p className="text-[10px] uppercase font-black tracking-widest text-slate-500 mt-2">Please refresh or check connection.</p>
                         </div>
                     ) : (replies.length === 0 && pendingReplies.length === 0) ? (
                         <div className="h-full flex flex-col items-center justify-center text-center opacity-40">
@@ -1039,6 +1047,16 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 description="This action cannot be undone. The reply will be permanently removed."
                 confirmText="Delete Reply"
             />
+        </>
+    );
+
+    if (inline) {
+        return discussionContent;
+    }
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-white/60 dark:bg-slate-950/60 backdrop-blur-sm">
+            {discussionContent}
         </div>
     );
 }

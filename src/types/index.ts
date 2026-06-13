@@ -183,6 +183,8 @@ export interface Classroom {
     year: string;
     teacherEmail: string;
     inviteCode: string;
+    inviteCodeExpiresAt?: Date | string | null;
+    allowedEmailDomains?: string[] | null;
     createdAt: Date | string;
 }
 
@@ -198,7 +200,7 @@ export interface Membership {
 /** Doubt (question) entity as stored in the database */
 export interface Doubt {
     id: number;
-    userName: string;
+
     userEmail?: string | null;
     classroomId?: number | null;
     subject: string;
@@ -225,7 +227,7 @@ export type DoubtRecord = {
 export interface Reply {
     id: number;
     doubtId: number;
-    userName: string;
+
     userEmail?: string | null;
     type: "comment" | "solution";
     content?: string | null;
@@ -241,7 +243,7 @@ export type ReplyRecord = {
 /** Like on a doubt entity */
 export interface Like {
     id: number;
-    userName: string;
+    userEmail: string;
     doubtId: number;
     createdAt: Date | string;
 }
@@ -249,7 +251,7 @@ export interface Like {
 /** Like on a reply entity */
 export interface ReplyLike {
     id: number;
-    userName: string;
+    userEmail: string;
     replyId: number;
     createdAt: Date | string;
 }

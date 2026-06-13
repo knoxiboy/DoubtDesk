@@ -52,10 +52,10 @@ describe('Replies Action API Endpoint', () => {
             method: 'DELETE',
         });
 
-        const res = await DELETE(req, { params: Promise.resolve({ id: '2' }) });
-        const json = await res.json();
+        const res = await DELETE(req as any, { params: Promise.resolve({ id: '2' }) });
+        const json = await res?.json();
 
-        expect(res.status).toBe(401);
+        expect(res?.status).toBe(401);
         expect(json.error).toBe('Unauthorized');
     });
 
@@ -68,10 +68,10 @@ describe('Replies Action API Endpoint', () => {
             method: 'DELETE',
         });
 
-        const res = await DELETE(req, { params: Promise.resolve({ id: '2' }) });
-        const json = await res.json();
+        const res = await DELETE(req as any, { params: Promise.resolve({ id: '2' }) });
+        const json = await res?.json();
 
-        expect(res.status).toBe(400);
+        expect(res?.status).toBe(400);
         expect(json.error).toBe('Email required');
     });
 
@@ -92,10 +92,10 @@ describe('Replies Action API Endpoint', () => {
             body: JSON.stringify({ content: 'updated content' }),
         });
 
-        const res = await PATCH(req, { params: Promise.resolve({ id: '2' }) });
-        const json = await res.json();
+        const res = await PATCH(req as any, { params: Promise.resolve({ id: '2' }) });
+        const json = await res?.json();
 
-        expect(res.status).toBe(403);
+        expect(res?.status).toBe(403);
         expect(json.error).toContain('Forbidden');
     });
 
@@ -114,11 +114,11 @@ describe('Replies Action API Endpoint', () => {
             method: 'DELETE',
         });
 
-        const res = await DELETE(req, { params: Promise.resolve({ id: '2' }) });
-        const json = await res.json();
+        const res = await DELETE(req as any, { params: Promise.resolve({ id: '2' }) });
+        const json = await res?.json();
         const dbMock = (globalThis as any).__repliesActionDbMock;
 
-        expect(res.status).toBe(200);
+        expect(res?.status).toBe(200);
         expect(json.message).toBe('Reply deleted successfully');
         expect(dbMock.delete).toHaveBeenCalled();
     });

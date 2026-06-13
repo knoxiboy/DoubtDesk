@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { doubtsTable, repliesTable, membershipsTable, classroomsTable } from '@/configs/schema';
-import { desc, sql, and, eq, count, countDistinct, ne, inArray } from 'drizzle-orm';
+import { desc, sql, and, eq, count, countDistinct, ne, inArray, isNull } from 'drizzle-orm';
 import { checkUserBlock } from '@/lib/auth-utils';
 import { buildErrorResponse } from '@/lib/error-handler';
 import {
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
 
         if (classroomId) {
             await requireMembership(email, classroomId);
-            classroomFilter = eq(doubtsTable.classroomId, classroomId);
+            classroomFilter = and(eq(doubtsTable.classroomId, classroomId), isNull(doubtsTable.deletedAt));
         } else {
             const userMemberships = await db.select({ classroomId: membershipsTable.classroomId })
                 .from(membershipsTable)
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
                 });
             }
 
-            classroomFilter = inArray(doubtsTable.classroomId, userClassroomIds);
+            classroomFilter = and(inArray(doubtsTable.classroomId, userClassroomIds), isNull(doubtsTable.deletedAt));
         }
 
         // Run all queries in parallel to eliminate sequential query latency
@@ -106,7 +106,7 @@ export async function GET(req: Request) {
 
             // 5. Student Engagement
             db.select({
-                totalStudents: countDistinct(doubtsTable.userName),
+                totalStudents: countDistinct(doubtsTable.userEmail),
                 totalDoubts: count(doubtsTable.id)
             })
                 .from(doubtsTable)
@@ -122,16 +122,16 @@ export async function GET(req: Request) {
 
             // 7. Top Contributors (students who reply the most)
             db.select({
-                name: repliesTable.userName,
+                name: sql<string>`split_part(${repliesTable.userEmail}, '@', 1)`,
                 replyCount: count(repliesTable.id)
             })
                 .from(repliesTable)
                 .innerJoin(doubtsTable, eq(repliesTable.doubtId, doubtsTable.id))
                 .where(and(
                     classroomFilter,
-                    ne(repliesTable.userName, 'DoubtDesk AI')
+                    ne(repliesTable.userEmail, 'ai@doubtdesk.com')
                 ))
-                .groupBy(repliesTable.userName)
+                .groupBy(repliesTable.userEmail)
                 .orderBy(desc(count(repliesTable.id)))
                 .limit(5),
 
@@ -152,7 +152,7 @@ export async function GET(req: Request) {
                 .innerJoin(doubtsTable, eq(repliesTable.doubtId, doubtsTable.id))
                 .where(and(
                     classroomFilter,
-                    eq(repliesTable.userName, 'DoubtDesk AI'),
+                    eq(repliesTable.userEmail, 'ai@doubtdesk.com'),
                     eq(repliesTable.type, 'solution')
                 ))
                 .orderBy(desc(repliesTable.createdAt))

@@ -57,7 +57,7 @@ export async function createClassroomDoubtNotifications(params: {
             userEmail,
             title: `New doubt in ${room.name}`,
             message: `${authorName} posted ${subject ? `a ${subject} doubt` : "a new doubt"} in ${room.name}.`,
-            link: `/rooms/${classroomId}?tab=${doubtType === "teacher" ? "teacher-doubts" : "community"}&doubtId=${doubtId}`,
+            link: `/doubts/${doubtId}`,
             type: "classroom_doubt",
         }));
 
@@ -87,9 +87,7 @@ export async function createReplyNotification(params: {
 
     const preview = replyContent?.trim() || "Open the thread to read the reply.";
 
-    const link = classroomId
-        ? `/rooms/${classroomId}?tab=${doubtType === "teacher" ? "teacher-doubts" : "community"}&doubtId=${doubtId}&replyId=${replyId}`
-        : `/public-rooms?doubtId=${doubtId}&replyId=${replyId}`;
+    const link = `/doubts/${doubtId}`;
 
     return createNotifications([
         {

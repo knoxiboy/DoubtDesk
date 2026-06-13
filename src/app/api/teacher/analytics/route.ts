@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, classroomsTable, membershipsTable, usersTable } from "@/configs/schema";
-import { and, eq, inArray, gte, lte } from "drizzle-orm";
+import { and, eq, inArray, gte, lte, isNull } from "drizzle-orm";
 import { DoubtRecord, ReplyRecord } from "@/types";
 import {
     parseOptionalClassroomId,
@@ -107,7 +107,8 @@ export async function GET(req: NextRequest) {
                     and(
                         inArray(doubtsTable.classroomId, selectedClassroomIds),
                         gte(doubtsTable.createdAt, startDate),
-                        lte(doubtsTable.createdAt, endDate)
+                        lte(doubtsTable.createdAt, endDate),
+                        isNull(doubtsTable.deletedAt)
                     )
                 );
 
@@ -157,11 +158,10 @@ export async function GET(req: NextRequest) {
             const uniqueStudents = new Set<string>();
             doubts.forEach(d => {
                 if (d.userEmail) uniqueStudents.add(d.userEmail);
-                else if (d.userName) uniqueStudents.add(d.userName);
             });
             replies.forEach(r => {
-                if (r.userName && r.userName !== 'DoubtDesk AI' && r.userName !== dbUser?.name) {
-                    uniqueStudents.add(r.userName);
+                if (r.userEmail && r.userEmail !== 'ai@doubtdesk.com' && r.userEmail !== dbUser?.email) {
+                    uniqueStudents.add(r.userEmail);
                 }
             });
             summary.activeStudents = uniqueStudents.size;

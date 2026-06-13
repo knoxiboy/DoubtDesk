@@ -1,14 +1,41 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock, Loader2 } from "lucide-react";
+import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock, Loader2, Link2, Share2, Copy, Send } from "lucide-react";
 import AskDoubt from "./AskDoubt";
 import DoubtRepliesModal from "./DoubtRepliesModal";
 import { toast } from "sonner";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import type { Doubt, Tag } from "@/types";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+const ARIA_LABELS = {
+  PIN_DOUBT: "Pin doubt to top",
+  UNPIN_DOUBT: "Unpin doubt",
+  BOOKMARK_DOUBT: "Bookmark this doubt",
+  REMOVE_BOOKMARK: "Remove bookmark",
+  LIKE_DOUBT: "Like this doubt",
+  UNLIKE_DOUBT: "Unlike this doubt",
+  VIEW_REPLIES: (count: number) => `View ${count} ${count === 1 ? "reply" : "replies"}`,
+} as const;
 import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+
+const SHARE_MESSAGES = {
+    COPY_SUCCESS: "Link copied!",
+    COPY_ERROR: "Failed to copy link",
+    WHATSAPP_PREFIX: "Check out this doubt on DoubtDesk:\n\n",
+    TELEGRAM_PREFIX: "Check out this doubt on DoubtDesk:",
+    MENU_COPY: "Copy Link",
+    MENU_WHATSAPP: "Share on WhatsApp",
+    MENU_TELEGRAM: "Share on Telegram"
+};
 
 interface DoubtCardProps {
     doubt: Doubt & {
@@ -28,10 +55,12 @@ interface DoubtCardProps {
     ) => void;
     role?: string;
     openRepliesOnMount?: boolean;
+    disableModal?: boolean;
+    onCommentClick?: () => void;
 }
 
-export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, openRepliesOnMount = false }: DoubtCardProps) {
-    const { isSignedIn } = useUser();
+export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, openRepliesOnMount = false, disableModal = false, onCommentClick }: DoubtCardProps) {
+
     const [isOwner, setIsOwner] = useState(false);
     const [isLiking, setIsLiking] = useState(false);
     const [isSolving, setIsSolving] = useState(false);
@@ -48,12 +77,13 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
 
     const isTeacher = role === 'teacher';
 
+    const { user, isSignedIn } = useUser();
+
     useEffect(() => {
-        const savedName = localStorage.getItem("anonymous_user");
-        if (savedName === doubt.userName) {
+        if (isSignedIn && user?.primaryEmailAddress?.emailAddress === doubt.userEmail) {
             setIsOwner(true);
         }
-    }, [doubt.userName]);
+    }, [isSignedIn, user, doubt.userEmail]);
 
     useEffect(() => {
         const deepLinkedDoubtId = searchParams ? (Number(searchParams.get("doubtId") || "") || null) : null;
@@ -73,13 +103,13 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
         }
         if (action === "solve") setIsSolving(true);
 
-        const userName = localStorage.getItem("anonymous_user");
+
 
         try {
             const res = await fetch(`/api/doubts/action/${doubt.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action, userName }),
+                body: JSON.stringify({ action }),
             });
 
             const data = await res.json();
@@ -167,7 +197,30 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
         }
     };
 
+    const getShareUrl = () => `${window.location.origin}/doubts/${doubt.id}`;
+
+    const handleShare = async () => {
+        try {
+            await navigator.clipboard.writeText(getShareUrl());
+            toast.success(SHARE_MESSAGES.COPY_SUCCESS);
+        } catch (error) {
+            toast.error(SHARE_MESSAGES.COPY_ERROR);
+        }
+    };
+
+    const handleWhatsAppShare = () => {
+        const text = encodeURIComponent(`${SHARE_MESSAGES.WHATSAPP_PREFIX}${getShareUrl()}`);
+        window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank", "noopener,noreferrer");
+    };
+
+    const handleTelegramShare = () => {
+        const url = encodeURIComponent(getShareUrl());
+        const text = encodeURIComponent(SHARE_MESSAGES.TELEGRAM_PREFIX);
+        window.open(`https://t.me/share/url?url=${url}&text=${text}`, "_blank", "noopener,noreferrer");
+    };
+
     return (
+        <TooltipProvider>
         <>
             <div className={`group bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 hover:border-blue-500/30 transition-all duration-500 hover:shadow-2xl hover:shadow-blue-500/5 flex flex-col h-full relative overflow-hidden ${doubt.isPendingSync ? "opacity-65 italic" : ""}`}>
                 {/* Background Glow */}
@@ -177,11 +230,11 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 sm:mb-8">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform duration-500">
-                            <span className="text-lg font-black text-blue-400">{doubt.userName?.slice(-1)?.toUpperCase() || '?'}</span>
+                            <span className="text-lg font-black text-blue-400">{doubt.userEmail?.charAt(0)?.toUpperCase() || '?'}</span>
                         </div>
                         <div>
                             <h3 className="text-slate-900 dark:text-white font-bold tracking-tight text-sm">
-                                {doubt.userName || 'Anonymous'}
+                                {doubt.userEmail?.split('@')[0] || 'Anonymous'}
                                 {isOwner && <span className="ml-2 text-[10px] bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">You</span>}
                             </h3>
                             <p className="text-[10px] text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
@@ -198,15 +251,20 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                         ) : (
                             <>
                                 {isTeacher && doubt.classroomId && (
+                                    <Tooltip>
+                                    <TooltipTrigger asChild>
                                     <button
                                         onClick={handlePin}
                                         disabled={isPinning}
+                                        aria-label={doubt.isPinned ? ARIA_LABELS.UNPIN_DOUBT : ARIA_LABELS.PIN_DOUBT}
+                                        aria-busy={isPinning}
                                         className={`p-2 rounded-xl border transition-all ${ doubt.isPinned ? "bg-blue-600/20 border-blue-500/40 text-blue-400" : "bg-white/5 border-white/10 text-slate-500 hover:text-blue-400" }`}
-                                        title={doubt.isPinned ? "Unpin doubt" : "Pin doubt to top"}
-                                        aria-label="Interactive button"
                                     >
                                         <Pin className={`w-4 h-4 ${doubt.isPinned ? 'fill-blue-400' : ''} ${isPinning ? 'animate-pulse' : ''}`} />
                                     </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>{doubt.isPinned ? ARIA_LABELS.UNPIN_DOUBT : ARIA_LABELS.PIN_DOUBT}</TooltipContent>
+                                    </Tooltip>
                                 )}
                                 {doubt.isPinned && !isTeacher && (
                                     <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full">
@@ -283,6 +341,8 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                             <button
                                 onClick={() => handleAction("like")}
                                 disabled={isLiking}
+                                aria-label={doubt.hasLiked ? ARIA_LABELS.UNLIKE_DOUBT : ARIA_LABELS.LIKE_DOUBT}
+                                aria-busy={isLiking}
                                 className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-6 py-3 rounded-2xl transition-all group/btn ${ doubt.hasLiked ? "bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-lg shadow-blue-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
                             >
                                 <ThumbsUp className={`w-4 h-4 ${isLiking ? 'animate-pulse' : 'group-hover/btn:scale-110 transition-transform'} ${doubt.hasLiked ? 'fill-blue-400' : ''}`} />
@@ -290,16 +350,47 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                             </button>
 
                             {isSignedIn && (
+                                <Tooltip>
+                                <TooltipTrigger asChild>
                                 <button
                                     onClick={handleBookmark}
                                     disabled={isBookmarking}
+                                    aria-label={doubt.hasBookmarked ? ARIA_LABELS.REMOVE_BOOKMARK : ARIA_LABELS.BOOKMARK_DOUBT}
+                                    aria-busy={isBookmarking}
                                     className={`flex items-center justify-center p-3 rounded-2xl transition-all ${ doubt.hasBookmarked ? "bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-lg shadow-purple-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
-                                    title={doubt.hasBookmarked ? "Remove bookmark" : "Add to bookmarks"}
-                                    aria-label="Interactive button"
                                 >
                                     <Bookmark className={`w-4 h-4 ${isBookmarking ? 'animate-pulse' : ''} ${doubt.hasBookmarked ? 'fill-purple-400' : ''}`} />
                                 </button>
+                                </TooltipTrigger>
+                                <TooltipContent>{doubt.hasBookmarked ? ARIA_LABELS.REMOVE_BOOKMARK : ARIA_LABELS.BOOKMARK_DOUBT}</TooltipContent>
+                                </Tooltip>
                             )}
+
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button
+                                        className="flex items-center justify-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5 transition-all focus:ring-2 focus:ring-blue-500"
+                                        title="Share doubt"
+                                        aria-label="Share doubt"
+                                    >
+                                        <Share2 className="w-4 h-4" />
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-2 z-50">
+                                    <DropdownMenuItem onClick={handleShare} className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg p-2 transition-colors">
+                                        <Copy className="w-4 h-4 text-slate-500" />
+                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{SHARE_MESSAGES.MENU_COPY}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={handleWhatsAppShare} className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg p-2 transition-colors">
+                                        <MessageSquare className="w-4 h-4 text-emerald-500" />
+                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{SHARE_MESSAGES.MENU_WHATSAPP}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={handleTelegramShare} className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg p-2 transition-colors">
+                                        <Send className="w-4 h-4 text-blue-500" />
+                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{SHARE_MESSAGES.MENU_TELEGRAM}</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
 
                             {((isOwner && doubt.type !== 'ai') || isTeacher) && doubt.isSolved !== "solved" && (
                                 <button
@@ -317,7 +408,9 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                     onClick={() => {
                                         if (doubt.type === 'ai' && onViewAISolution) {
                                             onViewAISolution(doubt);
-                                        } else {
+                                        } else if (onCommentClick) {
+                                            onCommentClick();
+                                        } else if (!disableModal) {
                                             setIsRepliesOpen(true);
                                         }
                                     }}
@@ -351,7 +444,14 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                 </div>
                             )}
                             <button
-                                onClick={() => setIsRepliesOpen(true)}
+                                aria-label={ARIA_LABELS.VIEW_REPLIES(doubt.replyCount || 0)}
+                                onClick={() => {
+                                    if (onCommentClick) {
+                                        onCommentClick();
+                                    } else if (!disableModal) {
+                                        setIsRepliesOpen(true);
+                                    }
+                                }}
                                 className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-3 rounded-2xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-white/5 active:scale-95 group/msg"
                             >
                                 <MessageSquare className="w-5 h-5 group-hover/msg:scale-110 transition-transform" />
@@ -373,13 +473,15 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                     />
                 )}
 
-                <DoubtRepliesModal
-                    doubt={doubt}
-                    isOpen={isRepliesOpen}
-                    onClose={() => setIsRepliesOpen(false)}
-                    onReplyChange={onUpdate}
-                    isTeacher={isTeacher}
-                />
+                {!disableModal && (
+                    <DoubtRepliesModal
+                        doubt={doubt}
+                        isOpen={isRepliesOpen}
+                        onClose={() => setIsRepliesOpen(false)}
+                        onReplyChange={onUpdate}
+                        isTeacher={isTeacher}
+                    />
+                )}
             </div>
 
             {/* Fullscreen Image Overlay */}
@@ -419,5 +521,6 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                 confirmText="Yes, Delete"
             />
         </>
+        </TooltipProvider>
     );
 }

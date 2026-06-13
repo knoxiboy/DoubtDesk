@@ -16,7 +16,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         const { errorResponse, data } = await parseAndValidateRequest(req, updateDoubtActionSchema);
         if (errorResponse) return errorResponse;
 
-        const { action, content, subject, imageUrl, userName, replyId, status, tags = [] } = data;
+        const { action, content, subject, imageUrl, userName, replyId, tags = [], status } = data;
 
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
@@ -28,7 +28,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             return NextResponse.json({ error: "Invalid doubt ID" }, { status: 400 });
         }
 
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+        const [doubt] = await db.select().from(doubtsTable).where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
         // Security: Verify doubt visibility/classroom membership
@@ -80,12 +80,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
                 const existingLike = await tx.select()
                     .from(likesTable)
-                    .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)))
+                    .where(and(eq(likesTable.userEmail, secureUserIdentifier), eq(likesTable.doubtId, doubtId)))
                     .limit(1);
 
                 if (existingLike.length > 0) {
                     await tx.delete(likesTable)
-                        .where(and(eq(likesTable.userName, secureUserIdentifier), eq(likesTable.doubtId, doubtId)));
+                        .where(and(eq(likesTable.userEmail, secureUserIdentifier), eq(likesTable.doubtId, doubtId)));
 
                     const updated = await tx.update(doubtsTable)
                         .set({ likes: sql`GREATEST(${doubtsTable.likes} - 1, 0)` })
@@ -95,7 +95,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                     return { ...updated[0], hasLiked: false };
                 } else {
                     await tx.insert(likesTable).values({
-                        userName: secureUserIdentifier,
+                        userEmail: secureUserIdentifier,
                         doubtId
                     });
 
@@ -293,7 +293,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         const { id } = await params;
         const doubtId = parseInt(id);
 
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+        const [doubt] = await db.select().from(doubtsTable).where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
         const isOwner = email && doubt.userEmail === email;
@@ -318,20 +318,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             return NextResponse.json({ error: "Unauthorized to delete this doubt" }, { status: 403 });
         }
 
-        await db.delete(doubtsTable).where(eq(doubtsTable.id, doubtId));
-
-        void auditLog({
-            actorEmail: email || "unknown",
-            targetEmail: doubt.userEmail,
-            action: AUDIT_ACTIONS.DOUBT_DELETED,
-            resourceType: "doubt",
-            resourceId: doubtId,
-            metadata: {
-                subject: doubt.subject,
-                classroomId: doubt.classroomId,
-            },
-        });
-
+        await db.update(doubtsTable).set({ deletedAt: new Date() }).where(eq(doubtsTable.id, doubtId));
         return NextResponse.json({ message: "Doubt deleted successfully" });
     } catch (error) {
         console.error("Error deleting doubt:", error);
