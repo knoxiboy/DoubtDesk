@@ -201,9 +201,23 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
 
     const handleShare = async () => {
         try {
-            await navigator.clipboard.writeText(getShareUrl());
+            const url = getShareUrl();
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(url);
+            } else {
+                // Fallback for non-HTTPS or older browsers
+                const textArea = document.createElement("textarea");
+                textArea.value = url;
+                textArea.style.position = "fixed";
+                textArea.style.opacity = "0";
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand("copy");
+                document.body.removeChild(textArea);
+            }
             toast.success(SHARE_MESSAGES.COPY_SUCCESS);
         } catch (error) {
+            console.error("Failed to copy link:", error);
             toast.error(SHARE_MESSAGES.COPY_ERROR);
         }
     };
@@ -324,7 +338,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                         >
                             <img
                                 src={doubt.imageUrl}
-                                alt="Doubt"
+                                alt={`Doubt image for ${doubt.subject} by ${doubt.userEmail?.split('@')[0] || 'Anonymous'}`}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                             />
                             <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
@@ -503,7 +517,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                     >
                         <img
                             src={doubt.imageUrl ?? undefined}
-                            alt="Full View"
+                            alt={`Full view of doubt image for ${doubt.subject} by ${doubt.userEmail?.split('@')[0] || 'Anonymous'}`}
                             className="max-w-full max-h-full object-contain rounded-xl shadow-2xl border border-slate-200 dark:border-white/10"
                         />
                     </div>
