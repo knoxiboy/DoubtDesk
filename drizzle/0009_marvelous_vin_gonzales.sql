@@ -1,0 +1,1 @@
+ALTER TABLE "doubts" ADD COLUMN "embedding" vector(1536);
