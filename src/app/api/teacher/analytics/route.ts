@@ -158,11 +158,10 @@ export async function GET(req: NextRequest) {
             const uniqueStudents = new Set<string>();
             doubts.forEach(d => {
                 if (d.userEmail) uniqueStudents.add(d.userEmail);
-                else if (d.userName) uniqueStudents.add(d.userName);
             });
             replies.forEach(r => {
-                if (r.userName && r.userName !== 'DoubtDesk AI' && r.userName !== dbUser?.name) {
-                    uniqueStudents.add(r.userName);
+                if (r.userEmail && r.userEmail !== 'ai@doubtdesk.com' && r.userEmail !== dbUser?.email) {
+                    uniqueStudents.add(r.userEmail);
                 }
             });
             summary.activeStudents = uniqueStudents.size;

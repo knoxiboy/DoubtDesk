@@ -89,6 +89,9 @@ describe('Room Members API Endpoint', () => {
 
         const res = (await GET(new Request('http://localhost/api/rooms/members?classroomId=1')))!;
         const json = await res.json();
+        if (res.status !== 200) {
+            console.error("DEBUG student res:", json);
+        }
 
         expect(res.status).toBe(200);
         expect(json).toEqual({
@@ -136,6 +139,9 @@ describe('Room Members API Endpoint', () => {
 
         const res = (await GET(new Request('http://localhost/api/rooms/members?classroomId=1')))!;
         const json = await res.json();
+        if (res.status !== 200) {
+            console.error("DEBUG teacher res:", json);
+        }
 
         expect(res.status).toBe(200);
         expect(json).toEqual({

@@ -1,0 +1,70 @@
+name: PR Code Quality Commenter
+
+on:
+  workflow_run:
+    workflows: ["PR Code Quality Checks"]
+    types:
+      - completed
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.event == 'pull_request'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: pr-comments
+        continue-on-error: true
+
+      - name: Post Comments
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // Find the PR associated with this run
+            const pulls = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.payload.workflow_run.head_sha
+            });
+            const pr = pulls.data[0];
+            if (!pr) {
+              console.log("No pull request found for commit: " + context.payload.workflow_run.head_sha);
+              return;
+            }
+            const prNumber = pr.number;
+            console.log(`Associated PR: #${prNumber}`);
+
+            const postComment = async (dirName, fileName) => {
+              const dirPath = path.join(process.env.GITHUB_WORKSPACE, 'pr-comments', dirName);
+              if (!fs.existsSync(dirPath)) {
+                console.log(`Directory ${dirName} does not exist. Skipping.`);
+                return;
+              }
+
+              const commentFile = path.join(dirPath, fileName);
+              if (fs.existsSync(commentFile)) {
+                const body = fs.readFileSync(commentFile, 'utf8').trim();
+                if (body) {
+                  console.log(`Posting comment from ${dirName} to PR #${prNumber}...`);
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: prNumber,
+                    body: body
+                  });
+                }
+              }
+            };
+
+            await postComment('security-warning', 'security-warning.txt');
+            await postComment('quality-gate-warning', 'quality-gate-warning.txt');

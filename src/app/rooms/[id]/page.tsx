@@ -9,6 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useAppUser } from "../../provider";
+import { QRCodeCanvas } from "qrcode.react";
 import {
   Brain,
   MessageSquare,
@@ -322,6 +323,21 @@ export default function ClassroomPage() {
     } finally {
       setIsGeneratingInvite(false);
     }
+  };
+
+  const downloadQr = () => {
+    const canvas = document.getElementById(
+      "invite-qr"
+    ) as HTMLCanvasElement;
+
+    if (!canvas) return;
+
+    const url = canvas.toDataURL("image/png");
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "classroom-invite-qr.png";
+    link.click();
   };
 
   const copyInviteLink = async () => {
@@ -1019,13 +1035,100 @@ export default function ClassroomPage() {
               </button>
             </div>
 
-            <div className="space-y-5">
-              {/* Current Invite Code */}
-              <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 p-4">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                  Current Invite Code
-                </p>
-                <code className="text-2xl font-black text-blue-600 dark:text-blue-400 tracking-wider">
+            <div className="space-y-4">
+              <div className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/20 p-4">
+                <div className="flex items-start gap-3">
+                  <Sparkles className="mt-0.5 h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Secure Invite Link
+                    </h3>
+                    <p className="text-xs font-medium leading-relaxed text-slate-600 dark:text-zinc-400">
+                      This creates a non-guessable invite link that expires in 7
+                      days. Students can use it to join this classroom directly.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={generateInviteLink}
+                disabled={isGeneratingInvite}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98]"
+                aria-label="Generate secure invite link"
+              >
+                {isGeneratingInvite ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" /> Generate Secure Invite Link
+                  </>
+                )}
+              </button>
+
+              {inviteUrl && (
+                <div className="flex flex-col lg:flex-row gap-6 items-start">
+                  {/* Left side */}
+                  <div className="flex-1">
+                    <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 p-4">
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                        Invite link
+                      </p>
+
+                      <div className="flex gap-2">
+                        <input
+                          value={inviteUrl}
+                          readOnly
+                          className="min-w-0 flex-1 rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-xs"
+                        />
+
+                        <button
+                          onClick={copyInviteLink}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+
+                    {inviteExpiresAt && (
+                      <p className="mt-3 text-center text-[11px] font-semibold text-slate-500">
+                        Expires on {new Date(inviteExpiresAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Right side */}
+                  <div className="flex flex-col items-center gap-3 shrink-0">
+                    <div className="bg-white p-3 rounded-xl">
+                      <QRCodeCanvas
+                        id="invite-qr"
+                        value={inviteUrl}
+                        size={180}
+                      />
+                    </div>
+
+                    <button
+                      onClick={downloadQr}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+                    >
+                      Download QR
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-slate-200 dark:border-zinc-900 pt-5 space-y-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                Existing class code fallback
+              </p>
+
+              <div className="bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between gap-4 relative group overflow-hidden shadow-inner">
+                <code className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-wider relative z-10">
                   {classroom?.inviteCode}
                 </code>
               </div>
