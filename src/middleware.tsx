@@ -1,4 +1,4 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { aiLimiter, generalLimiter, videoLimiter } from '@/lib/ratelimit';
 import { db } from '@/configs/db';
@@ -91,7 +91,19 @@ export default clerkMiddleware(async (auth, req) => {
 
     // Redirect authenticated users who haven't completed onboarding to the onboarding page
     if (userId && !isApi && !isPublic) {
-        const email = sessionClaims?.email as string | undefined;
+        let email = sessionClaims?.email as string | undefined;
+        if (!email) {
+            try {
+                const client = await clerkClient();
+                const user = await client.users.getUser(userId);
+                email = user.emailAddresses.find(
+                    (e) => e.id === user.primaryEmailAddressId
+                )?.emailAddress;
+            } catch (err) {
+                console.error("Middleware fallback getUser error:", err);
+            }
+        }
+
         if (email) {
             try {
                 const [dbUser] = await db
@@ -107,6 +119,9 @@ export default clerkMiddleware(async (auth, req) => {
             } catch (err) {
                 console.error("Middleware onboarding check error:", err);
             }
+        } else {
+            const signInUrl = new URL('/sign-in', req.url);
+            return NextResponse.redirect(signInUrl);
         }
     }
 });

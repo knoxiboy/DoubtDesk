@@ -7,16 +7,16 @@ import { z } from 'zod';
 
 const onboardingSchema = z.object({
     role: z.enum(['student', 'teacher']),
-    university: z.string().min(1, 'University name is required'),
-    collegeEmail: z.string().email('Invalid college email address'),
-    year: z.string().optional().nullable(),
-    interests: z.string().optional().nullable(),
-    learningGoals: z.string().optional().nullable(),
-    subjects: z.string().optional().nullable(),
-    instituteInfo: z.string().optional().nullable(),
+    university: z.string().trim().min(1, 'University name is required'),
+    collegeEmail: z.string().trim().email('Invalid college email address'),
+    year: z.string().trim().optional().nullable(),
+    interests: z.string().trim().optional().nullable(),
+    learningGoals: z.string().trim().optional().nullable(),
+    subjects: z.string().trim().optional().nullable(),
+    instituteInfo: z.string().trim().optional().nullable(),
 }).refine(data => {
     if (data.role === 'student') {
-        return !!data.year;
+        return !!data.year && data.year.length > 0;
     }
     return true;
 }, {

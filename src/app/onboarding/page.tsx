@@ -15,7 +15,7 @@ export default function OnboardingPage() {
     const [formData, setFormData] = useState({
         university: "",
         year: "1st Year",
-        role: "student" as "student" | "teacher" | "admin",
+        role: "student" as "student" | "teacher",
         collegeEmail: "",
         interests: "",
         learningGoals: "",
@@ -96,37 +96,47 @@ export default function OnboardingPage() {
                 </div>
  
                 {/* Step indicator */}
-                <div className="flex items-center justify-center gap-4 mb-6 text-xs font-black uppercase tracking-widest">
-                    <span className={step === 1 ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-zinc-600"}>1. Account Setup</span>
-                    <span className="w-8 h-[1px] bg-slate-200 dark:bg-zinc-800" />
-                    <span className={step === 2 ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-zinc-600"}>2. Role Details</span>
+                <div role="navigation" aria-label="Onboarding Progress" className="flex items-center justify-center gap-4 mb-6 text-xs font-black uppercase tracking-widest">
+                    <span 
+                        aria-current={step === 1 ? "step" : undefined}
+                        className={step === 1 ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-zinc-600"}
+                    >
+                        1. Account Setup
+                    </span>
+                    <span aria-hidden="true" className="w-8 h-[1px] bg-slate-200 dark:bg-zinc-800" />
+                    <span 
+                        aria-current={step === 2 ? "step" : undefined}
+                        className={step === 2 ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-zinc-600"}
+                    >
+                        2. Role Details
+                    </span>
                 </div>
  
                 <div className="bg-white/50 dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 p-6 md:p-8 rounded-2xl backdrop-blur-xl shadow-xl shadow-slate-200/5 dark:shadow-none space-y-8">
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {step === 1 ? (
                             <>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {['student', 'teacher', 'admin'].map((role) => (
+                                <div className="grid grid-cols-2 gap-3">
+                                    {['student', 'teacher'].map((role) => (
                                         <button
                                             key={role}
                                             type="button"
-                                            onClick={() => setFormData({ ...formData, role: role as 'student' | 'teacher' | 'admin' })}
+                                            onClick={() => setFormData({ ...formData, role: role as 'student' | 'teacher' })}
                                             className={`py-4 rounded-xl border transition-all duration-300 flex flex-col items-center gap-2 font-semibold ${formData.role === role ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" : "bg-slate-50/50 dark:bg-zinc-900/20 border-slate-200 dark:border-zinc-900 text-slate-400 dark:text-zinc-500 hover:bg-slate-100 dark:hover:bg-zinc-900/40"}`}
                                         >
                                             {role === 'student' && <GraduationCap className="w-5 h-5" />}
                                             {role === 'teacher' && <UserCircle className="w-5 h-5" />}
-                                            {role === 'admin' && <ShieldCheck className="w-5 h-5" />}
                                             <span className="text-[10px] uppercase tracking-wider">{role}</span>
                                         </button>
                                     ))}
                                 </div>
  
                                 <div className="space-y-2">
-                                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
+                                    <label htmlFor="university-input" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
                                         <School className="w-4 h-4 text-blue-600 dark:text-blue-400" /> University / College Name
                                     </label>
                                     <input
+                                        id="university-input"
                                         type="text"
                                         required
                                         value={formData.university}
@@ -138,10 +148,11 @@ export default function OnboardingPage() {
  
                                 <div className={`grid grid-cols-1 ${formData.role === 'student' ? 'md:grid-cols-2' : ''} gap-4`}>
                                     <div className="space-y-2">
-                                        <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
+                                        <label htmlFor="email-input" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
                                             <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" /> College Email
                                         </label>
                                         <input
+                                            id="email-input"
                                             type="email"
                                             required
                                             value={formData.collegeEmail}
@@ -153,8 +164,9 @@ export default function OnboardingPage() {
  
                                     {formData.role === 'student' && (
                                         <div className="space-y-2">
-                                            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1">Your Year</label>
+                                            <label htmlFor="year-select" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1">Your Year</label>
                                             <select
+                                                id="year-select"
                                                 value={formData.year}
                                                 onChange={(e) => setFormData({ ...formData, year: e.target.value })}
                                                 className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium appearance-none cursor-pointer"
@@ -183,10 +195,11 @@ export default function OnboardingPage() {
                                 {formData.role === 'student' && (
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
+                                            <label htmlFor="interests-input" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
                                                 <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Subject Interests (Optional)
                                             </label>
                                             <input
+                                                id="interests-input"
                                                 type="text"
                                                 value={formData.interests}
                                                 onChange={(e) => setFormData({ ...formData, interests: e.target.value })}
@@ -195,10 +208,11 @@ export default function OnboardingPage() {
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
+                                            <label htmlFor="learning-goals-textarea" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
                                                 <Target className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Learning Goals (Optional)
                                             </label>
                                             <textarea
+                                                id="learning-goals-textarea"
                                                 value={formData.learningGoals}
                                                 onChange={(e) => setFormData({ ...formData, learningGoals: e.target.value })}
                                                 placeholder="e.g. Master backend engineering, collaborate on open-source, or excel in exams"
@@ -212,10 +226,11 @@ export default function OnboardingPage() {
                                 {formData.role === 'teacher' && (
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
+                                            <label htmlFor="subjects-input" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
                                                 <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Subject Expertise (Optional)
                                             </label>
                                             <input
+                                                id="subjects-input"
                                                 type="text"
                                                 value={formData.subjects}
                                                 onChange={(e) => setFormData({ ...formData, subjects: e.target.value })}
@@ -224,10 +239,11 @@ export default function OnboardingPage() {
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
+                                            <label htmlFor="institute-info-input" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
                                                 <Briefcase className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Department / Institute Details (Optional)
                                             </label>
                                             <input
+                                                id="institute-info-input"
                                                 type="text"
                                                 value={formData.instituteInfo}
                                                 onChange={(e) => setFormData({ ...formData, instituteInfo: e.target.value })}
@@ -235,18 +251,6 @@ export default function OnboardingPage() {
                                                 className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
                                             />
                                         </div>
-                                    </div>
-                                )}
- 
-                                {formData.role === 'admin' && (
-                                    <div className="space-y-4 text-center py-6">
-                                        <ShieldCheck className="w-12 h-12 text-blue-600 dark:text-blue-400 mx-auto animate-bounce" />
-                                        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-zinc-300">
-                                            Administrator Profile Ready
-                                        </h3>
-                                        <p className="text-xs text-slate-400 dark:text-zinc-500 max-w-sm mx-auto">
-                                            No additional role-specific details are required for administrators. You can now finalize your setup.
-                                        </p>
                                     </div>
                                 )}
  
