@@ -505,7 +505,15 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                             <span className="text-green-400 font-semibold">Looks good!</span>
                                         )}
                                         {charCount === 0 && (
-                                            <span className="text-slate-500">Min {minLength} · Max {maxLength} characters</span>
+                                         <span className={`font-medium tabular-nums ${
+                                            charCount > maxLength
+                                                ? "text-red-500 dark:text-red-400"
+                                                : charCount >= maxLength * 0.9
+                                                ? "text-amber-500 dark:text-amber-400"
+                                                : "text-slate-500 dark:text-slate-400"
+                                        }`}>
+                                            {charCount}/{maxLength}
+                                        </span>
                                         )}
                                     </div>
                                     <span className={`text-xs font-semibold ${colorClass}`}>
