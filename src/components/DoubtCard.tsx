@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock, Loader2, Link2, Share2, Copy, Send } from "lucide-react";
+import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock, Loader2, Link2, Share2, Copy, Send, Brain } from "lucide-react";
 import AskDoubt from "./AskDoubt";
 import DoubtRepliesModal from "./DoubtRepliesModal";
+import PracticeModal from "./PracticeModal";
 import { toast } from "sonner";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import type { Doubt, Tag } from "@/types";
@@ -71,6 +72,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
     const [isDeleting, setIsDeleting] = useState(false);
     const [isPinning, setIsPinning] = useState(false);
     const [isBookmarking, setIsBookmarking] = useState(false);
+    const [isPracticeOpen, setIsPracticeOpen] = useState(false);
     const [likes, setLikes] = useState<number>(doubt.likes || 0);
     const searchParams = useSearchParams();
     const lastAutoOpenedThread = useRef<string | null>(null);
@@ -404,21 +406,34 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                             )}
 
                             {doubt.isSolved === "solved" && (
-                                <button
-                                    onClick={() => {
-                                        if (doubt.type === 'ai' && onViewAISolution) {
-                                            onViewAISolution(doubt);
-                                        } else if (onCommentClick) {
-                                            onCommentClick();
-                                        } else if (!disableModal) {
-                                            setIsRepliesOpen(true);
-                                        }
-                                    }}
-                                    className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all shadow-2xl shadow-emerald-500/30 active:scale-95 group/sol whitespace-nowrap"
-                                >
-                                    <CheckCircle className="w-4 h-4 fill-white/20 group-hover/sol:scale-110 transition-transform flex-shrink-0" />
-                                    <span className="text-[11px] font-black uppercase tracking-[0.2em]">View Official Solution</span>
-                                </button>
+                                <>
+                                    <button
+                                        onClick={() => {
+                                            if (doubt.type === 'ai' && onViewAISolution) {
+                                                onViewAISolution(doubt);
+                                            } else if (onCommentClick) {
+                                                onCommentClick();
+                                            } else if (!disableModal) {
+                                                setIsRepliesOpen(true);
+                                            }
+                                        }}
+                                        className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all shadow-2xl shadow-emerald-500/30 active:scale-95 group/sol whitespace-nowrap"
+                                    >
+                                        <CheckCircle className="w-4 h-4 fill-white/20 group-hover/sol:scale-110 transition-transform flex-shrink-0" />
+                                        <span className="text-[11px] font-black uppercase tracking-[0.2em]">View Official Solution</span>
+                                    </button>
+
+                                    {isSignedIn && (
+                                        <button
+                                            onClick={() => setIsPracticeOpen(true)}
+                                            className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-3 bg-gradient-to-r from-blue-600/20 to-purple-600/20 hover:from-blue-600/30 hover:to-purple-600/30 text-blue-400 hover:text-blue-300 rounded-2xl transition-all border border-blue-500/20 hover:border-blue-500/40 active:scale-95 group/prac whitespace-nowrap"
+                                            aria-label="Test your understanding with AI practice"
+                                        >
+                                            <Brain className="w-4 h-4 group-hover/prac:scale-110 transition-transform flex-shrink-0" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest">Test My Understanding</span>
+                                        </button>
+                                    )}
+                                </>
                             )}
                         </div>
 
@@ -480,6 +495,16 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                         onClose={() => setIsRepliesOpen(false)}
                         onReplyChange={onUpdate}
                         isTeacher={isTeacher}
+                    />
+                )}
+
+                {isSignedIn && doubt.isSolved === "solved" && (
+                    <PracticeModal
+                        isOpen={isPracticeOpen}
+                        onClose={() => setIsPracticeOpen(false)}
+                        doubtId={doubt.id}
+                        subject={doubt.subject}
+                        subTopic={doubt.subTopic}
                     />
                 )}
             </div>

@@ -490,3 +490,29 @@ export const confusionAlertsTable = pgTable("confusion_alerts", {
         foreignColumns: [usersTable.email],
     }).onDelete("set null"),
 }));
+
+// ═══════════════════════════════════════════════════════════════════
+//   AI PRACTICE SYSTEM TABLE
+// ═══════════════════════════════════════════════════════════════════
+
+export const practiceAttemptsTable = pgTable("practice_attempts", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userEmail: varchar({ length: 255 }).notNull(),
+    originalDoubtId: integer().notNull(),
+    generatedQuestion: text(),
+    userAnswer: text(),
+    isCorrect: boolean(),
+    aiFeedback: text(),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    userEmailIndex: index("practice_attempts_userEmail_idx").on(table.userEmail),
+    doubtIdIndex: index("practice_attempts_doubtId_idx").on(table.originalDoubtId),
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+    doubtIdFk: foreignKey({
+        columns: [table.originalDoubtId],
+        foreignColumns: [doubtsTable.id],
+    }).onDelete("cascade"),
+}));
