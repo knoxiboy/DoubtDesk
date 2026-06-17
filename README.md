@@ -45,6 +45,7 @@
   - [Code of Conduct](#code-of-conduct)
   - [Security](#security)
   - [License](#license)
+  - [Contributors](#-contributors)
   - [Acknowledgments](#acknowledgments)
 
 ---
