@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
+import ScrollProgressBar from "@/components/ScrollProgressBar";
 import { DM_Sans } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
@@ -120,6 +121,7 @@ export default function RootLayout({
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="doubtdesk-theme">
             <Provider>
               <Header />
+              <ScrollProgressBar />
               <main className="flex-1">
                 {children}
               </main>
