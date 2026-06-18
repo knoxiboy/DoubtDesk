@@ -295,7 +295,6 @@ export default function Home() {
               id="features-grid"
               className="grid gap-6 scroll-mt-20 sm:grid-cols-2 lg:grid-cols-3"
             >
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {features.map((feature, i) => {
                 const Icon = feature.icon;
                 return (
@@ -408,43 +407,7 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Scroll to Top Button - unchanged */}
-      {scrollProgress > 5 && (
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-6 right-6 z-50 w-12 h-12 flex items-center justify-center group active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
-          aria-label="Scroll to top"
-        >
-          <svg
-            className="absolute top-0 left-0 w-12 h-12 -rotate-90"
-            viewBox="0 0 56 56"
-          >
-            <circle
-              cx="28"
-              cy="28"
-              r="24"
-              fill="none"
-              stroke="rgba(94,140,255,0.12)"
-              strokeWidth="4"
-            />
-            <circle
-              cx="28"
-              cy="28"
-              r="24"
-              fill="none"
-              stroke="#5E8CFF"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeDasharray={`${2 * Math.PI * 24}`}
-              strokeDashoffset={`${2 * Math.PI * 24 * (1 - scrollProgress / 100)}`}
-              className="transition-all duration-150"
-            />
-          </svg>
-          <div className="w-8 h-8 rounded-full bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 flex items-center justify-center text-slate-700 dark:text-zinc-300 font-bold text-sm shadow-sm transition-colors group-hover:bg-slate-50 dark:group-hover:bg-zinc-900 group-hover:text-blue-600 dark:group-hover:text-white">
-            &uarr;
-          </div>
-        </button>
-      )}
+
     </div>
   );
 }

@@ -3,10 +3,8 @@ import Groq from "groq-sdk";
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, practiceAttemptsTable } from "@/configs/schema";
 import { eq } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth/membership-guard";
+import { requireAuth, requireMembership } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/error-handler";
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_key" });
 
 export async function POST(
     _req: Request,
@@ -14,6 +12,14 @@ export async function POST(
 ) {
     try {
         const { email } = await requireAuth();
+        const apiKey = process.env.GROQ_API_KEY;
+        if (!apiKey) {
+            return NextResponse.json(
+                { error: "Groq API key is not configured" },
+                { status: 500 }
+            );
+        }
+
         const { id } = await params;
         const doubtId = parseInt(id, 10);
 
@@ -21,7 +27,7 @@ export async function POST(
             return NextResponse.json({ error: "Invalid doubt ID" }, { status: 400 });
         }
 
-        // Fetch the original doubt
+        // Fetch the original doubt along with classroom/type for access control
         const [doubt] = await db
             .select({
                 content: doubtsTable.content,
@@ -29,6 +35,9 @@ export async function POST(
                 subTopic: doubtsTable.subTopic,
                 isSolved: doubtsTable.isSolved,
                 solvedReplyId: doubtsTable.solvedReplyId,
+                classroomId: doubtsTable.classroomId,
+                type: doubtsTable.type,
+                userEmail: doubtsTable.userEmail,
             })
             .from(doubtsTable)
             .where(eq(doubtsTable.id, doubtId))
@@ -36,6 +45,19 @@ export async function POST(
 
         if (!doubt) {
             return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
+
+        // Classroom membership and teacher visibility guards
+        if (doubt.classroomId) {
+            const membership = await requireMembership(email, doubt.classroomId);
+
+            if (doubt.type === "teacher") {
+                const isTeacher = ["teacher", "owner", "admin"].includes(membership.role.toLowerCase());
+                const isAuthor = doubt.userEmail === email;
+                if (!isTeacher && !isAuthor) {
+                    return NextResponse.json({ error: "Access denied to this doubt" }, { status: 403 });
+                }
+            }
         }
 
         if (doubt.isSolved !== "solved") {
@@ -81,16 +103,22 @@ ${solutionContent ? `Solution provided: ${solutionContent.slice(0, 1500)}` : ""}
 
 Generate a conceptually similar but distinct practice problem.`;
 
-        const completion = await groq.chat.completions.create({
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userPrompt },
-            ],
-            model: "llama-3.3-70b-versatile",
-            temperature: 0.7,
-            max_tokens: 600,
-            response_format: { type: "json_object" },
-        });
+        const groq = new Groq({ apiKey });
+        const completion = await groq.chat.completions.create(
+            {
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt },
+                ],
+                model: "llama-3.3-70b-versatile",
+                temperature: 0.7,
+                max_tokens: 600,
+                response_format: { type: "json_object" },
+            },
+            {
+                timeout: 15000, // 15 seconds timeout
+            }
+        );
 
         const rawResponse = completion.choices[0]?.message?.content || "{}";
 
@@ -104,11 +132,22 @@ Generate a conceptually similar but distinct practice problem.`;
             );
         }
 
-        if (!parsed.question) {
+        if (!parsed || typeof parsed.question !== "string" || !parsed.question.trim()) {
             return NextResponse.json(
                 { error: "AI did not generate a valid question. Please retry." },
                 { status: 502 }
             );
+        }
+
+        // Ensure hint and topic are string types if present
+        let parsedHint: string | null = null;
+        if (parsed.hint !== undefined && parsed.hint !== null) {
+            parsedHint = typeof parsed.hint === "string" ? parsed.hint : JSON.stringify(parsed.hint);
+        }
+
+        let parsedTopic: string = doubt.subTopic || doubt.subject;
+        if (parsed.topic !== undefined && parsed.topic !== null) {
+            parsedTopic = typeof parsed.topic === "string" ? parsed.topic : JSON.stringify(parsed.topic);
         }
 
         // Store the generated question in the database
@@ -124,8 +163,8 @@ Generate a conceptually similar but distinct practice problem.`;
         return NextResponse.json({
             attemptId: attempt.id,
             question: parsed.question,
-            hint: parsed.hint || null,
-            topic: parsed.topic || doubt.subTopic || doubt.subject,
+            hint: parsedHint,
+            topic: parsedTopic,
         });
     } catch (error) {
         const { status, body } = buildErrorResponse(error);

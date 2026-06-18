@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS "practice_attempts" (
     "id" integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     "user_email" varchar(255) NOT NULL,
     "original_doubt_id" integer NOT NULL,
-    "generated_question" text,
+    "generated_question" text NOT NULL,
     "user_answer" text,
     "is_correct" boolean,
     "ai_feedback" text,

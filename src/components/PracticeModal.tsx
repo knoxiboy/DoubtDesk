@@ -132,10 +132,24 @@ export default function PracticeModal({
                 return;
             }
 
-            setGradeResult(data);
+            // Coerce/validate response shape to avoid runtime crashes (e.g. if fields from LLM differ)
+            const coercedData: GradeResult = {
+                isCorrect: typeof data.isCorrect === "boolean" ? data.isCorrect : false,
+                score: typeof data.score === "number" ? data.score : 0,
+                feedback: typeof data.feedback === "string" ? data.feedback : "No feedback available.",
+                strengths: Array.isArray(data.strengths)
+                    ? data.strengths
+                    : (typeof data.strengths === "string" && data.strengths.trim() ? [data.strengths] : []),
+                improvements: Array.isArray(data.improvements)
+                    ? data.improvements
+                    : (typeof data.improvements === "string" && data.improvements.trim() ? [data.improvements] : []),
+                correctApproach: typeof data.correctApproach === "string" ? data.correctApproach : null,
+            };
+
+            setGradeResult(coercedData);
             setPhase("graded");
 
-            if (data.isCorrect) {
+            if (coercedData.isCorrect) {
                 toast.success("🎉 Spot on! You've mastered this concept!");
             } else {
                 toast("💡 Almost there, review the feedback.", { icon: "📝" });
@@ -254,6 +268,8 @@ export default function PracticeModal({
                             {hint && (
                                 <button
                                     onClick={() => setShowHint(!showHint)}
+                                    aria-expanded={showHint}
+                                    aria-controls="practice-hint"
                                     className="flex items-center gap-2 text-xs text-yellow-400/80 hover:text-yellow-400 transition-colors group"
                                 >
                                     <Lightbulb className="w-3.5 h-3.5" />
@@ -269,7 +285,10 @@ export default function PracticeModal({
                             )}
 
                             {showHint && hint && (
-                                <div className="bg-yellow-500/5 border border-yellow-500/15 rounded-xl px-4 py-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div
+                                    id="practice-hint"
+                                    className="bg-yellow-500/5 border border-yellow-500/15 rounded-xl px-4 py-3 animate-in fade-in slide-in-from-top-2 duration-300"
+                                >
                                     <p className="text-yellow-300/90 text-xs leading-relaxed">
                                         💡 {hint}
                                     </p>
@@ -278,10 +297,14 @@ export default function PracticeModal({
 
                             {/* Answer textarea */}
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                <label
+                                    htmlFor="practice-answer-input"
+                                    className="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                                >
                                     Your Answer
                                 </label>
                                 <Textarea
+                                    id="practice-answer-input"
                                     value={answer}
                                     onChange={(e) => setAnswer(e.target.value)}
                                     placeholder="Write your step-by-step solution here..."
@@ -436,6 +459,8 @@ export default function PracticeModal({
                                         onClick={() =>
                                             setShowCorrectApproach(!showCorrectApproach)
                                         }
+                                        aria-expanded={showCorrectApproach}
+                                        aria-controls="practice-correct-approach"
                                         className="flex items-center gap-2 text-xs text-blue-400/80 hover:text-blue-400 transition-colors"
                                     >
                                         <Lightbulb className="w-3.5 h-3.5" />
@@ -452,7 +477,10 @@ export default function PracticeModal({
                                     </button>
 
                                     {showCorrectApproach && (
-                                        <div className="bg-blue-500/5 border border-blue-500/15 rounded-xl p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <div
+                                            id="practice-correct-approach"
+                                            className="bg-blue-500/5 border border-blue-500/15 rounded-xl p-4 animate-in fade-in slide-in-from-top-2 duration-300"
+                                        >
                                             <div className="text-slate-300 text-sm leading-relaxed">
                                                 <MarkdownRenderer
                                                     content={gradeResult.correctApproach}

@@ -423,7 +423,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                         <span className="text-[11px] font-black uppercase tracking-[0.2em]">View Official Solution</span>
                                     </button>
 
-                                    {isSignedIn && (
+                                    {isSignedIn && !disableModal && (
                                         <button
                                             onClick={() => setIsPracticeOpen(true)}
                                             className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-6 py-3 bg-gradient-to-r from-blue-600/20 to-purple-600/20 hover:from-blue-600/30 hover:to-purple-600/30 text-blue-400 hover:text-blue-300 rounded-2xl transition-all border border-blue-500/20 hover:border-blue-500/40 active:scale-95 group/prac whitespace-nowrap"
@@ -498,7 +498,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                     />
                 )}
 
-                {isSignedIn && doubt.isSolved === "solved" && (
+                {isSignedIn && !disableModal && doubt.isSolved === "solved" && (
                     <PracticeModal
                         isOpen={isPracticeOpen}
                         onClose={() => setIsPracticeOpen(false)}

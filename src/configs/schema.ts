@@ -497,13 +497,13 @@ export const confusionAlertsTable = pgTable("confusion_alerts", {
 
 export const practiceAttemptsTable = pgTable("practice_attempts", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userEmail: varchar({ length: 255 }).notNull(),
-    originalDoubtId: integer().notNull(),
-    generatedQuestion: text(),
-    userAnswer: text(),
-    isCorrect: boolean(),
-    aiFeedback: text(),
-    createdAt: timestamp().defaultNow().notNull(),
+    userEmail: varchar("user_email", { length: 255 }).notNull(),
+    originalDoubtId: integer("original_doubt_id").notNull(),
+    generatedQuestion: text("generated_question").notNull(),
+    userAnswer: text("user_answer"),
+    isCorrect: boolean("is_correct"),
+    aiFeedback: text("ai_feedback"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
     userEmailIndex: index("practice_attempts_userEmail_idx").on(table.userEmail),
     doubtIdIndex: index("practice_attempts_doubtId_idx").on(table.originalDoubtId),

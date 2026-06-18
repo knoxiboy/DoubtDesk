@@ -2,11 +2,9 @@ import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { db } from "@/configs/db";
 import { practiceAttemptsTable } from "@/configs/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/error-handler";
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_key" });
 
 export async function POST(
     req: Request,
@@ -14,6 +12,14 @@ export async function POST(
 ) {
     try {
         const { email } = await requireAuth();
+        const apiKey = process.env.GROQ_API_KEY;
+        if (!apiKey) {
+            return NextResponse.json(
+                { error: "Groq API key is not configured" },
+                { status: 500 }
+            );
+        }
+
         const { id } = await params;
         const doubtId = parseInt(id, 10);
 
@@ -83,16 +89,22 @@ Student's Answer: ${answer.trim().slice(0, 3000)}
 
 Evaluate this answer for correctness and understanding.`;
 
-        const completion = await groq.chat.completions.create({
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: userPrompt },
-            ],
-            model: "llama-3.3-70b-versatile",
-            temperature: 0.3,
-            max_tokens: 800,
-            response_format: { type: "json_object" },
-        });
+        const groq = new Groq({ apiKey });
+        const completion = await groq.chat.completions.create(
+            {
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userPrompt },
+                ],
+                model: "llama-3.3-70b-versatile",
+                temperature: 0.3,
+                max_tokens: 800,
+                response_format: { type: "json_object" },
+            },
+            {
+                timeout: 15000, // 15 seconds timeout
+            }
+        );
 
         const rawResponse = completion.choices[0]?.message?.content || "{}";
 
@@ -106,25 +118,45 @@ Evaluate this answer for correctness and understanding.`;
             );
         }
 
-        const isCorrect = !!parsed.isCorrect;
+        // Strictly validate and parse isCorrect boolean
+        let isCorrect = false;
+        if (typeof parsed.isCorrect === "boolean") {
+            isCorrect = parsed.isCorrect;
+        } else if (typeof parsed.isCorrect === "string") {
+            isCorrect = parsed.isCorrect.toLowerCase() === "true";
+        }
 
-        // Update the practice attempt with the answer and grading result
-        await db
+        // Update the practice attempt atomically using the isNull condition to prevent double-grading
+        const [updatedAttempt] = await db
             .update(practiceAttemptsTable)
             .set({
                 userAnswer: answer.trim(),
                 isCorrect,
                 aiFeedback: JSON.stringify(parsed),
             })
-            .where(eq(practiceAttemptsTable.id, attemptId));
+            .where(
+                and(
+                    eq(practiceAttemptsTable.id, attemptId),
+                    eq(practiceAttemptsTable.userEmail, email),
+                    isNull(practiceAttemptsTable.isCorrect)
+                )
+            )
+            .returning();
+
+        if (!updatedAttempt) {
+            return NextResponse.json(
+                { error: "This attempt has already been graded or modified by another request." },
+                { status: 400 }
+            );
+        }
 
         return NextResponse.json({
             isCorrect,
-            score: parsed.score ?? (isCorrect ? 100 : 0),
-            feedback: parsed.feedback || "No feedback available.",
-            strengths: parsed.strengths || [],
-            improvements: parsed.improvements || [],
-            correctApproach: parsed.correctApproach || null,
+            score: typeof parsed.score === "number" ? parsed.score : (isCorrect ? 100 : 0),
+            feedback: typeof parsed.feedback === "string" ? parsed.feedback : "No feedback available.",
+            strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+            improvements: Array.isArray(parsed.improvements) ? parsed.improvements : [],
+            correctApproach: typeof parsed.correctApproach === "string" ? parsed.correctApproach : null,
         });
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
