@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useClerk } from "@clerk/nextjs";
 
 export default function SessionTracker() {
@@ -11,21 +11,44 @@ export default function SessionTracker() {
     // Dedicated logout broadcast key
     const LOGOUT_EVENT_KEY = "mentorix_logout";
 
+    // In-flight logout flag
+    const logoutInProgressRef = useRef(false);
+
     // Clears session activity data
     const clearSessionState = () => {
         localStorage.removeItem(STORAGE_KEY);
     };
 
-    // Publishes a cross-tab logout event and signs out the current tab
-    const broadcastLogout = async () => {
-        clearSessionState();
-        localStorage.setItem(LOGOUT_EVENT_KEY, Date.now().toString());
+    // Helper function to perform logout safely
+    const performLogout = async () => {
+        if (logoutInProgressRef.current) {
+            return false;
+        }
+
+        logoutInProgressRef.current = true;
+
         try {
             await signOut();
+            clearSessionState();
+            return true;
         } 
         catch (error) {
-            console.error("[SessionTracker] Failed to signout after broadcasting logout.", error);
+            console.error("[SessionTracker] Failed to sign out.", error);
+            logoutInProgressRef.current = false;
+            return false;
         }
+    };
+
+    // Publishes a cross-tab logout event and signs out the current tab
+    const broadcastLogout = async () => {
+
+        const didLogout = await performLogout();
+
+        if (!didLogout) {
+            return;
+        }
+
+        localStorage.setItem(LOGOUT_EVENT_KEY, Date.now().toString());
     };
 
     useEffect(() => {
@@ -63,13 +86,7 @@ export default function SessionTracker() {
                 return;
             }
 
-            clearSessionState();
-            try {
-                await signOut();
-            } 
-            catch (error) {
-                console.error("[SessionTracker] Failed to signout after receiving logout broadcast.", error);
-            }
+            await performLogout();
         };
 
         document.addEventListener("visibilitychange", handleVisibilityChange);
