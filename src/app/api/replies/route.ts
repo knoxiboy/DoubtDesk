@@ -11,14 +11,31 @@ import { createReplySchema } from "@/lib/validations/reply";
 import { DOUBT_STATUS } from "@/lib/doubtStatus";
 import { createReplyNotification } from "@/lib/notifications/service";
 import { canTeach } from "@/lib/auth/membership-guard";
+import { sanitizeReplies, sanitizeReply } from "@/lib/sanitize-response";
 
-export async function GET(req: Request) {
+// GET handler - no params needed since this is a static route
+export async function GET(
+    req: Request
+) {
     try {
+        const { searchParams } = new URL(req.url);
+        const doubtIdStr = searchParams.get("doubtId");
+        
+        if (!doubtIdStr) {
+            return errorResponse("Doubt ID required", 400);
+        }
+        
+        const doubtId = parseInt(doubtIdStr, 10);
+
+        if (isNaN(doubtId)) {
+            return errorResponse("Invalid doubt ID", 400);
+        }
+
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
-        const authenticatedUserId = user?.id;
+        const userId = user?.id ?? null;
 
-        // 0. Check if user is blocked
+        // Check if user is blocked
         if (email) {
             const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
             if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
@@ -29,15 +46,6 @@ export async function GET(req: Request) {
                 );
             }
         }
-
-        const { searchParams } = new URL(req.url);
-        const doubtIdStr = searchParams.get("doubtId");
-
-
-        if (!doubtIdStr) {
-            return errorResponse("Doubt ID required", 400);
-        }
-        const doubtId = parseInt(doubtIdStr);
 
         // Security: Verify doubt visibility
         const [doubt] = await db.select().from(doubtsTable).where(
@@ -93,26 +101,36 @@ export async function GET(req: Request) {
             }));
         }
 
-        return NextResponse.json(repliesWithVotes);
+        const safeReplies = sanitizeReplies(repliesWithVotes, userId);
+
+        return NextResponse.json(safeReplies);
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });
     }
 }
 
-export async function POST(req: Request) {
+// POST handler - no params needed since this is a static route
+export async function POST(
+    req: Request
+) {
     try {
         const { errorResponse: validationResponse, data } = await parseAndValidateRequest(req, createReplySchema);
         if (validationResponse) return validationResponse;
 
         const { doubtId, type, content, imageUrl } = data;
 
+        if (!doubtId || isNaN(doubtId)) {
+            return errorResponse("Invalid doubt ID", 400);
+        }
+
         const user = await currentUser();
         if (!user) return errorResponse("Unauthorized", 401);
         const email = user.primaryEmailAddress?.emailAddress;
         if (!email) return errorResponse("Email required", 400);
+        const userId = user?.id ?? null;
 
-        // 0. Check if user is blocked
+        // Check if user is blocked
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
         if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
             const unlockDate = new Date(dbUser.blockedUntil).toDateString();
@@ -122,7 +140,7 @@ export async function POST(req: Request) {
             );
         }
 
-        // 1. AI Moderation Check
+        // AI Moderation Check
         if (content) {
             const moderation = await moderateContent(content);
             const violationError = await handleModerationViolation(email, content, moderation);
@@ -205,11 +223,6 @@ export async function POST(req: Request) {
         });
 
         // Auto-transition: unsolved -> in-progress on first reply.
-        // Design notes:
-        //  - Any reply type qualifies (issue 183 says "when the first reply is posted").
-        //  - We never downgrade `solved` -> `in-progress`; the WHERE guard (`isSolved = 'unsolved'`) makes this idempotent and race condition-safe when two replies land near-simultaneously.
-        //  - AI-typed doubts are excluded because they follow a separate teacher-verification flow (see app/api/doubts/action/[id]/route.ts).
-        //  - This update is best-effort; a failure here must not fail the reply creation, so we swallow errors and log.
         if (doubt && doubt.type !== "ai") {
             try {
                 await db
@@ -245,9 +258,7 @@ export async function POST(req: Request) {
             console.error("Failed to trigger Inngest event for reply (safely caught):", inngestErr);
         }
 
-        // 🚀 ZERO-SETUP DEV FALLBACK:
-        // If running in local development, run the email simulation logger synchronously 
-        // to give immediate feedback on the console.
+        // ZERO-SETUP DEV FALLBACK
         if (process.env.NODE_ENV === "development") {
             try {
                 const [d] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
@@ -264,7 +275,6 @@ export async function POST(req: Request) {
                             
                             if (limitResult.success) {
                                 const { sendReplyNotificationEmail } = await import("@/lib/email");
-                                // Run non-blocking in background
                                 sendReplyNotificationEmail({
                                     toEmail: d.userEmail,
                                     doubtId: d.id,
@@ -277,7 +287,6 @@ export async function POST(req: Request) {
                                 console.log(`[RATE LIMIT EXCEEDED] Immediate dev notification skipped for doubt ${doubtId} to prevent spam.`);
                             }
                         } else if (preference === "daily" || preference === "weekly") {
-                            // Queue pending notification in dev database directly for digest testing
                             const { pendingNotificationsTable } = await import("@/configs/schema");
                             await db.insert(pendingNotificationsTable).values({
                                 userEmail: d.userEmail,
@@ -293,7 +302,9 @@ export async function POST(req: Request) {
             }
         }
 
-        return NextResponse.json(newReply[0]);
+        const safeReply = sanitizeReply(newReply[0], userId);
+
+        return NextResponse.json(safeReply);
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });

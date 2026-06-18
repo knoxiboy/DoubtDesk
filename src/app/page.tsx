@@ -42,6 +42,7 @@ const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 
 export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
 
 
   useEffect(() => {
@@ -56,6 +57,19 @@ export default function Home() {
     scrollFromHash();
     window.addEventListener("hashchange", scrollFromHash);
     return () => window.removeEventListener("hashchange", scrollFromHash);
+  }, []);
+
+  // Track scroll progress for the scroll-to-top button
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = maxScroll > 0 ? (scrollY / maxScroll) * 100 : 0;
+      setScrollProgress(progress);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const { signOut } = useClerk();
@@ -267,7 +281,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ... rest of your sections unchanged ... */}
         {/* Features Section */}
         <section
           id="features"
@@ -291,10 +304,6 @@ export default function Home() {
               </p>
             </div>
 
-            <div
-              id="features-grid"
-              className="grid gap-6 scroll-mt-20 sm:grid-cols-2 lg:grid-cols-3"
-            >
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {features.map((feature, i) => {
                 const Icon = feature.icon;
@@ -321,7 +330,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* How It Works, Testimonials, etc. remain unchanged */}
+        
         {/* How It Works Section */}
         <section
           id="how-it-works"
@@ -408,7 +417,7 @@ export default function Home() {
         </section>
       </main>
 
-      {/* Scroll to Top Button - unchanged */}
+      {/* Scroll to Top Button */}
       {scrollProgress > 5 && (
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
