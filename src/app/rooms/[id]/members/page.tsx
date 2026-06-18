@@ -6,7 +6,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
 type Member = {
-    userEmail: string;
+    userEmail?: string;
+    displayName?: string;
     role: string;
     joinedAt: string;
 };
@@ -65,10 +66,12 @@ export default function MembersListView() {
                 ) : (
                     members.map((member) => (
                         <div
-                            key={`${member.userEmail}-${id}`}
+                            key={`${member.userEmail || member.displayName}-${id}`}
                             className="p-4 border border-slate-200 dark:border-zinc-800 rounded-xl"
                         >
-                            <p className="font-medium text-slate-900 dark:text-zinc-100">{member.userEmail}</p>
+                            <p className="font-medium text-slate-900 dark:text-zinc-100">
+                                {member.userEmail || member.displayName}
+                            </p>
                             <p className="text-sm text-slate-500 dark:text-zinc-400">Role: {member.role}</p>
                         </div>
                     ))

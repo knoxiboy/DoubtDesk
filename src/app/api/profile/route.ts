@@ -63,6 +63,10 @@ export async function GET(req: Request) {
             notificationPreference: dbUser?.notificationPreference || "instant",
             imageUrl: clerkUser?.imageUrl || undefined,
             joinDate: joinDate,
+            interests: dbUser?.interests || undefined,
+            learningGoals: dbUser?.learningGoals || undefined,
+            subjects: dbUser?.subjects || undefined,
+            instituteInfo: dbUser?.instituteInfo || undefined,
         };
 
         return NextResponse.json({
