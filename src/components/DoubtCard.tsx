@@ -338,34 +338,42 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                 {!doubt.isPendingSync && (
                     <div className="mt-auto pt-6 border-t border-slate-200 dark:border-white/5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
                         <div className="flex flex-wrap items-center gap-2.5 flex-1">
-                            <button
-                                onClick={() => handleAction("like")}
-                                disabled={isLiking}
-                                aria-label={doubt.hasLiked ? ARIA_LABELS.UNLIKE_DOUBT : ARIA_LABELS.LIKE_DOUBT}
-                                aria-busy={isLiking}
-                                className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-6 py-3 rounded-2xl transition-all group/btn ${ doubt.hasLiked ? "bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-lg shadow-blue-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
-                            >
-                                <ThumbsUp className={`w-4 h-4 ${isLiking ? 'animate-pulse' : 'group-hover/btn:scale-110 transition-transform'} ${doubt.hasLiked ? 'fill-blue-400' : ''}`} />
-                                <span className="text-xs font-black">{likes}</span>
-                            </button>
+                            {/* Like Button with Tooltip */}
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        onClick={() => handleAction("like")}
+                                        disabled={isLiking}
+                                        aria-label={doubt.hasLiked ? ARIA_LABELS.UNLIKE_DOUBT : ARIA_LABELS.LIKE_DOUBT}
+                                        aria-busy={isLiking}
+                                        className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-6 py-3 rounded-2xl transition-all group/btn ${ doubt.hasLiked ? "bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-lg shadow-blue-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
+                                    >
+                                        <ThumbsUp className={`w-4 h-4 ${isLiking ? 'animate-pulse' : 'group-hover/btn:scale-110 transition-transform'} ${doubt.hasLiked ? 'fill-blue-400' : ''}`} />
+                                        <span className="text-xs font-black">{likes}</span>
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent>{doubt.hasLiked ? "Unlike this doubt" : "Like this doubt"}</TooltipContent>
+                            </Tooltip>
 
+                            {/* Bookmark Button with Tooltip */}
                             {isSignedIn && (
                                 <Tooltip>
-                                <TooltipTrigger asChild>
-                                <button
-                                    onClick={handleBookmark}
-                                    disabled={isBookmarking}
-                                    aria-label={doubt.hasBookmarked ? ARIA_LABELS.REMOVE_BOOKMARK : ARIA_LABELS.BOOKMARK_DOUBT}
-                                    aria-busy={isBookmarking}
-                                    className={`flex items-center justify-center p-3 rounded-2xl transition-all ${ doubt.hasBookmarked ? "bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-lg shadow-purple-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
-                                >
-                                    <Bookmark className={`w-4 h-4 ${isBookmarking ? 'animate-pulse' : ''} ${doubt.hasBookmarked ? 'fill-purple-400' : ''}`} />
-                                </button>
-                                </TooltipTrigger>
-                                <TooltipContent>{doubt.hasBookmarked ? ARIA_LABELS.REMOVE_BOOKMARK : ARIA_LABELS.BOOKMARK_DOUBT}</TooltipContent>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={handleBookmark}
+                                            disabled={isBookmarking}
+                                            aria-label={doubt.hasBookmarked ? ARIA_LABELS.REMOVE_BOOKMARK : ARIA_LABELS.BOOKMARK_DOUBT}
+                                            aria-busy={isBookmarking}
+                                            className={`flex items-center justify-center p-3 rounded-2xl transition-all ${ doubt.hasBookmarked ? "bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-lg shadow-purple-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
+                                        >
+                                            <Bookmark className={`w-4 h-4 ${isBookmarking ? 'animate-pulse' : ''} ${doubt.hasBookmarked ? 'fill-purple-400' : ''}`} />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>{doubt.hasBookmarked ? ARIA_LABELS.REMOVE_BOOKMARK : ARIA_LABELS.BOOKMARK_DOUBT}</TooltipContent>
                                 </Tooltip>
                             )}
 
+                            {/* Share Dropdown */}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <button
@@ -425,22 +433,34 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                         <div className="flex items-center gap-2.5">
                             {(isOwner || isTeacher) && (
                                 <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5 flex-1 sm:flex-none justify-center">
+                                    {/* Edit Button with Tooltip */}
                                     {isOwner && (
-                                        <button
-                                            onClick={() => setIsEditModalOpen(true)}
-                                            className="flex-1 sm:flex-none p-3 rounded-xl hover:bg-blue-600/20 text-slate-500 dark:text-slate-500 hover:text-blue-400 transition-all group/edit"
-                                            aria-label="Edit doubt"
-                                        >
-                                            <Edit2 className="w-4 h-4 group-hover/edit:scale-110 transition-transform" />
-                                        </button>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <button
+                                                    onClick={() => setIsEditModalOpen(true)}
+                                                    className="flex-1 sm:flex-none p-3 rounded-xl hover:bg-blue-600/20 text-slate-500 dark:text-slate-500 hover:text-blue-400 transition-all group/edit"
+                                                    aria-label="Edit doubt"
+                                                >
+                                                    <Edit2 className="w-4 h-4 group-hover/edit:scale-110 transition-transform" />
+                                                </button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Edit doubt</TooltipContent>
+                                        </Tooltip>
                                     )}
-                                    <button
-                                        onClick={() => setIsDeleteDialogOpen(true)}
-                                        className="flex-1 sm:flex-none p-3 rounded-xl hover:bg-red-500/20 text-slate-500 dark:text-slate-500 hover:text-red-400 transition-all group/trash"
-                                        aria-label="Delete doubt"
-                                    >
-                                        <Trash2 className="w-4 h-4 group-hover/trash:scale-110 transition-transform" />
-                                    </button>
+                                    {/* Delete Button with Tooltip */}
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <button
+                                                onClick={() => setIsDeleteDialogOpen(true)}
+                                                className="flex-1 sm:flex-none p-3 rounded-xl hover:bg-red-500/20 text-slate-500 dark:text-slate-500 hover:text-red-400 transition-all group/trash"
+                                                aria-label="Delete doubt"
+                                            >
+                                                <Trash2 className="w-4 h-4 group-hover/trash:scale-110 transition-transform" />
+                                            </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Delete doubt</TooltipContent>
+                                    </Tooltip>
                                 </div>
                             )}
                             <button
