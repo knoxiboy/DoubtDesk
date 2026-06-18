@@ -59,6 +59,10 @@ export interface ProfileUser {
     joinDate: string;
     emailNotificationsEnabled?: boolean;
     notificationPreference?: "instant" | "daily" | "weekly" | "none";
+    interests?: string | null;
+    learningGoals?: string | null;
+    subjects?: string | null;
+    instituteInfo?: string | null;
     createdAt: string;
 }
 

@@ -12,6 +12,10 @@ export type AppUser = {
     collegeEmail?: string;
     role?: string;
     onboarded?: boolean;
+    interests?: string;
+    learningGoals?: string;
+    subjects?: string;
+    instituteInfo?: string;
 };
 
 type UserContextType = {

@@ -75,7 +75,7 @@ export async function GET(
                 .from(likesTable)
                 .where(
                     and(
-                        eq(likesTable.userName, userLikesCheck),
+                        eq(likesTable.userEmail, userLikesCheck),
                         eq(likesTable.doubtId, doubtId)
                     )
                 )
