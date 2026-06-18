@@ -34,8 +34,9 @@ import ShapeGrid from "@/components/ShapeGrid";
 import { Inter, Staatliches } from "next/font/google";
 import LiveCampusThreadPanel from "@/components/LiveCampusThreadPanel";
 import { scrollToSection } from "@/lib/scroll-to-section";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
-
+import TestimonialsMarquee from "@/components/TestimonialsMarquee"; //Testimonials marquee
 
 const inter = Inter({ subsets: ["latin"] });
 const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
@@ -43,14 +44,11 @@ const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });
 export default function Home() {
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
 
-
   useEffect(() => {
     const scrollFromHash = () => {
       const hash = window.location.hash.slice(1);
       if (!hash) return;
-      requestAnimationFrame(() =>
-        scrollToSection(hash, { updateHash: false })
-      );
+      requestAnimationFrame(() => scrollToSection(hash, { updateHash: false }));
     };
 
     scrollFromHash();
@@ -123,27 +121,69 @@ export default function Home() {
 
   const testimonials = [
     {
+      id: "1",
       name: "Aarav Sharma",
       role: "B.Tech Student",
-      text: "DoubtDesk made it so easy to clear my doubts during exam prep. The AI explanations are super clear.",
+      institution: "DTU",
+      avatarUrl: "/avatars/arav.png",
+      quote:
+        "DoubtDesk helped me resolve doubts 3x faster during exams. The AI explanations are incredibly clear.",
+      rating: 5,
     },
     {
+      id: "2",
       name: "Neha Verma",
       role: "CS Student",
-      text: "No more messy WhatsApp groups. Everything is structured and easy to follow.",
+      institution: "Punjab University",
+      avatarUrl: "/avatars/neha.png",
+      quote:
+        "Everything is organized in one place. No more scrolling through endless chat groups.",
+      rating: 5,
     },
     {
+      id: "3",
       name: "Rohit Mehta",
       role: "Teaching Assistant",
-      text: "Analytics help me understand where students struggle the most.",
+      institution: "NIT Jalandhar",
+      avatarUrl: "/avatars/rohit.png",
+      quote:
+        "Analytics help me quickly identify where students struggle the most.",
+      rating: 5,
+    },
+    {
+      id: "4",
+      name: "Priya Singh",
+      role: "MBA Student",
+      institution: "IIM Indore",
+      avatarUrl: "/avatars/priya.png",
+      quote:
+        "My exam preparation became much more efficient after switching to DoubtDesk.",
+      rating: 5,
+    },
+    {
+      id: "5",
+      name: "Karan Gupta",
+      role: "Engineering Student",
+      institution: "PEC Chandigarh",
+      avatarUrl: "/avatars/karan.png",
+      quote:
+        "Instant answers saved hours of searching through notes and forums.",
+      rating: 5,
+    },
+    {
+      id: "6",
+      name: "Ananya Kapoor",
+      role: "Professor",
+      institution: "Chitkara University",
+      avatarUrl: "/avatars/ananya.png",
+      quote: "Managing classroom discussions has become significantly easier.",
+      rating: 5,
     },
   ];
 
   const handleSignOut = async () => {
     await signOut({ redirectUrl: "/" });
   };
-
-
 
   return (
     <div
@@ -174,8 +214,6 @@ export default function Home() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-
 
       {/* Hero Section */}
       <main className="flex-1 relative overflow-hidden scroll-smooth">
@@ -267,7 +305,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ... rest of your sections unchanged ... */}
         {/* Features Section */}
         <section
           id="features"
@@ -302,9 +339,9 @@ export default function Home() {
                     key={feature.slug}
                     id={`feature-${feature.slug}`}
                     style={{ animationDelay: `${i * 100}ms` }}
-                    className="group relative scroll-mt-20 overflow-hidden rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 p-6 shadow-sm shadow-slate-200/50 dark:shadow-none backdrop-blur-md transition-all duration-500 hover:-translate-y-2 hover:border-blue-400 dark:hover:border-zinc-700 hover:shadow-xl hover:shadow-blue-500/5 dark:hover:bg-zinc-900/70 animate-in fade-in slide-in-from-bottom-6 fill-mode-both flex flex-col items-center text-center"
+                    className="group relative scroll-mt-20 overflow-hidden rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 p-6 shadow-sm shadow-slate-200/60 dark:shadow-none hover:shadow-lg dark:hover:shadow-lg dark:hover:shadow-blue-500/10 hover:border-blue-300/60 dark:hover:border-blue-500/40 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
                   >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 shadow-inner transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white dark:group-hover:bg-blue-500 group-hover:rotate-6">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 shadow-inner transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-blue-500/20">
                       <Icon className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
                     </div>
                     <h4 className="mt-5 text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight transition-colors duration-300">
@@ -390,7 +427,7 @@ export default function Home() {
                   className="p-6 rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 backdrop-blur-md hover:border-blue-400 dark:hover:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-900/60 transition-all duration-500 flex flex-col justify-between shadow-sm dark:shadow-none hover:shadow-xl hover:-translate-y-1 animate-in fade-in slide-in-from-bottom-6 fill-mode-both"
                 >
                   <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed italic transition-colors duration-300">
-                    “{t.text}”
+                    “{t.quote}”
                   </p>
                   <div className="mt-6 pt-4 border-t border-slate-100 dark:border-zinc-800/60 flex flex-col">
                     <div className="text-slate-950 dark:text-slate-100 font-bold tracking-tight transition-colors duration-300">
@@ -407,7 +444,7 @@ export default function Home() {
         </section>
       </main>
 
-
+      <ScrollToTopButton />
     </div>
   );
 }

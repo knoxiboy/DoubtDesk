@@ -2,7 +2,7 @@ import React from "react";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { db } from "@/configs/db"; 
-import * as schema from "@/configs/schema";
+import { usersTable, doubtsTable, repliesTable, membershipsTable } from "@/configs/schema";
 import { eq, count } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -50,32 +50,25 @@ export default async function ProfilePage() {
   let dbUser: DbUser | null = null;
   let databaseErrorOccurred = false;
 
-  // 3. Defensive Drizzle Queries checking for schema table names safely
+  // 3. Database Queries using direct table imports
   try {
-    const targetUserTable = schema.usersTable || (schema as any).users;
-    const targetDoubtsTable = schema.doubtsTable || (schema as any).doubts;
-    const targetRepliesTable = schema.repliesTable || (schema as any).replies;
-    const targetMembershipsTable = schema.membershipsTable || (schema as any).memberships;
+    const userResult = await db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.email, userEmail))
+      .limit(1);
 
-    if (targetUserTable) {
-      const userResult = await db
-        .select()
-        .from(targetUserTable)
-        .where(eq(targetUserTable.email, userEmail))
-        .limit(1);
-
-      if (userResult.length > 0) {
-        dbUser = userResult[0];
-        // Enforce the correct karmaScore parameter mapping to clear the database validation flag
-        karmaScore = dbUser.karmaScore || 0;
-      }
+    if (userResult.length > 0) {
+      dbUser = userResult[0];
+      // Enforce the correct karmaScore parameter mapping to clear the database validation flag
+      karmaScore = dbUser.karmaScore || 0;
     }
 
-    // Run safe parallel aggregations 
+    // Run parallel aggregations 
     const [doubtsCount, repliesCount, roomsCount] = await Promise.all([
-      targetDoubtsTable ? db.select({ value: count() }).from(targetDoubtsTable).where(eq(targetDoubtsTable.userEmail, userEmail)) : Promise.resolve([{ value: 0 }]),
-      targetRepliesTable ? db.select({ value: count() }).from(targetRepliesTable).where(eq(targetRepliesTable.userEmail, userEmail)) : Promise.resolve([{ value: 0 }]),
-      targetMembershipsTable ? db.select({ value: count() }).from(targetMembershipsTable).where(eq(targetMembershipsTable.userEmail, userEmail)) : Promise.resolve([{ value: 0 }]),
+      db.select({ value: count() }).from(doubtsTable).where(eq(doubtsTable.userEmail, userEmail)),
+      db.select({ value: count() }).from(repliesTable).where(eq(repliesTable.userEmail, userEmail)),
+      db.select({ value: count() }).from(membershipsTable).where(eq(membershipsTable.userEmail, userEmail)),
     ]);
 
     totalDoubts = doubtsCount[0]?.value || 0;

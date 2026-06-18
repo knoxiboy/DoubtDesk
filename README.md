@@ -45,6 +45,7 @@
   - [Code of Conduct](#code-of-conduct)
   - [Security](#security)
   - [License](#license)
+  - [Contributors](#-contributors)
   - [Acknowledgments](#acknowledgments)
 
 ---
@@ -448,6 +449,18 @@ If you discover a security vulnerability, please follow the responsible disclosu
 ## License
 
 This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## 👥 Contributors
+
+We appreciate all contributors who helped improve this project ❤️
+
+<p align="center">
+  <a href="https://github.com/knoxiboy/DoubtDesk/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=knoxiboy/DoubtDesk" />
+  </a>
+</p>
 
 ---
 

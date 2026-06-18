@@ -1,46 +1,74 @@
 "use client";
-
+ 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAppUser } from "../provider";
-import { GraduationCap, School, Mail, UserCircle, Loader2, Sparkles, ArrowRight, ShieldCheck } from "lucide-react";
+import { GraduationCap, School, Mail, UserCircle, Loader2, Sparkles, ArrowRight, ArrowLeft, ShieldCheck, BookOpen, Target, Briefcase } from "lucide-react";
 import { toast } from "sonner";
-
+ 
 export default function OnboardingPage() {
     const { appUser, refresh } = useAppUser();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
-
+    const [step, setStep] = useState(1);
+ 
     const [formData, setFormData] = useState({
         university: "",
         year: "1st Year",
-        role: "student",
-        collegeEmail: ""
+        role: "student" as "student" | "teacher",
+        collegeEmail: "",
+        interests: "",
+        learningGoals: "",
+        subjects: "",
+        instituteInfo: ""
     });
-
+ 
     useEffect(() => {
         if (appUser?.onboarded) {
             router.push("/rooms");
         }
     }, [appUser, router]);
-
+ 
+    const handleNext = (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (!formData.university.trim()) {
+            toast.error("Please enter your university name");
+            return;
+        }
+        if (!formData.collegeEmail.trim()) {
+            toast.error("Please enter your college email");
+            return;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.collegeEmail.trim())) {
+            toast.error("Please enter a valid college email address");
+            return;
+        }
+        if (formData.role === "student" && !formData.year) {
+            toast.error("Please select your academic year");
+            return;
+        }
+        setStep(2);
+    };
+ 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-
+ 
         try {
             const res = await fetch("/api/user/onboard", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),
             });
-
+ 
             if (res.ok) {
                 toast.success("Welcome aboard!");
                 await refresh();
                 router.push("/rooms");
             } else {
-                toast.error("Failed to save details. Please try again.");
+                const data = await res.json().catch(() => null);
+                toast.error(data?.error || "Failed to save details. Please try again.");
             }
         } catch (error) {
             toast.error("Something went wrong.");
@@ -48,12 +76,12 @@ export default function OnboardingPage() {
             setIsSubmitting(false);
         }
     };
-
+ 
     return (
         <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center p-6 relative overflow-hidden transition-colors duration-500">
             <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-blue-500/10 dark:from-blue-500/5 blur-[120px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0" />
             <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-500/5 dark:bg-purple-500/[0.02] blur-[120px] rounded-full translate-x-1/3 translate-y-1/3 pointer-events-none z-0" />
-
+ 
             <div className="w-full max-w-xl relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
                 <div className="text-center mb-6 space-y-3">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/5 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest animate-pulse backdrop-blur-sm">
@@ -66,87 +94,193 @@ export default function OnboardingPage() {
                         Tailoring DoubtDesk for your specific learning ecosystem.
                     </p>
                 </div>
-
+ 
+                {/* Step indicator */}
+                <div role="navigation" aria-label="Onboarding Progress" className="flex items-center justify-center gap-4 mb-6 text-xs font-black uppercase tracking-widest">
+                    <span 
+                        aria-current={step === 1 ? "step" : undefined}
+                        className={step === 1 ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-zinc-600"}
+                    >
+                        1. Account Setup
+                    </span>
+                    <span aria-hidden="true" className="w-8 h-[1px] bg-slate-200 dark:bg-zinc-800" />
+                    <span 
+                        aria-current={step === 2 ? "step" : undefined}
+                        className={step === 2 ? "text-blue-600 dark:text-blue-400" : "text-slate-400 dark:text-zinc-600"}
+                    >
+                        2. Role Details
+                    </span>
+                </div>
+ 
                 <div className="bg-white/50 dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 p-6 md:p-8 rounded-2xl backdrop-blur-xl shadow-xl shadow-slate-200/5 dark:shadow-none space-y-8">
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="grid grid-cols-3 gap-3">
-                            {['student', 'teacher', 'admin'].map((role) => (
-                                <button
-                                    key={role}
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, role: role as 'student' | 'teacher' | 'admin'  })}
-                                    className={`py-4 rounded-xl border transition-all duration-300 flex flex-col items-center gap-2 font-semibold ${ formData.role === role ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" : "bg-slate-50/50 dark:bg-zinc-900/20 border-slate-200 dark:border-zinc-900 text-slate-400 dark:text-zinc-500 hover:bg-slate-100 dark:hover:bg-zinc-900/40" }`}
-                                >
-                                    {role === 'student' && <GraduationCap className="w-5 h-5" />}
-                                    {role === 'teacher' && <UserCircle className="w-5 h-5" />}
-                                    {role === 'admin' && <ShieldCheck className="w-5 h-5" />}
-                                    <span className="text-[10px] uppercase tracking-wider">{role}</span>
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
-                                <School className="w-4 h-4 text-blue-600 dark:text-blue-400" /> University / College Name
-                            </label>
-                            <input
-                                type="text"
-                                required
-                                value={formData.university}
-                                onChange={(e) => setFormData({ ...formData, university: e.target.value })}
-                                placeholder="e.g. Stanford University"
-                                className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
-                            />
-                        </div>
-
-                        <div className={`grid grid-cols-1 ${formData.role === 'student' ? 'md:grid-cols-2' : ''} gap-4`}>
-                            <div className="space-y-2">
-                                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
-                                    <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" /> College Email
-                                </label>
-                                <input
-                                    type="email"
-                                    required
-                                    value={formData.collegeEmail}
-                                    onChange={(e) => setFormData({ ...formData, collegeEmail: e.target.value })}
-                                    placeholder="yourname@college.edu"
-                                    className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
-                                />
-                            </div>
-
-                            {formData.role === 'student' && (
-                                <div className="space-y-2">
-                                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1">Your Year</label>
-                                    <select
-                                        value={formData.year}
-                                        onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                                        className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium appearance-none cursor-pointer"
-                                    >
-                                        <option className="bg-white dark:bg-zinc-900" value="1st Year">1st Year</option>
-                                        <option className="bg-white dark:bg-zinc-900" value="2nd Year">2nd Year</option>
-                                        <option className="bg-white dark:bg-zinc-900" value="3rd Year">3rd Year</option>
-                                        <option className="bg-white dark:bg-zinc-900" value="Final Year">Final Year</option>
-                                        <option className="bg-white dark:bg-zinc-900" value="Alumni/Other">Other</option>
-                                    </select>
+                        {step === 1 ? (
+                            <>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {['student', 'teacher'].map((role) => (
+                                        <button
+                                            key={role}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, role: role as 'student' | 'teacher' })}
+                                            className={`py-4 rounded-xl border transition-all duration-300 flex flex-col items-center gap-2 font-semibold ${formData.role === role ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20" : "bg-slate-50/50 dark:bg-zinc-900/20 border-slate-200 dark:border-zinc-900 text-slate-400 dark:text-zinc-500 hover:bg-slate-100 dark:hover:bg-zinc-900/40"}`}
+                                        >
+                                            {role === 'student' && <GraduationCap className="w-5 h-5" />}
+                                            {role === 'teacher' && <UserCircle className="w-5 h-5" />}
+                                            <span className="text-[10px] uppercase tracking-wider">{role}</span>
+                                        </button>
+                                    ))}
                                 </div>
-                            )}
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider transition-all duration-300 shadow-lg shadow-blue-600/10 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
-                         aria-label="Submit">
-                            {isSubmitting ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                                <>
-                                    Complete Setup <ArrowRight className="w-5 h-5" />
-                                </>
-                            )}
-                        </button>
+ 
+                                <div className="space-y-2">
+                                    <label htmlFor="university-input" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
+                                        <School className="w-4 h-4 text-blue-600 dark:text-blue-400" /> University / College Name
+                                    </label>
+                                    <input
+                                        id="university-input"
+                                        type="text"
+                                        required
+                                        value={formData.university}
+                                        onChange={(e) => setFormData({ ...formData, university: e.target.value })}
+                                        placeholder="e.g. Stanford University"
+                                        className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+                                    />
+                                </div>
+ 
+                                <div className={`grid grid-cols-1 ${formData.role === 'student' ? 'md:grid-cols-2' : ''} gap-4`}>
+                                    <div className="space-y-2">
+                                        <label htmlFor="email-input" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
+                                            <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" /> College Email
+                                        </label>
+                                        <input
+                                            id="email-input"
+                                            type="email"
+                                            required
+                                            value={formData.collegeEmail}
+                                            onChange={(e) => setFormData({ ...formData, collegeEmail: e.target.value })}
+                                            placeholder="yourname@college.edu"
+                                            className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+                                        />
+                                    </div>
+ 
+                                    {formData.role === 'student' && (
+                                        <div className="space-y-2">
+                                            <label htmlFor="year-select" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1">Your Year</label>
+                                            <select
+                                                id="year-select"
+                                                value={formData.year}
+                                                onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                                                className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium appearance-none cursor-pointer"
+                                            >
+                                                <option className="bg-white dark:bg-zinc-900" value="1st Year">1st Year</option>
+                                                <option className="bg-white dark:bg-zinc-900" value="2nd Year">2nd Year</option>
+                                                <option className="bg-white dark:bg-zinc-900" value="3rd Year">3rd Year</option>
+                                                <option className="bg-white dark:bg-zinc-900" value="Final Year">Final Year</option>
+                                                <option className="bg-white dark:bg-zinc-900" value="Alumni/Other">Other</option>
+                                            </select>
+                                        </div>
+                                    )}
+                                </div>
+ 
+                                <button
+                                    type="button"
+                                    onClick={handleNext}
+                                    className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider transition-all duration-300 shadow-lg shadow-blue-600/10 active:scale-[0.98] flex items-center justify-center gap-3"
+                                    aria-label="Next Step"
+                                >
+                                    Continue Setup <ArrowRight className="w-5 h-5" />
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                {formData.role === 'student' && (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label htmlFor="interests-input" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
+                                                <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Subject Interests (Optional)
+                                            </label>
+                                            <input
+                                                id="interests-input"
+                                                type="text"
+                                                value={formData.interests}
+                                                onChange={(e) => setFormData({ ...formData, interests: e.target.value })}
+                                                placeholder="e.g. Algorithms, Web Development, Physics"
+                                                className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label htmlFor="learning-goals-textarea" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
+                                                <Target className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Learning Goals (Optional)
+                                            </label>
+                                            <textarea
+                                                id="learning-goals-textarea"
+                                                value={formData.learningGoals}
+                                                onChange={(e) => setFormData({ ...formData, learningGoals: e.target.value })}
+                                                placeholder="e.g. Master backend engineering, collaborate on open-source, or excel in exams"
+                                                rows={3}
+                                                className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium resize-none"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+ 
+                                {formData.role === 'teacher' && (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label htmlFor="subjects-input" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
+                                                <BookOpen className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Subject Expertise (Optional)
+                                            </label>
+                                            <input
+                                                id="subjects-input"
+                                                type="text"
+                                                value={formData.subjects}
+                                                onChange={(e) => setFormData({ ...formData, subjects: e.target.value })}
+                                                placeholder="e.g. Computer Science, Calculus, Chemistry"
+                                                className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label htmlFor="institute-info-input" className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1 flex items-center gap-2">
+                                                <Briefcase className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Department / Institute Details (Optional)
+                                            </label>
+                                            <input
+                                                id="institute-info-input"
+                                                type="text"
+                                                value={formData.instituteInfo}
+                                                onChange={(e) => setFormData({ ...formData, instituteInfo: e.target.value })}
+                                                placeholder="e.g. Department of Information Technology"
+                                                className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+ 
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStep(1)}
+                                        className="w-1/3 py-4 border border-slate-200 dark:border-zinc-850 hover:bg-slate-50 dark:hover:bg-zinc-900/40 text-slate-700 dark:text-zinc-300 rounded-xl font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2"
+                                    >
+                                        <ArrowLeft className="w-4 h-4" /> Back
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isSubmitting}
+                                        className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider transition-all duration-300 shadow-lg shadow-blue-600/10 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
+                                        aria-label="Submit"
+                                    >
+                                        {isSubmitting ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <>
+                                                Complete Setup <ArrowRight className="w-5 h-5" />
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </form>
-
+ 
                     <p className="text-center text-[10px] text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider">
                         Your identity helps us connect you with relevant classmates & classrooms.
                     </p>

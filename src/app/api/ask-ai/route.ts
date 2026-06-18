@@ -7,7 +7,7 @@ import { AI_REQUEST_MAX_BYTES } from "@/lib/ai-image-validation";
 import { buildSystemMessages } from "@/lib/socratic-prompt";
 import type { AIMode } from "@/types/ai-chat";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_build_key" });
 const MODEL = "llama-3.3-70b-versatile";
 
 export async function POST(req: Request): Promise<NextResponse> {
