@@ -6,11 +6,13 @@ import { toast } from "sonner";
 import MarkdownRenderer from "./MarkdownRenderer";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { Doubt } from "@/types";
+import { useUser } from "@clerk/nextjs";
+
 import { OFFLINE_REPLY_QUEUED } from "@/lib/copy-constants";
 interface Reply {
     id: number;
     doubtId: number;
-    userName: string;
+    userEmail?: string | null;
     type: 'comment' | 'solution';
     content: string | null;
     imageUrl: string | null;
@@ -40,7 +42,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [solutionContent, setSolutionContent] = useState("");
     const [solutionImage, setSolutionImage] = useState("");
     const [fileName, setFileName] = useState("");
-    const [userName, setUserName] = useState("");
+    const { user, isSignedIn } = useUser();
 
     const [isDoubtOwner, setIsDoubtOwner] = useState(false);
     const [isSolving, setIsSolving] = useState(false);
@@ -65,11 +67,11 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     useEffect(() => {
         if (isOpen || inline) {
             fetchReplies();
-            const savedName = localStorage.getItem("anonymous_user");
-            if (savedName) setUserName(savedName);
-            if (savedName === doubt.userName) setIsDoubtOwner(true);
+            if (isSignedIn && user?.primaryEmailAddress?.emailAddress === doubt.userEmail) {
+                setIsDoubtOwner(true);
+            }
         }
-    }, [isOpen, doubt.id, doubt.userName, inline]);
+    }, [isOpen, doubt.id, doubt.userEmail, isSignedIn, user]);
 
     useEffect(() => {
         const loadPendingReplies = async () => {
@@ -116,9 +118,8 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     }, [isOpen, onClose, inline]);
 
     const fetchReplies = async () => {
-        const storedUserName = localStorage.getItem("anonymous_user");
         try {
-            const url = `/api/replies?doubtId=${doubt.id}` + (storedUserName ? `&userName=${encodeURIComponent(storedUserName)}` : "");
+            const url = `/api/replies?doubtId=${doubt.id}`;
             const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
@@ -142,7 +143,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             if (typeof navigator !== "undefined" && !navigator.onLine) {
                 const payload = {
                     doubtId: doubt.id,
-                    userName,
+
                     type,
                     content,
                     imageUrl,
@@ -182,7 +183,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     doubtId: doubt.id,
-                    userName,
+
                     type,
                     content,
                     imageUrl
@@ -345,12 +346,12 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
     const handleMarkAsSolution = async (replyId: number) => {
         setIsSolving(true);
-        const userName = localStorage.getItem("anonymous_user");
+
         try {
             const res = await fetch(`/api/doubts/action/${doubt.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "solve", userName, replyId }),
+                body: JSON.stringify({ action: "solve", replyId }),
             });
             if (res.ok) {
                 if (onReplyChange) onReplyChange();
@@ -419,7 +420,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     };
 
     const ReplyBubble = ({ reply }: { reply: any }) => {
-        const isMe = reply.userName === userName;
+        const isMe = isSignedIn && user?.primaryEmailAddress?.emailAddress === reply.userEmail;
         const isOfficial = doubt.solvedReplyId === reply.id;
 
         return (
@@ -434,7 +435,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     <div className="flex items-center justify-between gap-4 mb-3">
                         <div className="flex items-center gap-2">
                             <span className={`text-[10px] font-black uppercase tracking-widest ${isMe ? 'text-blue-400' : 'text-slate-400'}`}>
-                                {reply.userName} {isMe && "(YOU)"}
+                                {reply.userEmail?.split('@')[0] || 'Anonymous'} {isMe && "(YOU)"}
                             </span>
                             {reply.type === 'solution' && isOfficial && (
                                 <div className="bg-emerald-500 text-slate-900 dark:text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-full shadow-lg shadow-emerald-500/20 flex items-center gap-1">

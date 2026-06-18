@@ -28,6 +28,15 @@ async function main() {
         }
     }
 
+    // Read and execute 0009_fulltext_search.sql manually
+    console.log("Running manual migration 0009_fulltext_search.sql...");
+    const migration9 = fs.readFileSync(path.join(__dirname, '0009_fulltext_search.sql'), 'utf-8').split('--> statement-breakpoint');
+    for (const q of migration9) {
+        if (q.trim()) {
+            await db.execute(sql.raw(q.trim()));
+        }
+    }
+
     console.log("Migration complete!");
 }
 

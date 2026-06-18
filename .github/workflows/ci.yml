@@ -46,7 +46,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx tsc --noEmit
-        continue-on-error: true
 
   # ─── ESLint ──────────────────────────────────────────────────────────────────
   lint:
@@ -63,7 +62,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx eslint . --ext .ts,.tsx --max-warnings=20
-        continue-on-error: true
 
   # ─── Build ───────────────────────────────────────────────────────────────────
   build:
@@ -73,11 +71,12 @@ jobs:
       contents: read
     if: github.event_name == 'pull_request'
     env:
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_placeholder' }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA' }}
       CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY || 'sk_test_placeholder' }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://placeholder' }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://user:password@localhost.neon.tech/testdb?sslmode=require' }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder' }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY || 'placeholder' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -85,8 +84,8 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm ci
-      - run: npm run build
-        continue-on-error: true
+      - name: Build Next.js app
+        run: npm run build
 
   # ─── Security Scan ──────────────────────────────────────────────────────────
   security-scan:
@@ -259,3 +258,21 @@ jobs:
       - name: Audit high severity
         run: npm audit --audit-level=high
         continue-on-error: true
+
+  # ─── Migration Check ─────────────────────────────────────────────────────────
+  migration-check:
+    name: Migration Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npx drizzle-kit generate
+      - name: Check for uncommitted migrations
+        run: git diff --exit-code drizzle/

@@ -34,7 +34,7 @@ export async function GET(req: Request) {
         const page = Math.max(Number(searchParams.get('page')) || 1, 1);
         const limit = Math.min(Math.max(Number(searchParams.get('limit')) || 20, 1), 100);
         const offset = (page - 1) * limit;
-        
+
         const membership = await requireMembership(email, classroomId);
 
         // Total members count
@@ -43,9 +43,8 @@ export async function GET(req: Request) {
             .from(membershipsTable)
             .where(eq(membershipsTable.classroomId, classroomId));
 
-        const total = totalMembersResult[0].count;
+        const total = totalMembersResult[0]?.count || 0;
 
-        
         // Fetch paginated members of this classroom
         const members = await db
             .select({

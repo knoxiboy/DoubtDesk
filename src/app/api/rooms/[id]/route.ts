@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { classroomsTable } from '@/configs/schema';
@@ -33,6 +34,8 @@ export async function GET(
                 year: classroomsTable.year,
                 teacherEmail: classroomsTable.teacherEmail,
                 inviteCode: classroomsTable.inviteCode,
+                inviteCodeExpiresAt: classroomsTable.inviteCodeExpiresAt,
+                allowedEmailDomains: classroomsTable.allowedEmailDomains,
                 pedagogyLevel: classroomsTable.pedagogyLevel,
                 targetGradeLevel: classroomsTable.targetGradeLevel,
             })
@@ -65,18 +68,44 @@ export async function PATCH(
         const roomId = parseClassroomId(id);
         await requireTeacher(email, roomId);
 
-        const { pedagogyLevel, targetGradeLevel } = await req.json();
+        const body = await req.json();
+        const updateData: Record<string, unknown> = {};
 
-        if (pedagogyLevel === undefined || targetGradeLevel === undefined) {
-            return NextResponse.json({ error: 'pedagogyLevel and targetGradeLevel are required' }, { status: 400 });
+        if (body.pedagogyLevel !== undefined) {
+            updateData.pedagogyLevel = body.pedagogyLevel;
+        }
+        if (body.targetGradeLevel !== undefined) {
+            const parsed = parseInt(body.targetGradeLevel.toString());
+            if (!Number.isFinite(parsed)) {
+                return NextResponse.json({ error: 'Invalid targetGradeLevel' }, { status: 400 });
+            }
+            updateData.targetGradeLevel = parsed;
+        }
+        if (body.inviteCodeExpiresAt !== undefined) {
+            if (body.inviteCodeExpiresAt === null) {
+                updateData.inviteCodeExpiresAt = null;
+            } else {
+                const parsedDate = new Date(body.inviteCodeExpiresAt);
+                if (isNaN(parsedDate.getTime())) {
+                    return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
+                }
+                updateData.inviteCodeExpiresAt = parsedDate;
+            }
+        }
+        if (body.allowedEmailDomains !== undefined) {
+            updateData.allowedEmailDomains = body.allowedEmailDomains;
+        }
+        if (body.regenerateInviteCode) {
+            updateData.inviteCode = randomBytes(4).toString('hex').toUpperCase().substring(0, 6);
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
         }
 
         const [updatedRoom] = await db
             .update(classroomsTable)
-            .set({
-                pedagogyLevel,
-                targetGradeLevel: parseInt(targetGradeLevel.toString()),
-            })
+            .set(updateData)
             .where(eq(classroomsTable.id, roomId))
             .returning();
 

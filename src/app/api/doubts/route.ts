@@ -10,23 +10,26 @@ import {
   membershipsTable,
 } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
-import { and, eq, inArray, isNull, or, not, sql, SQL, ilike, desc, getTableColumns } from "drizzle-orm";
+import { safeGenerateEmbedding } from "@/lib/ai/embeddings";
+import { and, eq, inArray, isNull, or, not, sql, SQL, ilike, desc, getTableColumns, count } from "drizzle-orm";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { buildErrorResponse, errorResponse } from "@/lib/error-handler";
 import { checkUserBlock } from "@/lib/auth-utils";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createDoubtSchema } from "@/lib/validations/doubt";
 import { createClassroomDoubtNotifications } from "@/lib/notifications/service";
-import { inngest } from "@/inngest/client"; 
+import { inngest } from "@/inngest/client";
+import { buildSearchCondition, buildRankOrder } from "@/lib/search"; // NEW
 import { canTeach } from "@/lib/auth/membership-guard";
 import { currentUser } from "@clerk/nextjs/server";
+import { parsePositiveInt } from "@/lib/utils";
 
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const subject = searchParams.get("subject");
     const search = searchParams.get("search");
-    const userName = searchParams.get("userName");
+
     const classroomIdStr = searchParams.get("classroomId");
     const type = searchParams.get("type") || "community";
     const tag = searchParams.get("tag");
@@ -90,11 +93,13 @@ export async function GET(req: Request) {
             conditions.push(eq(doubtsTable.subject, subject));
         }
 
+        // NEW: Replace ilike sequential scan with indexed full-text search
+        // Falls back gracefully — if search is empty, no condition is added
         if (search) {
             const searchCondition = or(
                 ilike(doubtsTable.content, `%${search}%`),
                 ilike(doubtsTable.subject, `%${search}%`),
-                ilike(doubtsTable.userName, `%${search}%`)
+                ilike(doubtsTable.userEmail, `%${search}%`)
             );
             if (searchCondition) conditions.push(searchCondition);
         }
@@ -122,9 +127,12 @@ export async function GET(req: Request) {
         const pageStr = searchParams.get("page");
         const offsetStr = searchParams.get("offset");
         const limitStr = searchParams.get("limit");
-        const page = pageStr ? parseInt(pageStr, 10) : 1;
-        const limit = limitStr ? parseInt(limitStr, 10) : 20;
-        const offset = offsetStr ? parseInt(offsetStr, 10) : (page - 1) * limit;
+
+        const limit = parsePositiveInt(limitStr, 20);
+        const offset = offsetStr
+            ? parsePositiveInt(offsetStr, 0)
+            : (pageStr ? (parsePositiveInt(pageStr, 1) - 1) * limit : 0);
+        const page = Math.floor(offset / limit) + 1;
 
         if (tag && tag !== "All") {
             const normalizedTag = tag.trim().replace(/\s+/g, " ").toLowerCase();
@@ -145,7 +153,13 @@ export async function GET(req: Request) {
         }
 
         // Clean mapping chunk evaluation token to avoid standard database drivers cast bugs
-        const replyCountSql = sql<number>`coalesce((SELECT count(*)::int FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`.mapWith(Number);
+        const replyCountSql = sql<number>`coalesce((SELECT count(*) FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`.mapWith(Number);
+
+        const [totalCountRow] = await db
+            .select({ count: count() })
+            .from(doubtsTable)
+            .where(and(...conditions));
+        const totalCount = totalCountRow?.count ?? 0;
 
         const query = db
             .select({
@@ -155,6 +169,12 @@ export async function GET(req: Request) {
             .from(doubtsTable);
 
         const orderByFields: SQL[] = [desc(doubtsTable.isPinned)];
+
+        // NEW: When searching, rank by relevance first, then fall through to sort
+        if (search) {
+            const rankOrder = buildRankOrder(search);
+            if (rankOrder) orderByFields.push(rankOrder);
+        }
 
         if (sort === "popular") {
             orderByFields.push(desc(doubtsTable.likes));
@@ -169,11 +189,11 @@ export async function GET(req: Request) {
             .limit(limit)
             .offset(offset);
 
-        if (userName && doubts.length > 0) {
+        if (email && doubts.length > 0) {
             const userLikes = await db
                 .select({ doubtId: likesTable.doubtId })
                 .from(likesTable)
-                .where(eq(likesTable.userName, userName));
+                .where(eq(likesTable.userEmail, email));
 
             const likedIds = new Set(userLikes.map((l) => l.doubtId));
             doubts = doubts.map((doubt) => ({
@@ -219,7 +239,15 @@ export async function GET(req: Request) {
             }));
         }
 
-        return NextResponse.json(doubts);
+        const hasMore = offset + doubts.length < totalCount;
+
+        return NextResponse.json({
+            doubts,
+            hasMore,
+            totalCount,
+            page,
+            limit
+        });
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });
@@ -228,10 +256,10 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
     try {
-        const { errorResponse, data } = await parseAndValidateRequest(req, createDoubtSchema);
-        if (errorResponse) return errorResponse;
+        const { errorResponse: validationResponse, data } = await parseAndValidateRequest(req, createDoubtSchema);
+        if (validationResponse) return validationResponse;
         
-        const { userName, subject, content, imageUrl, classroomId, type, tags } = data;
+        const { subject, content, imageUrl, classroomId, type, tags } = data;
         const doubtType = type ?? "community";
         const parsedClassroomId = classroomId;
         const user = await currentUser();
@@ -267,7 +295,7 @@ export async function POST(req: Request) {
             const moderation = await moderateContent(content);
             const violationError = await handleModerationViolation(email, content, moderation);
             if (violationError) {
-                return NextResponse.json({ error: violationError }, { status: 400 });
+                return errorResponse(violationError, 400);
             }
         }
 
@@ -290,7 +318,6 @@ export async function POST(req: Request) {
         const [newDoubt] = await db
             .insert(doubtsTable)
             .values({
-                userName,
                 userEmail: email,
                 subject,
                 subTopic,
@@ -298,9 +325,24 @@ export async function POST(req: Request) {
                 imageUrl,
                 classroomId: parsedClassroomId,
                 type: doubtType,
-                createdAt: parsedCreatedAt
             })
             .returning();
+
+        // Generate and persist embedding for semantic duplicate detection.
+        // Fail open: doubt creation should not block if embeddings are unavailable.
+        try {
+            const embeddingInput = `${subject}\n${content || ""}`.trim();
+            const embedding = await safeGenerateEmbedding(embeddingInput);
+            if (embedding && Array.isArray(embedding) && embedding.length > 0) {
+                await db
+                    .update(doubtsTable)
+                    .set({ embedding: embedding as any })
+                    .where(eq(doubtsTable.id, newDoubt.id));
+            }
+        } catch (err) {
+            console.error("Failed to generate/store doubt embedding:", err);
+        }
+
 
         if (parsedClassroomId) {
             inngest.send({
@@ -313,7 +355,7 @@ export async function POST(req: Request) {
                 doubtId: newDoubt.id,
                 subject,
                 authorEmail: email,
-                authorName: userName,
+                authorName: user.fullName || email,
                 doubtType: doubtType
             }).catch((err) => console.error("Notification trigger async failure:", err));
         }

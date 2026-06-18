@@ -13,7 +13,7 @@
  * `db.update(...).set(...)` call shape.
  */
 
-import { DOUBT_STATUS, isValidDoubtStatus, isOpen } from "@/lib/doubtStatus";
+import { DOUBT_STATUS, isValidDoubtStatus, isOpen, DoubtStatus } from "@/lib/doubtStatus";
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -32,7 +32,7 @@ const insertBuilder = {
 const mockDoubt = {
     id: 1,
     type: "community",
-    isSolved: DOUBT_STATUS.UNSOLVED as string,
+    isSolved: DOUBT_STATUS.UNSOLVED as DoubtStatus,
     userEmail: "owner@example.com",
     classroomId: null,
 };
@@ -152,7 +152,7 @@ describe("POST /api/replies — auto-transition (issue #183)", () => {
     test("unsolved community doubt is transitioned to in-progress after a reply", async () => {
         await callPost({
             doubt: { ...mockDoubt, isSolved: DOUBT_STATUS.UNSOLVED },
-            body: { doubtId: 1, userName: "Student_A7X", type: "comment", content: "hi" },
+            body: { doubtId: 1, type: "comment", content: "hi" },
         });
 
         // `db.update` should have been called for the transition.
@@ -166,7 +166,7 @@ describe("POST /api/replies — auto-transition (issue #183)", () => {
     test("in-progress doubt is left alone (idempotent)", async () => {
         await callPost({
             doubt: { ...mockDoubt, isSolved: DOUBT_STATUS.IN_PROGRESS },
-            body: { doubtId: 1, userName: "Student_A7X", type: "comment", content: "hi" },
+            body: { doubtId: 1, type: "comment", content: "hi" },
         });
 
         // The update still runs, but the WHERE (isSolved = 'unsolved')
@@ -183,7 +183,7 @@ describe("POST /api/replies — auto-transition (issue #183)", () => {
     test("solved doubt is NEVER downgraded by a new reply", async () => {
         await callPost({
             doubt: { ...mockDoubt, isSolved: DOUBT_STATUS.SOLVED },
-            body: { doubtId: 1, userName: "Student_A7X", type: "comment", content: "hi" },
+            body: { doubtId: 1, type: "comment", content: "hi" },
         });
 
         // The transition update is fired, but is guarded by
@@ -198,7 +198,7 @@ describe("POST /api/replies — auto-transition (issue #183)", () => {
     test("AI-typed doubts are excluded from auto-transition", async () => {
         await callPost({
             doubt: { ...mockDoubt, type: "ai", isSolved: DOUBT_STATUS.UNSOLVED },
-            body: { doubtId: 1, userName: "Student_A7X", type: "comment", content: "hi" },
+            body: { doubtId: 1, type: "comment", content: "hi" },
         });
 
         // For AI doubts we skip the transition update entirely.
@@ -210,7 +210,7 @@ describe("POST /api/replies — auto-transition (issue #183)", () => {
 
         const res = await callPost({
             doubt: { ...mockDoubt, isSolved: DOUBT_STATUS.UNSOLVED },
-            body: { doubtId: 1, userName: "Student_A7X", type: "comment", content: "hi" },
+            body: { doubtId: 1, type: "comment", content: "hi" },
         });
 
         // The POST handler should still succeed (200) — the transition

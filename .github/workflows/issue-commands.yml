@@ -1,16 +1,17 @@
 name: Issue Commands
 
 # Single source of truth for all issue comment commands:
-#   /assign        → contributor requests assignment
-#   /assign @user  → maintainer assigns a user
-#   /duplicate #N  → maintainer marks duplicate
-# Also handles: issue assigned event → cleanup labels
+#   /assign              → contributor requests assignment
+#   /assign @user        → maintainer assigns a user
+#   /duplicate #N        → maintainer marks duplicate
+#   /already-implemented → maintainer marks already implemented
+# Also handles label triggers (duplicate, already-implemented) and cleanup.
 
 on:
   issue_comment:
     types: [created]
   issues:
-    types: [assigned]
+    types: [assigned, labeled]
 
 permissions: {}
 
@@ -25,7 +26,8 @@ jobs:
       !github.event.issue.pull_request &&
       contains(github.event.comment.body, '/assign') &&
       !contains(github.event.comment.body, '/assign @') &&
-      !contains(github.event.comment.body, '/duplicate')
+      !contains(github.event.comment.body, '/duplicate') &&
+      !contains(github.event.comment.body, '/already-implemented')
     steps:
       - name: Acknowledge assignment request (idempotent)
         uses: actions/github-script@v7
@@ -176,63 +178,118 @@ jobs:
               body: `✅ Assigned @${assignee} to this issue! Happy coding! 🚀`,
             });
 
-  # ── Maintainer marks duplicate (/duplicate #N) ──────────────────────────────
-  maintainer-duplicate:
+  # ── Maintainer closes issue as duplicate or already-implemented ────────────────────────
+  maintainer-close-issue:
     runs-on: ubuntu-latest
     permissions:
       issues: write
     if: |
-      github.event_name == 'issue_comment' &&
-      !github.event.issue.pull_request &&
-      contains(github.event.comment.body, '/duplicate #')
+      (github.event_name == 'issue_comment' && !github.event.issue.pull_request &&
+        (contains(github.event.comment.body, '/duplicate') || contains(github.event.comment.body, '/already-implemented'))) ||
+      (github.event_name == 'issues' && github.event.action == 'labeled' &&
+        (github.event.label.name == 'duplicate' || github.event.label.name == 'already-implemented'))
     steps:
-      - name: Mark as duplicate and close
+      - name: Process duplicate or already-implemented close
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const commenter = context.payload.comment.user.login;
+            const commenter = context.payload.sender.login;
 
-            // Verify maintainer
-            try {
-              const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                username: commenter,
-              });
-              if (!['admin', 'write'].includes(perm.permission)) {
-                console.log(`${commenter} is not a maintainer.`);
+            // Verify maintainer for comment events
+            if (context.eventName === 'issue_comment') {
+              try {
+                const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  username: commenter,
+                });
+                if (!['admin', 'write'].includes(perm.permission)) {
+                  console.log(`${commenter} is not a maintainer.`);
+                  return;
+                }
+              } catch (e) {
                 return;
               }
-            } catch (e) {
-              return;
             }
 
-            const match = context.payload.comment.body.match(/\/duplicate\s+#(\d+)/);
-            if (!match) return;
-            const dupNumber = match[1];
+            let targetLabel = null;
+            let closeReason = 'not_planned';
+            let commentBody = '';
 
-            await github.rest.issues.setLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              labels: ['duplicate'],
-            });
+            if (context.eventName === 'issue_comment') {
+              const body = context.payload.comment.body;
+              if (body.includes('/duplicate')) {
+                const match = body.match(/\/duplicate\s+#(\d+)/);
+                const dupNumber = match ? match[1] : '';
+                targetLabel = 'duplicate';
+                commentBody = dupNumber 
+                  ? `This issue has been marked as a **duplicate** of #${dupNumber}. Closing to keep our tracker organized. Please search existing issues before opening new ones!`
+                  : `This issue has been marked as a **duplicate**. Closing to keep our tracker organized. Please search existing issues before opening new ones!`;
+              } else if (body.includes('/already-implemented')) {
+                targetLabel = 'already-implemented';
+                commentBody = `This issue has been closed because the requested features or bug fixes are already implemented in the repository.`;
+              }
+            } else if (context.eventName === 'issues' && context.payload.action === 'labeled') {
+              const labelName = context.payload.label.name;
+              if (labelName === 'duplicate') {
+                targetLabel = 'duplicate';
+                commentBody = `This issue has been marked as a **duplicate**. Closing to keep our tracker organized. Please search existing issues before opening new ones!`;
+              } else if (labelName === 'already-implemented') {
+                targetLabel = 'already-implemented';
+                commentBody = `This issue has been closed because the requested features or bug fixes are already implemented in the repository.`;
+              }
+            }
 
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `This issue has been marked as a **duplicate** of #${dupNumber}. Closing to keep our tracker organized. Please search existing issues before opening new ones!`,
-            });
+            if (targetLabel) {
+              // 1. Ensure target label exists
+              try {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: targetLabel,
+                  color: targetLabel === 'duplicate' ? 'cfd3d7' : '0e8a16',
+                  description: targetLabel === 'duplicate' ? 'This issue is a duplicate' : 'This issue is already implemented',
+                });
+              } catch (e) {
+                // Ignore if it already exists
+              }
 
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              state: 'closed',
-              state_reason: 'not_planned',
-            });
+              // 2. Set labels (clears other labels)
+              await github.rest.issues.setLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                labels: [targetLabel],
+              });
+
+              // 3. Post comment if new
+              if (commentBody) {
+                const { data: comments } = await github.rest.issues.listComments({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                });
+                const alreadyCommented = comments.some(c => c.body.includes(commentBody.substring(0, 30)));
+                if (!alreadyCommented) {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: context.issue.number,
+                    body: commentBody,
+                  });
+                }
+              }
+
+              // 4. Close issue
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                state: 'closed',
+                state_reason: closeReason,
+              });
+            }
 
   # ── Issue assigned → remove approval label ──────────────────────────────────
   cleanup-on-assign:
