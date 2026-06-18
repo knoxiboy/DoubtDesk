@@ -11,7 +11,7 @@ export default function SessionTracker() {
     // Dedicated logout broadcast key
     const LOGOUT_EVENT_KEY = "mentorix_logout";
 
-    // In-flight logout flag
+    // Prevent concurrent logout race conditions
     const logoutInProgressRef = useRef(false);
 
     // Clears session activity data
@@ -19,7 +19,7 @@ export default function SessionTracker() {
         localStorage.removeItem(STORAGE_KEY);
     };
 
-    // Helper function to perform logout safely
+    // Handles logout with concurrency and error protection
     const performLogout = async () => {
         if (logoutInProgressRef.current) {
             return false;
@@ -39,7 +39,7 @@ export default function SessionTracker() {
         }
     };
 
-    // Publishes a cross-tab logout event and signs out the current tab
+    // Signs out the current tab and broadcasts logout to other tabs
     const broadcastLogout = async () => {
 
         const didLogout = await performLogout();
@@ -48,7 +48,12 @@ export default function SessionTracker() {
             return;
         }
 
-        localStorage.setItem(LOGOUT_EVENT_KEY, Date.now().toString());
+        try {
+            localStorage.setItem(LOGOUT_EVENT_KEY, Date.now().toString());
+        } 
+        catch (error) {
+            console.error("[SessionTracker] Failed to publish logout broadcast.", error);
+        }
     };
 
     useEffect(() => {
