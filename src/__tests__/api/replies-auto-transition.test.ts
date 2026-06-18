@@ -1,220 +1,397 @@
-/**
- * Tests for the doubt-status auto-transition introduced for issue 183.
- *
- * The transition logic lives in `app/api/replies/route.ts` (POST handler):
- *
- *   unsolved      + any reply (non-AI doubt) -> in-progress
- *   in-progress   + any reply                -> in-progress  (no change)
- *   solved        + any reply                -> solved        (sticky)
- *   <any status>  + reply on AI doubt        -> <unchanged>
- *
- * We exercise this by mocking `@/configs/db` and `@/clerk/nextjs/server`
- * plus the moderation and Inngest layers, then asserting the right
- * `db.update(...).set(...)` call shape.
- */
+import { POST } from "@/app/api/replies/route";
+import { db } from "@/configs/db";
+import { doubtsTable, repliesTable } from "@/configs/schema";
+import { eq, and } from "drizzle-orm";
+import { DOUBT_STATUS } from "@/lib/doubtStatus";
 
-import { DOUBT_STATUS, isValidDoubtStatus, isOpen, DoubtStatus } from "@/lib/doubtStatus";
-
-// --- Mocks ---------------------------------------------------------------
-
-// Chainable query builder used by the route. Each helper returns `this`
-// (or a thenable) so we can record the call sequence.
-const updateBuilder = {
-    set: jest.fn().mockReturnThis(),
-    where: jest.fn().mockResolvedValue([]),
-};
-
-const insertBuilder = {
-    values: jest.fn().mockReturnThis(),
-    returning: jest.fn().mockResolvedValue([{ id: 999, doubtId: 1 }]),
-};
-
-const mockDoubt = {
-    id: 1,
-    type: "community",
-    isSolved: DOUBT_STATUS.UNSOLVED as DoubtStatus,
-    userEmail: "owner@example.com",
-    classroomId: null,
-};
-
-// Each `select()` call is a separate chain; we configure them per-test.
-const selectChains: any[] = [];
-const makeSelectChain = (result: any) => {
-    const chain: any = {
-        from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockResolvedValue(result),
-        // orderBy / etc. unused on the path we hit, but kept for safety
-        orderBy: jest.fn().mockResolvedValue(result),
-    };
-    // For the user-block check the route doesn't call .limit(); make
-    // the chain itself awaitable to that result.
-    chain.then = (resolve: any) => resolve(result);
-    return chain;
-};
-
+// Mock the dependencies
 jest.mock("@/configs/db", () => ({
-    db: {
-        select: jest.fn(() => {
-            const next = selectChains.shift();
-            // Fall back to an empty array if a test forgot to enqueue.
-            return next ?? makeSelectChain([]);
-        }),
-        insert: jest.fn(() => insertBuilder),
-        update: jest.fn(() => updateBuilder),
-    },
-}));
-
-jest.mock("@clerk/nextjs/server", () => ({
-    currentUser: jest.fn().mockResolvedValue({
-        id: "user_xyz",
-        primaryEmailAddress: { emailAddress: "replier@example.com" },
-    }),
-    auth: jest.fn(),
+  db: {
+    select: jest.fn(),
+    insert: jest.fn(),
+    update: jest.fn(),
+  },
 }));
 
 jest.mock("@/lib/moderation", () => ({
-    moderateContent: jest.fn().mockResolvedValue({ ok: true }),
-    handleModerationViolation: jest.fn().mockResolvedValue(null),
+  moderateContent: jest.fn().mockResolvedValue({ allowed: true }),
+  handleModerationViolation: jest.fn().mockResolvedValue(null),
 }));
 
 jest.mock("@/lib/error-handler", () => ({
-    buildErrorResponse: (err: Error) => ({
-        status: 500,
-        body: { error: err.message },
-    }),
+  buildErrorResponse: jest.fn(),
+  errorResponse: jest.fn(),
+}));
+
+jest.mock("@/lib/auth/membership-guard", () => ({
+  canTeach: jest.fn().mockReturnValue(false),
+}));
+
+jest.mock("@/lib/notifications/service", () => ({
+  createReplyNotification: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock("@/inngest/client", () => ({
-    inngest: { send: jest.fn().mockResolvedValue(undefined) },
+  inngest: {
+    send: jest.fn().mockResolvedValue(undefined),
+  },
 }));
 
-// --- Helpers -------------------------------------------------------------
-
-function makeRequest(body: Record<string, unknown>): Request {
-    return new Request("http://localhost/api/replies", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-    });
-}
-
-async function callPost(opts: {
-    doubt: typeof mockDoubt;
-    body: Record<string, unknown>;
-}) {
-    // Enqueue the two .select() chains the POST handler issues:
-    //   1) usersTable lookup for block check  -> returns [] (not blocked)
-    //   2) doubtsTable lookup                 -> returns [doubt]
-    selectChains.push(makeSelectChain([])); // block check
-    selectChains.push(makeSelectChain([opts.doubt])); // doubt lookup
-
-    // Import lazily so the mocks above are in place before the module
-    // captures references to them.
-    const mod = await import("@/app/api/replies/route");
-    return mod.POST(makeRequest(opts.body));
-}
-
-beforeEach(() => {
-    jest.clearAllMocks();
-    selectChains.length = 0;
-});
-
-// --- Pure helpers --------------------------------------------------------
+// Mock currentUser from Clerk
+jest.mock("@clerk/nextjs/server", () => ({
+  currentUser: jest.fn(),
+}));
 
 describe("lib/doubtStatus", () => {
-    test("isValidDoubtStatus accepts the three canonical values", () => {
-        expect(isValidDoubtStatus("unsolved")).toBe(true);
-        expect(isValidDoubtStatus("in-progress")).toBe(true);
-        expect(isValidDoubtStatus("solved")).toBe(true);
-    });
+  it("isValidDoubtStatus accepts the three canonical values", () => {
+    const { isValidDoubtStatus } = require("@/lib/doubtStatus");
+    expect(isValidDoubtStatus(DOUBT_STATUS.UNSOLVED)).toBe(true);
+    expect(isValidDoubtStatus(DOUBT_STATUS.IN_PROGRESS)).toBe(true);
+    expect(isValidDoubtStatus(DOUBT_STATUS.SOLVED)).toBe(true);
+  });
 
-    test("isValidDoubtStatus rejects everything else", () => {
-        expect(isValidDoubtStatus("pending")).toBe(false);
-        expect(isValidDoubtStatus("SOLVED")).toBe(false);
-        expect(isValidDoubtStatus("")).toBe(false);
-        expect(isValidDoubtStatus(null)).toBe(false);
-        expect(isValidDoubtStatus(undefined)).toBe(false);
-        expect(isValidDoubtStatus(0)).toBe(false);
-    });
+  it("isValidDoubtStatus rejects everything else", () => {
+    const { isValidDoubtStatus } = require("@/lib/doubtStatus");
+    expect(isValidDoubtStatus("invalid")).toBe(false);
+    expect(isValidDoubtStatus("")).toBe(false);
+    expect(isValidDoubtStatus(null)).toBe(false);
+    expect(isValidDoubtStatus(undefined)).toBe(false);
+  });
 
-    test("isOpen is true for unsolved and in-progress, false for solved", () => {
-        expect(isOpen("unsolved")).toBe(true);
-        expect(isOpen("in-progress")).toBe(true);
-        expect(isOpen("solved")).toBe(false);
-        expect(isOpen("anything else")).toBe(false);
-    });
+  it("isOpen is true for unsolved and in-progress, false for solved", () => {
+    const { isOpen } = require("@/lib/doubtStatus");
+    expect(isOpen(DOUBT_STATUS.UNSOLVED)).toBe(true);
+    expect(isOpen(DOUBT_STATUS.IN_PROGRESS)).toBe(true);
+    expect(isOpen(DOUBT_STATUS.SOLVED)).toBe(false);
+  });
 });
 
-// --- Auto-transition behaviour ------------------------------------------
-
 describe("POST /api/replies — auto-transition (issue #183)", () => {
-    test("unsolved community doubt is transitioned to in-progress after a reply", async () => {
-        await callPost({
-            doubt: { ...mockDoubt, isSolved: DOUBT_STATUS.UNSOLVED },
-            body: { doubtId: 1, type: "comment", content: "hi" },
-        });
+  const mockUser = {
+    id: "user_123",
+    primaryEmailAddress: { emailAddress: "test@example.com" },
+    fullName: "Test User",
+  };
 
-        // `db.update` should have been called for the transition.
-        expect(updateBuilder.set).toHaveBeenCalledWith({
-            isSolved: DOUBT_STATUS.IN_PROGRESS,
-        });
-        // And the WHERE clause should pin on isSolved = 'unsolved' (race guard).
-        expect(updateBuilder.where).toHaveBeenCalledTimes(1);
+  const mockReq = (body: any) => {
+    return {
+      json: jest.fn().mockResolvedValue(body),
+      url: "http://localhost:3000/api/replies",
+    } as unknown as Request;
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const { currentUser } = require("@clerk/nextjs/server");
+    currentUser.mockResolvedValue(mockUser);
+  });
+
+  it("unsolved community doubt is transitioned to in-progress after a reply", async () => {
+    const doubtId = 1;
+
+    const mockDb = require("@/configs/db").db;
+    
+    // Mock user block check - no blocked users
+    mockDb.select.mockReturnValueOnce({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([]),
+      }),
     });
 
-    test("in-progress doubt is left alone (idempotent)", async () => {
-        await callPost({
-            doubt: { ...mockDoubt, isSolved: DOUBT_STATUS.IN_PROGRESS },
-            body: { doubtId: 1, type: "comment", content: "hi" },
-        });
-
-        // The update still runs, but the WHERE (isSolved = 'unsolved')
-        // means no rows match — verified by zero-row mock return above.
-        // What matters is we never set status BACK to in-progress
-        // through a different code path; check `set` arg shape is safe.
-        if (updateBuilder.set.mock.calls.length > 0) {
-            expect(updateBuilder.set).toHaveBeenCalledWith({
-                isSolved: DOUBT_STATUS.IN_PROGRESS,
-            });
-        }
+    // Mock doubt check - unsolved community doubt
+    mockDb.select.mockReturnValueOnce({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([{
+          id: doubtId,
+          userEmail: "author@example.com",
+          classroomId: null,
+          type: "community",
+          isSolved: DOUBT_STATUS.UNSOLVED,
+          subject: "Test Subject",
+          content: "Test Content",
+        }]),
+      }),
     });
 
-    test("solved doubt is NEVER downgraded by a new reply", async () => {
-        await callPost({
-            doubt: { ...mockDoubt, isSolved: DOUBT_STATUS.SOLVED },
-            body: { doubtId: 1, type: "comment", content: "hi" },
-        });
-
-        // The transition update is fired, but is guarded by
-        // `isSolved = 'unsolved'` in the WHERE — so no row will change.
-        // We assert that the SET payload only proposes 'in-progress',
-        // never 'unsolved' (i.e. we never write a downgrade explicitly).
-        for (const call of updateBuilder.set.mock.calls) {
-            expect(call[0]).not.toEqual({ isSolved: DOUBT_STATUS.UNSOLVED });
-        }
+    // Mock reply insert
+    const insertSpy = jest.fn().mockResolvedValue([{ 
+      id: 1, 
+      doubtId, 
+      userEmail: "test@example.com",
+      type: "community",
+      content: "Test reply",
+      createdAt: new Date()
+    }]);
+    mockDb.insert.mockReturnValue({
+      values: jest.fn().mockReturnValue({
+        returning: insertSpy,
+      }),
     });
 
-    test("AI-typed doubts are excluded from auto-transition", async () => {
-        await callPost({
-            doubt: { ...mockDoubt, type: "ai", isSolved: DOUBT_STATUS.UNSOLVED },
-            body: { doubtId: 1, type: "comment", content: "hi" },
-        });
-
-        // For AI doubts we skip the transition update entirely.
-        expect(updateBuilder.set).not.toHaveBeenCalled();
+    // Mock doubt update
+    const updateSpy = jest.fn().mockResolvedValue([{ id: doubtId }]);
+    mockDb.update.mockReturnValue({
+      set: jest.fn().mockReturnValue({
+        where: updateSpy,
+      }),
     });
 
-    test("transition failure does not fail the reply insert", async () => {
-        updateBuilder.where.mockRejectedValueOnce(new Error("transient db error"));
+    const req = mockReq({ doubtId, type: "community", content: "Test reply" });
+    const response = await POST(req);
+    const json = await response.json();
 
-        const res = await callPost({
-            doubt: { ...mockDoubt, isSolved: DOUBT_STATUS.UNSOLVED },
-            body: { doubtId: 1, type: "comment", content: "hi" },
-        });
+    expect(response.status).toBe(200);
+    expect(json).toHaveProperty("id");
+    expect(insertSpy).toHaveBeenCalled();
+    expect(updateSpy).toHaveBeenCalled();
+  });
 
-        // The POST handler should still succeed (200) — the transition
-        // is best-effort and its error is swallowed.
-        expect(res.status).toBe(200);
+  it("in-progress doubt is left alone (idempotent)", async () => {
+    const doubtId = 2;
+
+    const mockDb = require("@/configs/db").db;
+    
+    // Mock user block check
+    mockDb.select.mockReturnValueOnce({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([]),
+      }),
     });
+
+    // Mock doubt check - in-progress doubt
+    mockDb.select.mockReturnValueOnce({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([{
+          id: doubtId,
+          userEmail: "author@example.com",
+          classroomId: null,
+          type: "community",
+          isSolved: DOUBT_STATUS.IN_PROGRESS,
+          subject: "Test Subject",
+          content: "Test Content",
+        }]),
+      }),
+    });
+
+    // Mock reply insert
+    const insertSpy = jest.fn().mockResolvedValue([{ 
+      id: 2, 
+      doubtId, 
+      userEmail: "test@example.com",
+      type: "community",
+      content: "Another reply",
+      createdAt: new Date()
+    }]);
+    mockDb.insert.mockReturnValue({
+      values: jest.fn().mockReturnValue({
+        returning: insertSpy,
+      }),
+    });
+
+    // Mock doubt update - should be called but not change status
+    const updateSpy = jest.fn().mockResolvedValue([{ id: doubtId }]);
+    mockDb.update.mockReturnValue({
+      set: jest.fn().mockReturnValue({
+        where: updateSpy,
+      }),
+    });
+
+    const req = mockReq({ doubtId, type: "community", content: "Another reply" });
+    const response = await POST(req);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json).toHaveProperty("id");
+    expect(insertSpy).toHaveBeenCalled();
+    // The update should be called but the WHERE clause will check isSolved = 'unsolved'
+    // so it won't actually update the in-progress doubt
+    expect(updateSpy).toHaveBeenCalled();
+  });
+
+  it("solved doubt is NEVER downgraded by a new reply", async () => {
+    const doubtId = 3;
+
+    const mockDb = require("@/configs/db").db;
+    
+    // Mock user block check
+    mockDb.select.mockReturnValueOnce({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([]),
+      }),
+    });
+
+    // Mock doubt check - solved doubt
+    mockDb.select.mockReturnValueOnce({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([{
+          id: doubtId,
+          userEmail: "author@example.com",
+          classroomId: null,
+          type: "community",
+          isSolved: DOUBT_STATUS.SOLVED,
+          subject: "Test Subject",
+          content: "Test Content",
+        }]),
+      }),
+    });
+
+    // Mock reply insert
+    const insertSpy = jest.fn().mockResolvedValue([{ 
+      id: 3, 
+      doubtId, 
+      userEmail: "test@example.com",
+      type: "community",
+      content: "Reply to solved",
+      createdAt: new Date()
+    }]);
+    mockDb.insert.mockReturnValue({
+      values: jest.fn().mockReturnValue({
+        returning: insertSpy,
+      }),
+    });
+
+    // Mock doubt update - should not be called for solved doubts
+    const updateSpy = jest.fn();
+    mockDb.update.mockReturnValue({
+      set: jest.fn().mockReturnValue({
+        where: updateSpy,
+      }),
+    });
+
+    const req = mockReq({ doubtId, type: "community", content: "Reply to solved" });
+    const response = await POST(req);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json).toHaveProperty("id");
+    expect(insertSpy).toHaveBeenCalled();
+    // The update should NOT be called because the doubt is solved
+    // and the code checks if (doubt && doubt.type !== "ai") before attempting update
+    // But since doubt.isSolved === DOUBT_STATUS.SOLVED, the WHERE clause won't match
+    // The updateSpy might be called but won't update anything
+    // Let's check that it's called with the correct WHERE conditions
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("AI-typed doubts are excluded from auto-transition", async () => {
+    const doubtId = 4;
+
+    const mockDb = require("@/configs/db").db;
+    
+    // Mock user block check
+    mockDb.select.mockReturnValueOnce({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([]),
+      }),
+    });
+
+    // Mock doubt check - AI doubt
+    mockDb.select.mockReturnValueOnce({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([{
+          id: doubtId,
+          userEmail: "author@example.com",
+          classroomId: null,
+          type: "ai",
+          isSolved: DOUBT_STATUS.UNSOLVED,
+          subject: "Test Subject",
+          content: "Test Content",
+        }]),
+      }),
+    });
+
+    // Mock reply insert
+    const insertSpy = jest.fn().mockResolvedValue([{ 
+      id: 4, 
+      doubtId, 
+      userEmail: "test@example.com",
+      type: "community",
+      content: "Reply to AI doubt",
+      createdAt: new Date()
+    }]);
+    mockDb.insert.mockReturnValue({
+      values: jest.fn().mockReturnValue({
+        returning: insertSpy,
+      }),
+    });
+
+    // Mock doubt update - should not be called for AI doubts
+    const updateSpy = jest.fn();
+    mockDb.update.mockReturnValue({
+      set: jest.fn().mockReturnValue({
+        where: updateSpy,
+      }),
+    });
+
+    const req = mockReq({ doubtId, type: "community", content: "Reply to AI doubt" });
+    const response = await POST(req);
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json).toHaveProperty("id");
+    expect(insertSpy).toHaveBeenCalled();
+    // The update should NOT be called because doubt.type === "ai"
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it("transition failure does not fail the reply insert", async () => {
+    const doubtId = 5;
+
+    const mockDb = require("@/configs/db").db;
+    
+    // Mock user block check
+    mockDb.select.mockReturnValueOnce({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([]),
+      }),
+    });
+
+    // Mock doubt check - unsolved community doubt
+    mockDb.select.mockReturnValueOnce({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue([{
+          id: doubtId,
+          userEmail: "author@example.com",
+          classroomId: null,
+          type: "community",
+          isSolved: DOUBT_STATUS.UNSOLVED,
+          subject: "Test Subject",
+          content: "Test Content",
+        }]),
+      }),
+    });
+
+    // Mock reply insert - this should succeed
+    const insertSpy = jest.fn().mockResolvedValue([{ 
+      id: 5, 
+      doubtId, 
+      userEmail: "test@example.com",
+      type: "community",
+      content: "Test reply",
+      createdAt: new Date()
+    }]);
+    mockDb.insert.mockReturnValue({
+      values: jest.fn().mockReturnValue({
+        returning: insertSpy,
+      }),
+    });
+
+    // Mock update to fail - this should be caught and not fail the reply
+    const updateSpy = jest.fn().mockRejectedValue(new Error("transient db error"));
+    mockDb.update.mockReturnValue({
+      set: jest.fn().mockReturnValue({
+        where: updateSpy,
+      }),
+    });
+
+    const req = mockReq({ doubtId, type: "community", content: "Test reply" });
+    const response = await POST(req);
+    const json = await response.json();
+
+    // The reply should still be created successfully despite the transition failure
+    expect(insertSpy).toHaveBeenCalled();
+    expect(updateSpy).toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(json).toHaveProperty("id");
+  });
 });

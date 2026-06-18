@@ -19,11 +19,11 @@ import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createDoubtSchema } from "@/lib/validations/doubt";
 import { createClassroomDoubtNotifications } from "@/lib/notifications/service";
 import { inngest } from "@/inngest/client";
-import { buildSearchCondition, buildRankOrder } from "@/lib/search"; // NEW
+import { buildSearchCondition, buildRankOrder } from "@/lib/search";
 import { canTeach } from "@/lib/auth/membership-guard";
 import { currentUser } from "@clerk/nextjs/server";
 import { parsePositiveInt } from "@/lib/utils";
-
+import { sanitizeDoubts, sanitizeDoubt } from "@/lib/sanitize-response";
 
 export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
@@ -39,6 +39,7 @@ export async function GET(req: Request) {
     try {
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress ?? null;
+        const userId = user?.id ?? null;
         const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
 
         if (classroomId) {
@@ -80,7 +81,7 @@ export async function GET(req: Request) {
             }
 
             isTeacher = canTeach(membership.role);
-            }
+        }
 
         if (!isTeacher) {
             const teacherCondition = email
@@ -93,8 +94,6 @@ export async function GET(req: Request) {
             conditions.push(eq(doubtsTable.subject, subject));
         }
 
-        // NEW: Replace ilike sequential scan with indexed full-text search
-        // Falls back gracefully — if search is empty, no condition is added
         if (search) {
             const searchCondition = or(
                 ilike(doubtsTable.content, `%${search}%`),
@@ -152,7 +151,6 @@ export async function GET(req: Request) {
             conditions.push(eq(doubtsTable.isSolved, "unsolved"));
         }
 
-        // Clean mapping chunk evaluation token to avoid standard database drivers cast bugs
         const replyCountSql = sql<number>`coalesce((SELECT count(*) FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`.mapWith(Number);
 
         const [totalCountRow] = await db
@@ -164,13 +162,13 @@ export async function GET(req: Request) {
         const query = db
             .select({
                 ...getTableColumns(doubtsTable),
+                isSolved: doubtsTable.isSolved,
                 replyCount: replyCountSql
             })
             .from(doubtsTable);
 
         const orderByFields: SQL[] = [desc(doubtsTable.isPinned)];
 
-        // NEW: When searching, rank by relevance first, then fall through to sort
         if (search) {
             const rankOrder = buildRankOrder(search);
             if (rankOrder) orderByFields.push(rankOrder);
@@ -200,6 +198,11 @@ export async function GET(req: Request) {
                 ...doubt,
                 hasLiked: likedIds.has(doubt.id)
             }));
+        } else {
+            doubts = doubts.map((doubt) => ({
+                ...doubt,
+                hasLiked: false
+            }));
         }
 
         if (doubts.length > 0 && email) {
@@ -212,6 +215,11 @@ export async function GET(req: Request) {
             doubts = doubts.map((doubt) => ({
                 ...doubt,
                 hasBookmarked: bookmarkedIds.has(doubt.id)
+            }));
+        } else {
+            doubts = doubts.map((doubt) => ({
+                ...doubt,
+                hasBookmarked: false
             }));
         }
 
@@ -241,8 +249,10 @@ export async function GET(req: Request) {
 
         const hasMore = offset + doubts.length < totalCount;
 
+        const safeDoubts = sanitizeDoubts(doubts, userId);
+
         return NextResponse.json({
-            doubts,
+            doubts: safeDoubts,
             hasMore,
             totalCount,
             page,
@@ -264,6 +274,7 @@ export async function POST(req: Request) {
         const parsedClassroomId = classroomId;
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
+        const userId = user?.id ?? null;
 
         if (!email) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -328,8 +339,6 @@ export async function POST(req: Request) {
             })
             .returning();
 
-        // Generate and persist embedding for semantic duplicate detection.
-        // Fail open: doubt creation should not block if embeddings are unavailable.
         try {
             const embeddingInput = `${subject}\n${content || ""}`.trim();
             const embedding = await safeGenerateEmbedding(embeddingInput);
@@ -342,7 +351,6 @@ export async function POST(req: Request) {
         } catch (err) {
             console.error("Failed to generate/store doubt embedding:", err);
         }
-
 
         if (parsedClassroomId) {
             inngest.send({
@@ -412,7 +420,10 @@ export async function POST(req: Request) {
             }
         }
 
-        return NextResponse.json({ ...newDoubt, tags: savedTags });
+        const doubtWithTags = { ...newDoubt, tags: savedTags };
+        const safeDoubt = sanitizeDoubt(doubtWithTags, userId);
+
+        return NextResponse.json(safeDoubt);
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });

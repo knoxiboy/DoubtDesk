@@ -464,3 +464,32 @@ This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) f
 <p align="center">
   Built for students and teachers everywhere.
 </p>
+
+## 🔐 Privacy Model
+
+DoubtDesk's anonymity guarantee is enforced at the **API layer**, not the UI layer.
+
+### Invariant
+For any doubt or reply marked `isAnonymous: true`, API responses sent to users
+other than the author must contain **zero identifying fields**:
+- No `authorId`, `clerkId`, or any internal identifier
+- No `authorName` (only the random handle e.g. `Student_A7X`)
+- No `authorEmail` or any contact information
+
+### How It Works
+- `authorId` is stored in the database (required for moderation, edit/delete, and
+  the strike system in `lib/moderation.ts`).
+- All API routes pass raw query results through `lib/sanitize-response.ts` before
+  serialization. This utility strips all identifying fields and returns only the
+  anonymous handle.
+- The one controlled exception: if the **requesting user is the author** (verified
+  server-side by comparing Clerk `userId` with stored `authorId`), the response
+  includes `isOwnPost: true` — a boolean flag that allows the UI to show edit/delete
+  controls. **The raw `authorId` is never included in any response.**
+
+### Adding New Endpoints
+Any new API route that returns doubt or reply data **must** call `sanitizeDoubt()`,
+`sanitizeDoubts()`, `sanitizeReply()`, or `sanitizeReplies()` from
+`lib/sanitize-response.ts` before returning a response. This is a non-negotiable
+security requirement. See `__tests__/anonymous-leak.test.ts` for the test pattern
+to follow.
