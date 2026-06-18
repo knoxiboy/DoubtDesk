@@ -5,7 +5,13 @@ import { db } from '@/configs/db';
 import { usersTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';
 
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/profile(.*)', '/admin(.*)']);
+const isProtectedRoute = createRouteMatcher([
+    '/dashboard(.*)',
+    '/profile(.*)',
+    '/admin(.*)',
+    '/rooms(.*)',
+    '/ask-ai(.*)'
+]);
 
 const isPublicRoute = createRouteMatcher(['/sign-in', '/sign-up', '/api/inngest', '/', '/public-rooms(.*)', '/onboarding']);
 
