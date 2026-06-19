@@ -1,4 +1,4 @@
-import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey } from "drizzle-orm/pg-core";
 
 /**
  * Users table storing core user profiles.
@@ -46,6 +46,17 @@ export const membershipsTable = pgTable("memberships", {
     return {
         userEmailIndex: index("userEmail_idx").on(table.userEmail),
         classroomIdIndex: index("classroomId_idx").on(table.classroomId),
+        userFk: foreignKey({
+    columns: [table.userEmail],
+    foreignColumns: [usersTable.email],
+    name: "memberships_user_fk",
+}),
+
+classroomFk: foreignKey({
+    columns: [table.classroomId],
+    foreignColumns: [classroomsTable.id],
+    name: "memberships_classroom_fk",
+}),
     };
 });
 
@@ -164,10 +175,10 @@ export const doubtTagsTable = pgTable("doubt_tags", {
 }));
 
 export const likesTable = pgTable("likes", {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userName: varchar({ length: 255 }).notNull(),
-    doubtId: integer().notNull(),
-    createdAt: timestamp().defaultNow().notNull(),
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  userName: varchar({ length: 255 }).notNull(),
+  doubtId: integer().notNull(),
+  createdAt: timestamp().defaultNow().notNull(),
 });
 
 /**
