@@ -30,7 +30,8 @@ export default clerkMiddleware(async (auth, req) => {
             path.startsWith('/api/cover-letter') ||
             path.startsWith('/api/resume-analyzer') ||
             path.startsWith('/api/ai-career-chat-agent') ||
-            path.startsWith('/api/roadmap');
+            path.startsWith('/api/roadmap') ||
+            (path.startsWith('/api/doubts') && (req.method === 'POST' || path.includes('/practice')));
         const isVideoRoute = path.startsWith('/api/video/generate');
         const limiter = isVideoRoute ? videoLimiter : (isAiRoute ? aiLimiter : generalLimiter);
 

@@ -21,11 +21,10 @@ export async function POST(
         }
 
         const { id } = await params;
-        const doubtId = parseInt(id, 10);
-
-        if (isNaN(doubtId)) {
+        if (!/^[1-9]\d*$/.test(id)) {
             return NextResponse.json({ error: "Invalid doubt ID" }, { status: 400 });
         }
+        const doubtId = parseInt(id, 10);
 
         // Fetch the original doubt along with classroom/type for access control
         const [doubt] = await db
@@ -48,16 +47,21 @@ export async function POST(
         }
 
         // Classroom membership and teacher visibility guards
-        if (doubt.classroomId) {
-            const membership = await requireMembership(email, doubt.classroomId);
-
-            if (doubt.type === "teacher") {
+        if (doubt.type === "teacher") {
+            if (doubt.classroomId) {
+                const membership = await requireMembership(email, doubt.classroomId);
                 const isTeacher = ["teacher", "owner", "admin"].includes(membership.role.toLowerCase());
                 const isAuthor = doubt.userEmail === email;
                 if (!isTeacher && !isAuthor) {
                     return NextResponse.json({ error: "Access denied to this doubt" }, { status: 403 });
                 }
+            } else {
+                if (doubt.userEmail !== email) {
+                    return NextResponse.json({ error: "Access denied to this doubt" }, { status: 403 });
+                }
             }
+        } else if (doubt.classroomId) {
+            await requireMembership(email, doubt.classroomId);
         }
 
         if (doubt.isSolved !== "solved") {

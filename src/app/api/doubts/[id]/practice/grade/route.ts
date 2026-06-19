@@ -21,11 +21,10 @@ export async function POST(
         }
 
         const { id } = await params;
-        const doubtId = parseInt(id, 10);
-
-        if (isNaN(doubtId)) {
+        if (!/^[1-9]\d*$/.test(id)) {
             return NextResponse.json({ error: "Invalid doubt ID" }, { status: 400 });
         }
+        const doubtId = parseInt(id, 10);
 
         const body = await req.json();
         const { attemptId, answer } = body;
