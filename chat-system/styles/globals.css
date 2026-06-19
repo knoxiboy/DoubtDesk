@@ -1,0 +1,80 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+:root {
+  --background: 222 47% 11%;
+  --foreground: 221 100% 97%;
+  --card: 222 47% 13%;
+  --card-foreground: 221 100% 97%;
+  --primary: 223 100% 68%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 217 33% 18%;
+  --secondary-foreground: 221 100% 97%;
+  --muted: 217 33% 18%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 217 91% 60%;
+  --accent-foreground: 0 0% 100%;
+  --border: 217 33% 23%;
+  --input: 217 33% 23%;
+  --ring: 223 100% 76%;
+  --radius: 0.8rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#__next {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 24% 18%, rgba(94, 140, 255, 0.2), transparent 30%),
+    radial-gradient(circle at 78% 34%, rgba(170, 191, 255, 0.12), transparent 26%),
+    linear-gradient(180deg, #020617 0%, #0f172a 58%, #111827 100%);
+  color: hsl(var(--foreground));
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.font-mono-ui {
+  font-family: "Courier New", Courier, monospace;
+}
+
+.font-display {
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  background: rgba(94, 140, 255, 0.3);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.42);
+  border: 2px solid #020617;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(170, 191, 255, 0.62);
+}

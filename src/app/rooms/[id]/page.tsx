@@ -9,6 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useAppUser } from "../../provider";
+import { QRCodeCanvas } from "qrcode.react";
 import {
   Brain,
   MessageSquare,
@@ -24,6 +25,9 @@ import {
   Calendar,
   ArrowRight,
   Clock,
+  RefreshCw,
+  Globe,
+  Save,
   Activity,
   Lightbulb,
   Layers,
@@ -65,8 +69,19 @@ interface Classroom {
   year: string;
   teacherEmail: string;
   inviteCode: string;
+  inviteCodeExpiresAt?: string | null;
+  allowedEmailDomains?: string[] | null;
+  pedagogyLevel?: string;
+  targetGradeLevel?: number;
   role: string;
 }
+
+const TEACHER_ROLES = new Set(["teacher", "owner", "admin"]);
+const CLASSROOM_ANALYTICS_UNAVAILABLE_MESSAGE =
+  "Classroom analytics are unavailable right now.";
+const PAGE_SIZE = 20;
+
+const isTeacherRole = (role?: string) => TEACHER_ROLES.has(role ?? "");
 
 export default function ClassroomPage() {
   const { id } = useParams();
@@ -89,8 +104,11 @@ export default function ClassroomPage() {
   const [doubtFilter, setDoubtFilter] = useState<
     "unsolved" | "in-progress" | "solved"
   >("unsolved");
-  const [searchVal, setSearchVal] = useState("");
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [searchVal, setSearchVal] = useState(searchParams.get("search") || "");
+  useEffect(() => {
+    const urlSearch = searchParams.get("search");
+    if (urlSearch) setSearchVal(urlSearch);
+  }, [searchParams]);
   const [pedagogyLevel, setPedagogyLevel] = useState("");
   const [targetGrade, setTargetGrade] = useState("");
   const [pedagogyProfile, setPedagogyProfile] = useState<any>(null);
@@ -100,6 +118,7 @@ export default function ClassroomPage() {
   const [tagFilter, setTagFilter] = useState("");
   const sort = (searchParams.get("sort") as DoubtSortValue) || "newest";
   const notificationTab = searchParams.get("tab");
+  const hasTeacherAccess = isTeacherRole(classroom?.role);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -108,7 +127,7 @@ export default function ClassroomPage() {
     return () => clearTimeout(timer);
   }, [searchVal]);
 
-  useEffect(() => {
+ useEffect(() => {
     if (
       notificationTab === "community" ||
       notificationTab === "teacher-doubts" ||
@@ -117,7 +136,10 @@ export default function ClassroomPage() {
     ) {
       setActiveTab(notificationTab);
     }
-  }, [notificationTab]);
+    if (searchParams.get("search") && !notificationTab) {
+      setActiveTab("community");
+    }
+  }, [notificationTab, searchParams]);
 
   const type =
     activeTab === "teacher-doubts"
@@ -144,15 +166,20 @@ export default function ClassroomPage() {
     setSize(1);
   };
 
-  const getKey = (pageIndex: number, previousPageData: Doubt[]) => {
-    if (previousPageData && !previousPageData.length) return null; // reached the end
+  const getKey = (pageIndex: number, previousPageData: any) => {
+    if (previousPageData) {
+      const hasMore = Array.isArray(previousPageData)
+        ? previousPageData.length === PAGE_SIZE
+        : previousPageData.hasMore;
+      if (!hasMore) return null;
+    }
     if (activeTab === "insights") return null;
     const params = new URLSearchParams({
       classroomId: String(id),
       userName: userName || "",
       type: String(type),
       page: String(pageIndex + 1),
-      limit: "20",
+      limit: String(PAGE_SIZE),
     });
     if (tagFilter.trim()) params.append("tag", tagFilter.trim());
     if (searchQuery) params.append("search", searchQuery);
@@ -171,11 +198,24 @@ export default function ClassroomPage() {
     revalidateFirstPage: false,
   });
 
-  const doubts = data ? [].concat(...data) : ([] as Doubt[]);
+  const doubts = data
+    ? data.flatMap((page: any) =>
+        page
+          ? Array.isArray(page)
+            ? page
+            : (page.doubts || [])
+          : []
+      )
+    : ([] as Doubt[]);
   const isLoadingMore =
     doubtsLoading ||
     (size > 0 && data && typeof data[size - 1] === "undefined");
-  const isReachingEnd = data && data[data.length - 1]?.length < 20;
+  const lastPage = data ? data[data.length - 1] : null;
+  const isReachingEnd =
+    data &&
+    (Array.isArray(lastPage)
+      ? lastPage.length < PAGE_SIZE
+      : !lastPage?.hasMore);
 
   const { ref: loadMoreRef, inView } = useInView();
 
@@ -227,7 +267,11 @@ export default function ClassroomPage() {
     if (classroom?.id) {
       fetch(`/api/classroom/pedagogy?classroomId=${classroom.id}`)
         .then((r) => r.json())
-        .then(setPedagogyProfile);
+        .then(setPedagogyProfile)
+        .catch((err) => {
+          console.error(err);
+          toast.error("Failed to load pedagogy profile");
+        });
     }
   }, [classroom?.id]);
 
@@ -281,6 +325,21 @@ export default function ClassroomPage() {
     }
   };
 
+  const downloadQr = () => {
+    const canvas = document.getElementById(
+      "invite-qr"
+    ) as HTMLCanvasElement;
+
+    if (!canvas) return;
+
+    const url = canvas.toDataURL("image/png");
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "classroom-invite-qr.png";
+    link.click();
+  };
+
   const copyInviteLink = async () => {
     if (!inviteUrl) return;
 
@@ -322,10 +381,10 @@ export default function ClassroomPage() {
               <ExportButton
                 classroomId={String(id)}
                 classroomName={classroom?.name || ""}
-                isTeacher={classroom?.role === "teacher"}
+                isTeacher={hasTeacherAccess}
               />
 
-              {classroom?.role === "teacher" && (
+              {hasTeacherAccess && (
                 <button
                   onClick={() => setIsCodeModalOpen(true)}
                   className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:text-slate-900 dark:hover:text-white transition-all duration-300 shadow-sm shrink-0"
@@ -371,14 +430,14 @@ export default function ClassroomPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap pb-1 scrollbar-hide w-full xl:w-auto max-w-full">
+            <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap flex-nowrap pb-1 scrollbar-hide w-full xl:w-auto max-w-full">
               {[
                 { id: "ask-ai", label: "Ask AI", icon: Brain },
                 { id: "community", label: "Community", icon: MessageSquare },
                 {
                   id: "teacher-doubts",
                   label:
-                    classroom?.role === "teacher"
+                    hasTeacherAccess
                       ? "Students Doubt"
                       : "Ask Teacher",
                   icon: GraduationCap,
@@ -472,7 +531,7 @@ export default function ClassroomPage() {
                 Classroom Board
               </h2>
 
-              <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800">
+              <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 w-full sm:w-auto overflow-x-auto flex-nowrap scrollbar-hide whitespace-nowrap">
                 <button
                   onClick={() => setDoubtFilter("unsolved")}
                   className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${doubtFilter === "unsolved" ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200"}`}
@@ -697,14 +756,14 @@ export default function ClassroomPage() {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 p-4 rounded-xl shadow-sm">
               <h2 className="text-lg font-bold tracking-tight px-2">
-                {classroom?.role === "teacher" ? (
+                {hasTeacherAccess ? (
                   <>Students Doubts</>
                 ) : (
                   <>Direct Teacher Doubts</>
                 )}
               </h2>
 
-              <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800">
+              <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 w-full sm:w-auto overflow-x-auto flex-nowrap scrollbar-hide whitespace-nowrap">
                 <button
                   onClick={() => setDoubtFilter("unsolved")}
                   className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${doubtFilter === "unsolved" ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200"}`}
@@ -741,7 +800,7 @@ export default function ClassroomPage() {
                     Clear
                   </button>
                 )}
-                {classroom?.role !== "teacher" && (
+                {!hasTeacherAccess && (
                   <button
                     onClick={() => setIsAskModalOpen(true)}
                     className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-md shadow-purple-600/10 flex items-center gap-2 shrink-0"
@@ -823,11 +882,11 @@ export default function ClassroomPage() {
                         <div className="col-span-full py-24 text-center space-y-4 bg-slate-100 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[2.5rem]">
                           <GraduationCap className="w-12 h-12 text-slate-700 mx-auto" />
                           <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">
-                            {classroom?.role === "teacher"
+                            {hasTeacherAccess
                               ? "No unsolved doubts from students."
                               : "No unsolved teacher doubts."}
                           </p>
-                          {classroom?.role !== "teacher" && (
+                          {!hasTeacherAccess && (
                             <button
                               onClick={() => setIsAskModalOpen(true)}
                               className="text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider text-xs hover:underline underline-offset-4"
@@ -912,7 +971,7 @@ export default function ClassroomPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold tracking-tight">Insights</h2>
               <button
-                onClick={() => setIsSettingsModalOpen(true)}
+                onClick={() => setIsCodeModalOpen(true)}
                 className="flex items-center gap-1 text-sm font-medium text-slate-600 dark:text-zinc-400 hover:text-purple-600 dark:hover:text-purple-400 transition"
               >
                 <Sliders className="w-4 h-4" /> Settings
@@ -954,17 +1013,17 @@ export default function ClassroomPage() {
         />
       )}
 
-      {/* INVITE STUDENTS MODAL */}
-      {isCodeModalOpen && classroom?.role === "teacher" && (
+      {/* SETTINGS MODAL */}
+      {isCodeModalOpen && hasTeacherAccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl bg-white/60 dark:bg-black/60 animate-in fade-in duration-300">
           <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-900 w-full max-w-lg rounded-2xl p-6 md:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-slate-900 dark:text-zinc-100">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <h2 className="text-xl font-bold tracking-tight">
-                  Invite Students
+                  Classroom Settings
                 </h2>
                 <p className="text-slate-400 dark:text-zinc-500 font-bold uppercase tracking-wider text-[10px]">
-                  Generate a secure join link
+                  Invite code & access controls
                 </p>
               </div>
               <button
@@ -1010,40 +1069,55 @@ export default function ClassroomPage() {
               </button>
 
               {inviteUrl && (
-                <div className="space-y-3">
-                  <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 p-4">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                      Invite link
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        value={inviteUrl}
-                        readOnly
-                        className="min-w-0 flex-1 rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-xs font-medium text-slate-700 dark:text-zinc-300 outline-none"
-                      />
-                      <button
-                        onClick={copyInviteLink}
-                        className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold uppercase tracking-wider text-[10px] transition-all duration-300"
-                        aria-label="Copy invite link"
-                      >
-                        {inviteCopied ? (
-                          <>
-                            <Check className="w-3.5 h-3.5" /> Copied
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" /> Copy
-                          </>
-                        )}
-                      </button>
+                <div className="flex flex-col lg:flex-row gap-6 items-start">
+                  {/* Left side */}
+                  <div className="flex-1">
+                    <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 p-4">
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                        Invite link
+                      </p>
+
+                      <div className="flex gap-2">
+                        <input
+                          value={inviteUrl}
+                          readOnly
+                          className="min-w-0 flex-1 rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-xs"
+                        />
+
+                        <button
+                          onClick={copyInviteLink}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          Copy
+                        </button>
+                      </div>
                     </div>
+
+                    {inviteExpiresAt && (
+                      <p className="mt-3 text-center text-[11px] font-semibold text-slate-500">
+                        Expires on {new Date(inviteExpiresAt).toLocaleString()}
+                      </p>
+                    )}
                   </div>
 
-                  {inviteExpiresAt && (
-                    <p className="text-center text-[11px] font-semibold text-slate-500 dark:text-zinc-500">
-                      Expires on {new Date(inviteExpiresAt).toLocaleString()}
-                    </p>
-                  )}
+                  {/* Right side */}
+                  <div className="flex flex-col items-center gap-3 shrink-0">
+                    <div className="bg-white p-3 rounded-xl">
+                      <QRCodeCanvas
+                        id="invite-qr"
+                        value={inviteUrl}
+                        size={180}
+                      />
+                    </div>
+
+                    <button
+                      onClick={downloadQr}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+                    >
+                      Download QR
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -1057,21 +1131,127 @@ export default function ClassroomPage() {
                 <code className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-wider relative z-10">
                   {classroom?.inviteCode}
                 </code>
+              </div>
 
+              {/* Regenerate Invite Code */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                  Regenerate Invite Code
+                </label>
                 <button
-                  onClick={copyCode}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98] relative z-10"
-                  aria-label="Interactive button"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/rooms/${id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ regenerateInviteCode: true }),
+                      });
+                      if (res.ok) {
+                        const updated = await res.json();
+                        setClassroom(prev => prev ? { ...prev, inviteCode: updated.inviteCode } : prev);
+                        toast.success('Invite code regenerated!');
+                      } else {
+                        const err = await res.json();
+                        toast.error(err.error || 'Failed to regenerate');
+                      }
+                    } catch {
+                      toast.error('Network error. Please try again.');
+                    }
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 active:scale-[0.98]"
                 >
-                  {copied ? (
-                    <>
-                      <Check className="w-3.5 h-3.5" /> Copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" /> Copy Key
-                    </>
-                  )}
+                  <RefreshCw className="w-3.5 h-3.5" /> Regenerate Code
+                </button>
+              </div>
+
+              {/* Invite Code Expiry */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 flex items-center gap-1.5">
+                  <Clock className="w-3 h-3" /> Invite Code Expiry
+                </label>
+                <input
+                  type="datetime-local"
+                  defaultValue={classroom?.inviteCodeExpiresAt
+                    ? new Date(classroom.inviteCodeExpiresAt)
+                        .toLocaleString('sv-SE', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })
+                        .slice(0, 16)
+                    : ''}
+                  id="expiry-input"
+                  className="w-full rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
+                />
+                <button
+                  onClick={async () => {
+                    try {
+                      const input = document.getElementById('expiry-input') as HTMLInputElement;
+                      const val = input?.value;
+                      const localDate = val ? new Date(val) : null;
+                      const res = await fetch(`/api/rooms/${id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          inviteCodeExpiresAt: localDate ? localDate.toISOString() : null,
+                        }),
+                      });
+                      if (res.ok) {
+                        const updated = await res.json();
+                        setClassroom(prev => prev ? { ...prev, inviteCodeExpiresAt: updated.inviteCodeExpiresAt } : prev);
+                        toast.success('Expiry updated!');
+                      } else {
+                        const err = await res.json();
+                        toast.error(err.error || 'Failed to update');
+                      }
+                    } catch {
+                      toast.error('Network error. Please try again.');
+                    }
+                  }}
+                  className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 active:scale-[0.98]"
+                >
+                  <Save className="w-3.5 h-3.5" /> Save Expiry
+                </button>
+              </div>
+
+              {/* Allowed Email Domains */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 flex items-center gap-1.5">
+                  <Globe className="w-3 h-3" /> Allowed Email Domains
+                </label>
+                <p className="text-[11px] text-slate-400 dark:text-zinc-500">
+                  Restrict joining to specific email domains (e.g. university.edu). Leave empty to allow any domain.
+                </p>
+                <input
+                  type="text"
+                  defaultValue={(classroom?.allowedEmailDomains || []).join(', ')}
+                  placeholder="e.g. university.edu, college.ac.in"
+                  id="domains-input"
+                  className="w-full rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500/40 transition-all"
+                />
+                <button
+                  onClick={async () => {
+                    try {
+                      const input = document.getElementById('domains-input') as HTMLInputElement;
+                      const domains = input?.value
+                        ? input.value.split(',').map(d => d.trim()).filter(Boolean)
+                        : null;
+                      const res = await fetch(`/api/rooms/${id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ allowedEmailDomains: domains }),
+                      });
+                      if (res.ok) {
+                        const updated = await res.json();
+                        setClassroom(prev => prev ? { ...prev, allowedEmailDomains: updated.allowedEmailDomains } : prev);
+                        toast.success('Domain restrictions updated!');
+                      } else {
+                        const err = await res.json();
+                        toast.error(err.error || 'Failed to update');
+                      }
+                    } catch {
+                      toast.error('Network error. Please try again.');
+                    }
+                  }}
+                  className="mt-2 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 active:scale-[0.98]"
+                >
+                  <Save className="w-3.5 h-3.5" /> Save Domains
                 </button>
               </div>
             </div>
@@ -1092,16 +1272,23 @@ function ClassroomInsightsView({
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isTeacher = role === "teacher";
+  const isTeacher = isTeacherRole(role);
 
-  const fetchData = () => {
+  const fetchData = async () => {
     setLoading(true);
-    fetch(`/api/analytics?classroomId={classroomId}`)
-      .then((res) => res.json())
-      .then((d) => {
-        setData(d);
-        setLoading(false);
-      });
+    try {
+      const res = await fetch(`/api/analytics?classroomId=${classroomId}`);
+      if (!res.ok) {
+        throw new Error(`Analytics request failed with status ${res.status}`);
+      }
+      setData(await res.json());
+    } catch (error) {
+      console.error("Error loading classroom analytics:", error);
+      toast.error("Failed to load analytics data");
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -1112,6 +1299,13 @@ function ClassroomInsightsView({
     return (
       <div className="flex justify-center p-20">
         <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
+      </div>
+    );
+
+  if (!data)
+    return (
+      <div role="status" className="rounded-2xl border border-slate-200 dark:border-zinc-900 p-8 text-center text-sm text-slate-500 dark:text-zinc-400">
+        {CLASSROOM_ANALYTICS_UNAVAILABLE_MESSAGE}
       </div>
     );
 
@@ -1532,6 +1726,10 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
       .then((res) => res.json())
       .then((d) => {
         setPersonalData(d);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load personal analytics:", err);
         setLoading(false);
       });
   }, [classroomId]);

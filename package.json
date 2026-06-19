@@ -7,7 +7,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest --watchAll=false --forceExit"
+    "test": "jest --watchAll=false --forceExit",
+    "prepare": "husky"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.39.3",
@@ -59,6 +60,7 @@
     "framer-motion": "^12.40.0",
     "google-tts-api": "^0.0.6",
     "groq-sdk": "1.1.1",
+    "html-to-image": "^1.11.13",
     "inngest": "^4.4.0",
     "input-otp": "1.4.2",
     "jspdf": "^4.2.1",
@@ -69,6 +71,7 @@
     "next-themes": "0.4.6",
     "pdf-parse": "2.4.5",
     "pdf-parse-fork": "1.2.0",
+    "qrcode.react": "^4.2.0",
     "react": "18.3.1",
     "react-day-picker": "9.4.1",
     "react-dom": "18.3.1",
@@ -111,8 +114,10 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "^16.2.6",
     "ffmpeg-static": "^5.3.0",
+    "husky": "^9.1.7",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
+    "lint-staged": "^16.4.0",
     "openai": "^6.29.0",
     "postcss": "8.4.47",
     "remotion": "^4.0.435",

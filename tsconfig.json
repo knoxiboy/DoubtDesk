@@ -17,6 +17,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
+    "types": ["jest", "node"],
     "plugins": [
       {
         "name": "next"
@@ -35,6 +36,7 @@
   "src/types/**/*.d.ts"
 ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "chat-system"
   ]
 }

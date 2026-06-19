@@ -1,34 +1,31 @@
+import { randomBytes } from 'crypto';
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
-import { classroomsTable, membershipsTable } from '@/configs/schema';
-import { eq, and } from 'drizzle-orm';
-import { currentUser } from '@clerk/nextjs/server';
+import { classroomsTable } from '@/configs/schema';
+import { eq } from 'drizzle-orm';
 import { checkUserBlock } from '@/lib/auth-utils';
 import { buildErrorResponse } from '@/lib/error-handler';
+import {
+    parseClassroomId,
+    requireAuth,
+    requireMembership,
+    requireTeacher,
+} from '@/lib/auth/membership-guard';
 
 export async function GET(
     req: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const user = await currentUser();
-        if (!user || !user.primaryEmailAddress?.emailAddress) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const email = user.primaryEmailAddress.emailAddress;
+        const { email } = await requireAuth();
 
         // 0. Check if user is blocked
         const { isBlocked, errorResponse } = await checkUserBlock(email);
         if (isBlocked) return errorResponse;
         const { id } = await params;
-        const roomId = parseInt(id);
+        const roomId = parseClassroomId(id);
+        const membership = await requireMembership(email, roomId);
 
-        if (isNaN(roomId)) {
-            return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });
-        }
-
-        // Optimised query: Fetch classroom and membership in a single join
         const [roomData] = await db
             .select({
                 id: classroomsTable.id,
@@ -37,22 +34,19 @@ export async function GET(
                 year: classroomsTable.year,
                 teacherEmail: classroomsTable.teacherEmail,
                 inviteCode: classroomsTable.inviteCode,
+                inviteCodeExpiresAt: classroomsTable.inviteCodeExpiresAt,
+                allowedEmailDomains: classroomsTable.allowedEmailDomains,
                 pedagogyLevel: classroomsTable.pedagogyLevel,
                 targetGradeLevel: classroomsTable.targetGradeLevel,
-                role: membershipsTable.role,
             })
             .from(classroomsTable)
-            .innerJoin(
-                membershipsTable,
-                and(eq(membershipsTable.classroomId, classroomsTable.id), eq(membershipsTable.userEmail, email))
-            )
             .where(eq(classroomsTable.id, roomId));
 
         if (!roomData) {
-            return NextResponse.json({ error: 'Room not found or access denied' }, { status: 404 });
+            return NextResponse.json({ error: 'Room not found' }, { status: 404 });
         }
 
-        return NextResponse.json(roomData);
+        return NextResponse.json({ ...roomData, role: membership.role });
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });
@@ -64,46 +58,54 @@ export async function PATCH(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const user = await currentUser();
-        if (!user || !user.primaryEmailAddress?.emailAddress) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
-
-        const email = user.primaryEmailAddress.emailAddress;
+        const { email } = await requireAuth();
 
         // 0. Check if user is blocked
         const { isBlocked, errorResponse } = await checkUserBlock(email);
         if (isBlocked) return errorResponse;
 
         const { id } = await params;
-        const roomId = parseInt(id);
+        const roomId = parseClassroomId(id);
+        await requireTeacher(email, roomId);
 
-        if (isNaN(roomId)) {
-            return NextResponse.json({ error: 'Invalid room ID' }, { status: 400 });
+        const body = await req.json();
+        const updateData: Record<string, unknown> = {};
+
+        if (body.pedagogyLevel !== undefined) {
+            updateData.pedagogyLevel = body.pedagogyLevel;
+        }
+        if (body.targetGradeLevel !== undefined) {
+            const parsed = parseInt(body.targetGradeLevel.toString());
+            if (!Number.isFinite(parsed)) {
+                return NextResponse.json({ error: 'Invalid targetGradeLevel' }, { status: 400 });
+            }
+            updateData.targetGradeLevel = parsed;
+        }
+        if (body.inviteCodeExpiresAt !== undefined) {
+            if (body.inviteCodeExpiresAt === null) {
+                updateData.inviteCodeExpiresAt = null;
+            } else {
+                const parsedDate = new Date(body.inviteCodeExpiresAt);
+                if (isNaN(parsedDate.getTime())) {
+                    return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
+                }
+                updateData.inviteCodeExpiresAt = parsedDate;
+            }
+        }
+        if (body.allowedEmailDomains !== undefined) {
+            updateData.allowedEmailDomains = body.allowedEmailDomains;
+        }
+        if (body.regenerateInviteCode) {
+            updateData.inviteCode = randomBytes(4).toString('hex').toUpperCase().substring(0, 6);
         }
 
-        // Verify the user is the teacher of this classroom
-        const [classroom] = await db
-            .select()
-            .from(classroomsTable)
-            .where(and(eq(classroomsTable.id, roomId), eq(classroomsTable.teacherEmail, email)));
-
-        if (!classroom) {
-            return NextResponse.json({ error: 'Forbidden: only the teacher can modify this classroom' }, { status: 403 });
-        }
-
-        const { pedagogyLevel, targetGradeLevel } = await req.json();
-
-        if (pedagogyLevel === undefined || targetGradeLevel === undefined) {
-            return NextResponse.json({ error: 'pedagogyLevel and targetGradeLevel are required' }, { status: 400 });
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
         }
 
         const [updatedRoom] = await db
             .update(classroomsTable)
-            .set({
-                pedagogyLevel,
-                targetGradeLevel: parseInt(targetGradeLevel.toString()),
-            })
+            .set(updateData)
             .where(eq(classroomsTable.id, roomId))
             .returning();
 

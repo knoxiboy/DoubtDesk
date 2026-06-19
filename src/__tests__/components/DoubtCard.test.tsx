@@ -22,26 +22,34 @@ global.fetch = jest.fn(() =>
 
 const mockDoubt = {
     id: 1,
-    userName: 'Student_123',
+    userEmail: 'student@example.com',
     subject: 'Calculus',
     content: 'How do limits work in infinity?',
     createdAt: new Date().toISOString(),
     likes: 5,
     replyCount: 2,
-    isSolved: 'unsolved',
+    tags: [],
+    hasBookmarked: false,
+    hasLiked: false,
+    imageUrl: null,
+    classroomId: null,
+    isPendingSync: false,
+    isSolved: 'unsolved' as const,
+    type: 'community' as const,
+    isPinned: false,
 };
 
 describe('DoubtCard Component', () => {
     it('renders doubt details correctly', () => {
         render(<DoubtCard doubt={mockDoubt} />);
-        expect(screen.getByText('Student_123')).toBeInTheDocument();
+        expect(screen.getByText('student')).toBeInTheDocument();
         expect(screen.getByText('Calculus')).toBeInTheDocument();
         expect(screen.getByText('How do limits work in infinity?')).toBeInTheDocument();
     });
 
     it('handles like action when thumbs up is clicked', async () => {
         render(<DoubtCard doubt={mockDoubt} onUpdate={jest.fn()} />);
-        const likeButton = screen.getByRole('button', { name: /5/i });
+        const likeButton = screen.getByRole('button', { name: /like this doubt/i });
         fireEvent.click(likeButton);
         await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     });

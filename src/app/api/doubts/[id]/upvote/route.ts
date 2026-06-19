@@ -2,10 +2,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { repliesTable, replyLikesTable } from "@/configs/schema";
-import { eq, and, sql } from "drizzle-orm"; 
+import { eq, and, sql } from "drizzle-orm";
 import { inngest } from "@/inngest/client";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(
@@ -74,7 +72,7 @@ export async function POST(
                 // Note: If your Drizzle schema explicitly names the column field `userName`, we map the unique 
                 // email string directly into it to preserve the unique multi-column compound index layout.
                 await tx.insert(replyLikesTable).values({ 
-                    userName: stableUserIdentifier, // Global unique key consistency
+                    userEmail: stableUserIdentifier,
                     replyId 
                 });
 

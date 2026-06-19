@@ -7,6 +7,7 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   serverExternalPackages: [
     "pdf-parse",
     "@remotion/bundler",
