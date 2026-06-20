@@ -315,7 +315,14 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
             toast.error(`Question too short — minimum ${minLength} characters required`);
             return;
         }
-        if ((!content.trim() && !imageUrl) || !subject.trim()) return;
+        if (!subject.trim()) {
+            toast.error("Please enter a subject before submitting.");
+            return;
+        }
+        if (!content.trim() && !imageUrl) {
+            toast.error("Please enter your doubt before submitting.");
+            return;
+        }
 
         setIsSubmitting(true);
         try {
@@ -404,7 +411,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-4 sm:space-y-6 max-h-[80vh] overflow-y-auto">
+                <form noValidate onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-4 sm:space-y-6 max-h-[80vh] overflow-y-auto">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-500 px-1">Subject / Topic</label>
                         <input
@@ -753,7 +760,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                         </button>
                         <button
                             type="submit"
-                            disabled={isSubmitting || (!content.trim() && !imageUrl) || !subject.trim() || isTooLong || (hasContent && isTooShort)}
+                            disabled={isSubmitting}
                             className="flex-[2] py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                          aria-label="Submit">
                             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
