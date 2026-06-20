@@ -411,7 +411,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-4 sm:space-y-6 max-h-[80vh] overflow-y-auto">
+                <form noValidate onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-4 sm:space-y-6 max-h-[80vh] overflow-y-auto">
                     <div className="space-y-2">
                         <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 dark:text-slate-500 px-1">Subject / Topic</label>
                         <input
