@@ -47,8 +47,17 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
     const [isFullscreenImageOpen, setIsFullscreenImageOpen] = useState(false);
     const [fullscreenImageUrl, setFullscreenImageUrl] = useState("");
+    const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
     
     const chatEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+        const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches);
+        updatePreference();
+        mediaQuery.addEventListener("change", updatePreference);
+        return () => mediaQuery.removeEventListener("change", updatePreference);
+    }, []);
 
     useEffect(() => {
         if (isOpen) {
@@ -60,7 +69,9 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     }, [isOpen, doubt.id, doubt.userName]);
 
     useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        chatEndRef.current?.scrollIntoView({
+            behavior: prefersReducedMotion ? "auto" : "smooth"
+        });
     }, [replies]);
 
     const fetchReplies = async () => {
