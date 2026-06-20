@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 
 import { db } from "@/configs/db";
 import {
@@ -78,16 +78,6 @@ export async function POST(
       );
     }
 
-    if (
-      inviteData.maxUses !== null &&
-      inviteData.usedCount >= inviteData.maxUses
-    ) {
-      return NextResponse.json(
-        { error: "This invite link has reached its usage limit" },
-        { status: 410 },
-      );
-    }
-
     const [existingMember] = await db
       .select()
       .from(membershipsTable)
@@ -111,18 +101,34 @@ export async function POST(
       });
     }
 
+    const [updatedInvite] = await db
+      .update(classroomInvitesTable)
+      .set({
+        usedCount: sql`${classroomInvitesTable.usedCount} + 1`,
+      })
+      .where(
+        and(
+          eq(classroomInvitesTable.id, inviteData.inviteId),
+          or(
+            sql`${classroomInvitesTable.maxUses} IS NULL`,
+            sql`${classroomInvitesTable.usedCount} < ${classroomInvitesTable.maxUses}`,
+          ),
+        ),
+      )
+      .returning({ id: classroomInvitesTable.id });
+
+    if (!updatedInvite) {
+      return NextResponse.json(
+        { error: "This invite link has reached its usage limit" },
+        { status: 410 },
+      );
+    }
+
     await db.insert(membershipsTable).values({
       userEmail: email,
       classroomId: inviteData.classroomId,
       role: "student",
     });
-
-    await db
-      .update(classroomInvitesTable)
-      .set({
-        usedCount: sql`${classroomInvitesTable.usedCount} + 1`,
-      })
-      .where(eq(classroomInvitesTable.id, inviteData.inviteId));
 
     return NextResponse.json({
       success: true,
