@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 
 import { db } from "@/configs/db";
 import {
@@ -9,7 +9,7 @@ import {
   membershipsTable,
 } from "@/configs/schema";
 import { checkUserBlock } from "@/lib/auth-utils";
-import { ApiError, buildErrorResponse } from "@/lib/error-handler";
+import { buildErrorResponse } from "@/lib/error-handler";
 import { hashInviteToken } from "@/lib/invite-token";
 
 export async function POST(
@@ -78,85 +78,98 @@ export async function POST(
       );
     }
 
-    // NOTE: revokedAt / expiresAt / maxUses were already read above for a
-    // cheap, user-friendly early-exit, but none of those checks are
-    // re-validated atomically here, a concurrent request could revoke the
-    // link or push usedCount to the cap between that read and this write.
-    // The transaction below re-checks everything that can change
-    // concurrently (membership existence + the usage cap) as part of the
-    // same atomic operations that perform the writes, so the final outcome
-    // is always correct regardless of request timing.
-    const result = await db.transaction(async (tx) => {
-      // Conditionally insert membership. If this user is already a member
-      // of this classroom (including a duplicate concurrent join request
-      // racing this one), the unique (userEmail, classroomId) constraint
-      // causes this to no-op instead of throwing, and `returning()` comes
-      // back empty so we can detect it.
-      const [insertedMembership] = await tx
-        .insert(membershipsTable)
-        .values({
-          userEmail: email,
-          classroomId: inviteData.classroomId,
-          role: "student",
-        })
-        .onConflictDoNothing()
-        .returning();
+    // IMPORTANT: the neon-http driver Drizzle is configured with (see
+    // src/configs/db.tsx) does not support interactive transactions —
+    // `db.transaction(...)` throws "No transactions support in neon-http
+    // driver" unconditionally (confirmed directly against the installed
+    // driver). A multi-step insert-then-update-then-compensate sequence
+    // would leave a window where a membership row exists without a
+    // claimed usage slot if the process died mid-sequence, so instead the
+    // slot claim and the membership insert are combined into a single
+    // SQL statement using a data-modifying CTE. Postgres executes one
+    // statement as one atomic unit on its own — no explicit transaction
+    // wrapper or compensation logic is needed, and there's only one
+    // network round trip.
+    //
+    // The CTE claims a usage slot first (UPDATE ... RETURNING id), and
+    // the INSERT only runs against rows produced by that CTE (INSERT ...
+    // SELECT ... FROM slot_claim), so a membership is *only* ever created
+    // when a slot was actually claimed in the same statement. The slot
+    // claim itself is additionally guarded by `NOT EXISTS (existing
+    // membership)`, so a duplicate concurrent join from the same user
+    // can't consume a second slot for a membership that will just
+    // conflict away.
+    const joinResult = await db.execute<{ membership_id: number }>(sql`
+      WITH slot_claim AS (
+        UPDATE ${classroomInvitesTable}
+        SET used_count = used_count + 1
+        WHERE id = ${inviteData.inviteId}
+          AND revoked_at IS NULL
+          AND expires_at > now()
+          AND (max_uses IS NULL OR used_count < max_uses)
+          AND NOT EXISTS (
+            SELECT 1 FROM ${membershipsTable}
+            WHERE user_email = ${email}
+              AND classroom_id = ${inviteData.classroomId}
+          )
+        RETURNING id
+      )
+      INSERT INTO ${membershipsTable} (user_email, classroom_id, role)
+      SELECT ${email}, ${inviteData.classroomId}, 'student'
+      FROM slot_claim
+      ON CONFLICT (user_email, classroom_id) DO NOTHING
+      RETURNING id AS membership_id
+    `);
 
-      if (!insertedMembership) {
-        // Already a member,no new seat consumed, so the invite's usage
-        // count must not be incremented.
-        return { alreadyMember: true as const };
-      }
+    if (joinResult.rows.length > 0) {
+      // The CTE claimed a slot and inserted the membership atomically.
+      return NextResponse.json({
+        success: true,
+        alreadyMember: false,
+        classroom: {
+          id: inviteData.classroomId,
+          name: inviteData.classroomName,
+          university: inviteData.university,
+          year: inviteData.year,
+        },
+      });
+    }
 
-      // Atomically claim a usage slot: the WHERE clause re-checks
-      // revoked/expired/under-cap at the moment of the write (not at the
-      // moment of the earlier read), and the increment only commits if a
-      // row actually matched. Concurrent requests serialize on this single
-      // UPDATE, so only as many can succeed as there are slots remaining.
-      const [updatedInvite] = await tx
-        .update(classroomInvitesTable)
-        .set({
-          usedCount: sql`${classroomInvitesTable.usedCount} + 1`,
-        })
-        .where(
-          and(
-            eq(classroomInvitesTable.id, inviteData.inviteId),
-            isNull(classroomInvitesTable.revokedAt),
-            or(
-              isNull(classroomInvitesTable.maxUses),
-              lt(
-                classroomInvitesTable.usedCount,
-                classroomInvitesTable.maxUses,
-              ),
-            ),
-          ),
-        )
-        .returning({ id: classroomInvitesTable.id });
+    // No row came back: either the slot claim's WHERE clause failed
+    // (revoked, expired, or at its usage cap as of this statement), or
+    // the user was already a member (NOT EXISTS failed, so no slot was
+    // claimed and nothing was inserted) — including a same-user race
+    // where a concurrent request's membership committed first. A cheap
+    // follow-up read distinguishes the two so the response stays
+    // accurate without weakening the atomicity guarantee above, since
+    // this read doesn't gate any write.
+    const [existingMember] = await db
+      .select({ id: membershipsTable.id })
+      .from(membershipsTable)
+      .where(
+        and(
+          eq(membershipsTable.userEmail, email),
+          eq(membershipsTable.classroomId, inviteData.classroomId),
+        ),
+      );
 
-      if (!updatedInvite) {
-        // No row matched: the link was revoked or hit its usage cap
-        // between our earlier read and this write. Throwing here rolls
-        // back the membership insert above so no seat is granted without
-        // a valid slot.
-        throw new ApiError(
-          410,
-          "This invite link has reached its usage limit",
-        );
-      }
+    if (existingMember) {
+      return NextResponse.json({
+        success: true,
+        alreadyMember: true,
+        classroom: {
+          id: inviteData.classroomId,
+          name: inviteData.classroomName,
+          university: inviteData.university,
+          year: inviteData.year,
+        },
+      });
+    }
 
-      return { alreadyMember: false as const };
-    });
-
-    return NextResponse.json({
-      success: true,
-      alreadyMember: result.alreadyMember,
-      classroom: {
-        id: inviteData.classroomId,
-        name: inviteData.classroomName,
-        university: inviteData.university,
-        year: inviteData.year,
-      },
-    });
+    return NextResponse.json(
+      { error: "This invite link has reached its usage limit" },
+      { status: 410 },
+    );
   } catch (error) {
     const { status, body } = buildErrorResponse(error);
     return NextResponse.json(body, { status });
