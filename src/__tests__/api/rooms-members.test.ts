@@ -158,7 +158,7 @@ describe('Room Members API Endpoint', () => {
 
         const res = (await GET(new Request('http://localhost/api/rooms/members?classroomId=1')))!;
         const json = await res.json();
-        
+
         expect(res.status).toBe(200);
         expect(json).toEqual({
             members: [
@@ -303,5 +303,38 @@ describe('Room Members API Endpoint', () => {
         // isOwner correctly reflects classrooms.teacherEmail, not role string
         expect(json.members[0].isOwner).toBe(true);
         expect(json.members[1].isOwner).toBe(false);
+    });
+
+    it('correctly identifies owner when teacherEmail and userEmail have different casing', async () => {
+        // Guards the email normalization fix: isOwner must be true even when
+        // classrooms.teacherEmail and memberships.userEmail differ only by case.
+        currentUserMock.mockResolvedValue({
+            primaryEmailAddress: { emailAddress: 'teacher@example.com' },
+        });
+        checkUserBlockMock.mockResolvedValue({ isBlocked: false });
+        selectResultQueue.push(
+            // 1. requireMembership: teacher found (lowercase)
+            [{ id: 1, userEmail: 'teacher@example.com', role: 'teacher', classroomId: 1 }],
+            // 2. classrooms.teacherEmail stored with different casing
+            [{ teacherEmail: 'Teacher@Example.COM' }],
+            // 3. count
+            [{ count: 1 }],
+            // 4. members list — userEmail stored lowercase
+            [
+                {
+                    id: 1,
+                    userEmail: 'teacher@example.com',
+                    role: 'teacher',
+                    joinedAt: new Date('2026-01-01T00:00:00.000Z'),
+                },
+            ],
+        );
+
+        const res = (await GET(new Request('http://localhost/api/rooms/members?classroomId=1')))!;
+        const json = await res.json();
+
+        expect(res.status).toBe(200);
+        // Must be true despite casing mismatch between teacherEmail and userEmail
+        expect(json.members[0].isOwner).toBe(true);
     });
 });

@@ -79,16 +79,24 @@ export async function GET(req: Request) {
             .offset(offset);
 
         const canViewEmails = canViewMemberEmails(membership.role);
+        // Normalize both sides before comparing to guard against casing
+        // differences that can arise when emails are stored through different
+        // code paths without a consistent lowercasing step at write time.
+        const normalizedOwnerEmail = ownerEmail?.toLowerCase().trim() ?? null;
+        const isOwnerEmail = (email: string) =>
+            normalizedOwnerEmail !== null &&
+            email.toLowerCase().trim() === normalizedOwnerEmail;
+
         const processedMembers = canViewEmails
             ? members.map(({ id, ...m }) => ({
                 ...m,
-                isOwner: ownerEmail !== null && m.userEmail === ownerEmail,
+                isOwner: isOwnerEmail(m.userEmail),
             }))
             : members.map((m) => ({
                 displayName: `${m.role.toLowerCase() === 'student' ? 'Student' : 'Member'}_${m.id}`,
                 role: m.role,
                 joinedAt: m.joinedAt,
-                isOwner: ownerEmail !== null && m.userEmail === ownerEmail,
+                isOwner: isOwnerEmail(m.userEmail),
             }));
 
         return NextResponse.json({

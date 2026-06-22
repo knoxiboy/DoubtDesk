@@ -28,11 +28,16 @@ function RoleBadge({ role, isOwner }: { role: string; isOwner: boolean }) {
     if (isOwner) {
         return (
             <Tooltip>
+                {/* Use <button> so the tooltip trigger is natively keyboard-focusable. */}
                 <TooltipTrigger asChild>
-                    <span className="inline-flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md cursor-default select-none">
+                    <button
+                        type="button"
+                        aria-label="Owner badge details"
+                        className="inline-flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md select-none"
+                    >
                         <ShieldCheck className="w-3 h-3 shrink-0" aria-hidden="true" />
                         Owner
-                    </span>
+                    </button>
                 </TooltipTrigger>
                 <TooltipContent side="top">
                     Classroom owner — created and administers this classroom
@@ -63,6 +68,7 @@ export default function MembersListView() {
     const [members, setMembers] = useState<Member[]>([]);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [page, setPage] = useState(1);
 
     useEffect(() => {
@@ -70,15 +76,19 @@ export default function MembersListView() {
         const fetchMembers = async () => {
             try {
                 setLoading(true);
+                setError(null);
                 const res = await fetch(
                     `/api/rooms/members?classroomId=${id}&limit=5&page=${page}`
                 );
+                if (!res.ok) {
+                    throw new Error(`members_fetch_failed_${res.status}`);
+                }
                 const data = await res.json();
-
                 setMembers(data.members ?? []);
                 setTotalPages(data.pagination?.totalPages ?? 1);
-            } catch (error) {
-                console.error('Failed to fetch members:', error);
+            } catch (err) {
+                console.error('Failed to fetch members:', err);
+                setError('Unable to load members. Please try again.');
             } finally {
                 setLoading(false);
             }
@@ -95,9 +105,14 @@ export default function MembersListView() {
                         <ChevronLeft className="w-4 h-4" /> Back to Classroom
                     </Link>
                 </div>
+
                 {/* Main Content Area */}
                 <div className="flex-1 space-y-3">
-                    {loading ? (
+                    {error ? (
+                        <div className="text-center py-10">
+                            <p className="text-slate-500 dark:text-zinc-400">{error}</p>
+                        </div>
+                    ) : loading ? (
                         <div className="bg-slate-50/50 dark:bg-zinc-950/10 border border-slate-200 dark:border-zinc-900 rounded-2xl p-8 text-center shadow-inner my-4">
                             <Loader2 className="w-6 h-6 text-purple-500 animate-spin mx-auto mb-2" />
                             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
@@ -133,7 +148,6 @@ export default function MembersListView() {
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
                     <div className="flex items-center justify-center gap-2 mt-8">
-
                         <button
                             onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
                             disabled={page === 1 || loading}
@@ -148,6 +162,8 @@ export default function MembersListView() {
                                 key={i}
                                 disabled={loading}
                                 onClick={() => setPage(i + 1)}
+                                aria-label={`Page ${i + 1}`}
+                                aria-current={page === i + 1 ? 'page' : undefined}
                                 className={`
                                     h-10 w-10 rounded-lg border font-medium transition-all
                                     ${
@@ -170,7 +186,6 @@ export default function MembersListView() {
                         >
                             <ChevronRight className="w-4 h-4" />
                         </button>
-
                     </div>
                 )}
             </div>
