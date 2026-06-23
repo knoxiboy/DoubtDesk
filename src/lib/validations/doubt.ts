@@ -19,7 +19,7 @@ export const updateDoubtActionSchema = z.object({
   content: trimmedString.max(5000).optional().nullable(),
   subject: trimmedString.max(100).optional(),
   imageUrl: z.union([safeUrl, z.literal('')]).optional().nullable().transform(e => e === '' ? null : e),
-  userName: trimmedString.optional().nullable(), // Add userName field
+  userName: trimmedString.optional().nullable(),
   replyId: positiveInt.optional().nullable(),
   tags: z.array(trimmedString.min(1).max(80)).max(8).optional(),
   status: z.enum(["unsolved", "in-progress", "solved"]).optional()

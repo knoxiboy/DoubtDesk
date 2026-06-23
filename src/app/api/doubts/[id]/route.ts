@@ -111,6 +111,8 @@ export async function GET(
             isAnonymous: isAnonymous,
             // Add displayName for the sanitization function to use
             displayName: isAnonymous ? 'Anonymous' : user?.fullName || 'User',
+            // Add authorId for isOwnPost comparison
+            authorId: userId,
         };
 
         // Sanitize before returning - removes userEmail, authorId, etc.

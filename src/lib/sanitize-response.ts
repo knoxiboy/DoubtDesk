@@ -2,16 +2,21 @@
 
 interface DoubtWithUser {
     id: number;
+    authorId?: string | null;
     userEmail?: string | null;
-    userName?: string | null;
-    displayName?: string | null;
+    authorEmail?: string | null;
+    authorName?: string | null;
+    anonymousHandle?: string | null;
     isAnonymous?: boolean | null;
     [key: string]: any;
 }
 
 interface ReplyWithUser {
     id: number;
+    authorId?: string | null;
     userEmail?: string | null;
+    authorEmail?: string | null;
+    authorName?: string | null;
     userName?: string | null;
     displayName?: string | null;
     isAnonymous?: boolean | null;
@@ -28,14 +33,21 @@ export function sanitizeDoubt(
     if (!doubt) return null;
 
     // Determine if the current user is the author
-    // Use the userEmail field for comparison (stored in DB but not exposed)
-    const isOwnPost = currentUserId ? doubt.userEmail === currentUserId : false;
+    // Use the authorId field for comparison (stored in DB but not exposed)
+    const isOwnPost = currentUserId ? doubt.authorId === currentUserId : false;
 
     // Create a safe copy - EXCLUDE sensitive fields
     const safeDoubt: any = {};
 
     // Define fields that should NEVER be exposed
-    const sensitiveFields = ['userEmail', 'authorId', 'author_email', 'email', 'user_id'];
+    const sensitiveFields = [
+        'userEmail',
+        'authorEmail',
+        'authorId',
+        'author_email',
+        'email',
+        'user_id'
+    ];
     
     // Fields that are safe to expose - include all possible public fields
     const safeFields = [
@@ -94,6 +106,12 @@ export function sanitizeDoubt(
         }
     }
 
+    // For anonymous posts, remove authorName and userName
+    if (doubt.isAnonymous === true) {
+        delete safeDoubt.authorName;
+        delete safeDoubt.userName;
+    }
+
     // Ensure boolean fields are always present
     safeDoubt.hasLiked = safeDoubt.hasLiked ?? false;
     safeDoubt.hasBookmarked = safeDoubt.hasBookmarked ?? false;
@@ -113,6 +131,7 @@ export function sanitizeDoubt(
     // Ensure authorId is NEVER in the response
     delete safeDoubt.authorId;
     delete safeDoubt.userEmail;
+    delete safeDoubt.authorEmail;
     delete safeDoubt.author_email;
     delete safeDoubt.email;
     delete safeDoubt.user_id;
@@ -140,11 +159,18 @@ export function sanitizeReply(
 ): any {
     if (!reply) return null;
 
-    const isOwnPost = currentUserId ? reply.userEmail === currentUserId : false;
+    const isOwnPost = currentUserId ? reply.authorId === currentUserId : false;
 
     const safeReply: any = {};
 
-    const sensitiveFields = ['userEmail', 'authorId', 'author_email', 'email', 'user_id'];
+    const sensitiveFields = [
+        'userEmail',
+        'authorEmail',
+        'authorId',
+        'author_email',
+        'email',
+        'user_id'
+    ];
     
     const safeFields = [
         'id',
@@ -157,7 +183,8 @@ export function sanitizeReply(
         'updatedAt',
         'isAnonymous',
         'displayName',
-        'userName'
+        'userName',
+        'authorName'
     ];
 
     for (const field of safeFields) {
@@ -183,12 +210,19 @@ export function sanitizeReply(
         }
     }
 
+    // For anonymous replies, remove authorName and userName
+    if (reply.isAnonymous === true) {
+        delete safeReply.authorName;
+        delete safeReply.userName;
+    }
+
     safeReply.isAnonymous = safeReply.isAnonymous ?? false;
     safeReply.isOwnPost = safeReply.isOwnPost ?? false;
 
     // Ensure authorId is NEVER in the response
     delete safeReply.authorId;
     delete safeReply.userEmail;
+    delete safeReply.authorEmail;
     delete safeReply.author_email;
     delete safeReply.email;
     delete safeReply.user_id;
