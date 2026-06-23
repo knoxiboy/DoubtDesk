@@ -75,15 +75,25 @@ export function Provider({ children }: { children: React.ReactNode }) {
                 headers: { "content-type": "application/json" },
             });
 
-            const data = await res.json().catch(() => null);
-
             if (!res.ok) {
+                console.error(`User API failed with status ${res.status}`);
                 setAppUser(null);
                 return;
             }
 
-            setAppUser(data as AppUser);
-        } catch {
+            let data: AppUser | null = null;
+
+            try {
+                data = await res.json();
+            } catch (error) {
+                console.error("Failed to parse user response:", error);
+                setAppUser(null);
+                return;
+            }
+
+            setAppUser(data);
+        } catch (error) {
+            console.error("Failed to fetch user:", error);
             setAppUser(null);
         } finally {
             setLoading(false);

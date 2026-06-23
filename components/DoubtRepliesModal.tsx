@@ -84,9 +84,17 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
         try {
             const url = `/api/replies?doubtId=${doubt.id}` + (storedUserName ? `&userName=${encodeURIComponent(storedUserName)}` : "");
             const res = await fetch(url);
-            if (res.ok) {
+
+            if (!res.ok) {
+                console.error(`Failed to fetch replies: ${res.status}`);
+                return;
+            }
+
+            try {
                 const data = await res.json();
                 setReplies(data);
+            } catch (error) {
+                console.error("Failed to parse replies response:", error);
             }
         } catch (error) {
             console.error("Failed to fetch replies:", error);
@@ -116,7 +124,15 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             });
 
             if (res.ok) {
-                const updatedReply = await res.json();
+                let updatedReply;
+
+                try {
+                    updatedReply = await res.json();
+                } catch (error) {
+                    console.error("Failed to parse reply response:", error);
+                    toast.error("Invalid server response.");
+                    return;
+                }
 
                 if (editingId && type === 'solution') {
                     setReplies(replies.map(r => r.id === editingId ? updatedReply : r));
@@ -133,13 +149,33 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     setShowSolutionForm(false);
                     setEditingId(null);
                 }
+
                 if (onReplyChange) onReplyChange();
-                toast.success(editingId ? "Solution updated!" : (type === 'solution' ? "Solution posted!" : "Reply submitted."), {
-                    id: editingId ? `reply-update-${editingId}` : `reply-create-${type}-${doubt.id}`,
-                });
+
+                toast.success(
+                    editingId
+                        ? "Solution updated!"
+                        : (type === 'solution' ? "Solution posted!" : "Reply submitted."),
+                    {
+                        id: editingId
+                            ? `reply-update-${editingId}`
+                            : `reply-create-${type}-${doubt.id}`,
+                    }
+                );
             } else {
-                const data = await res.json();
-                toast.error(data.error || "Failed to submit reply.", { id: `reply-create-error-${type}-${doubt.id}` });
+                try {
+                    const data = await res.json();
+                    toast.error(
+                        data.error || "Failed to submit reply.",
+                        { id: `reply-create-error-${type}-${doubt.id}` }
+                    );
+                } catch (error) {
+                    console.error("Failed to parse error response:", error);
+                    toast.error(
+                        "Failed to submit reply.",
+                        { id: `reply-create-error-${type}-${doubt.id}` }
+                    );
+                }
             }
         } catch (error) {
             toast.error("Network error while submitting reply.", { id: `reply-create-error-${type}-${doubt.id}` });
@@ -171,7 +207,16 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             });
 
             if (res.ok) {
-                const updated = await res.json();
+                let updated;
+
+                try {
+                    updated = await res.json();
+                } catch (error) {
+                    console.error("Failed to parse solution response:", error);
+                    toast.error("Invalid server response.");
+                    return;
+                }
+
                 setReplies(replies.map(r => r.id === editingId ? updated : r));
                 setEditingId(null);
                 setSolutionContent("");
@@ -180,8 +225,19 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 setShowSolutionForm(false);
                 toast.success("Solution updated!", { id: `reply-update-${editingId}` });
             } else {
-                const data = await res.json();
-                toast.error(data.error || "Failed to update solution.", { id: `reply-update-error-${editingId}` });
+                try {
+                    const data = await res.json();
+                    toast.error(
+                        data.error || "Failed to update solution.",
+                        { id: `reply-update-error-${editingId}` }
+                    );
+                } catch (error) {
+                    console.error("Failed to parse error response:", error);
+                    toast.error(
+                        "Failed to update solution.",
+                        { id: `reply-update-error-${editingId}` }
+                    );
+                }
             }
         } catch (error) {
             toast.error("Network error while updating solution.", { id: `reply-update-error-${editingId}` });
@@ -200,14 +256,34 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 body: JSON.stringify({ content: editContent })
             });
             if (res.ok) {
-                const updated = await res.json();
+                let updated;
+
+                try {
+                    updated = await res.json();
+                } catch (error) {
+                    console.error("Failed to parse reply response:", error);
+                    toast.error("Invalid server response.");
+                    return;
+                }
+
                 setReplies(replies.map(r => r.id === replyId ? updated : r));
                 setEditingId(null);
                 setEditContent("");
                 toast.success("Reply updated", { id: `reply-update-${replyId}` });
             } else {
-                const data = await res.json();
-                toast.error(data.error || "Failed to update reply.", { id: `reply-update-error-${replyId}` });
+                try {
+                    const data = await res.json();
+                    toast.error(
+                        data.error || "Failed to update reply.",
+                        { id: `reply-update-error-${replyId}` }
+                    );
+                } catch (error) {
+                    console.error("Failed to parse error response:", error);
+                    toast.error(
+                        "Failed to update reply.",
+                        { id: `reply-update-error-${replyId}` }
+                    );
+                }
             }
         } catch (error) {
             toast.error("Network error while updating reply.", { id: `reply-update-error-${replyId}` });
@@ -228,8 +304,19 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 toast.success("Reply deleted", { id: `reply-delete-${replyId}` });
                 setReplyToDelete(null);
             } else {
-                const data = await res.json();
-                toast.error(data.error || "Failed to delete reply.", { id: `reply-delete-error-${replyId}` });
+                try {
+                    const data = await res.json();
+                    toast.error(
+                        data.error || "Failed to delete reply.",
+                        { id: `reply-delete-error-${replyId}` }
+                    );
+                } catch (error) {
+                    console.error("Failed to parse delete response:", error);
+                    toast.error(
+                        "Failed to delete reply.",
+                        { id: `reply-delete-error-${replyId}` }
+                    );
+                }
             }
         } catch (error) {
             toast.error("Network error while deleting reply.", { id: `reply-delete-error-${replyId}` });
@@ -253,15 +340,29 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             }
 
             if (res.ok) {
-                const updatedReply = await res.json();
+                let updatedReply;
+
+                try {
+                    updatedReply = await res.json();
+                } catch (error) {
+                    console.error("Failed to parse vote response:", error);
+                    toast.error("Invalid server response.");
+                    return;
+                }
+
                 setReplies(prev => prev.map(r => r.id === replyId ? {
                     ...r,
                     upvotes: updatedReply.upvotes,
                     hasUpvoted: updatedReply.hasUpvoted
                 } : r));
             } else {
-                const data = await res.json().catch(() => ({}));
-                toast.error(data.error || "Failed to vote.", { id: `vote-error-${replyId}` });
+                try {
+                    const data = await res.json();
+                    toast.error(data.error || "Failed to vote.", { id: `vote-error-${replyId}` });
+                } catch (error) {
+                    console.error("Failed to parse vote response:", error);
+                    toast.error("Failed to vote.", { id: `vote-error-${replyId}` });
+                }
             }
         } catch (error) {
             console.error("Failed to vote:", error);
@@ -285,8 +386,19 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     id: `solution-mark-${doubt.id}`,
                 });
             } else {
-                const data = await res.json();
-                toast.error(data.error || "Failed to update solution status.", { id: `solution-mark-error-${doubt.id}` });
+                try {
+                    const data = await res.json();
+                    toast.error(
+                        data.error || "Failed to update solution status.",
+                        { id: `solution-mark-error-${doubt.id}` }
+                    );
+                } catch (error) {
+                    console.error("Failed to parse solution status response:", error);
+                    toast.error(
+                        "Failed to update solution status.",
+                        { id: `solution-mark-error-${doubt.id}` }
+                    );
+                }
             }
         } catch (error) {
             toast.error("Network error while updating solution status.", { id: `solution-mark-error-${doubt.id}` });
@@ -314,7 +426,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
         const newText = text.substring(0, start) + replacement + text.substring(end);
         stateSetter(newText);
-        
+
         // Focus back and set selection
         setTimeout(() => {
             textarea.focus();
@@ -351,11 +463,10 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
         return (
             <div className={`flex flex-col group/msg relative w-full mb-6 ${isMe ? 'items-end' : 'items-start'}`}>
                 {/* Message Bubble */}
-                <div className={`relative max-w-[85%] sm:max-w-[75%] rounded-[2rem] p-6 ${
-                    reply.type === 'solution'
+                <div className={`relative max-w-[85%] sm:max-w-[75%] rounded-[2rem] p-6 ${reply.type === 'solution'
                     ? `${isOfficial ? 'bg-emerald-500/10 border-2 border-emerald-500/40 ring-4 ring-emerald-500/5' : 'bg-white/5 border border-white/10'}`
                     : isMe ? 'bg-blue-600/10 border border-blue-500/20' : 'bg-white/5 border border-white/10'
-                }`}>
+                    }`}>
                     {/* Header */}
                     <div className="flex items-center justify-between gap-4 mb-3">
                         <div className="flex items-center gap-2">
@@ -374,7 +485,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                 <button
                                     onClick={() => handleMarkAsSolution(reply.id)}
                                     disabled={isSolving}
-                                    className={`text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border transition-all ${ isOfficial ? "bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500" } hover:text-slate-900 dark:hover:text-white hover:scale-105 active:scale-95`}
+                                    className={`text-[8px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border transition-all ${isOfficial ? "bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500"} hover:text-slate-900 dark:hover:text-white hover:scale-105 active:scale-95`}
                                 >
                                     {isOfficial ? "Unmark" : "Mark Official"}
                                 </button>
@@ -437,8 +548,8 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     <button onClick={() => insertMarkdown(editTextareaRef, "italic", setEditContent)} className="p-1.5 hover:bg-slate-200 dark:hover:bg-white/10 rounded text-slate-600 dark:text-slate-400"><Italic className="w-3.5 h-3.5" /></button>
                                     <button onClick={() => insertMarkdown(editTextareaRef, "code", setEditContent)} className="p-1.5 hover:bg-slate-200 dark:hover:bg-white/10 rounded text-slate-600 dark:text-slate-400"><Code className="w-3.5 h-3.5" /></button>
                                     <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-1" />
-                                    <button 
-                                        onClick={() => setIsEditPreviewMode(!isEditPreviewMode)} 
+                                    <button
+                                        onClick={() => setIsEditPreviewMode(!isEditPreviewMode)}
                                         className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-black uppercase transition-all ${isEditPreviewMode ? 'bg-blue-500 text-white' : 'hover:bg-white/10 text-slate-400'}`}
                                     >
                                         {isEditPreviewMode ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
@@ -518,10 +629,10 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     <div className="mt-4 flex items-center justify-end">
                         <button
                             onClick={() => handleVote(reply.id)}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group/vote ${ reply.hasUpvoted ? "bg-blue-600/20 text-blue-400 border-blue-500/30 shadow-lg shadow-blue-500/10" : "bg-white/5 text-slate-500 border-white/5 hover:text-white hover:bg-white/10" }`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all active:scale-95 group/vote ${reply.hasUpvoted ? "bg-blue-600/20 text-blue-400 border-blue-500/30 shadow-lg shadow-blue-500/10" : "bg-white/5 text-slate-500 border-white/5 hover:text-white hover:bg-white/10"}`}
                         >
                             <ThumbsUp
-                                className={`w-3.5 h-3.5 ${ reply.hasUpvoted ? 'fill-blue-400' : 'group-hover/vote:scale-110 transition-transform' }`}
+                                className={`w-3.5 h-3.5 ${reply.hasUpvoted ? 'fill-blue-400' : 'group-hover/vote:scale-110 transition-transform'}`}
                             />
                             <span className="text-[10px] font-black uppercase tracking-widest">
                                 {reply.upvotes || 0} <span className="hidden sm:inline ml-1 opacity-60">Helpful</span>
@@ -569,7 +680,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     <div className="px-5 sm:px-8 border-b border-slate-200 dark:border-white/5 flex gap-6 sm:gap-8 h-14 bg-white/[0.01] overflow-x-auto whitespace-nowrap scrollbar-hide">
                         <button
                             onClick={() => setActiveTab('all')}
-                            className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${ activeTab === 'all' ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300' }`}
+                            className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'all' ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300'}`}
                         >
                             All Chat
                             <span className={`px-1.5 py-0.5 rounded-md text-[8px] bg-slate-100 dark:bg-white/5 ${activeTab === 'all' ? 'text-blue-500 bg-blue-500/10' : 'text-slate-600'}`}>
@@ -579,7 +690,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                         </button>
                         <button
                             onClick={() => setActiveTab('chat')}
-                            className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${ activeTab === 'chat' ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300' }`}
+                            className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'chat' ? 'text-blue-500' : 'text-slate-500 hover:text-slate-300'}`}
                         >
                             General Chat
                             <span className={`px-1.5 py-0.5 rounded-md text-[8px] bg-slate-100 dark:bg-white/5 ${activeTab === 'chat' ? 'text-blue-500 bg-blue-500/10' : 'text-slate-600'}`}>
@@ -589,7 +700,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                         </button>
                         <button
                             onClick={() => setActiveTab('solutions')}
-                            className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${ activeTab === 'solutions' ? 'text-emerald-500' : 'text-slate-500 hover:text-slate-300' }`}
+                            className={`relative flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'solutions' ? 'text-emerald-500' : 'text-slate-500 hover:text-slate-300'}`}
                         >
                             All Solutions
                             <span className={`px-1.5 py-0.5 rounded-md text-[8px] bg-slate-100 dark:bg-white/5 ${activeTab === 'solutions' ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-600'}`}>
@@ -682,213 +793,213 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 {/* Hybrid Input Area */}
                 {(doubt.type !== 'teacher' || isTeacher || isDoubtOwner) && (
                     <div className="p-5 sm:p-8 bg-white/[0.02] border-t border-slate-200 dark:border-white/5 solution-form-area">
-                    {showSolutionForm ? (
-                        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 bg-white/[0.03] p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-2xl relative overflow-y-auto max-h-[60vh] group/form custom-scrollbar">
-                            {/* Decorative Background Blur */}
-                            <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
+                        {showSolutionForm ? (
+                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 bg-white/[0.03] p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-200 dark:border-white/5 shadow-2xl relative overflow-y-auto max-h-[60vh] group/form custom-scrollbar">
+                                {/* Decorative Background Blur */}
+                                <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 blur-[80px] rounded-full pointer-events-none" />
 
-                            <div className="flex items-center justify-between relative z-10">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/20 flex items-center justify-center">
-                                        <PlusCircle className="w-6 h-6 text-emerald-500" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
-                                            {editingId ? "Update" : "Post"} <span className="text-emerald-500">Solution</span>
-                                        </h3>
-                                        <p className="text-[10px] text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
-                                            {editingId ? "Refining your contribution" : `Solving • ${doubt.subject}`}
-                                        </p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        setShowSolutionForm(false);
-                                        setEditingId(null);
-                                        setSolutionContent("");
-                                        setSolutionImage("");
-                                        setFileName("");
-                                    }}
-                                    className="p-3 hover:bg-slate-100 dark:hover:bg-white/5 rounded-2xl text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all hover:rotate-90"
-                                    aria-label="Close form"
-                                >
-                                    <X className="w-6 h-6" />
-                                </button>
-                            </div>
-                            <div className="flex items-center gap-2 mb-2">
-                                <button onClick={() => insertMarkdown(solutionTextareaRef, "bold", setSolutionContent)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-600 dark:text-slate-400"><Bold className="w-4 h-4" /></button>
-                                <button onClick={() => insertMarkdown(solutionTextareaRef, "italic", setSolutionContent)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-600 dark:text-slate-400"><Italic className="w-4 h-4" /></button>
-                                <button onClick={() => insertMarkdown(solutionTextareaRef, "code", setSolutionContent)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-600 dark:text-slate-400"><Code className="w-4 h-4" /></button>
-                                <button onClick={() => insertMarkdown(solutionTextareaRef, "list", setSolutionContent)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-600 dark:text-slate-400"><List className="w-4 h-4" /></button>
-                                <div className="w-px h-6 bg-slate-200 dark:bg-white/10 mx-2" />
-                                <button 
-                                    onClick={() => setIsPreviewMode(!isPreviewMode)} 
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isPreviewMode ? 'bg-emerald-500 text-white' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
-                                >
-                                    {isPreviewMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                    {isPreviewMode ? "Editing" : "Preview Mode"}
-                                </button>
-                            </div>
-
-                            {isPreviewMode ? (
-                                <div className="w-full h-40 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[1.5rem] p-5 text-slate-900 dark:text-white text-sm overflow-y-auto">
-                                    <MarkdownRenderer content={solutionContent || "*Nothing to preview*"} />
-                                </div>
-                            ) : (
-                                <textarea
-                                    ref={solutionTextareaRef}
-                                    value={solutionContent}
-                                    onChange={(e) => setSolutionContent(e.target.value)}
-                                    placeholder="Explain your solution clearly and step-by-step..."
-                                    className="w-full h-40 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[1.5rem] p-5 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none font-medium leading-relaxed placeholder:text-slate-600 shadow-inner"
-                                />
-                            )}
-
-                            {solutionImage && (
-                                <div className="relative group/preview animate-in zoom-in-95 duration-300 w-full sm:w-fit">
-                                    {solutionImage.startsWith("data:application/pdf") ? (
-                                        <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white dark:bg-slate-950 border border-red-500/20 shadow-2xl">
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <div className="w-12 h-12 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-center shrink-0">
-                                                    <FileText className="w-6 h-6 text-red-500" />
-                                                </div>
-                                                <div className="min-w-0 text-left">
-                                                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-xs">{fileName}</p>
-                                                    <p className="text-[9px] text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5">PDF Attachment</p>
-                                                </div>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setSolutionImage(""); setFileName(""); }}
-                                                className="p-2.5 bg-red-500/10 hover:bg-red-500 hover:text-slate-900 dark:hover:text-white text-red-400 rounded-xl transition-all border border-red-500/20 text-xs font-bold uppercase tracking-wider shrink-0"
-                                                title="Remove PDF"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                <div className="flex items-center justify-between relative z-10">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-emerald-600/20 border border-emerald-500/20 flex items-center justify-center">
+                                            <PlusCircle className="w-6 h-6 text-emerald-500" />
                                         </div>
-                                    ) : (
-                                        <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-white dark:bg-slate-950 shadow-2xl group/img">
-                                            <img src={solutionImage} className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500" />
+                                        <div>
+                                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                                                {editingId ? "Update" : "Post"} <span className="text-emerald-500">Solution</span>
+                                            </h3>
+                                            <p className="text-[10px] text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
+                                                {editingId ? "Refining your contribution" : `Solving • ${doubt.subject}`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setShowSolutionForm(false);
+                                            setEditingId(null);
+                                            setSolutionContent("");
+                                            setSolutionImage("");
+                                            setFileName("");
+                                        }}
+                                        className="p-3 hover:bg-slate-100 dark:hover:bg-white/5 rounded-2xl text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all hover:rotate-90"
+                                        aria-label="Close form"
+                                    >
+                                        <X className="w-6 h-6" />
+                                    </button>
+                                </div>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <button onClick={() => insertMarkdown(solutionTextareaRef, "bold", setSolutionContent)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-600 dark:text-slate-400"><Bold className="w-4 h-4" /></button>
+                                    <button onClick={() => insertMarkdown(solutionTextareaRef, "italic", setSolutionContent)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-600 dark:text-slate-400"><Italic className="w-4 h-4" /></button>
+                                    <button onClick={() => insertMarkdown(solutionTextareaRef, "code", setSolutionContent)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-600 dark:text-slate-400"><Code className="w-4 h-4" /></button>
+                                    <button onClick={() => insertMarkdown(solutionTextareaRef, "list", setSolutionContent)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-600 dark:text-slate-400"><List className="w-4 h-4" /></button>
+                                    <div className="w-px h-6 bg-slate-200 dark:bg-white/10 mx-2" />
+                                    <button
+                                        onClick={() => setIsPreviewMode(!isPreviewMode)}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isPreviewMode ? 'bg-emerald-500 text-white' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
+                                    >
+                                        {isPreviewMode ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        {isPreviewMode ? "Editing" : "Preview Mode"}
+                                    </button>
+                                </div>
 
-                                            {/* Image Overlay */}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent flex flex-col justify-end p-3 translate-y-2 group-hover/img:translate-y-0 transition-transform">
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400 truncate max-w-full">
-                                                    {fileName || "Live Attachment"}
-                                                </span>
-                                            </div>
+                                {isPreviewMode ? (
+                                    <div className="w-full h-40 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[1.5rem] p-5 text-slate-900 dark:text-white text-sm overflow-y-auto">
+                                        <MarkdownRenderer content={solutionContent || "*Nothing to preview*"} />
+                                    </div>
+                                ) : (
+                                    <textarea
+                                        ref={solutionTextareaRef}
+                                        value={solutionContent}
+                                        onChange={(e) => setSolutionContent(e.target.value)}
+                                        placeholder="Explain your solution clearly and step-by-step..."
+                                        className="w-full h-40 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[1.5rem] p-5 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none font-medium leading-relaxed placeholder:text-slate-600 shadow-inner"
+                                    />
+                                )}
 
-                                            {/* Actions on Hover */}
-                                            <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover/img:opacity-100 flex items-center justify-center gap-3 transition-all duration-300">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setFullscreenImageUrl(
-                                                            solutionImage,
-                                                        );
-                                                        setIsFullscreenImageOpen(
-                                                            true,
-                                                        );
-                                                    }}
-                                                    className="w-10 h-10 bg-slate-200 dark:bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-slate-900 dark:text-white transition-all scale-75 group-hover/img:scale-100">
-                                                    <ZoomIn className="w-5 h-5" />
-                                                </button>
+                                {solutionImage && (
+                                    <div className="relative group/preview animate-in zoom-in-95 duration-300 w-full sm:w-fit">
+                                        {solutionImage.startsWith("data:application/pdf") ? (
+                                            <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-white dark:bg-slate-950 border border-red-500/20 shadow-2xl">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="w-12 h-12 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-center shrink-0">
+                                                        <FileText className="w-6 h-6 text-red-500" />
+                                                    </div>
+                                                    <div className="min-w-0 text-left">
+                                                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-xs">{fileName}</p>
+                                                        <p className="text-[9px] text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5">PDF Attachment</p>
+                                                    </div>
+                                                </div>
                                                 <button
                                                     type="button"
                                                     onClick={() => { setSolutionImage(""); setFileName(""); }}
-                                                    className="w-10 h-10 bg-red-500/20 hover:bg-red-500 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100 border border-red-500/20 hover:border-transparent"
-                                                    aria-label="Delete image"
+                                                    className="p-2.5 bg-red-500/10 hover:bg-red-500 hover:text-slate-900 dark:hover:text-white text-red-400 rounded-xl transition-all border border-red-500/20 text-xs font-bold uppercase tracking-wider shrink-0"
+                                                    title="Remove PDF"
                                                 >
-                                                    <Trash2 className="w-5 h-5" />
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-white dark:bg-slate-950 shadow-2xl group/img">
+                                                <img src={solutionImage} className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500" />
+
+                                                {/* Image Overlay */}
+                                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent flex flex-col justify-end p-3 translate-y-2 group-hover/img:translate-y-0 transition-transform">
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400 truncate max-w-full">
+                                                        {fileName || "Live Attachment"}
+                                                    </span>
+                                                </div>
+
+                                                {/* Actions on Hover */}
+                                                <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover/img:opacity-100 flex items-center justify-center gap-3 transition-all duration-300">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setFullscreenImageUrl(
+                                                                solutionImage,
+                                                            );
+                                                            setIsFullscreenImageOpen(
+                                                                true,
+                                                            );
+                                                        }}
+                                                        className="w-10 h-10 bg-slate-200 dark:bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-slate-900 dark:text-white transition-all scale-75 group-hover/img:scale-100">
+                                                        <ZoomIn className="w-5 h-5" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setSolutionImage(""); setFileName(""); }}
+                                                        className="w-10 h-10 bg-red-500/20 hover:bg-red-500 backdrop-blur-md rounded-xl flex items-center justify-center text-white transition-all scale-75 group-hover/img:scale-100 border border-red-500/20 hover:border-transparent"
+                                                        aria-label="Delete image"
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div className="flex flex-col sm:flex-row gap-4 relative z-10">
+                                    <div className="flex-1 relative group overflow-hidden rounded-2xl">
+                                        <input type="file" onChange={handleFileChange} accept="image/png,image/jpeg,image/gif,image/webp,application/pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                        <div className="w-full h-full min-h-[60px] px-6 border-2 border-dashed border-slate-200 dark:border-white/5 bg-white/[0.02] flex items-center justify-center gap-3 group-hover:bg-emerald-500/5 group-hover:border-emerald-500/30 transition-all duration-300">
+                                            <div className="p-2 rounded-lg bg-slate-100 dark:bg-white/5 group-hover:bg-emerald-500/20 transition-colors">
+                                                <Upload className="w-4 h-4 text-emerald-500" />
+                                            </div>
+                                            <span className="text-[10px] text-slate-600 dark:text-slate-400 font-black uppercase tracking-[0.2em] group-hover:text-emerald-400 transition-colors">
+                                                {solutionImage ? "Change Attachment" : "Attach Visual or PDF"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={handlePostOrUpdate}
+                                        disabled={isPosting || (!solutionContent.trim() && !solutionImage)}
+                                        className="px-10 py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] transition-all shadow-xl shadow-emerald-500/20 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-3 active:scale-95 group/submit"
+                                    >
+                                        {isPosting ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                        )}
+                                        {editingId ? "Finalize Update" : "Post Solution"}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full">
+                                {(doubt.isSolved !== "solved" && (doubt.type !== 'teacher' || isTeacher)) && (
+                                    <button
+                                        onClick={() => setShowSolutionForm(true)}
+                                        className="px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all group flex items-center justify-center gap-2 active:scale-95 shrink-0 shadow-lg shadow-emerald-600/20"
+                                    >
+                                        <PlusCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Post Solution</span>
+                                    </button>
+                                )}
+                                <div className="flex-1 flex flex-col gap-2 w-full">
+                                    {isChatPreviewMode ? (
+                                        <div className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 px-6 text-slate-900 dark:text-white text-sm min-h-[54px] max-h-32 overflow-y-auto">
+                                            <MarkdownRenderer content={chatText || "*Nothing to preview*"} />
+                                        </div>
+                                    ) : (
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={chatText}
+                                                onChange={(e) => setChatText(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        handlePost('comment');
+                                                    }
+                                                }}
+                                                placeholder="Ask for clarification or chat with peers..."
+                                                className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 flex-1 pl-6 pr-24 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+                                            />
+                                            <div className="absolute right-2 top-2 flex items-center gap-1">
+                                                <button
+                                                    onClick={() => setIsChatPreviewMode(!isChatPreviewMode)}
+                                                    className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all"
+                                                    title="Preview Markdown"
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handlePost('comment')}
+                                                    disabled={isPosting || !chatText.trim()}
+                                                    className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all disabled:opacity-50"
+                                                >
+                                                    {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                                                 </button>
                                             </div>
                                         </div>
                                     )}
-                                </div>
-                            )}
-
-                            <div className="flex flex-col sm:flex-row gap-4 relative z-10">
-                                <div className="flex-1 relative group overflow-hidden rounded-2xl">
-                                    <input type="file" onChange={handleFileChange} accept="image/png,image/jpeg,image/gif,image/webp,application/pdf" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                                    <div className="w-full h-full min-h-[60px] px-6 border-2 border-dashed border-slate-200 dark:border-white/5 bg-white/[0.02] flex items-center justify-center gap-3 group-hover:bg-emerald-500/5 group-hover:border-emerald-500/30 transition-all duration-300">
-                                        <div className="p-2 rounded-lg bg-slate-100 dark:bg-white/5 group-hover:bg-emerald-500/20 transition-colors">
-                                            <Upload className="w-4 h-4 text-emerald-500" />
-                                        </div>
-                                        <span className="text-[10px] text-slate-600 dark:text-slate-400 font-black uppercase tracking-[0.2em] group-hover:text-emerald-400 transition-colors">
-                                            {solutionImage ? "Change Attachment" : "Attach Visual or PDF"}
-                                        </span>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={handlePostOrUpdate}
-                                    disabled={isPosting || (!solutionContent.trim() && !solutionImage)}
-                                    className="px-10 py-5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-[11px] transition-all shadow-xl shadow-emerald-500/20 disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-3 active:scale-95 group/submit"
-                                >
-                                    {isPosting ? (
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                    ) : (
-                                        <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                    {isChatPreviewMode && (
+                                        <button
+                                            onClick={() => setIsChatPreviewMode(false)}
+                                            className="text-[10px] font-black uppercase text-blue-500 hover:text-blue-400 self-start px-2"
+                                        >
+                                            Back to Edit
+                                        </button>
                                     )}
-                                    {editingId ? "Finalize Update" : "Post Solution"}
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full">
-                            {(doubt.isSolved !== "solved" && (doubt.type !== 'teacher' || isTeacher)) && (
-                                <button
-                                    onClick={() => setShowSolutionForm(true)}
-                                    className="px-6 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all group flex items-center justify-center gap-2 active:scale-95 shrink-0 shadow-lg shadow-emerald-600/20"
-                                >
-                                    <PlusCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Post Solution</span>
-                                </button>
-                            )}
-                            <div className="flex-1 flex flex-col gap-2 w-full">
-                                {isChatPreviewMode ? (
-                                    <div className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 px-6 text-slate-900 dark:text-white text-sm min-h-[54px] max-h-32 overflow-y-auto">
-                                        <MarkdownRenderer content={chatText || "*Nothing to preview*"} />
-                                    </div>
-                                ) : (
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            value={chatText}
-                                            onChange={(e) => setChatText(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    handlePost('comment');
-                                                }
-                                            }}
-                                            placeholder="Ask for clarification or chat with peers..."
-                                            className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl py-4 flex-1 pl-6 pr-24 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-blue-500/50 transition-all font-medium"
-                                        />
-                                        <div className="absolute right-2 top-2 flex items-center gap-1">
-                                            <button 
-                                                onClick={() => setIsChatPreviewMode(!isChatPreviewMode)}
-                                                className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all"
-                                                title="Preview Markdown"
-                                            >
-                                                <Eye className="w-4 h-4" />
-                                            </button>
-                                            <button 
-                                                onClick={() => handlePost('comment')}
-                                                disabled={isPosting || !chatText.trim()}
-                                                className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all disabled:opacity-50"
-                                            >
-                                                {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                                {isChatPreviewMode && (
-                                    <button 
-                                        onClick={() => setIsChatPreviewMode(false)}
-                                        className="text-[10px] font-black uppercase text-blue-500 hover:text-blue-400 self-start px-2"
-                                    >
-                                        Back to Edit
-                                    </button>
-                                )}
-                            </div>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -925,7 +1036,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     </div>
                 </div>
             )}
-            
+
             <DeleteConfirmationDialog
                 isOpen={replyToDelete !== null}
                 onClose={(open) => {

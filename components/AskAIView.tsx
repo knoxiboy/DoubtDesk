@@ -63,10 +63,10 @@ const EXAMPLE_PROMPTS = [
     "What is Ohm's Law? Give an example.",
 ];
 
-export default function AskAIView({ classroomId = null, onSuccess, initialDoubt }: { 
-    classroomId?: number | null, 
+export default function AskAIView({ classroomId = null, onSuccess, initialDoubt }: {
+    classroomId?: number | null,
     onSuccess?: () => void,
-    initialDoubt?: any 
+    initialDoubt?: any
 }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [inputMode, setInputMode] = useState<'text' | 'image'>('text');
@@ -80,7 +80,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
     const [isVideoLoading, setIsVideoLoading] = useState(false);
     const [videoUrl, setVideoUrl] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-const { copied, copy } = useCopyToClipboard();
+    const { copied, copy } = useCopyToClipboard();
 
     useEffect(() => {
         if (initialDoubt) {
@@ -96,8 +96,23 @@ const { copied, copy } = useCopyToClipboard();
                 setIsLoading(true);
                 try {
                     const res = await fetch(`/api/replies?doubtId=${initialDoubt.id}`);
-                    const data = await res.json();
-                    if (res.ok && data.length > 0) {
+
+                    if (!res.ok) {
+                        setErrorMsg("Could not retrieve the solution.");
+                        return;
+                    }
+
+                    let data;
+
+                    try {
+                        data = await res.json();
+                    } catch (error) {
+                        console.error("Failed to parse replies response:", error);
+                        setErrorMsg("Invalid server response.");
+                        return;
+                    }
+
+                    if (data.length > 0) {
                         // Find the AI solution reply
                         const solution = data.find((r: any) => r.type === 'solution' || r.userName === 'DoubtDesk AI');
                         if (solution) {
@@ -116,7 +131,7 @@ const { copied, copy } = useCopyToClipboard();
             };
 
             fetchSolution();
-            
+
             // Smooth scroll to the top of the component
             containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
@@ -130,13 +145,32 @@ const { copied, copy } = useCopyToClipboard();
             const res = await fetch('/api/video/generate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    content: response || prompt, 
-                    imageUrl: imageBase64 
+                body: JSON.stringify({
+                    content: response || prompt,
+                    imageUrl: imageBase64
                 })
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Video generation failed.");
+            if (!res.ok) {
+                let errorData = null;
+
+                try {
+                    errorData = await res.json();
+                } catch (error) {
+                    console.error("Failed to parse video error response:", error);
+                }
+
+                throw new Error(errorData?.error || "Video generation failed.");
+            }
+
+            let data;
+
+            try {
+                data = await res.json();
+            } catch (error) {
+                console.error("Failed to parse video response:", error);
+                throw new Error("Invalid server response.");
+            }
+
             setVideoUrl(data.videoUrl);
         } catch (err: any) {
             setErrorMsg(err.message);
@@ -166,11 +200,28 @@ const { copied, copy } = useCopyToClipboard();
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt, type, imageBase64, classroomId })
             });
-            const data = await res.json();
             if (!res.ok) {
-                setErrorCode(data?.code || null);
-                throw new Error(data?.error || "The AI couldn't process your request.");
+                let errorData = null;
+
+                try {
+                    errorData = await res.json();
+                } catch (error) {
+                    console.error("Failed to parse AI error response:", error);
+                }
+
+                setErrorCode(errorData?.code || null);
+                throw new Error(errorData?.error || "The AI couldn't process your request.");
             }
+
+            let data;
+
+            try {
+                data = await res.json();
+            } catch (error) {
+                console.error("Failed to parse AI response:", error);
+                throw new Error("Invalid server response.");
+            }
+
             setResponse(data.reply);
             if (onSuccess) onSuccess();
         } catch (err: any) {
@@ -300,21 +351,21 @@ const { copied, copy } = useCopyToClipboard();
             )}
 
             {response && (
-    <div className="space-y-4">
-        <div className="flex justify-end">
-            <button
-                onClick={() => copy(response, "full-response")}
-                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-bold uppercase tracking-tighter text-[9px] transition-all text-slate-400 hover:text-white"
-                aria-label="Copy full response"
-            >
-                {copied === "full-response" ? (
-                    <><Check className="w-3 h-3 text-green-400" /> All Copied!</>
-                ) : (
-                    <><Copy className="w-3 h-3" /> Copy All</>
-                )}
-            </button>
-        </div>
-        {sections.map((sec, idx) => {
+                <div className="space-y-4">
+                    <div className="flex justify-end">
+                        <button
+                            onClick={() => copy(response, "full-response")}
+                            className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-bold uppercase tracking-tighter text-[9px] transition-all text-slate-400 hover:text-white"
+                            aria-label="Copy full response"
+                        >
+                            {copied === "full-response" ? (
+                                <><Check className="w-3 h-3 text-green-400" /> All Copied!</>
+                            ) : (
+                                <><Copy className="w-3 h-3" /> Copy All</>
+                            )}
+                        </button>
+                    </div>
+                    {sections.map((sec, idx) => {
                         const meta = SECTION_META[sec.title];
                         return (
                             <div key={idx} className="bg-white/60 dark:bg-slate-900/60 border border-slate-200 dark:border-white/8 rounded-3xl overflow-hidden shadow-lg">
@@ -326,28 +377,28 @@ const { copied, copy } = useCopyToClipboard();
                                     )}
                                     <h2 className="text-slate-900 dark:text-white font-black tracking-tight text-sm uppercase italic">{sec.title}</h2>
                                     <div className="ml-auto flex items-center gap-2">
-    <button
-        onClick={() => copy(sec.content, `section-${idx}`)}
-        className="flex items-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-bold uppercase tracking-tighter text-[9px] transition-all text-slate-400 hover:text-white"
-        aria-label="Copy section content"
-        title="Copy to clipboard"
-    >
-        {copied === `section-${idx}` ? (
-            <><Check className="w-3 h-3 text-green-400" /> Copied!</>
-        ) : (
-            <><Copy className="w-3 h-3" /> Copy</>
-        )}
-    </button>
-    {idx === 0 && (
-        <button
-            onClick={handleGenerateVideo}
-            disabled={isVideoLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-slate-900 dark:text-white rounded-xl font-bold uppercase tracking-tighter text-[9px] shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50"
-        >
-            {isVideoLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3 text-yellow-400 fill-yellow-400" />} {isVideoLoading ? "Generating..." : "Generate Video"}
-        </button>
-    )}
-</div>
+                                        <button
+                                            onClick={() => copy(sec.content, `section-${idx}`)}
+                                            className="flex items-center gap-1.5 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-bold uppercase tracking-tighter text-[9px] transition-all text-slate-400 hover:text-white"
+                                            aria-label="Copy section content"
+                                            title="Copy to clipboard"
+                                        >
+                                            {copied === `section-${idx}` ? (
+                                                <><Check className="w-3 h-3 text-green-400" /> Copied!</>
+                                            ) : (
+                                                <><Copy className="w-3 h-3" /> Copy</>
+                                            )}
+                                        </button>
+                                        {idx === 0 && (
+                                            <button
+                                                onClick={handleGenerateVideo}
+                                                disabled={isVideoLoading}
+                                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-slate-900 dark:text-white rounded-xl font-bold uppercase tracking-tighter text-[9px] shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50"
+                                            >
+                                                {isVideoLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3 text-yellow-400 fill-yellow-400" />} {isVideoLoading ? "Generating..." : "Generate Video"}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="px-6 py-6 prose prose-invert max-w-none">
                                     <ReactMarkdown
