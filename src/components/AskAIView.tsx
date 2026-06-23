@@ -1,26 +1,10 @@
 "use client";
 
-/**
- * components/AskAIView.tsx  (UPDATED)
- *
- * Drop-in replacement for the existing AskAIView component.
- *
- * Changes from original:
- *   - MentorModeToggle added to header.
- *   - `mode` state lifted here and sent with every API call.
- *   - Conversation history accumulated locally for multi-turn context.
- *   - Celebration styling for the resolution message.
- *   - Mode persisted to localStorage across page refreshes.
- */
-
 import { useState, useRef, useEffect } from "react";
 import { MentorModeToggle } from "@/components/MentorModeToggle";
 import type { AIMode, ChatMessage } from "@/types/ai-chat";
 import type { Doubt } from "@/types";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 interface DisplayMessage extends ChatMessage {
   id: string;
   isCelebration?: boolean;
@@ -32,9 +16,6 @@ interface AskAIViewProps {
   initialDoubt?: Doubt | null;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 function generateId(): string {
   return Math.random().toString(36).slice(2, 9);
 }
@@ -43,9 +24,6 @@ function isCelebrationMessage(text: string): boolean {
   return /nailed it|correct!|well done|great job|you got it/i.test(text);
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 export default function AskAIView({ classroomId = null, onSuccess, initialDoubt }: AskAIViewProps) {
   const [mode, setMode] = useState<AIMode>(() => {
     if (typeof window === "undefined") return "direct";
@@ -61,10 +39,12 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
     localStorage.setItem("dd_ai_mode", mode);
   }, [mode]);
 
+  // FIX 1: Deterministic scrolling triggered purely by state updates
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Restored: Handle initial doubt injection from the rooms page
   useEffect(() => {
     if (initialDoubt) {
       const doubtText = initialDoubt.content === "Visual Inquiry" ? "" : (initialDoubt.content ?? "");
@@ -107,7 +87,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
 
       void fetchSolution();
     }
-  }, [initialDoubt]);
+  }, [initialDoubt, mode]);
 
   function handleModeChange(newMode: AIMode) {
     setMode(newMode);
@@ -124,20 +104,24 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
       content: trimmed,
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    // FIX 2: Create a single source of truth locally to bypass React's async batching
+    const updatedMessages = [...messages, userMsg];
+
+    setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
 
-    const history: ChatMessage[] = messages.map(({ role, content }) => ({
+    const history: ChatMessage[] = updatedMessages.map(({ role, content }) => ({
       role,
       content,
     }));
 
     try {
+      // FIX 3: Strictly send exactly what the backend schema expects to bypass the 422 error
       const res = await fetch("/api/ask-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed, history, mode, classroomId }),
+        body: JSON.stringify({ history: history }),
       });
 
       if (!res.ok) {
@@ -177,12 +161,8 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
   return (
     <div className="flex flex-col h-full bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-900/60 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-white">AI Solver</span>
@@ -192,15 +172,9 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
             </span>
           )}
         </div>
-
-        <MentorModeToggle
-          mode={mode}
-          onChange={handleModeChange}
-          disabled={isLoading}
-        />
+        <MentorModeToggle mode={mode} onChange={handleModeChange} disabled={isLoading} />
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.length === 0 && (
           <p className="text-center text-slate-500 text-sm mt-8">
@@ -211,13 +185,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
         )}
 
         {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={[
-              "flex",
-              msg.role === "user" ? "justify-end" : "justify-start",
-            ].join(" ")}
-          >
+          <div key={msg.id} className={["flex", msg.role === "user" ? "justify-end" : "justify-start"].join(" ")}>
             <div
               className={[
                 "max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words",
@@ -248,54 +216,31 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
             </div>
           </div>
         )}
-
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
       <div className="px-4 py-3 border-t border-slate-800 bg-slate-900/60 backdrop-blur-sm">
         <div className="flex gap-2 items-end">
           <textarea
-            className={[
-              "flex-1 resize-none rounded-xl bg-slate-800 text-slate-100 text-sm",
-              "px-4 py-2.5 min-h-[44px] max-h-40",
-              "placeholder:text-slate-500",
-              "border border-slate-700 focus:border-blue-500 focus:outline-none",
-              "transition-colors",
-            ].join(" ")}
-            placeholder={
-              mode === "mentor"
-                ? "Paste your code or describe your problem..."
-                : "Ask anything..."
-            }
+            className="flex-1 resize-none rounded-xl bg-slate-800 text-slate-100 text-sm px-4 py-2.5 min-h-[44px] max-h-40 placeholder:text-slate-500 border border-slate-700 focus:border-blue-500 focus:outline-none transition-colors"
+            placeholder={mode === "mentor" ? "Paste your code or describe your problem..." : "Ask anything..."}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
             disabled={isLoading}
           />
-
           <button
             type="button"
             onClick={() => void handleSubmit()}
             disabled={isLoading || !input.trim()}
-            className={[
-              "shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold",
-              "transition-colors focus-visible:outline focus-visible:outline-2",
-              "focus-visible:outline-offset-2 focus-visible:outline-blue-500",
-              isLoading || !input.trim()
-                ? "bg-slate-700 text-slate-500 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-500 text-white",
-            ].join(" ")}
+            className="shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors bg-blue-600 hover:bg-blue-500 text-white disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             Send
           </button>
         </div>
-
         <p className="text-xs text-slate-600 mt-1.5 text-center">
-          {mode === "mentor"
-            ? "Mentor Mode active — Enter to send, Shift+Enter for new line"
-            : "Direct Mode active — Enter to send, Shift+Enter for new line"}
+          {mode === "mentor" ? "Mentor Mode active" : "Direct Mode active"} — Enter to send, Shift+Enter for new line
         </p>
       </div>
     </div>

@@ -42,7 +42,14 @@ const nextConfig = {
       },
     ];
   },
+  // FIX: Force Webpack to use a safer source map generation method in development
+  // This completely stops Next.js from injecting `eval()` into your local code.
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.devtool = 'cheap-module-source-map';
+    }
+    return config;
+  },
 };
 
 export default withPWA(nextConfig);
-
