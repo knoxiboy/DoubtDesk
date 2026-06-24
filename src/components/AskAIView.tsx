@@ -39,12 +39,25 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
     localStorage.setItem("dd_ai_mode", mode);
   }, [mode]);
 
-  // FIX 1: Deterministic scrolling triggered purely by state updates
+  // Deterministic scrolling triggered purely by state updates
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // FIX: Separate effect to dynamically recalculate celebration styling when mode toggles
+  // without re-triggering the initial doubt fetch.
+  useEffect(() => {
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.role === "assistant"
+          ? { ...msg, isCelebration: mode === "mentor" && isCelebrationMessage(msg.content) }
+          : msg
+      )
+    );
+  }, [mode]);
+
   // Restored: Handle initial doubt injection from the rooms page
+  // FIX: Removed `mode` from dependency array so it only runs once per initialDoubt.id
   useEffect(() => {
     if (initialDoubt) {
       const doubtText = initialDoubt.content === "Visual Inquiry" ? "" : (initialDoubt.content ?? "");
@@ -72,6 +85,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                   id: "initial-assistant-" + initialDoubt.id,
                   role: "assistant",
                   content: solution.content,
+                  // We still calculate initial celebration state based on current mode
                   isCelebration: mode === "mentor" && isCelebrationMessage(solution.content),
                 };
                 setMessages([initialUserMsg, assistantMsg]);
@@ -87,7 +101,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
 
       void fetchSolution();
     }
-  }, [initialDoubt, mode]);
+  }, [initialDoubt]); 
 
   function handleModeChange(newMode: AIMode) {
     setMode(newMode);
@@ -104,24 +118,30 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
       content: trimmed,
     };
 
-    // FIX 2: Create a single source of truth locally to bypass React's async batching
+    // Create a single source of truth locally to bypass React's async batching
     const updatedMessages = [...messages, userMsg];
+
+    // FIX: Map history from the PREVIOUS messages array, excluding the current user message
+    const historyForApi: ChatMessage[] = messages.map(({ role, content }) => ({
+      role,
+      content,
+    }));
 
     setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
 
-    const history: ChatMessage[] = updatedMessages.map(({ role, content }) => ({
-      role,
-      content,
-    }));
-
     try {
-      // FIX 3: Strictly send exactly what the backend schema expects to bypass the 422 error
+      // FIX: Send strictly what the backend schema expects (message, history, mode, classroomId)
       const res = await fetch("/api/ask-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ history: history }),
+        body: JSON.stringify({ 
+          message: trimmed,
+          history: historyForApi,
+          mode: mode,
+          classroomId: classroomId 
+        }),
       });
 
       if (!res.ok) {
@@ -202,7 +222,9 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
         ))}
 
         {isLoading && (
-          <div className="flex justify-start">
+          // FIX: Added role="status" and visually hidden span for screen readers
+          <div className="flex justify-start" role="status">
+            <span className="sr-only">Generating response...</span>
             <div className="bg-slate-800 rounded-2xl rounded-bl-sm px-4 py-3">
               <span className="flex gap-1">
                 {[0, 1, 2].map((i) => (
@@ -223,6 +245,8 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
         <div className="flex gap-2 items-end">
           <textarea
             className="flex-1 resize-none rounded-xl bg-slate-800 text-slate-100 text-sm px-4 py-2.5 min-h-[44px] max-h-40 placeholder:text-slate-500 border border-slate-700 focus:border-blue-500 focus:outline-none transition-colors"
+            // FIX: Added aria-label for textarea accessibility
+            aria-label={mode === "mentor" ? "Message input for mentor mode" : "Message input for direct mode"}
             placeholder={mode === "mentor" ? "Paste your code or describe your problem..." : "Ask anything..."}
             value={input}
             onChange={(e) => setInput(e.target.value)}
