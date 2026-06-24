@@ -202,10 +202,24 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
     const getShareUrl = () => `${window.location.origin}/doubts/${doubt.id}`;
 
     const handleShare = async () => {
+        const url = getShareUrl();
         try {
-            await navigator.clipboard.writeText(getShareUrl());
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(url);
+            } else {
+                // Fallback for non-HTTPS or older browsers
+                const textArea = document.createElement("textarea");
+                textArea.value = url;
+                textArea.style.position = "fixed";
+                textArea.style.opacity = "0";
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand("copy");
+                document.body.removeChild(textArea);
+            }
             toast.success(SHARE_MESSAGES.COPY_SUCCESS);
         } catch (error) {
+            console.error("Failed to copy link:", error);
             toast.error(SHARE_MESSAGES.COPY_ERROR);
         }
     };
