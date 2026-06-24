@@ -5,6 +5,27 @@ import { MentorModeToggle } from "@/components/MentorModeToggle";
 import type { AIMode, ChatMessage } from "@/types/ai-chat";
 import type { Doubt } from "@/types";
 
+// FIX 3: Centralized UI copy to resolve "No hardcoded strings" rule
+const ASK_AI_COPY = {
+  loading: "Generating response...",
+  inputLabel: {
+    mentor: "Message input for mentor mode",
+    direct: "Message input for direct mode",
+  },
+  placeholder: {
+    mentor: "Paste your code or describe your problem...",
+    direct: "Ask anything...",
+  },
+  emptyState: {
+    mentor: "Mentor Mode is on. Paste your code or question and I will guide you step by step.",
+    direct: "Direct Mode is on. Ask anything and I will answer immediately.",
+  },
+  helperText: {
+    mentor: "Mentor Mode active — Enter to send, Shift+Enter for new line",
+    direct: "Direct Mode active — Enter to send, Shift+Enter for new line",
+  },
+} as const;
+
 interface DisplayMessage extends ChatMessage {
   id: string;
   isCelebration?: boolean;
@@ -34,18 +55,18 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  
+  // FIX 1: Synchronous ref to prevent double-submit race condition
+  const submitInFlightRef = useRef(false);
 
   useEffect(() => {
     localStorage.setItem("dd_ai_mode", mode);
   }, [mode]);
 
-  // Deterministic scrolling triggered purely by state updates
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // FIX: Separate effect to dynamically recalculate celebration styling when mode toggles
-  // without re-triggering the initial doubt fetch.
   useEffect(() => {
     setMessages((prev) =>
       prev.map((msg) =>
@@ -56,8 +77,6 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
     );
   }, [mode]);
 
-  // Restored: Handle initial doubt injection from the rooms page
-  // FIX: Removed `mode` from dependency array so it only runs once per initialDoubt.id
   useEffect(() => {
     if (initialDoubt) {
       const doubtText = initialDoubt.content === "Visual Inquiry" ? "" : (initialDoubt.content ?? "");
@@ -85,7 +104,6 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
                   id: "initial-assistant-" + initialDoubt.id,
                   role: "assistant",
                   content: solution.content,
-                  // We still calculate initial celebration state based on current mode
                   isCelebration: mode === "mentor" && isCelebrationMessage(solution.content),
                 };
                 setMessages([initialUserMsg, assistantMsg]);
@@ -110,7 +128,10 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
 
   async function handleSubmit() {
     const trimmed = input.trim();
-    if (!trimmed || isLoading) return;
+    
+    // FIX 1: Block execution immediately if a submit is already in flight
+    if (!trimmed || isLoading || submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
 
     const userMsg: DisplayMessage = {
       id: generateId(),
@@ -118,10 +139,8 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
       content: trimmed,
     };
 
-    // Create a single source of truth locally to bypass React's async batching
     const updatedMessages = [...messages, userMsg];
 
-    // FIX: Map history from the PREVIOUS messages array, excluding the current user message
     const historyForApi: ChatMessage[] = messages.map(({ role, content }) => ({
       role,
       content,
@@ -132,15 +151,15 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
     setIsLoading(true);
 
     try {
-      // FIX: Send strictly what the backend schema expects (message, history, mode, classroomId)
       const res = await fetch("/api/ask-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // FIX 2: Omit classroomId completely if it is null to satisfy Zod/API validation
         body: JSON.stringify({ 
           message: trimmed,
           history: historyForApi,
-          mode: mode,
-          classroomId: classroomId 
+          mode,
+          ...(classroomId !== null ? { classroomId } : {}),
         }),
       });
 
@@ -170,6 +189,8 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
         },
       ]);
     } finally {
+      // FIX 1: Clear the synchronous guard when the request finishes
+      submitInFlightRef.current = false;
       setIsLoading(false);
     }
   }
@@ -198,9 +219,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.length === 0 && (
           <p className="text-center text-slate-500 text-sm mt-8">
-            {mode === "mentor"
-              ? "Mentor Mode is on. Paste your code or question and I will guide you step by step."
-              : "Direct Mode is on. Ask anything and I will answer immediately."}
+            {ASK_AI_COPY.emptyState[mode]}
           </p>
         )}
 
@@ -222,9 +241,8 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
         ))}
 
         {isLoading && (
-          // FIX: Added role="status" and visually hidden span for screen readers
           <div className="flex justify-start" role="status">
-            <span className="sr-only">Generating response...</span>
+            <span className="sr-only">{ASK_AI_COPY.loading}</span>
             <div className="bg-slate-800 rounded-2xl rounded-bl-sm px-4 py-3">
               <span className="flex gap-1">
                 {[0, 1, 2].map((i) => (
@@ -245,9 +263,8 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
         <div className="flex gap-2 items-end">
           <textarea
             className="flex-1 resize-none rounded-xl bg-slate-800 text-slate-100 text-sm px-4 py-2.5 min-h-[44px] max-h-40 placeholder:text-slate-500 border border-slate-700 focus:border-blue-500 focus:outline-none transition-colors"
-            // FIX: Added aria-label for textarea accessibility
-            aria-label={mode === "mentor" ? "Message input for mentor mode" : "Message input for direct mode"}
-            placeholder={mode === "mentor" ? "Paste your code or describe your problem..." : "Ask anything..."}
+            aria-label={ASK_AI_COPY.inputLabel[mode]}
+            placeholder={ASK_AI_COPY.placeholder[mode]}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -264,7 +281,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
           </button>
         </div>
         <p className="text-xs text-slate-600 mt-1.5 text-center">
-          {mode === "mentor" ? "Mentor Mode active" : "Direct Mode active"} — Enter to send, Shift+Enter for new line
+          {ASK_AI_COPY.helperText[mode]}
         </p>
       </div>
     </div>
