@@ -85,7 +85,6 @@ export default function PublicRoomsPage() {
             if (!hasMore) return null;
         }
         
-        const userName = typeof window !== 'undefined' ? localStorage.getItem("anonymous_user") : "";
         const params = new URLSearchParams();
         
         if (filter !== "All") {
@@ -109,7 +108,6 @@ export default function PublicRoomsPage() {
             params.append("sort", sort);
         }
 
-        if (userName) params.append("userName", userName);
         params.append("page", (pageIndex + 1).toString());
         params.append("limit", String(PAGE_SIZE));
         
@@ -159,8 +157,7 @@ export default function PublicRoomsPage() {
             const query = searchQuery.toLowerCase();
             const contentMatch = d.content?.toLowerCase().includes(query);
             const subjectMatch = d.subject?.toLowerCase().includes(query);
-            const userNameMatch = d.userName?.toLowerCase().includes(query);
-            if (!contentMatch && !subjectMatch && !userNameMatch) {
+            if (!contentMatch && !subjectMatch) {
                 return false;
             }
         }

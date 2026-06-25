@@ -22,9 +22,7 @@ export default function DoubtPermalinkClient({ initialDoubt }: DoubtPermalinkCli
 
     const fetchDoubt = async () => {
         try {
-            const userName = localStorage.getItem("anonymous_user");
-            const url = `/api/doubts/${initialDoubt.id}` + (userName ? `?userName=${encodeURIComponent(userName)}` : "");
-            const res = await fetch(url);
+            const res = await fetch(`/api/doubts/${initialDoubt.id}`);
             if (res.ok) {
                 const data = await res.json();
                 setDoubt(data);

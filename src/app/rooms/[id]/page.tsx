@@ -147,8 +147,6 @@ export default function ClassroomPage() {
       : activeTab === "community"
         ? "community"
         : "ai";
-  const userName =
-    typeof window !== "undefined" ? localStorage.getItem("anonymous_user") : "";
 
   const fetcher = (url: string) => fetch(url).then((res) => res.json());
   const updateSort = (nextSort: DoubtSortValue) => {
@@ -176,7 +174,6 @@ export default function ClassroomPage() {
     if (activeTab === "insights") return null;
     const params = new URLSearchParams({
       classroomId: String(id),
-      userName: userName || "",
       type: String(type),
       page: String(pageIndex + 1),
       limit: String(PAGE_SIZE),
