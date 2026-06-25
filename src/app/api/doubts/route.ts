@@ -336,7 +336,6 @@ export async function POST(req: Request) {
     const [newDoubt] = await db
       .insert(doubtsTable)
       .values({
-        userName: user.fullName || email,
         userEmail: email,
         subject,
         subTopic,

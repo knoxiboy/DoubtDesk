@@ -42,23 +42,23 @@ export async function POST(req: Request) {
     const classroomId = parseOptionalClassroomId(rawClassroomId);
     let aiQuotaIdentifier = getAnonymousQuotaIdentifier(req);
 
+    const anonymousRateLimitResponse = await enforceApiRateLimit(
+      aiLimiter,
+      aiQuotaIdentifier,
+      "ai",
+    );
+    if (anonymousRateLimitResponse) return anonymousRateLimitResponse;
+
     if (classroomId) {
       const { email } = await requireAuth();
-      const rateLimitResponse = await enforceApiRateLimit(
+      const userRateLimitResponse = await enforceApiRateLimit(
         aiLimiter,
         email,
         "ai",
       );
-      if (rateLimitResponse) return rateLimitResponse;
+      if (userRateLimitResponse) return userRateLimitResponse;
       await requireMembership(email, classroomId);
       aiQuotaIdentifier = email;
-    } else {
-      const rateLimitResponse = await enforceApiRateLimit(
-        aiLimiter,
-        aiQuotaIdentifier,
-        "ai",
-      );
-      if (rateLimitResponse) return rateLimitResponse;
     }
 
     if (
