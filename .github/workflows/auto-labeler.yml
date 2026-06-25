@@ -2,9 +2,9 @@ name: Auto Labeler
 
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, edited, labeled]
   pull_request_target:
-    types: [opened, reopened]
+    types: [opened, reopened, labeled]
 
 permissions: {}
 
@@ -22,13 +22,11 @@ jobs:
           script: |
             const payload = context.payload;
             const isPR = !!payload.pull_request;
-            const item = payload.issue || payload.pull_request;
-            const title = (item.title || '').toLowerCase();
-            const body = (item.body || '').toLowerCase();
-            const combined = title + ' ' + body;
-            const number = item.number;
+            const number = isPR
+              ? payload.pull_request.number
+              : context.issue.number;
 
-            // ── Fetch current labels ──────────────────────────────────
+            // ── 1. Fetch current labels ──────────────────────────────────
             let currentLabelObjects = [];
             try {
               const { data } = await github.rest.issues.listLabelsOnIssue({
@@ -46,265 +44,356 @@ jobs:
               name => name.toLowerCase().startsWith('level:')
             );
 
-            // ── Helper: word boundary match ───────────────────────────
-            function hasWord(text, word) {
-              const escaped = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-              return new RegExp('\\b' + escaped + '\\b', 'i').test(text);
-            }
+            // ── 2. Duplicate / Invalid Label closing (idempotent) ─────────
+            if (
+              payload.action === 'labeled' &&
+              (payload.label.name === 'duplicate' || payload.label.name === 'invalid' || payload.label.name === 'already-implemented')
+            ) {
+              const labelName = payload.label.name;
+              const typeStr = isPR ? 'pull request' : 'issue';
 
-            const labelsToAdd = ["gssoc'26"];
-
-            // ── 1. TYPE DETECTION ─────────────────────────────────────
-            const typeSignals = {
-              'type:security': [
-                'idor', 'xss', 'csrf', 'injection', 'vulnerability', 'cve',
-                'auth bypass', 'broken access', 'privilege escalation',
-                'unauthenticated', 'unauthorized', 'exploit', 'attack',
-                'security', 'credential', 'token leak', 'exposed secret',
-                'prompt injection', 'data leak', 'brute force'
-              ],
-              'type:bug': [
-                'bug', 'fix', 'crash', 'error', 'broken', 'not working',
-                'fails', 'incorrect', '500 error', '404', '503', 'timeout',
-                'blank screen', 'render crash', 'null', 'undefined',
-                'regression', 'corrupted', 'malfunction'
-              ],
-              'type:feature': [
-                'feat', 'feature', 'enhancement', 'add support', 'implement',
-                'introduce', 'new functionality', 'enable', 'allow users',
-                'add ability', 'add option'
-              ],
-              'type:performance': [
-                'performance', 'slow', 'latency', 'timeout', '504',
-                'memory leak', 'n+1', 'optimize', 'lazy load', 'cache',
-                'bottleneck', 'pagination', 'batch', 'parallel', 'debounce',
-                'bundle size', 'lighthouse'
-              ],
-              'type:docs': [
-                'docs', 'documentation', 'readme', 'changelog', 'contributing',
-                'jsdoc', 'comment', 'typedoc', 'api docs'
-              ],
-              'type:refactor': [
-                'refactor', 'cleanup', 'restructure', 'reorganize',
-                'decouple', 'extract', 'modularize', 'dry principle',
-                'code quality', 'technical debt'
-              ],
-              'type:testing': [
-                'test', 'spec', 'coverage', 'unit test', 'integration test',
-                'e2e', 'cypress', 'jest', 'vitest', 'playwright'
-              ],
-              'type:design': [
-                'design', 'ui/ux', 'mockup', 'wireframe', 'figma',
-                'layout', 'theme', 'dark mode', 'light mode', 'responsive',
-                'animation'
-              ],
-              'type:accessibility': [
-                'accessibility', 'a11y', 'wcag', 'aria', 'screen reader'
-              ],
-              'type:devops': [
-                'ci/cd', 'github actions', 'workflow', 'docker', 'deploy',
-                'infrastructure', 'devops', 'pipeline', 'build process'
-              ]
-            };
-
-            let detectedTypes = [];
-            for (const [label, keywords] of Object.entries(typeSignals)) {
-              const score = keywords.filter(k => hasWord(combined, k)).length;
-              if (score > 0) detectedTypes.push({ label, score });
-            }
-            detectedTypes.sort((a, b) => b.score - a.score);
-
-            if (detectedTypes.length > 0) {
-              labelsToAdd.push(detectedTypes[0].label);
-              if (detectedTypes.length > 1 && detectedTypes[1].score >= 2) {
-                labelsToAdd.push(detectedTypes[1].label);
-              }
-            }
-
-            // ── 2. AREA DETECTION (issues only) ───────────────────────
-            const areaSignals = {
-              'backend': [
-                'api', 'route', 'endpoint', 'server', 'database', 'query',
-                'drizzle', 'neon', 'postgres', 'migration', 'schema',
-                'middleware', 'auth check', 'rate limit'
-              ],
-              'frontend': [
-                'component', 'page', 'ui', 'button', 'modal', 'sidebar',
-                'navbar', 'layout', 'css', 'tailwind', 'responsive',
-                'landing page', 'dashboard', 'form'
-              ],
-              'ai': [
-                'ai', 'groq', 'llama', 'gpt', 'prompt', 'model', 'inference',
-                'moderation', 'embedding', 'vector', 'similarity',
-                'video generation', 'tts', 'ocr', 'remotion'
-              ],
-              'database': [
-                'schema', 'table', 'migration', 'foreign key', 'index',
-                'constraint', 'cascade', 'drizzle', 'neon', 'orphan',
-                'integrity', 'relation'
-              ]
-            };
-
-            if (!isPR) {
-              for (const [label, keywords] of Object.entries(areaSignals)) {
-                const score = keywords.filter(k => hasWord(combined, k)).length;
-                if (score >= 2) labelsToAdd.push(label);
-              }
-            }
-
-            // ── 3. DIFFICULTY LEVEL ───────────────────────────────────
-            let level = null;
-            let criticalScore = 0;
-            let advancedScore = 0;
-            let intermediateScore = 0;
-            let beginnerScore = 0;
-
-            if (!hasExistingLevel) {
-              const criticalSignals = [
-                'data leak', 'credential', 'connection string', 'exposed',
-                'unauthenticated', 'privilege escalation', 'data corruption',
-                'data loss', 'production down', 'denial of service',
-                'race condition', 'deadlock', 'memory explosion',
-                'prompt injection', 'sql injection', 'broken access control',
-                'fails open', 'fail-open', 'bypass moderation',
-                'mass', 'all users', 'entire table', 'entire dataset',
-                'no authentication', 'no authorization', 'token leak',
-                'systemic', 'architectural', 'foreign key missing',
-                'orphan records', 'identity inconsistency',
-                'o(n) memory', 'unbounded', 'no pagination at db level'
-              ];
-
-              const advancedSignals = [
-                'idor', 'security', 'auth', 'real-time', 'websocket',
-                'embedding', 'cosine similarity', 'vector', 'de-duplication',
-                'notification system', 'email digest', 'background job',
-                'inngest', 'distributed lock', 'rate limit', 'redis',
-                'video generation', 'remotion', 'tts', 'ocr',
-                'migration', 'schema change', 'foreign key', 'cascade',
-                'promise.all', 'parallelize', 'concurrency',
-                'fallback', 'retry', 'circuit breaker', 'multi-model',
-                'streaming', 'sse', 'pagination', 'cursor-based',
-                'soft delete', 'audit trail', 'role-based',
-                'api route', 'middleware', 'input validation', 'zod',
-                'drizzle', 'neon', 'database optimization'
-              ];
-
-              const intermediateSignals = [
-                'component', 'hook', 'context', 'state management',
-                'form validation', 'character counter', 'clipboard',
-                'search', 'filter', 'sort', 'modal', 'toast',
-                'loading state', 'skeleton', 'error boundary',
-                'responsive', 'dark mode', 'theme', 'animation',
-                'chart', 'analytics', 'dashboard', 'profile'
-              ];
-
-              const beginnerSignals = [
-                'typo', 'readme', 'comment', 'rename', 'alt text',
-                'aria-label', 'tooltip', 'hover', 'color', 'font',
-                'spacing', 'padding', 'margin', 'icon', 'logo',
-                'link', 'url', 'meta tag', 'title tag', 'seo',
-                'robots.txt', 'sitemap', 'changelog', 'contributing',
-                'button text', 'placeholder', 'copy change',
-                'add class', 'css fix', 'style fix'
-              ];
-
-              criticalScore = criticalSignals.filter(k => hasWord(combined, k)).length;
-              advancedScore = advancedSignals.filter(k => hasWord(combined, k)).length;
-              intermediateScore = intermediateSignals.filter(k => hasWord(combined, k)).length;
-              beginnerScore = beginnerSignals.filter(k => hasWord(combined, k)).length;
-
-              // Structural boosts
-              const fileRefs = (combined.match(/\.(ts|tsx|js|jsx|yml|sql|json)/g) || []).length;
-              const codeBlocks = (combined.match(/```/g) || []).length / 2;
-              const stepCount = (combined.match(/^\d+\./gm) || []).length;
-
-              if (fileRefs >= 5) criticalScore += 2;
-              else if (fileRefs >= 3) advancedScore += 1;
-              if (codeBlocks >= 3) advancedScore += 1;
-              if (stepCount >= 5) intermediateScore += 1;
-              if (body.length > 2000) advancedScore += 1;
-              if (body.length > 4000) criticalScore += 1;
-
-              // Security should never be beginner
-              if (detectedTypes.some(t => t.label === 'type:security')) {
-                beginnerScore = 0;
-                if (criticalScore < 2) advancedScore += 3;
+              // Skip if bot triggered
+              const actor = context.actor;
+              if (actor === 'github-actions[bot]' || actor === 'github-actions') {
+                console.log('Label was added by a bot — skipping.');
+                return;
               }
 
-              // Determine level
-              if (criticalScore >= 3) {
-                level = 'level:critical';
-              } else if (criticalScore >= 2 || advancedScore >= 3) {
-                level = 'level:advanced';
-                if (detectedTypes.some(t => t.label === 'type:security') && criticalScore >= 1) {
-                  level = 'level:critical';
-                }
-              } else if (advancedScore >= 1 || intermediateScore >= 2) {
-                level = 'level:intermediate';
-              } else if (beginnerScore >= 1) {
-                level = 'level:beginner';
+              const marker = `<!-- label-enforcer-${labelName} -->`;
+
+              // Check idempotency
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+              });
+              if (comments.some(c => c.body && c.body.includes(marker))) {
+                console.log(`Already handled ${labelName} for #${number} — skipping.`);
+                return;
+              }
+
+              let message = '';
+              if (labelName === 'duplicate') {
+                message = `${marker}\nThis ${typeStr} has been marked as a **duplicate** of an existing one. Closing to keep our tracker organized.\n\n*(Maintainers: To state which issue this duplicates, use \`/duplicate #123\` in a comment!)*`;
+              } else if (labelName === 'already-implemented') {
+                message = `${marker}\nThis ${typeStr} has been closed because the requested features or bug fixes are **already implemented** in the repository.`;
               } else {
-                level = 'level:intermediate';
+                message = `${marker}\nThis ${typeStr} has been marked as **invalid**. This usually means it does not follow our contributing guidelines, is out of scope, or lacks necessary information.`;
               }
 
-              labelsToAdd.push(level);
+              // Set labels to just the one label
+              await github.rest.issues.setLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+                labels: [labelName],
+              });
 
-              // Beginner-friendly tags for issues only
-              if (level === 'level:beginner' && !isPR) {
-                labelsToAdd.push('good first issue');
-                labelsToAdd.push('beginner friendly');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+                body: message,
+              });
+
+              if (isPR) {
+                await github.rest.pulls.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: number,
+                  state: 'closed',
+                });
+              } else {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                  state: 'closed',
+                  state_reason: 'not_planned',
+                });
               }
+
+              console.log(`Closed #${number} as ${labelName}.`);
+              return; // Stop execution on dup/invalid close
             }
 
-            // ── 4. PR SIZE NUDGE ──────────────────────────────────────
-            if (!hasExistingLevel && isPR && level) {
-              const sizeLabel = currentLabelObjects.find(
-                l => l.name.toLowerCase().startsWith('size/')
-              );
-              if (sizeLabel) {
-                const sizeName = sizeLabel.name.toLowerCase();
-                const levels = ['level:beginner', 'level:intermediate', 'level:advanced', 'level:critical'];
-                const currentLevelIdx = levels.indexOf(level);
-                const isBorderline = Math.abs(advancedScore - criticalScore) <= 1;
-                if (sizeName === 'size/xxl' && isBorderline && currentLevelIdx < 3) {
-                  const idx = labelsToAdd.indexOf(level);
-                  if (idx > -1) labelsToAdd.splice(idx, 1);
-                  labelsToAdd.push(levels[currentLevelIdx + 1]);
-                  console.log('Size xxl nudged level up (borderline content score)');
+            // ── 3. Exclusive Level labels enforcement ────────────────────
+            if (
+              payload.action === 'labeled' &&
+              (
+                payload.label.name.toLowerCase().startsWith('level:') ||
+                payload.label.name.toLowerCase().startsWith('level/')
+              )
+            ) {
+              const addedLabel = payload.label.name;
+              const addedLabelLower = addedLabel.toLowerCase();
+
+              const levelMapping = {
+                'level:beginner': 'level:beginner',
+                'level:intermediate': 'level:intermediate',
+                'level:advanced': 'level:advanced',
+                'level:critical': 'level:critical',
+              };
+
+              let targetLabel = addedLabel;
+
+              // Normalize level labels (Level:Beginner -> level:beginner)
+              if (levelMapping[addedLabelLower] && levelMapping[addedLabelLower] !== addedLabel) {
+                const mapped = levelMapping[addedLabelLower];
+                console.log(`Normalizing "${addedLabel}" to "${mapped}"`);
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                  labels: [mapped],
+                });
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: number,
+                    name: addedLabel,
+                  });
+                } catch (e) {
+                  console.log(`Could not remove "${addedLabel}": ${e.message}`);
                 }
+                targetLabel = mapped;
               }
-            }
 
-            // ── 5. APPLY LABELS ───────────────────────────────────────
-            const uniqueLabels = [...new Set(labelsToAdd)];
+              const targetLabelLower = targetLabel.toLowerCase();
 
-            // Clean up conflicting level labels before applying
-            if (!hasExistingLevel && level) {
-              for (const existingLabel of currentLabelNames) {
-                if (
-                  existingLabel.toLowerCase().startsWith('level:') &&
-                  existingLabel.toLowerCase() !== level.toLowerCase()
-                ) {
+              // Remove other conflicting level labels
+              for (const label of currentLabelObjects) {
+                if (label.name.toLowerCase() === targetLabelLower) continue;
+
+                const labelLower = label.name.toLowerCase();
+                if (labelLower.startsWith('level:')) {
                   try {
                     await github.rest.issues.removeLabel({
                       owner: context.repo.owner,
                       repo: context.repo.repo,
                       issue_number: number,
-                      name: existingLabel,
+                      name: label.name,
                     });
-                    console.log(`Removed conflicting level label "${existingLabel}"`);
+                    console.log(`Removed conflicting level label "${label.name}" (replaced by "${targetLabel}")`);
                   } catch (e) {
-                    console.log(`Could not remove "${existingLabel}": ${e.message}`);
+                    console.log(`Could not remove "${label.name}": ${e.message}`);
                   }
                 }
               }
+              return; // Stop execution on manual label events
             }
 
-            await github.rest.issues.addLabels({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: number,
-              labels: uniqueLabels,
-            });
+            // ── 4. Content Auto-labeling (only on creation/edit) ──────────
+            if (['opened', 'edited', 'reopened'].includes(payload.action)) {
+              const item = isPR ? payload.pull_request : payload.issue;
+              const title = (item.title || '').toLowerCase();
+              const body = (item.body || '').toLowerCase();
+              const combined = title + ' ' + body;
 
-            console.log(`Applied labels to #${number}: ${uniqueLabels.join(', ')}`);
+              // Helper: word boundary match
+              function hasWord(text, word) {
+                const escaped = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+                return new RegExp('\\b' + escaped + '\\b', 'i').test(text);
+              }
+
+              const labelsToAdd = ["gssoc'26"];
+
+              // ── 4.1 TYPE DETECTION ─────────────────────────────────────
+              const typeSignals = {
+                'type:security': [
+                  'idor', 'xss', 'csrf', 'injection', 'vulnerability', 'cve',
+                  'auth bypass', 'broken access', 'privilege escalation',
+                  'unauthenticated', 'unauthorized', 'exploit', 'attack',
+                  'security', 'credential', 'token leak', 'exposed secret',
+                  'prompt injection', 'data leak', 'brute force'
+                ],
+                'type:bug': [
+                  'bug', 'fix', 'crash', 'error', 'broken', 'not working',
+                  'fails', 'incorrect', '500 error', '404', '503', 'timeout',
+                  'blank screen', 'render crash', 'null', 'undefined',
+                  'regression', 'corrupted', 'malfunction'
+                ],
+                'type:feature': [
+                  'feat', 'feature', 'enhancement', 'add support', 'implement',
+                  'introduce', 'new functionality', 'enable', 'allow users',
+                  'add ability', 'add option'
+                ],
+                'type:performance': [
+                  'performance', 'slow', 'latency', 'timeout', '504',
+                  'memory leak', 'n+1', 'optimize', 'lazy load', 'cache',
+                  'bottleneck', 'pagination', 'batch', 'parallel', 'debounce',
+                  'bundle size', 'lighthouse'
+                ],
+                'type:docs': [
+                  'docs', 'documentation', 'readme', 'changelog', 'contributing',
+                  'jsdoc', 'comment', 'typedoc', 'api docs'
+                ],
+                'type:refactor': [
+                  'refactor', 'cleanup', 'restructure', 'reorganize',
+                  'decouple', 'extract', 'modularize', 'dry principle',
+                  'code quality', 'technical debt'
+                ],
+                'type:testing': [
+                  'test', 'spec', 'coverage', 'unit test', 'integration test',
+                  'e2e', 'cypress', 'jest', 'vitest', 'playwright'
+                ],
+                'type:design': [
+                  'design', 'ui/ux', 'mockup', 'wireframe', 'figma',
+                  'layout', 'theme', 'dark mode', 'light mode', 'responsive',
+                  'animation'
+                ],
+                'type:accessibility': [
+                  'accessibility', 'a11y', 'wcag', 'aria', 'screen reader'
+                ],
+                'type:devops': [
+                  'ci/cd', 'github actions', 'workflow', 'docker', 'deploy',
+                  'infrastructure', 'devops', 'pipeline', 'build process'
+                ]
+              };
+
+              let detectedTypes = [];
+              for (const [labelName, keywords] of Object.entries(typeSignals)) {
+                const score = keywords.filter(k => hasWord(combined, k)).length;
+                if (score > 0) detectedTypes.push({ label: labelName, score });
+              }
+              detectedTypes.sort((a, b) => b.score - a.score);
+
+              if (detectedTypes.length > 0) {
+                labelsToAdd.push(detectedTypes[0].label);
+                if (detectedTypes.length > 1 && detectedTypes[1].score >= 2) {
+                  labelsToAdd.push(detectedTypes[1].label);
+                }
+              }
+
+              // ── 4.2 DIFFICULTY LEVEL ───────────────────────────────────
+              let level = null;
+              if (!hasExistingLevel) {
+                const criticalSignals = [
+                  'data leak', 'credential', 'connection string', 'exposed',
+                  'unauthenticated', 'privilege escalation', 'data corruption',
+                  'data loss', 'production down', 'denial of service',
+                  'race condition', 'deadlock', 'memory explosion',
+                  'prompt injection', 'sql injection', 'broken access control',
+                  'fails open', 'fail-open', 'bypass moderation',
+                  'mass', 'all users', 'entire table', 'entire dataset',
+                  'no authentication', 'no authorization', 'token leak',
+                  'systemic', 'architectural', 'foreign key missing',
+                  'orphan records', 'identity inconsistency',
+                  'o(n) memory', 'unbounded', 'no pagination at db level'
+                ];
+
+                const advancedSignals = [
+                  'idor', 'security', 'auth', 'real-time', 'websocket',
+                  'embedding', 'cosine similarity', 'vector', 'de-duplication',
+                  'notification system', 'email digest', 'background job',
+                  'inngest', 'distributed lock', 'rate limit', 'redis',
+                  'video generation', 'remotion', 'tts', 'ocr',
+                  'migration', 'schema change', 'foreign key', 'cascade',
+                  'promise.all', 'parallelize', 'concurrency',
+                  'fallback', 'retry', 'circuit breaker', 'multi-model',
+                  'streaming', 'sse', 'pagination', 'cursor-based',
+                  'soft delete', 'audit trail', 'role-based',
+                  'api route', 'middleware', 'input validation', 'zod',
+                  'drizzle', 'neon', 'database optimization'
+                ];
+
+                const intermediateSignals = [
+                  'component', 'hook', 'context', 'state management',
+                  'form validation', 'character counter', 'clipboard',
+                  'search', 'filter', 'sort', 'modal', 'toast',
+                  'loading state', 'skeleton', 'error boundary',
+                  'responsive', 'dark mode', 'theme', 'animation',
+                  'chart', 'analytics', 'dashboard', 'profile'
+                ];
+
+                const beginnerSignals = [
+                  'typo', 'readme', 'comment', 'rename', 'alt text',
+                  'aria-label', 'tooltip', 'hover', 'color', 'font',
+                  'spacing', 'padding', 'margin', 'icon', 'logo',
+                  'link', 'url', 'meta tag', 'title tag', 'seo',
+                  'robots.txt', 'sitemap', 'changelog', 'contributing',
+                  'button text', 'placeholder', 'copy change',
+                  'add class', 'css fix', 'style fix'
+                ];
+
+                const criticalScore = criticalSignals.filter(k => hasWord(combined, k)).length;
+                const advancedScore = advancedSignals.filter(k => hasWord(combined, k)).length;
+                const intermediateScore = intermediateSignals.filter(k => hasWord(combined, k)).length;
+                const beginnerScore = beginnerSignals.filter(k => hasWord(combined, k)).length;
+
+                // Structural boosts
+                const fileRefs = (combined.match(/\.(ts|tsx|js|jsx|yml|sql|json)/g) || []).length;
+                const codeBlocks = (combined.match(/```/g) || []).length / 2;
+                const stepCount = (combined.match(/^\d+\./gm) || []).length;
+
+                let critScore = criticalScore;
+                let advScore = advancedScore;
+                let interScore = intermediateScore;
+                let begScore = beginnerScore;
+
+                if (fileRefs >= 5) critScore += 2;
+                else if (fileRefs >= 3) advScore += 1;
+                if (codeBlocks >= 3) advScore += 1;
+                if (stepCount >= 5) interScore += 1;
+                if (body.length > 2000) advScore += 1;
+                if (body.length > 4000) critScore += 1;
+
+                if (detectedTypes.some(t => t.label === 'type:security')) {
+                  begScore = 0;
+                  if (critScore < 2) advScore += 3;
+                }
+
+                if (critScore >= 3) {
+                  level = 'level:critical';
+                } else if (critScore >= 2 || advScore >= 3) {
+                  level = 'level:advanced';
+                  if (detectedTypes.some(t => t.label === 'type:security') && critScore >= 1) {
+                    level = 'level:critical';
+                  }
+                } else if (advScore >= 1 || interScore >= 2) {
+                  level = 'level:intermediate';
+                } else if (begScore >= 1) {
+                  level = 'level:beginner';
+                } else {
+                  level = 'level:intermediate';
+                }
+
+                labelsToAdd.push(level);
+              }
+
+              // ── 4.3 APPLY LABELS ───────────────────────────────────────
+              const uniqueLabels = [...new Set(labelsToAdd)];
+
+              // Clean up conflicting level labels before applying
+              if (!hasExistingLevel && level) {
+                for (const existingLabel of currentLabelNames) {
+                  if (
+                    existingLabel.toLowerCase().startsWith('level:') &&
+                    existingLabel.toLowerCase() !== level.toLowerCase()
+                  ) {
+                    try {
+                      await github.rest.issues.removeLabel({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        issue_number: number,
+                        name: existingLabel,
+                      });
+                      console.log(`Removed conflicting level label "${existingLabel}"`);
+                    } catch (e) {
+                      console.log(`Could not remove "${existingLabel}": ${e.message}`);
+                    }
+                  }
+                }
+              }
+
+              if (uniqueLabels.length > 0) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                  labels: uniqueLabels,
+                });
+                console.log(`Applied shared labels: ${uniqueLabels.join(', ')}`);
+              }
+            }
