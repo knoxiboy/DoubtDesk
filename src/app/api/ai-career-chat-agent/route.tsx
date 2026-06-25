@@ -2,10 +2,12 @@ import axios from "axios";
 import { NextResponse, type NextRequest } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
+import { enforceApiRateLimit } from "@/lib/api-rate-limit";
 import {
     buildAiProviderErrorResponse,
     enforceAiAvailability,
 } from "@/lib/ai/kill-switch";
+import { aiLimiter } from "@/lib/ratelimit";
 import { getSafeErrorDetails } from "@/lib/safe-error-details";
 
 export async function POST(req: NextRequest) {
@@ -19,6 +21,9 @@ export async function POST(req: NextRequest) {
         if (!email) {
             return NextResponse.json({ error: "User email not found" }, { status: 400 });
         }
+
+        const rateLimitResponse = await enforceApiRateLimit(aiLimiter, email, "ai");
+        if (rateLimitResponse) return rateLimitResponse;
 
         const { errorResponse } = await checkUserBlock(email);
         if (errorResponse) return errorResponse;

@@ -85,3 +85,26 @@ jest.mock("rehype-katex", () => () => {});
 jest.mock("react-hotkeys-hook", () => ({
     useHotkeys: () => {}
 }));
+
+jest.mock("@/lib/ratelimit", () => {
+    const createLimiter = () => ({
+        limit: jest.fn().mockResolvedValue({
+            success: true,
+            limit: 100,
+            remaining: 99,
+            reset: Date.now() + 60_000,
+        }),
+    });
+
+    return {
+        aiLimiter: createLimiter(),
+        generalLimiter: createLimiter(),
+        emailNotificationLimiter: createLimiter(),
+        videoLimiter: createLimiter(),
+        redisClient: {
+            setnx: jest.fn().mockResolvedValue(1),
+            del: jest.fn().mockResolvedValue(1),
+            expire: jest.fn().mockResolvedValue(1),
+        },
+    };
+});

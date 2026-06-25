@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
+import { enforceApiRateLimit } from "@/lib/api-rate-limit";
 import { aiLimiter } from "@/lib/ratelimit";
 import { AI_REQUEST_MAX_BYTES } from "@/lib/ai-image-validation";
 import { buildSystemMessages } from "@/lib/socratic-prompt";
@@ -11,32 +12,22 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_build_key" })
 const MODEL = "llama-3.3-70b-versatile";
 
 export async function POST(req: Request): Promise<NextResponse> {
-  // ── 1. Auth ──────────────────────────────────────────────────────────────
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // ── 2. Rate limit (before touching the body) ─────────────────────────────
-  const limitResult = await aiLimiter.limit(userId);
-  if (!limitResult.success) {
-    return NextResponse.json(
-      {
-        error: "Too many AI requests. Please try again shortly.",
-        code: "RATE_LIMITED",
-      },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(
-            Math.ceil((limitResult.reset - Date.now()) / 1000)
-          ),
-        },
-      }
-    );
+  const user = await currentUser();
+  const email = user?.primaryEmailAddress?.emailAddress;
+  if (!email) {
+    return NextResponse.json({ error: "Email required" }, { status: 400 });
   }
 
-  // ── 3. Body size guard ───────────────────────────────────────────────────
+  const rateLimitResponse = await enforceApiRateLimit(aiLimiter, email, "ai");
+  if (rateLimitResponse) {
+    return rateLimitResponse;
+  }
+
   const rawText = await req.text();
   if (rawText.length >= AI_REQUEST_MAX_BYTES) {
     return NextResponse.json(
@@ -52,15 +43,13 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  // ── 4. Field aliases: accept both `message` (new) and `prompt` (old) ─────
   const prompt =
     typeof body.prompt === "string"
       ? body.prompt
       : typeof body.message === "string"
-      ? body.message
-      : "";
+        ? body.message
+        : "";
 
-  // ── 5. Image validation ──────────────────────────────────────────────────
   if (body.imageBase64 !== undefined) {
     const img = body.imageBase64 as string;
     const validMime = /^data:image\/(png|jpe?g|webp);base64,/.test(img);
@@ -75,7 +64,6 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
   }
 
-  // ── 6. classroomId validation ────────────────────────────────────────────
   let classroomId: number | undefined;
   if (body.classroomId !== undefined) {
     const raw = body.classroomId;
@@ -88,7 +76,6 @@ export async function POST(req: Request): Promise<NextResponse> {
     classroomId = raw;
   }
 
-  // ── 7. Classroom membership check ────────────────────────────────────────
   if (classroomId !== undefined) {
     const userWhereClause = ("userId = " + userId) as any;
     const userRows = await db
@@ -125,13 +112,11 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
   }
 
-  // ── 8. Mode ──────────────────────────────────────────────────────────────
   const mode: AIMode = body.mode === "mentor" ? "mentor" : "direct";
   const history = Array.isArray(body.history)
     ? (body.history as any[]).slice(-20)
     : [];
 
-  // ── 9. Build messages ─────────────────────────────────────────────────────
   const systemMessages = buildSystemMessages(mode);
   const messages = [
     ...systemMessages,
@@ -139,7 +124,6 @@ export async function POST(req: Request): Promise<NextResponse> {
     { role: "user" as const, content: prompt.trim() },
   ];
 
-  // ── 10. Optional moderation ───────────────────────────────────────────────
   if (process.env.MODERATION_URL) {
     try {
       const modRes = await fetch(process.env.MODERATION_URL, {
@@ -155,11 +139,10 @@ export async function POST(req: Request): Promise<NextResponse> {
         );
       }
     } catch {
-      // Non-fatal: continue if moderation service is unreachable
+      // Non-fatal: continue if moderation service is unreachable.
     }
   }
 
-  // ── 11. Groq call ─────────────────────────────────────────────────────────
   const startMs = Date.now();
   let completion: Awaited<ReturnType<typeof groq.chat.completions.create>>;
   try {
@@ -179,18 +162,14 @@ export async function POST(req: Request): Promise<NextResponse> {
   const rawReply: string = completion.choices[0]?.message?.content ?? "";
   const usage = completion.usage;
 
-  // ── 12. Extract subject from reply (backward-compat) ─────────────────────
   const subjectMatch = rawReply.match(/^SUBJECT:\s*(.+)$/m);
   const subject = subjectMatch?.[1]?.trim() ?? null;
   const reply = rawReply.replace(/^SUBJECT:.*$/m, "").trim();
 
-  // ── 13. Persist to DB ─────────────────────────────────────────────────────
-  const user = await currentUser();
-
   const insertResult = await db
     .insert("aiSessions" as any)
     .values({
-      userName: user?.fullName ?? "Unknown",
+      userName: user.fullName ?? "Unknown",
       subject: subject ?? body.type ?? "General",
       content: prompt.slice(0, 80),
     } as any)
@@ -207,7 +186,6 @@ export async function POST(req: Request): Promise<NextResponse> {
       .where(`id = ${inserted.id}` as any);
   }
 
-  // ── 14. Structured log ────────────────────────────────────────────────────
   console.log(
     JSON.stringify({
       event: "ask-ai",

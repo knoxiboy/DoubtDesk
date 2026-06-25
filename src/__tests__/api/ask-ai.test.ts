@@ -162,7 +162,8 @@ describe('Ask AI API Endpoint', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 prompt: 'What is the speed of light?',
-            }),
+                type: 'standard'
+            })
         });
 
         const res = await POST(req);
@@ -170,9 +171,10 @@ describe('Ask AI API Endpoint', () => {
 
         expect(res.status).toBe(429);
         expect(res.headers.get('Retry-After')).toBeTruthy();
+        expect(mockAiLimit).toHaveBeenCalledWith('ai:student@example.com');
         expect(json).toEqual({
-            error: 'Too many AI requests. Please try again shortly.',
-            code: 'RATE_LIMITED',
+            error: 'Too many requests. Please try again later.',
+            message: 'AI request limit reached. Please try again later.',
         });
     });
 

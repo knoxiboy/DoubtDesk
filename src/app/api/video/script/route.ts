@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { currentUser } from '@clerk/nextjs/server';
+import { enforceApiRateLimit } from '@/lib/api-rate-limit';
+import { videoLimiter } from '@/lib/ratelimit';
 
 export async function POST(req: Request) {
     try {
@@ -8,6 +10,14 @@ export async function POST(req: Request) {
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
+
+        const email = user.primaryEmailAddress?.emailAddress;
+        if (!email) {
+            return NextResponse.json({ error: 'Email required' }, { status: 400 });
+        }
+
+        const rateLimitResponse = await enforceApiRateLimit(videoLimiter, email, 'video');
+        if (rateLimitResponse) return rateLimitResponse;
 
         const groq = new Groq({
             apiKey: process.env.GROQ_API_KEY || 'dummy_key',
