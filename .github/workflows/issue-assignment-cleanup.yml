@@ -1,0 +1,168 @@
+name: Issue Assignment Cleanup
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Once every 24 hours (midnight UTC)
+  workflow_dispatch: # Allows manual trigger
+
+permissions: {}
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Warn and Unassign Inactive Contributors
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // 1. Fetch all open PRs in the repository
+            let prs = [];
+            try {
+              const { data } = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                per_page: 100,
+              });
+              prs = data;
+            } catch (e) {
+              console.log(`Error fetching open PRs: ${e.message}`);
+              return;
+            }
+
+            // 2. Fetch all open issues in the repository
+            let issues = [];
+            try {
+              const { data } = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                per_page: 100,
+              });
+              // Filter out PRs (since GitHub REST API lists both issues and PRs in listForRepo)
+              issues = data.filter(i => !i.pull_request);
+            } catch (e) {
+              console.log(`Error fetching open issues: ${e.message}`);
+              return;
+            }
+
+            // Helper function to check if a PR links to an issue
+            function isLinked(pr, issueNumber) {
+              const body = (pr.body || '').toLowerCase();
+              const title = (pr.title || '').toLowerCase();
+              const branch = (pr.head.ref || '').toLowerCase();
+
+              const mentionsIssue = body.includes(`#${issueNumber}`) || title.includes(`#${issueNumber}`);
+              const branchMatches = branch.match(new RegExp('(?:^|\\/|-)' + issueNumber + '(?:-|$)'));
+
+              return mentionsIssue || !!branchMatches;
+            }
+
+            // 3. Scan open issues for inactivity
+            for (const issue of issues) {
+              if (!issue.assignees || issue.assignees.length === 0) continue;
+
+              for (const assigneeObj of issue.assignees) {
+                const assignee = assigneeObj.login;
+                
+                // Check if this assignee has opened a PR for this issue
+                const activePR = prs.find(pr => 
+                  pr.user.login.toLowerCase() === assignee.toLowerCase() &&
+                  isLinked(pr, issue.number)
+                );
+
+                if (activePR) {
+                  console.log(`@${assignee} is active on #${issue.number} with PR #${activePR.number}`);
+                  continue;
+                }
+
+                // If no PR, check how long they have been assigned
+                let events = [];
+                try {
+                  const { data } = await github.rest.issues.listEvents({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issue.number,
+                    per_page: 100,
+                  });
+                  events = data;
+                } catch (e) {
+                  console.log(`Could not fetch events for #${issue.number}: ${e.message}`);
+                  continue;
+                }
+
+                const assignmentEvents = events.filter(e => 
+                  e.event === 'assigned' && 
+                  e.assignee.login.toLowerCase() === assignee.toLowerCase()
+                );
+
+                if (assignmentEvents.length === 0) {
+                  console.log(`No assignment event found for @${assignee} on #${issue.number}`);
+                  continue;
+                }
+
+                // Get the latest assignment timestamp
+                const latestAssignment = assignmentEvents[assignmentEvents.length - 1];
+                const assignedAt = new Date(latestAssignment.created_at);
+                const elapsedDays = (Date.now() - assignedAt.getTime()) / (1000 * 60 * 60 * 24);
+
+                console.log(`@${assignee} has been assigned to #${issue.number} for ${elapsedDays.toFixed(2)} days.`);
+
+                if (elapsedDays >= 7) {
+                  // Unassign the user
+                  try {
+                    await github.rest.issues.removeAssignees({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: issue.number,
+                      assignees: [assignee],
+                    });
+                    
+                    await github.rest.issues.createComment({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: issue.number,
+                      body: `Hi @${assignee}, this issue has been automatically unassigned because you have not submitted a pull request within 7 days of being assigned. Feel free to request assignment again when you are ready to work on it! 🙏`,
+                    });
+                    
+                    console.log(`Unassigned @${assignee} from #${issue.number} due to 7 days inactivity.`);
+                  } catch (e) {
+                    console.log(`Failed to unassign @${assignee}: ${e.message}`);
+                  }
+                } else if (elapsedDays >= 5) {
+                  // Warn the user (if not warned already)
+                  const warningMarker = `<!-- assignment-warning-${assignee} -->`;
+                  let comments = [];
+                  try {
+                    const { data } = await github.rest.issues.listComments({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: issue.number,
+                    });
+                    comments = data;
+                  } catch (e) {
+                    console.log(`Failed to list comments: ${e.message}`);
+                  }
+
+                  const hasWarning = comments.some(c => c.body.includes(warningMarker));
+
+                  if (!hasWarning) {
+                    try {
+                      await github.rest.issues.createComment({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        issue_number: issue.number,
+                        body: `${warningMarker}\nHi @${assignee}! You were assigned to this issue 5 days ago. Please open a pull request within the next 2 days to keep your assignment, or you will be automatically unassigned. Thank you!`,
+                      });
+                      console.log(`Posted assignment warning to @${assignee} on #${issue.number}.`);
+                    } catch (e) {
+                      console.log(`Failed to post warning: ${e.message}`);
+                    }
+                  }
+                }
+              }
+            }

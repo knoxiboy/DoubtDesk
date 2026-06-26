@@ -1,0 +1,763 @@
+name: PR Labeler
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review, closed, labeled]
+  pull_request_review:
+    types: [submitted, edited, dismissed]
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+jobs:
+  # ── PR Validation (opened, synchronize, reopened, ready_for_review) ──────────
+  pr-validation:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    if: |
+      github.event_name == 'pull_request_target' &&
+      (
+        github.event.action == 'opened' ||
+        github.event.action == 'synchronize' ||
+        github.event.action == 'reopened' ||
+        github.event.action == 'ready_for_review'
+      )
+    outputs:
+      valid: ${{ steps.assignment.outputs.valid }}
+    steps:
+      - name: Welcome New PR Contributors (First Interaction)
+        if: github.event.action == 'opened'
+        uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-message: |
+            Hello there! 🎉 Thank you so much for your first pull request to DoubtDesk!
+
+            We really appreciate your contribution. A maintainer will review your code soon. If you are participating in GSSoC, ensure your PR is linked to an open issue. Please make sure you have followed all rules in our [Contributing Guidelines](https://github.com/knoxiboy/DoubtDesk/blob/main/CONTRIBUTING.md). Happy coding!
+
+      - name: Verify PR author is assigned to linked issue
+        id: assignment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prAuthor = context.payload.pull_request.user.login;
+            const prBody = context.payload.pull_request.body || '';
+            const prNumber = context.payload.pull_request.number;
+
+            // Skip check for repo owner/maintainers
+            try {
+              const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: prAuthor,
+              });
+              if (['admin', 'write'].includes(perm.permission)) {
+                console.log(`${prAuthor} is a maintainer — skipping assignment check.`);
+                core.setOutput('valid', 'true');
+                return;
+              }
+            } catch (e) {
+              console.log('Could not check permission:', e.message);
+            }
+
+            // Extract linked issue numbers from PR body
+            const bodyMatches = prBody.matchAll(
+              /(?:closes?|fixes?|resolves?)\s+#(\d+)/gi
+            );
+            const linkedIssuesSet = new Set(
+              [...bodyMatches].map(m => parseInt(m[1]))
+            );
+
+            // Check branch name for leading numbers
+            const prBranch = context.payload.pull_request.head.ref || '';
+            const branchMatch = prBranch.match(/(?:^|\/|-)(\d+)(?:-|$)/);
+            if (branchMatch) {
+              const num = parseInt(branchMatch[1], 10);
+              if (num > 0 && num < 10000) {
+                linkedIssuesSet.add(num);
+              }
+            }
+
+            const linkedIssues = Array.from(linkedIssuesSet);
+
+            if (linkedIssues.length === 0) {
+              console.log('No linked issues found. Skipping assignment check.');
+              core.setOutput('valid', 'true');
+              return;
+            }
+
+            console.log(`PR #${prNumber} by @${prAuthor} links to issues: ${linkedIssues.join(', ')}`);
+
+            const violations = [];
+
+            for (const issueNumber of linkedIssues) {
+              let issue;
+              try {
+                const { data } = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                });
+                issue = data;
+              } catch (e) {
+                console.log(`Could not fetch issue #${issueNumber}: ${e.message} — skipping.`);
+                continue;
+              }
+
+              const assignees = issue.assignees.map(a => a.login.toLowerCase());
+              const isAssigned = assignees.includes(prAuthor.toLowerCase());
+
+              console.log(`Issue #${issueNumber} assignees: [${assignees.join(', ')}] — @${prAuthor} assigned: ${isAssigned}`);
+
+              if (!isAssigned) {
+                violations.push({
+                  issueNumber,
+                  assignees: issue.assignees.map(a => a.login),
+                  reason: assignees.length === 0
+                    ? `Issue #${issueNumber} has no assignees. Please request assignment before submitting a PR.`
+                    : `Issue #${issueNumber} is assigned to @${issue.assignees.map(a => a.login).join(', @')} — not to @${prAuthor}.`,
+                });
+              }
+            }
+
+            if (violations.length === 0) {
+              console.log(`✅ @${prAuthor} is assigned to all linked issues.`);
+              core.setOutput('valid', 'true');
+              return;
+            }
+
+            core.setOutput('valid', 'false');
+
+            const marker = '<!-- pr-assignment-check -->';
+            const violationLines = violations
+              .map(v => `- **#${v.issueNumber}**: ${v.reason}`)
+              .join('\n');
+
+            const comment = [
+              marker,
+              `## ❌ PR Rejected — Issue Assignment Check Failed`,
+              ``,
+              `Hi @${prAuthor}! This PR has been **closed** because you are not assigned to the issue(s) it references:`,
+              ``,
+              violationLines,
+              ``,
+              `**What to do:**`,
+              `1. Comment \`/assign\` on the issue to request assignment from a maintainer.`,
+              `2. Wait until you are officially assigned.`,
+              `3. Then re-open or re-submit your PR.`,
+              ``,
+              `> PRs that fix issues not assigned to the author cannot be accepted — this ensures fair contribution tracking.`,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: comment,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: comment,
+              });
+            }
+
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                labels: ['invalid'],
+              });
+            } catch (e) {
+              console.log(`Failed to add invalid label: ${e.message}`);
+            }
+
+            await github.rest.pulls.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+              state: 'closed',
+            });
+
+            console.log(`❌ Closed PR #${prNumber} — @${prAuthor} not assigned.`);
+
+      - name: Verify author has starred repo and assign reviewers
+        if: |
+          steps.assignment.outputs.valid == 'true' &&
+          github.event.action != 'synchronize'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const author = context.payload.pull_request.user.login;
+            const prNumber = context.payload.pull_request.number;
+
+            // 1. Verify Star status
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+            const existingStarReview = reviews.find(
+              r => r.user.login === 'github-actions[bot]' &&
+                   r.body && r.body.includes('Please star the DoubtDesk repository')
+            );
+
+            let hasStarred = false;
+            try {
+              let page = 1;
+              const perPage = 100;
+              let found = false;
+
+              while (page <= 100) {
+                const { data: stargazers } = await github.rest.activity.listStargazersForRepo({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  per_page: perPage,
+                  page: page,
+                });
+
+                if (stargazers.length === 0) break;
+
+                if (stargazers.some(s => s.login.toLowerCase() === author.toLowerCase())) {
+                  found = true;
+                  break;
+                }
+
+                if (stargazers.length < perPage) break;
+                page++;
+              }
+              hasStarred = found;
+            } catch (e) {
+              console.error('Error checking stargazers:', e.message);
+              hasStarred = true; // Fallback
+            }
+
+            if (hasStarred) {
+              console.log(`✅ @${author} has starred the repository.`);
+              if (existingStarReview && existingStarReview.state === 'CHANGES_REQUESTED') {
+                try {
+                  await github.rest.pulls.dismissReview({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: prNumber,
+                    review_id: existingStarReview.id,
+                    message: 'Star verified ✅',
+                  });
+                } catch (e) {
+                  console.log('Could not dismiss old star review:', e.message);
+                }
+              }
+
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  labels: ['review-needed'],
+                });
+              } catch (e) {
+                console.log('Could not add review-needed label:', e.message);
+              }
+            } else {
+              if (!existingStarReview) {
+                await github.rest.pulls.createReview({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                  body: `### ⭐ Star Required\n\nHi @${author}! Thank you for your contribution to DoubtDesk.\n\nBefore we can complete the review and merge this pull request, please **star the DoubtDesk repository**.\n\nOnce you have starred the repository, please drop a comment here saying "done" and we will proceed with reviewing your PR. Thank you!`,
+                  event: 'REQUEST_CHANGES',
+                });
+                console.log(`⭐ Requested @${author} to star the repo.`);
+              }
+            }
+
+            // 2. Assign Author and Reviewers
+            const maintainers = ['knoxiboy'];
+
+            try {
+              await github.rest.issues.addAssignees({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                assignees: [author],
+              });
+            } catch (e) {
+              console.log('Could not assign author:', e.message);
+            }
+
+            const reviewers = maintainers.filter(m => m !== author);
+            if (reviewers.length > 0) {
+              try {
+                await github.rest.pulls.requestReviewers({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber,
+                  reviewers,
+                });
+                console.log(`Requested review from: ${reviewers.join(', ')}`);
+              } catch (e) {
+                console.log('Could not assign human reviewers:', e.message);
+              }
+            }
+
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                reviewers: ['copilot'],
+              });
+              console.log('Requested review from GitHub Copilot');
+            } catch (e) {
+              console.log('Could not request Copilot review:', e.message);
+            }
+
+            const rabbitMarker = '<!-- coderabbit-trigger -->';
+            const { data: prComments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+            const hasCodeRabbitComment = prComments.some(
+              c => c.body && (c.body.includes(rabbitMarker) || c.body.includes('@coderabbitai review'))
+            );
+
+            if (!hasCodeRabbitComment) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `${rabbitMarker}\n@coderabbitai review`,
+              });
+              console.log('Requested CodeRabbit review');
+            }
+
+  # ── Size Labeling (only on PR creation, update, or labeling) ──────────────────
+  size-labeling:
+    runs-on: ubuntu-latest
+    needs: pr-validation
+    permissions:
+      issues: write
+      pull-requests: write
+    if: |
+      always() &&
+      (
+        github.event_name == 'pull_request_target' &&
+        (
+          github.event.action == 'opened' ||
+          github.event.action == 'synchronize' ||
+          github.event.action == 'reopened' ||
+          github.event.action == 'labeled'
+        )
+      ) &&
+      (needs.pr-validation.result == 'success' || needs.pr-validation.result == 'skipped')
+    steps:
+      - name: Calculate and apply size label
+        if: github.event.action != 'labeled'
+        uses: pascalgn/size-label-action@v0.5.0
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          sizes: >
+            {
+              "0": "xs",
+              "20": "s",
+              "50": "m",
+              "200": "l",
+              "800": "xl",
+              "2000": "xxl"
+            }
+
+      - name: Handle exclusive size labels and normalization
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const number = context.payload.pull_request.number;
+
+            const { data: currentLabels } = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+            });
+
+            const currentLabelNames = currentLabels.map(l => l.name);
+
+            if (context.payload.action === 'labeled') {
+              const addedLabel = context.payload.label.name.toLowerCase();
+              if (!addedLabel.startsWith('size/') && !addedLabel.startsWith('size:')) {
+                return;
+              }
+            }
+
+            const sizeMapping = {
+              'size:xs': 'size/xs', 'size:s': 'size/s', 'size:m': 'size/m',
+              'size:l': 'size/l', 'size:xl': 'size/xl', 'size:xxl': 'size/xxl',
+            };
+
+            for (const labelName of currentLabelNames) {
+              const lower = labelName.toLowerCase();
+              if (sizeMapping[lower] && sizeMapping[lower] !== labelName) {
+                const mapped = sizeMapping[lower];
+                console.log(`Normalizing "${labelName}" to "${mapped}"`);
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                  labels: [mapped],
+                });
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: number,
+                    name: labelName,
+                  });
+                } catch (e) {
+                  console.log(`Could not remove "${labelName}": ${e.message}`);
+                }
+              }
+            }
+
+            const { data: updatedLabels } = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: number,
+            });
+
+            const standardSizes = new Set([
+              'size/xs', 'size/s', 'size/m', 'size/l', 'size/xl', 'size/xxl'
+            ]);
+
+            const appliedSizes = updatedLabels.filter(
+              l => standardSizes.has(l.name.toLowerCase())
+            );
+
+            if (appliedSizes.length <= 1) return;
+
+            let keepLabel = appliedSizes[appliedSizes.length - 1].name;
+            if (context.payload.action === 'labeled') {
+              const addedLabelName = context.payload.label.name;
+              const normalizedAdded = sizeMapping[addedLabelName.toLowerCase()] || addedLabelName;
+              const match = appliedSizes.find(l => l.name.toLowerCase() === normalizedAdded.toLowerCase());
+              if (match) keepLabel = match.name;
+            }
+
+            for (const label of appliedSizes) {
+              if (label.name !== keepLabel) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: number,
+                    name: label.name,
+                  });
+                  console.log(`Removed conflicting size label "${label.name}" (kept "${keepLabel}")`);
+                } catch (e) {
+                  console.log(`Could not remove "${label.name}": ${e.message}`);
+                }
+              }
+            }
+
+  # ── PR Status Checks and Lifecycle ────────────────────────────────────────────
+  pr-status-and-lifecycle:
+    runs-on: ubuntu-latest
+    needs: pr-validation
+    permissions:
+      issues: write
+      pull-requests: write
+    if: |
+      always() &&
+      (needs.pr-validation.result == 'success' || needs.pr-validation.result == 'skipped')
+    steps:
+      - name: PR-specific labeling and lifecycle logic
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const payload = context.payload;
+            const isComment = context.eventName === 'issue_comment';
+            const isReview = context.eventName === 'pull_request_review';
+            const isPR = !!payload.pull_request || (isComment && !!payload.issue.pull_request);
+
+            if (!isPR) {
+              console.log('Not a pull request context — skipping.');
+              return;
+            }
+
+            let number;
+            if (isComment) {
+              number = payload.issue.number;
+            } else if (isReview) {
+              number = payload.pull_request.number;
+            } else {
+              number = payload.pull_request.number;
+            }
+
+            // ── A. Handle Closed/Merged Lifecycle ─────────────────────────
+            if (context.eventName === 'pull_request_target' && payload.action === 'closed') {
+              const merged = payload.pull_request.merged;
+              
+              const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+              });
+
+              if (merged === true) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: number,
+                  labels: ['gssoc:approved', 'quality:clean'],
+                });
+                console.log(`PR #${number} merged — added approval labels.`);
+
+                const transientLabels = ['review-needed', 'needs-maintainer-approval'];
+                for (const label of labels) {
+                  const shouldRemove =
+                    label.name.startsWith('size/') ||
+                    transientLabels.includes(label.name);
+
+                  if (!shouldRemove) continue;
+
+                  try {
+                    await github.rest.issues.removeLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: number,
+                      name: label.name,
+                    });
+                    console.log(`Removed transient label: ${label.name}`);
+                  } catch (e) {
+                    console.log(`Failed to remove ${label.name}: ${e.message}`);
+                  }
+                }
+              } else {
+                const keepLabels = ['duplicate', 'invalid', 'already-implemented'];
+                for (const label of labels) {
+                  if (keepLabels.includes(label.name)) continue;
+
+                  try {
+                    await github.rest.issues.removeLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: number,
+                      name: label.name,
+                    });
+                    console.log(`Removed label from unmerged PR: ${label.name}`);
+                  } catch (e) {
+                    console.log(`Failed to remove ${label.name}: ${e.message}`);
+                  }
+                }
+              }
+              return;
+            }
+
+            // ── B. Fetch current labels and PR details ────────────────────
+            let prDetails = null;
+            try {
+              const { data } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: number,
+              });
+              prDetails = data;
+            } catch (e) {
+              console.log(`Error fetching PR details: ${e.message}`);
+              return;
+            }
+
+            let currentLabels = [];
+            try {
+              const { data } = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+              });
+              currentLabels = data;
+            } catch (e) {
+              console.log(`Error listing labels: ${e.message}`);
+            }
+
+            const currentLabelNames = currentLabels.map(l => l.name);
+            const labelsToAdd = [];
+
+            // ── C. Merge Conflict Check ───────────────────────────────────
+            let mergeable = prDetails.mergeable;
+            let attempt = 0;
+            while (mergeable === null && attempt < 5) {
+              console.log(`PR #${number} mergeable status is null. Retrying in 3s...`);
+              await new Promise(r => setTimeout(r, 3000));
+              try {
+                const { data: prRetry } = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: number,
+                });
+                mergeable = prRetry.mergeable;
+              } catch (e) {
+                console.log(`Retry error: ${e.message}`);
+              }
+              attempt++;
+            }
+
+            if (mergeable === false) {
+              labelsToAdd.push('merge-conflict');
+            } else if (mergeable === true) {
+              if (currentLabelNames.includes('merge-conflict')) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: number,
+                    name: 'merge-conflict',
+                  });
+                  console.log('Removed "merge-conflict" label.');
+                } catch (e) {
+                  console.log(`Could not remove "merge-conflict": ${e.message}`);
+                }
+              }
+            }
+
+            // ── D. Review Quality Check (quality : needs-work) ────────────
+            try {
+              const { data: reviews } = await github.rest.pulls.listReviews({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: number,
+              });
+              
+              const latestReviews = {};
+              for (const review of reviews) {
+                if (!review.user || review.state === 'PENDING') continue;
+                latestReviews[review.user.login] = review.state;
+              }
+              
+              const hasChangesRequested = Object.values(latestReviews).includes('CHANGES_REQUESTED');
+              
+              if (hasChangesRequested) {
+                labelsToAdd.push('quality : needs-work');
+              } else {
+                if (currentLabelNames.includes('quality : needs-work')) {
+                  try {
+                    await github.rest.issues.removeLabel({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number: number,
+                      name: 'quality : needs-work',
+                    });
+                    console.log('Removed "quality : needs-work" label.');
+                  } catch (e) {
+                    console.log(`Could not remove "quality : needs-work": ${e.message}`);
+                  }
+                }
+              }
+            } catch (e) {
+              console.log(`Error checking reviews: ${e.message}`);
+            }
+
+            // ── E. Star Verification Check (need-star) ────────────────────
+            const author = prDetails.user.login;
+            let hasStarred = false;
+            
+            try {
+              let page = 1;
+              const perPage = 100;
+              let found = false;
+
+              while (page <= 100) {
+                const { data: stargazers } = await github.rest.activity.listStargazersForRepo({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  per_page: perPage,
+                  page: page,
+                });
+
+                if (stargazers.length === 0) break;
+
+                if (stargazers.some(s => s.login.toLowerCase() === author.toLowerCase())) {
+                  found = true;
+                  break;
+                }
+
+                if (stargazers.length < perPage) break;
+                page++;
+              }
+
+              hasStarred = found;
+            } catch (e) {
+              console.log(`Error checking star status for @${author}: ${e.message}`);
+              hasStarred = true; // Fallback
+            }
+
+            if (!hasStarred) {
+              labelsToAdd.push('need-star');
+            } else {
+              if (currentLabelNames.includes('need-star')) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: number,
+                    name: 'need-star',
+                  });
+                  console.log('Removed "need-star" label.');
+                } catch (e) {
+                  console.log(`Could not remove "need-star": ${e.message}`);
+                }
+              }
+
+              try {
+                const { data: reviews } = await github.rest.pulls.listReviews({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: number,
+                });
+                const starReview = reviews.find(
+                  r => r.user.login === 'github-actions[bot]' &&
+                       r.state === 'CHANGES_REQUESTED' &&
+                       r.body && r.body.includes('Please star the DoubtDesk repository')
+                );
+                if (starReview) {
+                  await github.rest.pulls.dismissReview({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: number,
+                    review_id: starReview.id,
+                    message: 'Star verified ✅',
+                  });
+                  console.log('Dismissed star-check review.');
+                }
+              } catch (e) {
+                console.log(`Could not dismiss star review: ${e.message}`);
+              }
+            }
+
+            // ── F. Apply Labels ───────────────────────────────────────────
+            const uniqueLabels = [...new Set(labelsToAdd)];
+            if (uniqueLabels.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: number,
+                labels: uniqueLabels,
+              });
+              console.log(`Applied PR status labels: ${uniqueLabels.join(', ')}`);
+            }

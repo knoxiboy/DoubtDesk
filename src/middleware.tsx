@@ -5,7 +5,13 @@ import { db } from '@/configs/db';
 import { usersTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';
 
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/profile(.*)', '/admin(.*)']);
+const isProtectedRoute = createRouteMatcher([
+    '/dashboard(.*)',
+    '/profile(.*)',
+    '/admin(.*)',
+    '/rooms(.*)',
+    '/ask-ai(.*)'
+]);
 
 const isPublicRoute = createRouteMatcher(['/sign-in', '/sign-up', '/api/inngest', '/', '/public-rooms(.*)', '/onboarding']);
 
@@ -30,7 +36,8 @@ export default clerkMiddleware(async (auth, req) => {
             path.startsWith('/api/cover-letter') ||
             path.startsWith('/api/resume-analyzer') ||
             path.startsWith('/api/ai-career-chat-agent') ||
-            path.startsWith('/api/roadmap');
+            path.startsWith('/api/roadmap') ||
+            (path.startsWith('/api/doubts') && (req.method === 'POST' || path.includes('/practice')));
         const isVideoRoute = path.startsWith('/api/video/generate');
         const limiter = isVideoRoute ? videoLimiter : (isAiRoute ? aiLimiter : generalLimiter);
 

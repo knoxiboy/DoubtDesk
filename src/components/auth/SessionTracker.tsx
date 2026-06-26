@@ -1,12 +1,60 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useClerk } from "@clerk/nextjs";
 
 export default function SessionTracker() {
     const { signOut, user } = useClerk();
     const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     const STORAGE_KEY = "mentorix_last_activity";
+
+    // Dedicated logout broadcast key
+    const LOGOUT_EVENT_KEY = "mentorix_logout";
+
+    // Prevent concurrent logout race conditions
+    const logoutInProgressRef = useRef(false);
+
+    // Clears session activity data
+    const clearSessionState = () => {
+        localStorage.removeItem(STORAGE_KEY);
+    };
+
+    // Handles logout with concurrency and error protection
+    const performLogout = async () => {
+        if (logoutInProgressRef.current) {
+            return false;
+        }
+
+        logoutInProgressRef.current = true;
+
+        try {
+            await signOut();
+            clearSessionState();
+            return true;
+        } 
+        catch (error) {
+            console.error("[SessionTracker] Failed to sign out.", error);
+            logoutInProgressRef.current = false;
+            return false;
+        }
+    };
+
+    // Signs out the current tab and broadcasts logout to other tabs
+    const broadcastLogout = async () => {
+
+        const didLogout = await performLogout();
+
+        if (!didLogout) {
+            return;
+        }
+
+        try {
+            localStorage.setItem(LOGOUT_EVENT_KEY, Date.now().toString());
+        } 
+        catch (error) {
+            console.error("[SessionTracker] Failed to publish logout broadcast.", error);
+        }
+    };
 
     useEffect(() => {
         if (!user) return;
@@ -19,8 +67,7 @@ export default function SessionTracker() {
                 const elapsed = now - parseInt(lastActivity);
                 if (elapsed > SESSION_DURATION) {
                     console.log("[SessionTracker] Session expired. Signing out...");
-                    localStorage.removeItem(STORAGE_KEY);
-                    await signOut();
+                    await broadcastLogout();
                     return;
                 }
             }
@@ -38,8 +85,22 @@ export default function SessionTracker() {
             }
         };
 
+        // Listen for logout broadcasts from other tabs
+        const handleStorageEvent = async (event: StorageEvent) => {
+            if (event.key !== LOGOUT_EVENT_KEY) {
+                return;
+            }
+
+            await performLogout();
+        };
+
         document.addEventListener("visibilitychange", handleVisibilityChange);
-        return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("storage", handleStorageEvent);
+
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            window.removeEventListener("storage", handleStorageEvent);
+        }
     }, [user, signOut]);
 
     return null;

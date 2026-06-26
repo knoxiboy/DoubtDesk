@@ -1,0 +1,168 @@
+name: Issue Labeler
+
+on:
+  issues:
+    types: [opened, edited, labeled, closed, assigned, unassigned]
+
+permissions: {}
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Welcome New Contributors (First Interaction)
+        if: github.event.action == 'opened'
+        uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            Hello there! 👋 Welcome to the DoubtDesk repository!
+
+            Thank you for opening your first issue. We are thrilled to have you here, especially if you're participating in GSSoC! Please make sure you have carefully read our [Contributing Guidelines](https://github.com/knoxiboy/DoubtDesk/blob/main/CONTRIBUTING.md) to understand our rules and how to request assignment. A maintainer will review your issue shortly.
+
+      - name: Issue-specific labeling logic
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const payload = context.payload;
+            const issueNumber = context.issue.number;
+
+            // ── 1. Fetch current labels ──────────────────────────────────
+            let currentLabelObjects = [];
+            try {
+              const { data } = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+              });
+              currentLabelObjects = data;
+            } catch (e) {
+              console.log(`Error fetching current labels: ${e.message}`);
+            }
+
+            const currentLabelNames = currentLabelObjects.map(l => l.name);
+
+            // Helper: word boundary match
+            function hasWord(text, word) {
+              const escaped = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+              return new RegExp('\\b' + escaped + '\\b', 'i').test(text);
+            }
+
+            // ── 2. AREA DETECTION (only on opened/edited) ─────────────────
+            if (context.eventName === 'issues' && ['opened', 'edited'].includes(payload.action)) {
+              const title = (payload.issue.title || '').toLowerCase();
+              const body = (payload.issue.body || '').toLowerCase();
+              const combined = title + ' ' + body;
+
+              const areaSignals = {
+                'backend': [
+                  'api', 'route', 'endpoint', 'server', 'database', 'query',
+                  'drizzle', 'neon', 'postgres', 'migration', 'schema',
+                  'middleware', 'auth check', 'rate limit'
+                ],
+                'frontend': [
+                  'component', 'page', 'ui', 'button', 'modal', 'sidebar',
+                  'navbar', 'layout', 'css', 'tailwind', 'responsive',
+                  'landing page', 'dashboard', 'form'
+                ],
+                'ai': [
+                  'ai', 'groq', 'llama', 'gpt', 'prompt', 'model', 'inference',
+                  'moderation', 'embedding', 'vector', 'similarity',
+                  'video generation', 'tts', 'ocr', 'remotion'
+                ],
+                'database': [
+                  'schema', 'table', 'migration', 'foreign key', 'index',
+                  'constraint', 'cascade', 'drizzle', 'neon', 'orphan',
+                  'integrity', 'relation'
+                ]
+              };
+
+              const labelsToAdd = [];
+              for (const [labelName, keywords] of Object.entries(areaSignals)) {
+                const score = keywords.filter(k => hasWord(combined, k)).length;
+                if (score >= 2) labelsToAdd.push(labelName);
+              }
+
+              if (labelsToAdd.length > 0) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  labels: labelsToAdd,
+                });
+                console.log(`Applied area labels: ${labelsToAdd.join(', ')}`);
+              }
+            }
+
+            // ── 3. SYNC BEGINNER TAGS (only when level:beginner is added) ──
+            if (
+              context.eventName === 'issues' &&
+              payload.action === 'labeled' &&
+              payload.label.name === 'level:beginner'
+            ) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                labels: ['good first issue', 'beginner friendly'],
+              });
+              console.log('Synced beginner-friendly labels.');
+            }
+
+            // ── 4. CLEANUP ON NOT PLANNED CLOSE ────────────────────────────
+            if (
+              context.eventName === 'issues' &&
+              payload.action === 'closed' &&
+              payload.issue.state_reason === 'not_planned'
+            ) {
+              const keepLabels = new Set(['duplicate', 'invalid']);
+              for (const label of currentLabelObjects) {
+                if (keepLabels.has(label.name)) continue;
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    name: label.name,
+                  });
+                  console.log(`Removed label: ${label.name}`);
+                } catch (e) {
+                  console.log(`Could not remove ${label.name}: ${e.message}`);
+                }
+              }
+            }
+
+            // ── 5. ASSIGNMENT-BASED MAINTAINER APPROVAL LABEL ──────────────
+            if (
+              context.eventName === 'issues' &&
+              ['opened', 'assigned', 'unassigned'].includes(payload.action)
+            ) {
+              const assignees = payload.issue.assignees || [];
+              const hasAssignees = assignees.length > 0;
+              const hasApprovalLabel = currentLabelNames.includes('needs-maintainer-approval');
+
+              if (!hasAssignees && !hasApprovalLabel) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  labels: ['needs-maintainer-approval'],
+                });
+                console.log('Added needs-maintainer-approval (no assignees).');
+              } else if (hasAssignees && hasApprovalLabel) {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issueNumber,
+                    name: 'needs-maintainer-approval',
+                  });
+                  console.log('Removed needs-maintainer-approval (has assignees).');
+                } catch (e) {
+                  console.log(`Failed to remove needs-maintainer-approval: ${e.message}`);
+                }
+              }
+            }

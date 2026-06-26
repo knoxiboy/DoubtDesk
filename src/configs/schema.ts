@@ -494,3 +494,29 @@ export const confusionAlertsTable = pgTable("confusion_alerts", {
         foreignColumns: [usersTable.email],
     }).onDelete("set null"),
 }));
+
+// ═══════════════════════════════════════════════════════════════════
+//   AI PRACTICE SYSTEM TABLE
+// ═══════════════════════════════════════════════════════════════════
+
+export const practiceAttemptsTable = pgTable("practice_attempts", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userEmail: varchar("user_email", { length: 255 }).notNull(),
+    originalDoubtId: integer("original_doubt_id").notNull(),
+    generatedQuestion: text("generated_question").notNull(),
+    userAnswer: text("user_answer"),
+    isCorrect: boolean("is_correct"),
+    aiFeedback: text("ai_feedback"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+    userEmailIndex: index("practice_attempts_userEmail_idx").on(table.userEmail),
+    doubtIdIndex: index("practice_attempts_doubtId_idx").on(table.originalDoubtId),
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+    doubtIdFk: foreignKey({
+        columns: [table.originalDoubtId],
+        foreignColumns: [doubtsTable.id],
+    }).onDelete("cascade"),
+}));
