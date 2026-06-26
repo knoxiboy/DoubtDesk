@@ -1,139 +1,211 @@
-/**
- * @vitest-environment node
- *
- * Tests idempotency of the accept endpoint.
- * Asserts that calling POST /api/doubts/:id/accept twice with the same
- * replyId results in exactly one karma transaction row and karmaScore
- * increasing by exactly 25, not 50.
- */
-
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
 
-// ── Shared mutable test state ────────────────────────────────────────────────
-const db = {
-    doubts: [
-        { id: 1, userEmail: "asker@test.com", isSolved: "unsolved", solvedReplyId: null },
-    ],
-    replies: [
-        { id: 42, doubtId: 1, userEmail: "answerer@test.com" },
-    ],
-    karmaTransactions: [] as Array<{ userEmail: string; eventType: string; replyId: number; doubtId: number }>,
-    users: [{ email: "answerer@test.com", karmaScore: 0 }],
+// ── Mutable per-test state shared between mocks ──────────────────────────────
+let mockDoubt: {
+    userEmail: string;
+    isSolved: string;
+    solvedReplyId: number | null;
+} | null = {
+    userEmail: "asker@test.com",
+    isSolved: "unsolved",
+    solvedReplyId: null,
 };
 
-const inngestEvents: string[] = [];
+let mockReply: {
+    userEmail: string;
+    doubtId: number;
+} | null = {
+    userEmail: "answerer@test.com",
+    doubtId: 1,
+};
 
-// ── Mocks ────────────────────────────────────────────────────────────────────
+let mockUpdatedDoubt: { id: number } | null = { id: 1 };
+
+const inngestSend = vi.fn();
+
+// ── Mocks ─────────────────────────────────────────────────────────────────────
 vi.mock("@clerk/nextjs/server", () => ({
     currentUser: vi.fn().mockResolvedValue({
         primaryEmailAddress: { emailAddress: "asker@test.com" },
     }),
 }));
 
-vi.mock("@/configs/db", () => ({ db: {} }));
 vi.mock("@/inngest/client", () => ({
-    inngest: {
-        send: vi.fn().mockImplementation(async ({ name }: { name: string }) => {
-            inngestEvents.push(name);
-            // Simulate Inngest worker: award +25 karma and insert ledger row
-            const user = db.users.find(u => u.email === "answerer@test.com")!;
-            user.karmaScore += 25;
-            db.karmaTransactions.push({
-                userEmail: "answerer@test.com",
-                eventType: "answer_accepted",
-                replyId: 42,
-                doubtId: 1,
-            });
-        }),
-    },
+    inngest: { send: inngestSend },
 }));
 
+vi.mock("@/configs/db", () => {
+    const buildSelectChain = (rows: unknown[]) => ({
+        from: () => ({
+            where: () => ({
+                limit: () => Promise.resolve(rows),
+            }),
+        }),
+    });
+
+    const buildUpdateChain = (rows: unknown[]) => ({
+        set: () => ({
+            where: () => ({
+                returning: () => Promise.resolve(rows),
+            }),
+        }),
+    });
+
+    return {
+        db: {
+            select: vi.fn().mockImplementation(() =>
+                buildSelectChain(
+                    mockDoubt !== null ? [mockDoubt] : []
+                )
+            ),
+            update: vi.fn().mockImplementation(() =>
+                buildUpdateChain(mockUpdatedDoubt !== null ? [mockUpdatedDoubt] : [])
+            ),
+        },
+    };
+}));
+
+let selectCallCount = 0;
+
+vi.mock("@/configs/db", () => {
+    const makeSelectChain = (result: unknown[]) => ({
+        from: () => ({ where: () => ({ limit: () => Promise.resolve(result) }) }),
+    });
+    const makeUpdateChain = (result: unknown[]) => ({
+        set: () => ({ where: () => ({ returning: () => Promise.resolve(result) }) }),
+    });
+
+    return {
+        db: {
+            select: vi.fn().mockImplementation(() => {
+                selectCallCount += 1;
+                if (selectCallCount === 1) {
+                    return makeSelectChain(mockDoubt ? [mockDoubt] : []);
+                }
+                return makeSelectChain(mockReply ? [mockReply] : []);
+            }),
+            update: vi.fn().mockImplementation(() =>
+                makeUpdateChain(mockUpdatedDoubt ? [mockUpdatedDoubt] : [])
+            ),
+        },
+    };
+});
+
 vi.mock("@/configs/schema", () => ({
-    doubtsTable: { id: "id", userEmail: "userEmail", isSolved: "isSolved", solvedReplyId: "solvedReplyId" },
+    doubtsTable: {
+        id: "id",
+        userEmail: "userEmail",
+        isSolved: "isSolved",
+        solvedReplyId: "solvedReplyId",
+    },
     repliesTable: { id: "id", doubtId: "doubtId", userEmail: "userEmail" },
 }));
 
-// Wire drizzle mock to our in-memory db
-vi.mock("drizzle-orm", async () => {
-    const actual = await vi.importActual<typeof import("drizzle-orm")>("drizzle-orm");
-    return { ...actual };
+vi.mock("drizzle-orm", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("drizzle-orm")>();
+    return {
+        ...actual,
+        eq: vi.fn(),
+        and: vi.fn(),
+        or: vi.fn(),
+        ne: vi.fn(),
+        isNull: vi.fn(),
+    };
 });
 
-// ── Helper: create a fake NextRequest ────────────────────────────────────────
-function makeRequest(replyId: number) {
-    return {
-        json: () => Promise.resolve({ replyId }),
-    } as any;
+// ── Helper ────────────────────────────────────────────────────────────────────
+function makeRequest(replyId: number): NextRequest {
+    return new NextRequest("http://localhost/api/doubts/1/accept", {
+        method: "POST",
+        body: JSON.stringify({ replyId }),
+        headers: { "Content-Type": "application/json" },
+    });
 }
 
-// ── Import after mocks ───────────────────────────────────────────────────────
-// We test the handler logic directly by calling the core business path.
-// Because the route uses Drizzle selects/updates that are hard to stub at
-// the ORM level without a real DB, we test the idempotency branch in
-// isolation here and rely on the integration test for the full DB round-trip.
+async function callPost(replyId = 42) {
+    // Dynamic import so mocks are registered first
+    const { POST } = await import("./route");
+    return POST(makeRequest(replyId), {
+        params: Promise.resolve({ id: "1" }),
+    } as any);
+}
 
-describe("accept route — idempotency guard (unit)", () => {
+// ── Tests ─────────────────────────────────────────────────────────────────────
+describe("POST /api/doubts/[id]/accept — idempotency (issue #687)", () => {
     beforeEach(() => {
-        inngestEvents.length = 0;
-        db.karmaTransactions.length = 0;
-        db.users[0].karmaScore = 0;
-        db.doubts[0].isSolved = "unsolved";
-        db.doubts[0].solvedReplyId = null;
+        vi.clearAllMocks();
+        inngestSend.mockReset();
+        selectCallCount = 0;
+
+        // Default: unsolved doubt, valid reply, state-changing update
+        mockDoubt = { userEmail: "asker@test.com", isSolved: "unsolved", solvedReplyId: null };
+        mockReply = { userEmail: "answerer@test.com", doubtId: 1 };
+        mockUpdatedDoubt = { id: 1 };
     });
 
-    it("emits karma event once when called the first time", async () => {
-        // Simulate first acceptance manually (route would do this via DB)
-        // Guard: isSolved === "unsolved" → proceed, emit event
-        const isAlreadySolved =
-            db.doubts[0].isSolved === "solved" && db.doubts[0].solvedReplyId === 42;
-        expect(isAlreadySolved).toBe(false);
+    it("accepts an answer and emits karma event exactly once on first call", async () => {
+        const res = await callPost(42);
+        const body = await res.json();
 
-        // Simulate the event emission + DB update
-        db.doubts[0].isSolved = "solved";
-        db.doubts[0].solvedReplyId = 42;
-        const { inngest } = await import("@/inngest/client");
-        await inngest.send({ name: "karma/answer.accepted", data: { replyAuthorEmail: "answerer@test.com", replyId: 42, doubtId: 1 } });
-
-        expect(db.users[0].karmaScore).toBe(25);
-        expect(db.karmaTransactions).toHaveLength(1);
-        expect(db.karmaTransactions[0].eventType).toBe("answer_accepted");
+        expect(res.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(body.message).toBe("Answer accepted successfully");
+        // karma event fired exactly once
+        expect(inngestSend).toHaveBeenCalledTimes(1);
+        expect(inngestSend).toHaveBeenCalledWith(
+            expect.objectContaining({ name: "karma/answer.accepted" })
+        );
     });
 
-    it("does NOT emit karma event on a duplicate accept of the same replyId", async () => {
-        // State: doubt is already solved with replyId 42
-        db.doubts[0].isSolved = "solved";
-        db.doubts[0].solvedReplyId = 42;
-        db.users[0].karmaScore = 25;
-        db.karmaTransactions.push({ userEmail: "answerer@test.com", eventType: "answer_accepted", replyId: 42, doubtId: 1 });
+    it("returns 200 no-op and does NOT emit karma event on duplicate accept (same replyId)", async () => {
+        // Simulate DB state: doubt already solved with replyId 42.
+        // The atomic UPDATE WHERE clause finds no matching row → returns [].
+        mockDoubt = { userEmail: "asker@test.com", isSolved: "solved", solvedReplyId: 42 };
+        mockUpdatedDoubt = null; // no row changed → already solved with this reply
 
-        // Idempotency guard — mirrors the exact check in the route
-        const isAlreadySolved =
-            db.doubts[0].isSolved === "solved" && db.doubts[0].solvedReplyId === 42;
-        expect(isAlreadySolved).toBe(true);
+        const res = await callPost(42);
+        const body = await res.json();
 
-        // Route returns early; no inngest.send called, no new ledger row
-        // (we do NOT call inngest.send here — matching route behaviour)
-
-        expect(db.users[0].karmaScore).toBe(25);          // unchanged
-        expect(db.karmaTransactions).toHaveLength(1);     // no duplicate
-        expect(inngestEvents).toHaveLength(0);            // no new event
+        expect(res.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(body.message).toBe("Answer was already accepted (no-op)");
+        // No karma event fired
+        expect(inngestSend).not.toHaveBeenCalled();
     });
 
-    it("karmaScore increases by exactly 25 total after two POSTs with same replyId", async () => {
-        // First POST
-        const { inngest } = await import("@/inngest/client");
-        db.doubts[0].isSolved = "solved";
-        db.doubts[0].solvedReplyId = 42;
-        await inngest.send({ name: "karma/answer.accepted", data: { replyAuthorEmail: "answerer@test.com", replyId: 42, doubtId: 1 } });
+    it("karmaScore is awarded only once after two POSTs with the same replyId", async () => {
+        // First POST — genuine state transition
+        const res1 = await callPost(42);
+        expect((await res1.json()).message).toBe("Answer accepted successfully");
+        expect(inngestSend).toHaveBeenCalledTimes(1);
 
-        // Second POST — guard fires, no event sent
-        const isAlreadySolved =
-            db.doubts[0].isSolved === "solved" && db.doubts[0].solvedReplyId === 42;
-        if (!isAlreadySolved) {
-            await inngest.send({ name: "karma/answer.accepted", data: { replyAuthorEmail: "answerer@test.com", replyId: 42, doubtId: 1 } });
-        }
+        // Second POST — UPDATE finds no row to change (idempotency guard at DB level)
+        selectCallCount = 0;
+        inngestSend.mockClear();
+        mockDoubt = { userEmail: "asker@test.com", isSolved: "solved", solvedReplyId: 42 };
+        mockUpdatedDoubt = null;
 
-        expect(db.users[0].karmaScore).toBe(25);          // not 50
-        expect(db.karmaTransactions).toHaveLength(1);     // exactly one ledger row
+        const res2 = await callPost(42);
+        expect((await res2.json()).message).toBe("Answer was already accepted (no-op)");
+        // inngest.send was NOT called on the second request
+        expect(inngestSend).not.toHaveBeenCalled();
+    });
+
+    it("returns 500 with a generic message and does not leak error details", async () => {
+        // Make the DB throw to exercise the catch block
+        const { db } = await import("@/configs/db");
+        vi.mocked(db.select).mockImplementationOnce(() => {
+            throw new Error("relation \"doubts\" does not exist");
+        });
+
+        const res = await callPost(42);
+        const body = await res.json();
+
+        expect(res.status).toBe(500);
+        expect(body.error).toBe("Internal Server Error");
+        // Ensure raw DB error text is NOT sent to the client
+        expect(JSON.stringify(body)).not.toContain("relation");
+        expect(JSON.stringify(body)).not.toContain("does not exist");
     });
 });
