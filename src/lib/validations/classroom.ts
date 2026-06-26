@@ -4,6 +4,7 @@ import { trimmedString } from "./common";
 export const createClassroomSchema = z.object({
   name: trimmedString.min(1).max(255),
   year: z.coerce.string().trim().min(1).max(50),
+  organizationId: z.number().int().positive().nullable().optional(), // Added for multi-tenancy
 });
 
 export const joinClassroomSchema = z.object({

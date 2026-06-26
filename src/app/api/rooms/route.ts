@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
-import { classroomsTable, membershipsTable, usersTable } from '@/configs/schema';
+import { classroomsTable, membershipsTable, usersTable, organizationsTable } from '@/configs/schema';
 import { eq, and, notInArray } from 'drizzle-orm';
 import { currentUser } from '@clerk/nextjs/server';
 import { checkUserBlock } from '@/lib/auth-utils';
@@ -23,10 +23,12 @@ export async function GET(req: Request) {
         const { isBlocked, errorResponse: blockErrorResponse } = await checkUserBlock(email);
         if (isBlocked) return blockErrorResponse;
 
-        // Fetch classrooms where user is a member
+        // Fetch classrooms where user is a member, including optional organization details
         const joinedRooms = await db
             .select({
                 id: classroomsTable.id,
+                organizationId: classroomsTable.organizationId,
+                organizationName: organizationsTable.name,
                 name: classroomsTable.name,
                 university: classroomsTable.university,
                 year: classroomsTable.year,
@@ -38,33 +40,34 @@ export async function GET(req: Request) {
             })
             .from(classroomsTable)
             .innerJoin(membershipsTable, eq(classroomsTable.id, membershipsTable.classroomId))
+            .leftJoin(organizationsTable, eq(classroomsTable.organizationId, organizationsTable.id))
             .where(eq(membershipsTable.userEmail, email));
 
         // Fetch current DB user
-const [dbUser] = await db
-    .select()
-    .from(usersTable)
-    .where(eq(usersTable.email, email));
+        const [dbUser] = await db
+            .select()
+            .from(usersTable)
+            .where(eq(usersTable.email, email));
 
-let recommendedRooms: Classroom[] = [];
+        let recommendedRooms: Classroom[] = [];
 
-if (dbUser && dbUser.university && dbUser.year) {
-    const joinedIds = joinedRooms.map((r) => r.id);
-    
-    let conditions = [
-        eq(classroomsTable.university, dbUser.university),
-        eq(classroomsTable.year, dbUser.year)
-    ];
-    
-    if (joinedIds.length > 0) {
-        conditions.push(notInArray(classroomsTable.id, joinedIds));
-    }
+        if (dbUser && dbUser.university && dbUser.year) {
+            const joinedIds = joinedRooms.map((r) => r.id);
+            
+            let conditions = [
+                eq(classroomsTable.university, dbUser.university),
+                eq(classroomsTable.year, dbUser.year)
+            ];
+            
+            if (joinedIds.length > 0) {
+                conditions.push(notInArray(classroomsTable.id, joinedIds));
+            }
 
-    recommendedRooms = await db
-        .select()
-        .from(classroomsTable)
-        .where(and(...conditions));
-}
+            recommendedRooms = await db
+                .select()
+                .from(classroomsTable)
+                .where(and(...conditions));
+        }
 
         return NextResponse.json({
             joined: joinedRooms,
@@ -82,7 +85,7 @@ export async function POST(req: Request) {
         const { errorResponse: validationResponse, data } = await parseAndValidateRequest(req, createClassroomSchema);
         if (validationResponse) return validationResponse;
 
-        const { name, year } = data;
+        const { name, year, organizationId } = data;
 
         const user = await currentUser();
         if (!user || !user.primaryEmailAddress?.emailAddress) {
@@ -109,6 +112,7 @@ export async function POST(req: Request) {
                 .insert(classroomsTable)
                 .values({
                     name,
+                    organizationId: organizationId || null, // Optional tracking mapping
                     university: dbUser.university || 'Unspecified',
                     year,
                     teacherEmail: email,
