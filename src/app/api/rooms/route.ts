@@ -57,7 +57,7 @@ export async function GET(req: Request) {
             let conditions = [
                 eq(classroomsTable.university, dbUser.university),
                 eq(classroomsTable.year, dbUser.year),
-                isNull(classroomsTable.organizationId) // FIXED: Prevent private tenant metadata leaks
+                isNull(classroomsTable.organizationId) // Prevents private tenant metadata leaks
             ];
             
             if (joinedIds.length > 0) {
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
     }
 }
 
-// 2. POST: Create a classroom (Teacher Only)
+// 2. POST: Create a classroom (Teacher Only or Org Admin/Teacher)
 export async function POST(req: Request) {
     try {
         const { errorResponse: validationResponse, data } = await parseAndValidateRequest(req, createClassroomSchema);
@@ -99,13 +99,12 @@ export async function POST(req: Request) {
         const { isBlocked, errorResponse: blockErrorResponse } = await checkUserBlock(email);
         if (isBlocked) return blockErrorResponse;
 
-        // Final check for teacher/admin role in DB
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-        if (!dbUser || (dbUser.role !== 'teacher' && dbUser.role !== 'admin')) {
-            return errorResponse('Only teachers can create classrooms', 403);
+        if (!dbUser) {
+            return errorResponse('Unauthorized: User profile not found', 401);
         }
 
-        // FIXED: Authorize organizationId before attaching a classroom to a tenant
+        // FIXED: Authorize based on scope. Tenant privileges override global privileges.
         if (organizationId) {
             const [orgMembership] = await db
                 .select({ role: organizationMembershipsTable.role })
@@ -118,6 +117,11 @@ export async function POST(req: Request) {
             if (!orgMembership || !['owner', 'admin', 'teacher'].includes(orgMembership.role)) {
                 return errorResponse('Forbidden: invalid organization privileges', 403);
             }
+        } else {
+            // Final check for STANDALONE teacher/admin role in DB
+            if (dbUser.role !== 'teacher' && dbUser.role !== 'admin') {
+                return errorResponse('Only teachers can create standalone classrooms', 403);
+            }
         }
 
         const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -128,7 +132,7 @@ export async function POST(req: Request) {
                 .insert(classroomsTable)
                 .values({
                     name,
-                    organizationId: organizationId || null, // Optional tracking mapping
+                    organizationId: organizationId || null,
                     university: dbUser.university || 'Unspecified',
                     year,
                     teacherEmail: email,
