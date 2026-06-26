@@ -18,10 +18,9 @@ export async function POST(
         }
         const loggedInUserEmail = user.primaryEmailAddress.emailAddress;
 
-        // Next.js 15+ safe params handling
         const resolvedParams = 'then' in params ? await params : params;
         const doubtId = parseInt(resolvedParams.id);
-        
+
         if (isNaN(doubtId)) {
             return NextResponse.json({ error: "Invalid doubt id" }, { status: 400 });
         }
@@ -34,9 +33,12 @@ export async function POST(
         }
 
         // ── 2. AUTHORIZATION CHECK (VERIFY OWNERSHIP) ────────────────────────
-        // Fetch the target doubt to verify existence and check who originally posted it
         const [existingDoubt] = await db
-            .select({ userEmail: doubtsTable.userEmail })
+            .select({
+                userEmail: doubtsTable.userEmail,
+                isSolved: doubtsTable.isSolved,
+                solvedReplyId: doubtsTable.solvedReplyId,
+            })
             .from(doubtsTable)
             .where(eq(doubtsTable.id, doubtId))
             .limit(1);
@@ -47,17 +49,28 @@ export async function POST(
 
         // Security Guardrail: Only the user who created the doubt can accept an answer
         if (existingDoubt.userEmail !== loggedInUserEmail) {
-            return NextResponse.json({ 
-                error: "Forbidden! You can only accept answers for your own doubts." 
+            return NextResponse.json({
+                error: "Forbidden! You can only accept answers for your own doubts."
             }, { status: 403 });
         }
 
+        // ── 2a. IDEMPOTENCY GUARD ────────────────────────────────────────────
+        // If this exact reply is already the accepted answer, return success
+        // immediately without re-emitting the karma event.
+        if (existingDoubt.isSolved === "solved" && existingDoubt.solvedReplyId === replyId) {
+            return NextResponse.json({
+                success: true,
+                message: "Answer was already accepted (no-op)",
+                doubtId,
+                solvedReplyId: replyId,
+            });
+        }
+
         // ── 3. FETCH & VERIFY THE REPLY RELATIONSHIP ─────────────────────────
-        // FIX: Verify that the reply exists AND explicitly belongs to this specific doubtId
         const [reply] = await db
-            .select({ 
+            .select({
                 userEmail: repliesTable.userEmail,
-                doubtId: repliesTable.doubtId 
+                doubtId: repliesTable.doubtId
             })
             .from(repliesTable)
             .where(eq(repliesTable.id, replyId))
@@ -67,15 +80,13 @@ export async function POST(
             return NextResponse.json({ error: "Reply not found" }, { status: 404 });
         }
 
-        // LOGIC FIX: Fail the request if the reply belongs to an entirely different doubt thread
         if (reply.doubtId !== doubtId) {
-            return NextResponse.json({ 
-                error: "Integrity Error! The provided reply does not belong to this doubt thread." 
+            return NextResponse.json({
+                error: "Integrity Error! The provided reply does not belong to this doubt thread."
             }, { status: 400 });
         }
 
         // ── 4. EXECUTE THE ACCEPT ACTION SECURELY ───────────────────────────
-        // Update the doubt's state to 'solved' and record the selected reply ID
         const [updatedDoubt] = await db
             .update(doubtsTable)
             .set({
@@ -90,7 +101,6 @@ export async function POST(
         }
 
         // ── 5. EMIT THE CORRECT BUSINESS EVENT TO INNGEST ───────────────────
-        // Fire the proper business event with fully validated relationship parameters
         if (reply.userEmail) {
             await inngest.send({
                 name: "karma/answer.accepted",
@@ -102,17 +112,17 @@ export async function POST(
             });
         }
 
-        return NextResponse.json({ 
-            success: true, 
-            message: "Answer accepted successfully", 
-            doubtId, 
-            solvedReplyId: replyId 
+        return NextResponse.json({
+            success: true,
+            message: "Answer accepted successfully",
+            doubtId,
+            solvedReplyId: replyId
         });
 
     } catch (error) {
         console.error("Error in accept-route:", error);
         return NextResponse.json(
-            { error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) }, 
+            { error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) },
             { status: 500 }
         );
     }
