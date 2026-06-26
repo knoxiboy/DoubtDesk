@@ -35,37 +35,6 @@ vi.mock("@/inngest/client", () => ({
     inngest: { send: inngestSend },
 }));
 
-vi.mock("@/configs/db", () => {
-    const buildSelectChain = (rows: unknown[]) => ({
-        from: () => ({
-            where: () => ({
-                limit: () => Promise.resolve(rows),
-            }),
-        }),
-    });
-
-    const buildUpdateChain = (rows: unknown[]) => ({
-        set: () => ({
-            where: () => ({
-                returning: () => Promise.resolve(rows),
-            }),
-        }),
-    });
-
-    return {
-        db: {
-            select: vi.fn().mockImplementation(() =>
-                buildSelectChain(
-                    mockDoubt !== null ? [mockDoubt] : []
-                )
-            ),
-            update: vi.fn().mockImplementation(() =>
-                buildUpdateChain(mockUpdatedDoubt !== null ? [mockUpdatedDoubt] : [])
-            ),
-        },
-    };
-}));
-
 let selectCallCount = 0;
 
 vi.mock("@/configs/db", () => {
