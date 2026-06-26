@@ -18,14 +18,25 @@ export async function GET(req: Request) {
 
         const { searchParams } = new URL(req.url);
         const classroomId = parseOptionalClassroomId(searchParams.get("classroomId"));
-        const orgIdStr = searchParams.get("organizationId");
+        
+        // FIXED: Strictly validate organizationId and normalize scopes
+        const orgIdParam = searchParams.get("organizationId");
+        const organizationId = orgIdParam === null || orgIdParam === "" ? null : Number(orgIdParam);
+
+        if (organizationId !== null && (!Number.isSafeInteger(organizationId) || organizationId <= 0)) {
+            return errorResponse('Invalid organizationId', 400);
+        }
+
+        if (organizationId !== null && classroomId !== null) {
+            return errorResponse('Specify either organizationId or classroomId, not both', 400);
+        }
 
         let classroomFilter;
         let activeClassroomIds: number[] = [];
 
         // 1. ORGANIZATION LEVEL SCOPING
-        if (orgIdStr) {
-            const orgId = parseInt(orgIdStr, 10);
+        if (organizationId !== null) {
+            const orgId = organizationId;
             
             // Verify org membership and role
             const [orgMembership] = await db.select()
@@ -47,7 +58,7 @@ export async function GET(req: Request) {
             activeClassroomIds = orgClassrooms.map(c => c.id);
         } 
         // 2. CLASSROOM LEVEL SCOPING
-        else if (classroomId) {
+        else if (classroomId !== null) {
             await requireMembership(email, classroomId);
             activeClassroomIds = [classroomId];
         } 
@@ -186,6 +197,7 @@ export async function GET(req: Request) {
                 .orderBy(desc(repliesTable.createdAt))
                 .limit(20),
         ]);
+        
         // 8. AI Teaching Suggestions & Weak Concept Detection (Heuristics)
         const weakTopics = mostAskedTopics.map((topic, index) => {
             const countValue = Number(topic.count);
@@ -228,8 +240,8 @@ export async function GET(req: Request) {
             pedagogyLevel: "Undergraduate (Freshman)",
             targetGradeLevel: 13
         };
-        // If a single classroom was requested, fetch its specific settings
-        if (classroomId) {
+        // Only fetch single classroom settings if it is specifically requested (and not an org request)
+        if (classroomId !== null) {
             try {
                 const [classroom] = await db.select({
                     pedagogyLevel: classroomsTable.pedagogyLevel,

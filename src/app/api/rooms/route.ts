@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
-import { classroomsTable, membershipsTable, usersTable, organizationsTable } from '@/configs/schema';
-import { eq, and, notInArray } from 'drizzle-orm';
+import { classroomsTable, membershipsTable, usersTable, organizationsTable, organizationMembershipsTable } from '@/configs/schema';
+import { eq, and, notInArray, isNull } from 'drizzle-orm';
 import { currentUser } from '@clerk/nextjs/server';
 import { checkUserBlock } from '@/lib/auth-utils';
 import { buildErrorResponse, errorResponse } from '@/lib/error-handler';
@@ -56,7 +56,8 @@ export async function GET(req: Request) {
             
             let conditions = [
                 eq(classroomsTable.university, dbUser.university),
-                eq(classroomsTable.year, dbUser.year)
+                eq(classroomsTable.year, dbUser.year),
+                isNull(classroomsTable.organizationId) // FIXED: Prevent private tenant metadata leaks
             ];
             
             if (joinedIds.length > 0) {
@@ -102,6 +103,21 @@ export async function POST(req: Request) {
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
         if (!dbUser || (dbUser.role !== 'teacher' && dbUser.role !== 'admin')) {
             return errorResponse('Only teachers can create classrooms', 403);
+        }
+
+        // FIXED: Authorize organizationId before attaching a classroom to a tenant
+        if (organizationId) {
+            const [orgMembership] = await db
+                .select({ role: organizationMembershipsTable.role })
+                .from(organizationMembershipsTable)
+                .where(and(
+                    eq(organizationMembershipsTable.organizationId, organizationId),
+                    eq(organizationMembershipsTable.userEmail, email),
+                ));
+
+            if (!orgMembership || !['owner', 'admin', 'teacher'].includes(orgMembership.role)) {
+                return errorResponse('Forbidden: invalid organization privileges', 403);
+            }
         }
 
         const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();

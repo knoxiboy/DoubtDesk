@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
-import { organizationsTable, organizationMembershipsTable } from '@/configs/schema';
+import { organizationsTable, organizationMembershipsTable, usersTable } from '@/configs/schema';
 import { eq, and } from 'drizzle-orm';
 import { currentUser } from '@clerk/nextjs/server';
 import { errorResponse, buildErrorResponse } from '@/lib/error-handler';
 import { checkUserBlock } from '@/lib/auth-utils';
 import { z } from 'zod';
 
+// FIXED: Tightened schema validation to match db varchar(255) constraints
 const createOrgSchema = z.object({
-  name: z.string().min(2, "Organization name must be at least 2 characters"),
-  slug: z.string().min(2, "Slug must be at least 2 characters").regex(/^[a-z0-9-]+$/, "Slug format invalid"),
+  name: z.string().trim().min(2, "Organization name must be at least 2 characters").max(255),
+  slug: z.string().trim().toLowerCase().min(2, "Slug must be at least 2 characters").max(255).regex(/^[a-z0-9-]+$/, "Slug format invalid"),
 });
 
 // GET: Fetch organizations the user belongs to
@@ -58,6 +59,12 @@ export async function POST(req: Request) {
 
     const { isBlocked, errorResponse: blockErrorResponse } = await checkUserBlock(email);
     if (isBlocked) return blockErrorResponse;
+
+    // FIXED: Verify local profile exists before creating foreign key relation
+    const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+    if (!dbUser) {
+      return errorResponse('User profile not found', 403);
+    }
 
     const jsonBody = await req.json();
     const parsed = createOrgSchema.safeParse(jsonBody);
