@@ -107,9 +107,9 @@ describe("sendDailyDigest — per-user step isolation", () => {
 
     // Alice succeeds, Bob throws
     mockSendDigestEmail
-      .mockResolvedValueOnce(undefined)   // alice: ok
-      .mockRejectedValueOnce(new Error("SMTP timeout")); // bob: fail
-
+      .mockResolvedValueOnce({ success: true })            // alice: ok
+      .mockResolvedValueOnce({ success: false, error: "SMTP timeout" }); // bob: failmockSendDigestEmail
+      
     // Import the function under test after mocks are set.
     // We simulate the Inngest function invocation directly.
     const { sendDailyDigest } = await import("@/inngest/functions");
