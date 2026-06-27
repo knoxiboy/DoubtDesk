@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable } from "@/configs/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, isNull, ne } from "drizzle-orm";
 import { inngest } from "@/inngest/client";
 import { currentUser } from "@clerk/nextjs/server";
 
@@ -11,17 +11,19 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        // ── 1. SERVER-SIDE AUTHENTICATION CHECK ──────────────────────────────
+        // ── 1. AUTHENTICATION ─────────────────────────────────────────────────
         const user = await currentUser();
         if (!user || !user.primaryEmailAddress?.emailAddress) {
-            return NextResponse.json({ error: "Unauthorized! Please log in first." }, { status: 401 });
+            return NextResponse.json(
+                { error: "Unauthorized! Please log in first." },
+                { status: 401 }
+            );
         }
         const loggedInUserEmail = user.primaryEmailAddress.emailAddress;
 
-        // Next.js 15+ safe params handling
-        const resolvedParams = 'then' in params ? await params : params;
+        const resolvedParams = "then" in params ? await params : params;
         const doubtId = parseInt(resolvedParams.id);
-        
+
         if (isNaN(doubtId)) {
             return NextResponse.json({ error: "Invalid doubt id" }, { status: 400 });
         }
@@ -33,8 +35,7 @@ export async function POST(
             return NextResponse.json({ error: "replyId is required" }, { status: 400 });
         }
 
-        // ── 2. AUTHORIZATION CHECK (VERIFY OWNERSHIP) ────────────────────────
-        // Fetch the target doubt to verify existence and check who originally posted it
+        // ── 2. AUTHORIZATION (OWNERSHIP) ─────────────────────────────────────
         const [existingDoubt] = await db
             .select({ userEmail: doubtsTable.userEmail })
             .from(doubtsTable)
@@ -45,19 +46,18 @@ export async function POST(
             return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
         }
 
-        // Security Guardrail: Only the user who created the doubt can accept an answer
         if (existingDoubt.userEmail !== loggedInUserEmail) {
-            return NextResponse.json({ 
-                error: "Forbidden! You can only accept answers for your own doubts." 
-            }, { status: 403 });
+            return NextResponse.json(
+                { error: "Forbidden! You can only accept answers for your own doubts." },
+                { status: 403 }
+            );
         }
 
-        // ── 3. FETCH & VERIFY THE REPLY RELATIONSHIP ─────────────────────────
-        // FIX: Verify that the reply exists AND explicitly belongs to this specific doubtId
+        // ── 3. VERIFY REPLY BELONGS TO THIS DOUBT ────────────────────────────
         const [reply] = await db
-            .select({ 
+            .select({
                 userEmail: repliesTable.userEmail,
-                doubtId: repliesTable.doubtId 
+                doubtId: repliesTable.doubtId,
             })
             .from(repliesTable)
             .where(eq(repliesTable.id, replyId))
@@ -67,30 +67,44 @@ export async function POST(
             return NextResponse.json({ error: "Reply not found" }, { status: 404 });
         }
 
-        // LOGIC FIX: Fail the request if the reply belongs to an entirely different doubt thread
         if (reply.doubtId !== doubtId) {
-            return NextResponse.json({ 
-                error: "Integrity Error! The provided reply does not belong to this doubt thread." 
-            }, { status: 400 });
+            return NextResponse.json(
+                { error: "Integrity Error! The provided reply does not belong to this doubt thread." },
+                { status: 400 }
+            );
         }
 
-        // ── 4. EXECUTE THE ACCEPT ACTION SECURELY ───────────────────────────
-        // Update the doubt's state to 'solved' and record the selected reply ID
+        // ── 4. ATOMIC IDEMPOTENT UPDATE ───────────────────────────────────────
         const [updatedDoubt] = await db
             .update(doubtsTable)
             .set({
                 isSolved: "solved",
                 solvedReplyId: replyId,
             })
-            .where(and(eq(doubtsTable.id, doubtId), eq(doubtsTable.userEmail, loggedInUserEmail)))
+            .where(
+                and(
+                    eq(doubtsTable.id, doubtId),
+                    eq(doubtsTable.userEmail, loggedInUserEmail),
+                    or(
+                        ne(doubtsTable.isSolved, "solved"),
+                        isNull(doubtsTable.solvedReplyId),
+                        ne(doubtsTable.solvedReplyId, replyId)
+                    )
+                )
+            )
             .returning({ id: doubtsTable.id });
 
+        // ── 5. IDEMPOTENT RESPONSE ────────────────────────────────────────────
         if (!updatedDoubt) {
-            return NextResponse.json({ error: "Failed to update doubt state" }, { status: 500 });
+            return NextResponse.json({
+                success: true,
+                message: "Answer was already accepted (no-op)",
+                doubtId,
+                solvedReplyId: replyId,
+            });
         }
 
-        // ── 5. EMIT THE CORRECT BUSINESS EVENT TO INNGEST ───────────────────
-        // Fire the proper business event with fully validated relationship parameters
+        // ── 6. EMIT KARMA EVENT — only on genuine state transition ───────────
         if (reply.userEmail) {
             await inngest.send({
                 name: "karma/answer.accepted",
@@ -102,17 +116,17 @@ export async function POST(
             });
         }
 
-        return NextResponse.json({ 
-            success: true, 
-            message: "Answer accepted successfully", 
-            doubtId, 
-            solvedReplyId: replyId 
+        return NextResponse.json({
+            success: true,
+            message: "Answer accepted successfully",
+            doubtId,
+            solvedReplyId: replyId,
         });
 
     } catch (error) {
         console.error("Error in accept-route:", error);
         return NextResponse.json(
-            { error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) }, 
+            { error: "Internal Server Error" },
             { status: 500 }
         );
     }
