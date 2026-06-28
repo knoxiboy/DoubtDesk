@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { and, eq } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
+import { membershipsTable, usersTable } from "@/configs/schema";
 import { enforceApiRateLimit } from "@/lib/api-rate-limit";
 import { aiLimiter } from "@/lib/ratelimit";
 import { AI_REQUEST_MAX_BYTES } from "@/lib/ai-image-validation";
@@ -77,34 +79,28 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
 
   if (classroomId !== undefined) {
-    const userWhereClause = ("userId = " + userId) as any;
-    const userRows = await db
-      .select()
-      .from("users" as any)
-      .where(userWhereClause)
+    const [userRow] = await db
+      .select({ blockedUntil: usersTable.blockedUntil })
+      .from(usersTable)
+      .where(eq(usersTable.email, email))
       .limit(1);
 
-    const userRow = Array.isArray(userRows)
-      ? userRows[0]
-      : (userRows as any)?.rows?.[0];
-
-    if (userRow?.blockedUntil) {
+    if (userRow?.blockedUntil && new Date(userRow.blockedUntil) > new Date()) {
       return NextResponse.json({ error: "Account suspended" }, { status: 403 });
     }
 
-    const memberWhereClause =
-      `classroomId = ${classroomId} AND userId = '${userId}'` as any;
-    const memberRows = await db
-      .select()
-      .from("classroomMembers" as any)
-      .where(memberWhereClause)
+    const [member] = await db
+      .select({ id: membershipsTable.id })
+      .from(membershipsTable)
+      .where(
+        and(
+          eq(membershipsTable.userEmail, email),
+          eq(membershipsTable.classroomId, classroomId)
+        )
+      )
       .limit(1);
 
-    const members = Array.isArray(memberRows)
-      ? memberRows
-      : (memberRows as any)?.rows ?? [];
-
-    if (members.length === 0) {
+    if (!member) {
       return NextResponse.json(
         { error: "Access denied to this classroom" },
         { status: 403 }
