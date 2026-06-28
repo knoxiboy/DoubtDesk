@@ -1,5 +1,11 @@
 import { NextRequest } from 'next/server';
 import { generateUnsubscribeToken } from '@/lib/email';
+
+const currentUserMock = jest.fn();
+jest.mock('@clerk/nextjs/server', () => ({
+    currentUser: () => currentUserMock(),
+}));
+
 import { GET, POST } from '@/app/api/unsubscribe/route';
 
 jest.mock('@/configs/db', () => {
@@ -52,6 +58,7 @@ describe('Unsubscribe API Endpoint', () => {
     beforeEach(() => {
         process.env.UNSUBSCRIBE_SECRET = 'test-unsubscribe-secret';
         jest.clearAllMocks();
+        currentUserMock.mockResolvedValue(null);
     });
 
     it('does not change notification preferences on GET', async () => {
@@ -108,5 +115,17 @@ describe('Unsubscribe API Endpoint', () => {
             notificationPreference: 'none',
         });
         expect(mockWhere).toHaveBeenCalledWith({ field: 'email', value: 'student@college.edu' });
+    });
+
+    it('refuses to unsubscribe when the signed-in user does not match the token email', async () => {
+        currentUserMock.mockResolvedValue({
+            primaryEmailAddress: { emailAddress: 'attacker@example.com' },
+        });
+
+        const res = await POST(makeSignedRequest('POST'));
+
+        expect(res.status).toBe(307);
+        expect(res.headers.get('location')).toContain('Signed-in%20user%20does%20not%20match');
+        expect(mockUpdate).not.toHaveBeenCalled();
     });
 });
