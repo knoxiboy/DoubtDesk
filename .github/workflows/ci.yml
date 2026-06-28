@@ -125,3 +125,11 @@ jobs:
       - run: npx drizzle-kit generate
       - name: Check for uncommitted migrations
         run: git diff --exit-code drizzle/
+      - name: Check for duplicate migration prefixes
+        run: |
+          dupes=$(ls drizzle/*.sql | xargs -n1 basename | grep -oP '^\d+' | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "Duplicate migration version prefixes found:"
+            echo "$dupes"
+            exit 1
+          fi
