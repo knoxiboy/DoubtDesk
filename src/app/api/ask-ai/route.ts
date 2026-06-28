@@ -28,8 +28,19 @@ export async function POST(req: Request): Promise<NextResponse> {
     return rateLimitResponse;
   }
 
+  const declaredLength = Number.parseInt(
+    req.headers.get("content-length") ?? "",
+    10
+  );
+  if (Number.isFinite(declaredLength) && declaredLength > AI_REQUEST_MAX_BYTES) {
+    return NextResponse.json(
+      { error: "Requests must be 4MB or smaller.", code: "REQUEST_TOO_LARGE" },
+      { status: 413 }
+    );
+  }
+
   const rawText = await req.text();
-  if (rawText.length >= AI_REQUEST_MAX_BYTES) {
+  if (rawText.length > AI_REQUEST_MAX_BYTES) {
     return NextResponse.json(
       { error: "Requests must be 4MB or smaller.", code: "REQUEST_TOO_LARGE" },
       { status: 413 }
