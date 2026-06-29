@@ -20,7 +20,6 @@ import {
   not,
   sql,
   SQL,
-  ilike,
   desc,
   getTableColumns,
   count,
@@ -34,7 +33,7 @@ import { createClassroomDoubtNotifications } from "@/lib/notifications/service";
 import { inngest } from "@/inngest/client";
 import { enforceApiRateLimit } from "@/lib/api-rate-limit";
 import { generalLimiter } from "@/lib/ratelimit";
-import { buildRankOrder } from "@/lib/search";
+import { buildSearchCondition, buildRankOrder } from "@/lib/search";
 import { canTeach } from "@/lib/auth/membership-guard";
 import { currentUser } from "@clerk/nextjs/server";
 import { parsePositiveInt } from "@/lib/utils";
@@ -102,12 +101,9 @@ export async function GET(req: Request) {
     }
 
     if (search) {
-      const searchCondition = or(
-        ilike(doubtsTable.content, `%${search}%`),
-        ilike(doubtsTable.subject, `%${search}%`),
-        ilike(doubtsTable.userEmail, `%${search}%`),
-      );
-      if (searchCondition) conditions.push(searchCondition);
+      // If sanitization reduces the query to nothing, match nothing rather
+      // than returning the full unfiltered feed.
+      conditions.push(buildSearchCondition(search) ?? sql`false`);
     }
 
     if (type && type !== "All") {
