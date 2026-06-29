@@ -45,20 +45,28 @@ describe('drizzle migration directory integrity', () => {
             expect(fs.existsSync(sqlPath)).toBe(true);
         }
 
-        const files = getMigrationFiles();
-        const journalTags = new Set(entries.map((e) => e.tag));
-        for (const file of files) {
-            const tag = file.replace(/\.sql$/, '');
-            expect(journalTags.has(tag)).toBe(true);
-        }
+         const files = getMigrationFiles();
+        const tags = entries.map((e) => e.tag);
+        expect(new Set(tags).size).toBe(tags.length);
+
+         const journalTags = new Set(entries.map((e) => e.tag));
+        expect(journalTags.size).toBe(files.length);
+         for (const file of files) {
+             const tag = file.replace(/\.sql$/, '');
+             expect(journalTags.has(tag)).toBe(true);
+         }
     });
 
     it('does not contain empty or non-UTF8 placeholder migration files', () => {
         const files = getMigrationFiles();
+        const decoder = new TextDecoder('utf-8', { fatal: true });
         for (const file of files) {
             const buf = fs.readFileSync(path.join(drizzleDir, file));
-            expect(buf.includes(0)).toBe(false);
-            expect(buf.toString('utf-8').trim().length).toBeGreaterThan(0);
+            let text: string;
+            expect(() => {
+                text = decoder.decode(buf);
+            }).not.toThrow();
+            expect(text!.trim().length).toBeGreaterThan(0);
         }
     });
 });
