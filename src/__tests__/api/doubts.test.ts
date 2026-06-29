@@ -362,6 +362,7 @@ describe('Doubts API Endpoints', () => {
     });
 
     it('GET returns empty doubts and correct metadata when full-text search finds nothing', async () => {
+        (buildSearchCondition as jest.Mock).mockReturnValueOnce({ sql: 'search_vector @@ query' });
         (db.select as jest.Mock)
             .mockImplementationOnce(() => createChainWithData([{ count: 0 }]))
             .mockImplementationOnce(() => createChainWithData([]));

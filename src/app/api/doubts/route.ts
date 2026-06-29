@@ -101,8 +101,9 @@ export async function GET(req: Request) {
     }
 
     if (search) {
-      const searchCondition = buildSearchCondition(search);
-      if (searchCondition) conditions.push(searchCondition);
+      // If sanitization reduces the query to nothing, match nothing rather
+      // than returning the full unfiltered feed.
+      conditions.push(buildSearchCondition(search) ?? sql`false`);
     }
 
     if (type && type !== "All") {
