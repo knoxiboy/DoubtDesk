@@ -7,7 +7,7 @@ import DoubtRepliesModal from "./DoubtRepliesModal";
 import PracticeModal from "./PracticeModal";
 import { toast } from "sonner";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
-import type { Doubt, Tag } from "@/types";
+import type { PublicDoubt, Tag } from "@/types";
 import {
     Tooltip,
     TooltipContent,
@@ -39,7 +39,7 @@ const SHARE_MESSAGES = {
 };
 
 interface DoubtCardProps {
-    doubt: Doubt & {
+    doubt: PublicDoubt & {
         tags?: Tag[];
         hasBookmarked?: boolean;
         hasLiked?: boolean;
@@ -47,7 +47,7 @@ interface DoubtCardProps {
     };
     onUpdate?: () => void;
     onViewAISolution?: (
-        doubt: Doubt & {
+        doubt: PublicDoubt & {
             tags?: Tag[];
             hasBookmarked?: boolean;
             hasLiked?: boolean;
@@ -79,13 +79,13 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
 
     const isTeacher = role === 'teacher';
 
-    const { user, isSignedIn } = useUser();
+    const { isSignedIn } = useUser();
 
     useEffect(() => {
-        if (isSignedIn && user?.primaryEmailAddress?.emailAddress === doubt.userEmail) {
-            setIsOwner(true);
-        }
-    }, [isSignedIn, user, doubt.userEmail]);
+        // Ownership is decided server-side via `isOwnPost`. Set both branches so a
+        // reused card does not keep owner-only UI after switching to another post.
+        setIsOwner(!!doubt.isOwnPost);
+    }, [doubt.isOwnPost]);
 
     useEffect(() => {
         const deepLinkedDoubtId = searchParams ? (Number(searchParams.get("doubtId") || "") || null) : null;
@@ -232,11 +232,11 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 sm:mb-8">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-blue-600/10 rounded-2xl flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform duration-500">
-                            <span className="text-lg font-black text-blue-400">{doubt.userEmail?.charAt(0)?.toUpperCase() || '?'}</span>
+                            <span className="text-lg font-black text-blue-400">{doubt.authorInitial || '?'}</span>
                         </div>
                         <div>
                             <h3 className="text-slate-900 dark:text-white font-bold tracking-tight text-sm">
-                                {doubt.userEmail?.split('@')[0] || 'Anonymous'}
+                                {doubt.author || 'Anonymous'}
                                 {isOwner && <span className="ml-2 text-[10px] bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">You</span>}
                             </h3>
                             <p className="text-[10px] text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
@@ -326,7 +326,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                         >
                             <img
                                 src={doubt.imageUrl}
-                                alt={`Doubt image for ${doubt.subject} by ${doubt.userEmail?.split('@')[0] || 'Anonymous'}`}
+                                alt={`Doubt image for ${doubt.subject} by ${doubt.author || 'Anonymous'}`}
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                             />
                             <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
@@ -548,7 +548,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                     >
                         <img
                             src={doubt.imageUrl ?? undefined}
-                            alt={`Full view of doubt image for ${doubt.subject} by ${doubt.userEmail?.split('@')[0] || 'Anonymous'}`}
+                            alt={`Full view of doubt image for ${doubt.subject} by ${doubt.author || 'Anonymous'}`}
                             className="max-w-full max-h-full object-contain rounded-xl shadow-2xl border border-slate-200 dark:border-white/10"
                         />
                     </div>

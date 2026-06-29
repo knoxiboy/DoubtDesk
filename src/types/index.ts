@@ -1,4 +1,6 @@
 // Roadmap Types
+import type { PublicAuthored } from "@/lib/anonymity";
+
 export interface Milestone {
     week: string;
     goal: string;
@@ -205,7 +207,6 @@ export interface Membership {
 export interface Doubt {
     id: number;
 
-    userEmail?: string | null;
     classroomId?: number | null;
     subject: string;
     subTopic?: string | null;
@@ -218,13 +219,32 @@ export interface Doubt {
     isPinned: boolean | null;
     isPendingSync?: boolean;
     createdAt: Date | string;
+    // The raw author identifier must never appear on a client-facing Doubt. Typing
+    // it as `never` means a raw DB row (which carries `userEmail: string`) does not
+    // type-check as a `Doubt`, and no client code can read it.
+    userEmail?: never;
+    // Anonymized author fields. Optional on the loose type for optimistic/partial
+    // construction; `PublicDoubt` (the API payload shape) requires them.
+    author?: string;
+    authorInitial?: string;
+    isOwnPost?: boolean;
 }
 
-/** Type for a doubt record with simplified fields */
+/**
+ * Client-facing doubt payload as returned by the API. Omits all author
+ * identifiers (see PrivateAuthoredKeys in src/lib/anonymity.ts) and *requires*
+ * the anonymized author fields, so a route that forgets to anonymize fails to
+ * type-check against this shape.
+ */
+export type PublicDoubt = PublicAuthored<Doubt>;
+
+/** Type for a doubt record with simplified fields (server-side DB record;
+ *  carries the raw author identifier, unlike the client-facing Doubt/PublicDoubt). */
 export type DoubtRecord = {
     isSolved: string | null;
     type: string | null;
-} & Omit<Doubt, "isSolved" | "type">;
+    userEmail: string;
+} & Omit<Doubt, "isSolved" | "type" | "userEmail">;
 
 
 /** Reply to a doubt entity */
@@ -232,17 +252,27 @@ export interface Reply {
     id: number;
     doubtId: number;
 
-    userEmail?: string | null;
     type: "comment" | "solution";
     content?: string | null;
     imageUrl?: string | null;
     upvotes: number | null;
     createdAt: Date | string;
+    // Raw author identifier must never appear on a client-facing Reply (see Doubt).
+    userEmail?: never;
+    // Anonymized author fields.
+    author?: string;
+    authorInitial?: string;
+    isOwnPost?: boolean;
 }
 
+/** Client-facing reply payload as returned by the API (no author identifiers). */
+export type PublicReply = PublicAuthored<Reply>;
+
+/** Server-side reply DB record (carries the raw author identifier). */
 export type ReplyRecord = {
     type: string | null;
-} & Omit<Reply, "type">;
+    userEmail: string;
+} & Omit<Reply, "type" | "userEmail">;
 
 /** Like on a doubt entity */
 export interface Like {
