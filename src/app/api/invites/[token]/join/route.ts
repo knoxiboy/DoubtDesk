@@ -78,17 +78,58 @@ export async function POST(
       );
     }
 
-    const [existingMember] = await db
-      .select()
-      .from(membershipsTable)
-      .where(
-        and(
-          eq(membershipsTable.userEmail, email),
-          eq(membershipsTable.classroomId, inviteData.classroomId),
-        ),
-      );
+    const joinResult = await db.transaction(async (tx) => {
+      const [existingMember] = await tx
+        .select()
+        .from(membershipsTable)
+        .where(
+          and(
+            eq(membershipsTable.userEmail, email),
+            eq(membershipsTable.classroomId, inviteData.classroomId),
+          ),
+        );
 
-    if (existingMember) {
+      if (existingMember) {
+        return { alreadyMember: true as const };
+      }
+
+      const [updatedInvite] = await tx
+        .update(classroomInvitesTable)
+        .set({
+          usedCount: sql`${classroomInvitesTable.usedCount} + 1`,
+        })
+        .where(
+          and(
+            eq(classroomInvitesTable.id, inviteData.inviteId),
+            or(
+              sql`${classroomInvitesTable.maxUses} IS NULL`,
+              sql`${classroomInvitesTable.usedCount} < ${classroomInvitesTable.maxUses}`,
+            ),
+          ),
+        )
+        .returning({ id: classroomInvitesTable.id });
+
+      if (!updatedInvite) {
+        return { inviteExpired: true as const };
+      }
+
+      await tx.insert(membershipsTable).values({
+        userEmail: email,
+        classroomId: inviteData.classroomId,
+        role: "student",
+      });
+
+      return { success: true as const };
+    });
+
+    if ("inviteExpired" in joinResult) {
+      return NextResponse.json(
+        { error: "This invite link has reached its usage limit" },
+        { status: 410 },
+      );
+    }
+
+    if ("alreadyMember" in joinResult) {
       return NextResponse.json({
         success: true,
         alreadyMember: true,
@@ -100,35 +141,6 @@ export async function POST(
         },
       });
     }
-
-    const [updatedInvite] = await db
-      .update(classroomInvitesTable)
-      .set({
-        usedCount: sql`${classroomInvitesTable.usedCount} + 1`,
-      })
-      .where(
-        and(
-          eq(classroomInvitesTable.id, inviteData.inviteId),
-          or(
-            sql`${classroomInvitesTable.maxUses} IS NULL`,
-            sql`${classroomInvitesTable.usedCount} < ${classroomInvitesTable.maxUses}`,
-          ),
-        ),
-      )
-      .returning({ id: classroomInvitesTable.id });
-
-    if (!updatedInvite) {
-      return NextResponse.json(
-        { error: "This invite link has reached its usage limit" },
-        { status: 410 },
-      );
-    }
-
-    await db.insert(membershipsTable).values({
-      userEmail: email,
-      classroomId: inviteData.classroomId,
-      role: "student",
-    });
 
     return NextResponse.json({
       success: true,
