@@ -2,6 +2,8 @@ import { db } from "@/configs/db";
 import { membershipsTable, tagsTable, doubtsTable, doubtTagsTable } from "@/configs/schema";
 import { and, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { enforceApiRateLimit } from "@/lib/api-rate-limit";
+import { generalLimiter } from "@/lib/ratelimit";
 import { buildErrorResponse } from "@/lib/error-handler";
 import {
     parseOptionalClassroomId,
@@ -116,6 +118,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const { email } = await requireAuth();
+
+        const rateLimitResponse = await enforceApiRateLimit(generalLimiter, email, "general");
+        if (rateLimitResponse) return rateLimitResponse;
+
         const { name, classroomId: rawClassroomId } = await req.json();
         const normalizedName = normalizeTagName(name || "");
         const classroomId = parseOptionalClassroomId(rawClassroomId);

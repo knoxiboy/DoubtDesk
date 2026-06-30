@@ -333,7 +333,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                     return;
                 }
 
-                const payload = { userName, subject, content, imageUrl, classroomId, type, tags };
+                const payload = { subject, content, imageUrl, classroomId, type, tags };
                 const { addToQueue } = await import("@/lib/offline/syncQueue");
                 await addToQueue("/api/doubts", "POST", payload);
 
@@ -358,7 +358,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
             const method = doubtToEdit ? "PATCH" : "POST";
             const body = doubtToEdit
                 ? { action: "edit", content, subject, imageUrl, tags }
-                : { userName, subject, content, imageUrl, classroomId, type, tags };
+                : { subject, content, imageUrl, classroomId, type, tags };
 
             const res = await fetch(url, {
                 method,

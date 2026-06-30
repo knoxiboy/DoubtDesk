@@ -102,6 +102,11 @@ DoubtDesk provides a virtual classroom environment where:
 - 3-strike system with escalating temporary account blocks (3 days for first block, increasing for subsequent violations).
 - Full audit trail via moderation logs table for admin review.
 
+### Privacy Model
+- Doubts and replies are attributed to other users only by an anonymized, non-reversible handle (e.g. `Student_7F3Q2`) — never by the author's email or any other personal identifier.
+- The real author is stored server-side for ownership, moderation, karma, and notifications, but is never serialized into any API response or client payload.
+- Ownership is conveyed to clients via a server-computed `isOwnPost` flag rather than by exposing identifiers. See [docs/PRIVACY.md](docs/PRIVACY.md) for the full model and enforcement details.
+
 ### Public Doubt Board
 - Open community board (no classroom required) with subject filters.
 - Like, reply, and mark doubts as solved.

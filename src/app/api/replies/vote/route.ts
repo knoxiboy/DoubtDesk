@@ -38,9 +38,16 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Reply not found" }, { status: 404 });
         }
 
+        // Capture the author email up front. The karma event must credit
+        // whoever owned the reply at the moment the vote was cast, never the
+        // post-update returning() row — that row is trusted output of a write
+        // we just performed, so any later corruption to repliesTable.userEmail
+        // would otherwise leak karma to the wrong account.
+        const originalReplyAuthorEmail = reply.userEmail;
+
         // ── 2. FIX: ANTI-SELF-UPVOTE GUARD ──────────────────────────────────
         // Blocks authors from liking their own replies and exploiting the karma event trigger
-        if (email && reply.userEmail === email) {
+        if (email && originalReplyAuthorEmail === email) {
             return NextResponse.json(
                 { error: "Forbidden: You cannot upvote your own reply." },
                 { status: 403 }
@@ -108,15 +115,26 @@ export async function POST(req: Request) {
         });
 
         // ── 4. BACKGROUND SYSTEM EMISSION ───────────────────────────────────
-        if (result && result.hasUpvoted && result.userEmail) {
-            await inngest.send({
-                name: "karma/answer.upvoted",
-                data: {
-                    replyAuthorEmail: result.userEmail,
-                    replyId: result.id || replyId,
-                    doubtId: result.doubtId,
-                },
-            });
+        if (result && result.hasUpvoted && result.userEmail && originalReplyAuthorEmail) {
+            if (result.userEmail !== originalReplyAuthorEmail) {
+                console.error(
+                    "[replies/vote] reply author email diverged between fetch and update",
+                    {
+                        replyId,
+                        original: originalReplyAuthorEmail,
+                        postUpdate: result.userEmail,
+                    }
+                );
+            } else {
+                await inngest.send({
+                    name: "karma/answer.upvoted",
+                    data: {
+                        replyAuthorEmail: originalReplyAuthorEmail,
+                        replyId: result.id || replyId,
+                        doubtId: result.doubtId,
+                    },
+                });
+            }
         }
 
         return NextResponse.json(result);

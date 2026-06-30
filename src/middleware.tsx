@@ -15,27 +15,52 @@ const isProtectedRoute = createRouteMatcher([
 
 const isPublicRoute = createRouteMatcher(['/sign-in', '/sign-up', '/api/inngest', '/', '/public-rooms(.*)', '/onboarding']);
 
+const ROUTE_LEVEL_LIMITED_POSTS = new Set([
+    '/api/ai-career-chat-agent',
+    '/api/ask-ai',
+    '/api/doubts',
+    '/api/doubts/check-similarity',
+    '/api/replies',
+    '/api/rooms',
+    '/api/tags',
+]);
+
+function usesRouteLevelLimit(path: string, method: string) {
+    if (
+        method === 'POST' &&
+        (path.startsWith('/api/video/') || ROUTE_LEVEL_LIMITED_POSTS.has(path))
+    ) {
+        return true;
+    }
+
+    return (
+        (method === 'POST' || method === 'DELETE') &&
+        /^\/api\/doubts\/[^/]+\/bookmark$/.test(path)
+    );
+}
+
 export default clerkMiddleware(async (auth, req) => {
-    // Skip middleware for Inngest API
-    if (req.nextUrl.pathname.startsWith('/api/inngest')) {
+    const path = req.nextUrl.pathname;
+
+    if (path.startsWith('/api/inngest')) {
         return;
     }
 
-    // Rate limiting for public-facing API routes
-    if (req.nextUrl.pathname.startsWith('/api') && !req.nextUrl.pathname.startsWith('/api/inngest')) {
+    const hasRouteLevelLimit = usesRouteLevelLimit(path, req.method);
+
+    if (path.startsWith('/api') && !hasRouteLevelLimit) {
         const { userId } = await auth();
         const forwardedFor = req.headers.get("x-forwarded-for");
         const ip = req.headers.get("x-real-ip") ?? forwardedFor?.split(",")[0]?.trim() ?? "127.0.0.1";
         const rateLimitKey = userId || ip;
-        
-        // Choose limiter based on path
-        const path = req.nextUrl.pathname;
+
         const isAiRoute =
             path.startsWith('/api/solve') ||
             path.startsWith('/api/ask-ai') ||
             path.startsWith('/api/cover-letter') ||
             path.startsWith('/api/resume-analyzer') ||
             path.startsWith('/api/ai-career-chat-agent') ||
+            path.startsWith('/api/doubts/check-similarity') ||
             path.startsWith('/api/roadmap') ||
             (path.startsWith('/api/doubts') && (req.method === 'POST' || path.includes('/practice')));
         const isVideoRoute = path.startsWith('/api/video/generate');
@@ -48,10 +73,10 @@ export default clerkMiddleware(async (auth, req) => {
                 return new NextResponse(
                     JSON.stringify({
                         error: "Too many requests. Please try again later.",
-                        message: isVideoRoute 
+                        message: isVideoRoute
                             ? "Video generation limit reached (max 3 per hour)."
-                            : (isAiRoute 
-                                ? "AI Solver is currently rate limited to protect resources." 
+                            : (isAiRoute
+                                ? "AI Solver is currently rate limited to protect resources."
                                 : "You've reached the rate limit for this action.")
                     }),
                     {
@@ -67,10 +92,6 @@ export default clerkMiddleware(async (auth, req) => {
                 );
             }
         } catch (error) {
-            // Rate limiter failure: fail closed for AI and video routes (high
-            // abuse risk) and fail open for general routes. Silently allowing
-            // all requests when the limiter is down eliminates the primary
-            // abuse-prevention control on the most expensive endpoints.
             console.error("Rate limiting error:", error);
             if (isAiRoute || isVideoRoute) {
                 return new NextResponse(
@@ -83,8 +104,6 @@ export default clerkMiddleware(async (auth, req) => {
                     }
                 );
             }
-            // For general routes a transient limiter failure is lower risk;
-            // allow the request through rather than blocking non-AI traffic.
         }
     }
 
@@ -96,7 +115,6 @@ export default clerkMiddleware(async (auth, req) => {
         if (!userId) return redirectToSignIn();
     }
 
-    // Redirect authenticated users who haven't completed onboarding to the onboarding page
     if (userId && !isApi && !isPublic) {
         let email = sessionClaims?.email as string | undefined;
         if (!email) {
@@ -135,9 +153,7 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
     matcher: [
-        // Skip Next.js internals and all static files, unless found in search params
         '/((?!_next|api/inngest|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-        // Always run for API routes, except Inngest
         '/(api(?!/inngest)|trpc)(.*)',
     ],
 };

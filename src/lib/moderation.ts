@@ -1,9 +1,10 @@
 import { Groq } from "groq-sdk";
 import { db } from "@/configs/db";
 import { usersTable, moderationLogsTable } from "@/configs/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { sendWarningEmail, sendBlockEmail } from "./email";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY || 'dummy_key',
@@ -328,105 +329,70 @@ export async function handleModerationViolation(
 ): Promise<string | null> {
     if (moderation.isAllowed) return null;
 
-    // 1. Fetch current user state
-    const [dbUser] = await db
-        .select()
-        .from(usersTable)
-        .where(eq(usersTable.email, email));
+    return db.transaction(async (tx) => {
+        // Atomically increment violationCount at the DB level — eliminates the
+        // read-modify-write race under concurrent violation processing.
+        const [updated] = await tx.update(usersTable).set({
+                violationCount: sql`${usersTable.violationCount} + 1`,
+            })
+            .where(eq(usersTable.email, email))
+            .returning({
+                violationCount: usersTable.violationCount,
+                blockCount: usersTable.blockCount,
+                blockedUntil: usersTable.blockedUntil,
+            });
 
-    // 2. Increment strikes
-    const newViolationCount =
-        (dbUser?.violationCount || 0) + 1;
+        if (!updated) {
+            // User row not found — log and bail without crashing the request.
+            console.error(`[handleModerationViolation] User not found: ${email}`);
+            return null;
+        }
 
-    const isThirdViolation =
-        newViolationCount >= 3;
+       const newViolationCount = updated.violationCount;
+       const isThirdViolation = newViolationCount >= 3;
 
-    let blockedUntil: Date | null =
-        dbUser?.blockedUntil || null;
+        let blockedUntil: Date | null = updated.blockedUntil || null;
+        let newBlockCount = updated.blockCount || 0;
 
-    let newBlockCount =
-        dbUser?.blockCount || 0;
+        if (isThirdViolation) {
+            newBlockCount += 1;
 
-    if (isThirdViolation) {
-        newBlockCount += 1;
+            // Duration: 3 days (1st block), 7 days (2nd), 14*2^n (subsequent)
+            let durationDays = 3;
+            if (newBlockCount === 2) durationDays = 7;
+            else if (newBlockCount >= 3) durationDays = 14 * Math.pow(2, newBlockCount - 3);
 
-        // Duration: 3 days (1st block), 7 days (2nd), 14*2^n (others)
-        let durationDays = 3;
+            blockedUntil = new Date();
+            blockedUntil.setDate(blockedUntil.getDate() + durationDays);
 
-        if (newBlockCount === 2)
-            durationDays = 7;
-        else if (newBlockCount >= 3)
-            durationDays =
-                14 *
-                Math.pow(
-                    2,
-                    newBlockCount - 3
-                );
+            // Persist block state in the same transaction.
+            await tx.update(usersTable).set({
+                    isBlocked: true,
+                    blockedUntil,
+                    blockCount: newBlockCount,
+                })
+                .where(eq(usersTable.email, email));
 
-        blockedUntil = new Date();
+            await sendBlockEmail(email, durationDays, newBlockCount);
+        }
 
-        blockedUntil.setDate(
-            blockedUntil.getDate() +
-                durationDays
-        );
-
-        // Send Block Email
-        await sendBlockEmail(
-            email,
-            durationDays,
-            newBlockCount
-        );
-    }
-
-    // 3. Update User Table
-    await db
-        .update(usersTable)
-        .set({
-            violationCount:
-                newViolationCount,
-            isBlocked:
-                isThirdViolation,
-            blockedUntil:
-                blockedUntil,
-            blockCount:
-                newBlockCount
-        })
-        .where(
-            eq(usersTable.email, email)
-        );
-
-    // 4. Log Violation to moderation_logs
-    await db
-        .insert(moderationLogsTable)
-        .values({
+        // Log violation inside transaction — rolls back if the outer update fails.
+        await tx.insert(moderationLogsTable).values({
             userEmail: email,
             reason: moderation.reason,
-            violationType:
-                moderation.violationType ||
-                'other',
-            contentSnippet:
-                content.substring(0, 200)
+            violationType: moderation.violationType || 'other',
+            contentSnippet: content.substring(0, 200),
         });
 
-    // 5. Send Warning Email
-    await sendWarningEmail(
-        email,
-        moderation.reason,
-        newViolationCount
-    );
+        // Email is outside the transaction (side-effect; non-rollbackable).
+        await sendWarningEmail(email, moderation.reason, newViolationCount);
 
-    // 6. Generate Error Message for UI
-    let errorMessage = `Content flagged: ${moderation.reason}. This is strike ${newViolationCount}/3. Please stick to academic topics.`;
+        let errorMessage = `Content flagged: ${moderation.reason}. This is strike ${newViolationCount}/3. Please stick to academic topics.`;
 
-    if (
-        isThirdViolation &&
-        blockedUntil
-    ) {
-        const unlockDate =
-            blockedUntil.toDateString();
+        if (isThirdViolation && blockedUntil) {
+            errorMessage = `Content flagged. Your account is now blocked for ${newBlockCount > 1 ? 'additional ' : ''}violations. Access restored on ${blockedUntil.toDateString()}.`;
+        }
 
-        errorMessage = `Content flagged. Your account is now blocked for ${newBlockCount > 1 ? 'additional ' : ''}violations. Access restored on ${unlockDate}.`;
-    }
-
-    return errorMessage;
+        return errorMessage;
+    });
 }

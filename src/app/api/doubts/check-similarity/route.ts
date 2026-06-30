@@ -4,8 +4,13 @@ import { and, eq, isNull, desc, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { findSemanticDuplicates } from "@/lib/ai/embeddings";
+import { enforceApiRateLimit } from "@/lib/api-rate-limit";
 import { buildErrorResponse } from "@/lib/error-handler";
-import { enforceAiAvailability, buildAiProviderErrorResponse } from "@/lib/ai/kill-switch";
+import {
+  enforceAiAvailability,
+  buildAiProviderErrorResponse,
+} from "@/lib/ai/kill-switch";
+import { aiLimiter } from "@/lib/ratelimit";
 import { getAnonymousQuotaIdentifier } from "@/lib/request-identity";
 import { getSafeErrorDetails } from "@/lib/safe-error-details";
 import {
@@ -37,8 +42,21 @@ export async function POST(req: Request) {
     const classroomId = parseOptionalClassroomId(rawClassroomId);
     let aiQuotaIdentifier = getAnonymousQuotaIdentifier(req);
 
+    const anonymousRateLimitResponse = await enforceApiRateLimit(
+      aiLimiter,
+      aiQuotaIdentifier,
+      "ai",
+    );
+    if (anonymousRateLimitResponse) return anonymousRateLimitResponse;
+
     if (classroomId) {
       const { email } = await requireAuth();
+      const userRateLimitResponse = await enforceApiRateLimit(
+        aiLimiter,
+        email,
+        "ai",
+      );
+      if (userRateLimitResponse) return userRateLimitResponse;
       await requireMembership(email, classroomId);
       aiQuotaIdentifier = email;
     }
@@ -51,16 +69,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ similarDoubts: [] });
     }
 
-    // 1) Fast path: embedding + vector similarity search (pgvector)
-    // Only short-circuit when semantic search actually returns usable results.
-    // Empty results can mean embedding generation failed (safeGenerateEmbedding -> null)
-    // or no candidate passed thresholds; in those cases we must fall back to the LLM.
     try {
       const similarDoubts = await findSemanticDuplicates({
         content,
         classroomId: classroomId ?? null,
         type: "community",
-        similarityThreshold: 80, // 0..100 percentage contract
+        similarityThreshold: 80,
         topK: 5,
       });
 
@@ -71,8 +85,6 @@ export async function POST(req: Request) {
       console.error("Embedding similarity path failed, falling back to LLM:", err);
     }
 
-
-    // 2) Fallback: Fetch the last 50 doubts from the same room/community
     const recentDoubts = await db
       .select({
         id: doubtsTable.id,
@@ -93,7 +105,6 @@ export async function POST(req: Request) {
       .orderBy(desc(doubtsTable.createdAt))
       .limit(50);
 
-
     if (recentDoubts.length === 0) {
       return NextResponse.json({ similarDoubts: [] });
     }
@@ -101,7 +112,6 @@ export async function POST(req: Request) {
     const availabilityResponse = await enforceAiAvailability(aiQuotaIdentifier);
     if (availabilityResponse) return availabilityResponse;
 
-    // Build a compact list for Groq to compare
     const doubtList = recentDoubts
       .map(
         (d, i) =>
@@ -137,7 +147,6 @@ Do not include any explanation or markdown.`;
 
     const raw = completion.choices[0]?.message?.content?.trim() || "[]";
 
-    // Safely parse the JSON response
     let matches: { index: number; similarity: number }[] = [];
     try {
       const cleaned = raw.replace(/```json|```/g, "").trim();
@@ -155,9 +164,7 @@ Do not include any explanation or markdown.`;
       return NextResponse.json({ similarDoubts: [] });
     }
 
-    // Filter to >= 80% similarity threshold and map to full doubt objects
-    const highMatches = matches.filter((m) => m.similarity >= 80).slice(0, 5); // Cap at 5 results
-
+    const highMatches = matches.filter((m) => m.similarity >= 80).slice(0, 5);
     const similarDoubts: SimilarDoubt[] = [];
 
     const solvedReplyIds = highMatches
@@ -205,9 +212,7 @@ Do not include any explanation or markdown.`;
       });
     }
 
-    // Sort by similarity descending
     similarDoubts.sort((a, b) => b.similarity - a.similarity);
-
     return NextResponse.json({ similarDoubts });
   } catch (error) {
     const { status, body } = buildErrorResponse(error);

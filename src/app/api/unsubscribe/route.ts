@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
+import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
 import { usersTable } from "@/configs/schema";
 import { verifyUnsubscribeToken } from "@/lib/email";
@@ -103,12 +104,46 @@ export async function POST(req: NextRequest) {
             return redirectWithError(req, "Invalid or expired unsubscribe link");
         }
 
+        const normalizedEmail = email.trim().toLowerCase();
+
+        // If a Clerk session is attached, require it to match the email in the
+        // unsubscribe token. The signed token alone is enough to authenticate
+        // an email-link click (users may not be logged in when clicking from
+        // their inbox), but if they ARE logged in, a mismatch means the link
+        // was forwarded, leaked, or submitted via a cross-site form and we
+        // refuse to act on someone else's behalf.
+        //
+        // currentUser() failures are intentionally NOT swallowed here: a Clerk
+        // backend error for an authenticated request would otherwise silently
+        // downgrade to the token-only flow and bypass the session/email
+        // binding. The outer try/catch turns the exception into an error
+        // redirect so the unsubscribe never proceeds without the check.
+        const sessionUser = await currentUser();
+        const sessionEmail = sessionUser?.primaryEmailAddress?.emailAddress?.trim().toLowerCase();
+        if (sessionEmail && sessionEmail !== normalizedEmail) {
+            console.warn("[unsubscribe] session/token email mismatch", {
+                sessionEmail,
+                tokenEmail: normalizedEmail,
+                ip,
+            });
+            return redirectWithError(req, "Signed-in user does not match this unsubscribe link");
+        }
+
         await db.update(usersTable)
             .set({
                 emailNotificationsEnabled: false,
                 notificationPreference: "none",
             })
-            .where(eq(usersTable.email, email.trim().toLowerCase()));
+            .where(eq(usersTable.email, normalizedEmail));
+
+        console.log(JSON.stringify({
+            event: "unsubscribe",
+            email: normalizedEmail,
+            method: req.method,
+            ip,
+            authenticated: Boolean(sessionEmail),
+            timestamp: new Date().toISOString(),
+        }));
 
         return NextResponse.redirect(new URL("/profile?unsubscribed=true", req.url));
     } catch (error: unknown) {

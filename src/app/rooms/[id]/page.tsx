@@ -9,6 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useAppUser } from "../../provider";
+import AnalyticsExportButton from "@/components/AnalyticsExportButton";
 import { QRCodeCanvas } from "qrcode.react";
 import {
   Brain,
@@ -97,10 +98,6 @@ export default function ClassroomPage() {
   const [isAskModalOpen, setIsAskModalOpen] = useState(false);
   const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [inviteUrl, setInviteUrl] = useState("");
-  const [inviteExpiresAt, setInviteExpiresAt] = useState("");
-  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
-  const [inviteCopied, setInviteCopied] = useState(false);
   const [doubtFilter, setDoubtFilter] = useState<
     "unsolved" | "in-progress" | "solved"
   >("unsolved");
@@ -118,7 +115,6 @@ export default function ClassroomPage() {
   const [tagFilter, setTagFilter] = useState("");
   const sort = (searchParams.get("sort") as DoubtSortValue) || "newest";
   const notificationTab = searchParams.get("tab");
-  const hasTeacherAccess = isTeacherRole(classroom?.role);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -147,8 +143,6 @@ export default function ClassroomPage() {
       : activeTab === "community"
         ? "community"
         : "ai";
-  const userName =
-    typeof window !== "undefined" ? localStorage.getItem("anonymous_user") : "";
 
   const fetcher = (url: string) => fetch(url).then((res) => res.json());
   const updateSort = (nextSort: DoubtSortValue) => {
@@ -176,7 +170,6 @@ export default function ClassroomPage() {
     if (activeTab === "insights") return null;
     const params = new URLSearchParams({
       classroomId: String(id),
-      userName: userName || "",
       type: String(type),
       page: String(pageIndex + 1),
       limit: String(PAGE_SIZE),
@@ -381,18 +374,15 @@ export default function ClassroomPage() {
               <ExportButton
                 classroomId={String(id)}
                 classroomName={classroom?.name || ""}
-                isTeacher={hasTeacherAccess}
+                isTeacher={TEACHER_ROLES.has(classroom?.role || "")}
               />
-
-              {hasTeacherAccess && (
-                <button
-                  onClick={() => setIsCodeModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:text-slate-900 dark:hover:text-white transition-all duration-300 shadow-sm shrink-0"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />{" "}
-                  Invite Students
-                </button>
-              )}
+              <button
+                onClick={() => setIsCodeModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:text-slate-900 dark:hover:text-white transition-all duration-300 shadow-sm shrink-0"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />{" "}
+                Class Code
+              </button>
               <button
                 onClick={() => router.push(`/rooms/${id}/members`)}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800/60 hover:text-slate-900 dark:hover:text-white transition-all duration-300 shadow-sm shrink-0"
@@ -437,7 +427,7 @@ export default function ClassroomPage() {
                 {
                   id: "teacher-doubts",
                   label:
-                    hasTeacherAccess
+                    classroom?.role === "teacher"
                       ? "Students Doubt"
                       : "Ask Teacher",
                   icon: GraduationCap,
@@ -627,7 +617,7 @@ export default function ClassroomPage() {
                       ? "No matching doubts"
                       : "No community posts yet."}
                   </h3>
-                  <p className="text-slate-500 dark:text-zinc-400 text-xs font-medium max-w-lg mx-auto leading-relaxed">
+                  <p className="text-slate-500 dark:text-zinc-400 text-xs font-medium max-w-sm mx-auto leading-relaxed">
                     {searchQuery
                       ? `We couldn't find anything for "${searchQuery}" in this classroom.`
                       : "Be the first to start a discussion or ask a question to your classmates."}
@@ -756,7 +746,7 @@ export default function ClassroomPage() {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 p-4 rounded-xl shadow-sm">
               <h2 className="text-lg font-bold tracking-tight px-2">
-                {hasTeacherAccess ? (
+                {classroom?.role === "teacher" ? (
                   <>Students Doubts</>
                 ) : (
                   <>Direct Teacher Doubts</>
@@ -800,7 +790,7 @@ export default function ClassroomPage() {
                     Clear
                   </button>
                 )}
-                {!hasTeacherAccess && (
+                {classroom?.role !== "teacher" && (
                   <button
                     onClick={() => setIsAskModalOpen(true)}
                     className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-md shadow-purple-600/10 flex items-center gap-2 shrink-0"
@@ -882,11 +872,11 @@ export default function ClassroomPage() {
                         <div className="col-span-full py-24 text-center space-y-4 bg-slate-100 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[2.5rem]">
                           <GraduationCap className="w-12 h-12 text-slate-700 mx-auto" />
                           <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">
-                            {hasTeacherAccess
+                            {classroom?.role === "teacher"
                               ? "No unsolved doubts from students."
                               : "No unsolved teacher doubts."}
                           </p>
-                          {!hasTeacherAccess && (
+                          {classroom?.role !== "teacher" && (
                             <button
                               onClick={() => setIsAskModalOpen(true)}
                               className="text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider text-xs hover:underline underline-offset-4"
@@ -1016,7 +1006,7 @@ export default function ClassroomPage() {
       {/* SETTINGS MODAL */}
       {isCodeModalOpen && hasTeacherAccess && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-xl bg-white/60 dark:bg-black/60 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-900 w-full max-w-lg rounded-2xl p-6 md:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-slate-900 dark:text-zinc-100">
+          <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-900 w-full max-w-sm rounded-2xl p-6 md:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-slate-900 dark:text-zinc-100">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <h2 className="text-xl font-bold tracking-tight">
@@ -1035,35 +1025,23 @@ export default function ClassroomPage() {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50 dark:bg-blue-950/20 p-4">
-                <div className="flex items-start gap-3">
-                  <Sparkles className="mt-0.5 h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                      Secure Invite Link
-                    </h3>
-                    <p className="text-xs font-medium leading-relaxed text-slate-600 dark:text-zinc-400">
-                      This creates a non-guessable invite link that expires in 7
-                      days. Students can use it to join this classroom directly.
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <div className="bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 flex items-center justify-between gap-4 relative group overflow-hidden shadow-inner">
+              <code className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-wider relative z-10">
+                {classroom?.inviteCode}
+              </code>
 
               <button
-                onClick={generateInviteLink}
-                disabled={isGeneratingInvite}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98]"
-                aria-label="Generate secure invite link"
+                onClick={copyCode}
+                className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98] relative z-10"
+                aria-label="Interactive button"
               >
-                {isGeneratingInvite ? (
+                {copied ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Generating...
+                    <Check className="w-3.5 h-3.5" /> Copied!
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-4 h-4" /> Generate Secure Invite Link
+                    <Copy className="w-3.5 h-3.5" /> Copy Key
                   </>
                 )}
               </button>
@@ -1272,16 +1250,16 @@ function ClassroomInsightsView({
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isTeacher = isTeacherRole(role);
+  const isTeacher = role === "teacher";
 
   const fetchData = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
+
       const res = await fetch(`/api/analytics?classroomId=${classroomId}`);
-      if (!res.ok) {
-        throw new Error(`Analytics request failed with status ${res.status}`);
-      }
-      setData(await res.json());
+
+      const d = await res.json();
+      setData(d);
     } catch (error) {
       console.error("Error loading classroom analytics:", error);
       toast.error("Failed to load analytics data");
@@ -1299,13 +1277,6 @@ function ClassroomInsightsView({
     return (
       <div className="flex justify-center p-20">
         <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
-      </div>
-    );
-
-  if (!data)
-    return (
-      <div role="status" className="rounded-2xl border border-slate-200 dark:border-zinc-900 p-8 text-center text-sm text-slate-500 dark:text-zinc-400">
-        {CLASSROOM_ANALYTICS_UNAVAILABLE_MESSAGE}
       </div>
     );
 
@@ -1751,7 +1722,7 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
         <h3 className="text-lg font-bold text-slate-800 dark:text-zinc-300 tracking-tight">
           Unlock Your AI Mentor
         </h3>
-        <p className="text-xs text-slate-400 dark:text-zinc-500 max-w-lg mx-auto leading-relaxed font-medium">
+        <p className="text-xs text-slate-400 dark:text-zinc-500 max-w-sm mx-auto leading-relaxed font-medium">
           {personalData?.message ||
             "Ask more doubts to unlock personalized AI Weak Topic Detection!"}
         </p>

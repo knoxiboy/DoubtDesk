@@ -3,12 +3,17 @@ import { bookmarksTable, doubtsTable, membershipsTable } from "@/configs/schema"
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
+import { enforceApiRateLimit } from "@/lib/api-rate-limit";
+import { generalLimiter } from "@/lib/ratelimit";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
         if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+        const rateLimitResponse = await enforceApiRateLimit(generalLimiter, email, "general");
+        if (rateLimitResponse) return rateLimitResponse;
 
         const { id } = await params;
         const doubtId = parseInt(id);
@@ -53,6 +58,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
         if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+        const rateLimitResponse = await enforceApiRateLimit(generalLimiter, email, "general");
+        if (rateLimitResponse) return rateLimitResponse;
 
         const { id } = await params;
         const doubtId = parseInt(id);

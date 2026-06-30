@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
-import { classroomsTable, membershipsTable, usersTable } from '@/configs/schema';
+import { classroomsTable, membershipsTable } from '@/configs/schema';
 import { eq, and } from 'drizzle-orm';
 import { currentUser } from '@clerk/nextjs/server';
 import { checkUserBlock } from '@/lib/auth-utils';
@@ -63,9 +63,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Already a member of this classroom' }, { status: 400 });
         }
 
-        // 3. Get user role to determine membership role
-        const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-        const role = dbUser?.role || 'student';
+        // 3. Joining via an invite code always grants a baseline 'student' membership
+        //    for this classroom. A user's global profile role (e.g. self-selected
+        //    'teacher' at onboarding) must NEVER be copied into classroom membership --
+        //    real teacher access to a classroom only comes from being its owner
+        //    (classroomsTable.teacherEmail) or an explicit promotion by the owner/admin.
+        const role = 'student' as const;
 
         // 4. Add membership (the foreign key ensures referential integrity; the unique
         //    constraint on memberships(userEmail, classroomId) prevents duplicates at the DB level too)

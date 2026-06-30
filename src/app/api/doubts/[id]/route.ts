@@ -4,6 +4,7 @@ import { doubtsTable, repliesTable, tagsTable, doubtTagsTable, bookmarksTable, l
 import { eq, sql, and, getTableColumns } from "drizzle-orm";
 import { getOptionalAuth, requireMembership } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/error-handler";
+import { toPublicDoubt } from "@/lib/anonymity";
 
 export async function GET(
     req: Request,
@@ -61,21 +62,24 @@ export async function GET(
             .innerJoin(tagsTable, eq(doubtTagsTable.tagId, tagsTable.id))
             .where(eq(doubtTagsTable.doubtId, doubtId));
 
-        // Interaction flags
-        const { searchParams } = new URL(req.url);
-        const userName = searchParams.get("userName");
-        const userLikesCheck = userName || email;
-
+        // Interaction flags.
+        //
+        // `hasLiked` is derived strictly from the authenticated session. A leftover
+        // `userName` query param from the userName -> userEmail migration used to be
+        // accepted here and compared against `likesTable.userEmail`. That was both
+        // dead (a client handle never matched the email column) and unsafe: it let an
+        // unauthenticated caller pass an arbitrary identifier to probe whether a
+        // specific user had liked a doubt. We now trust only the server-side session.
         let hasLiked = false;
         let hasBookmarked = false;
 
-        if (userLikesCheck) {
+        if (email) {
             const [likeRecord] = await db
                 .select()
                 .from(likesTable)
                 .where(
                     and(
-                        eq(likesTable.userEmail, userLikesCheck),
+                        eq(likesTable.userEmail, email),
                         eq(likesTable.doubtId, doubtId)
                     )
                 )
@@ -97,12 +101,9 @@ export async function GET(
             hasBookmarked = !!bookmarkRecord;
         }
 
-        return NextResponse.json({
-            ...doubt,
-            tags,
-            hasLiked,
-            hasBookmarked,
-        });
+        return NextResponse.json(
+            toPublicDoubt({ ...doubt, tags, hasLiked, hasBookmarked }, email)
+        );
 
     } catch (error) {
         const { status, body } = buildErrorResponse(error);

@@ -239,6 +239,7 @@ Keep commit messages clear, concise, and written in the imperative mood.
 - Use `errorResponse(message, status, details?)` for explicit client errors such as unauthorized, forbidden, missing input, or moderation failures.
 - Use `validationErrorResponse(zodError)` for Zod validation failures so clients consistently receive `{ success: false, error, details }`.
 - In `catch` blocks, prefer `buildErrorResponse(error)` so production responses stay sanitized and development responses remain debuggable.
+- **Author anonymity:** doubt and reply responses must be serialized through `toPublicDoubt` / `toPublicReply` from `src/lib/anonymity.ts`. Never return a raw doubt/reply row (or `getTableColumns(doubtsTable)`) to a client — the author's `userEmail` (and any identifier alias) must not cross the API boundary. Expose only the anonymized `author` handle, `authorInitial`, and the server-computed `isOwnPost` flag. The `PublicDoubt` / `PublicReply` types in `src/types/index.ts` encode this shape. See [docs/PRIVACY.md](./docs/PRIVACY.md).
 
 ## Issue Reporting Guidelines
 

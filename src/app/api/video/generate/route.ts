@@ -10,7 +10,8 @@ import { parseAndValidateRequest } from '@/lib/validations/validate';
 import { generateVideoSchema } from '@/lib/validations/video';
 import { currentUser } from '@clerk/nextjs/server';
 import { checkUserBlock } from '@/lib/auth-utils';
-import { redisClient } from '@/lib/ratelimit';
+import { redisClient, videoLimiter } from '@/lib/ratelimit';
+import { enforceApiRateLimit } from '@/lib/api-rate-limit';
 
 interface SceneData {
     text?: string;
@@ -88,6 +89,9 @@ export async function POST(req: Request) {
     if (!email) {
         return NextResponse.json({ error: 'Email required' }, { status: 400 });
     }
+
+    const rateLimitResponse = await enforceApiRateLimit(videoLimiter, email, 'video');
+    if (rateLimitResponse) return rateLimitResponse;
 
     const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
     if (isBlocked) return blockResponse;

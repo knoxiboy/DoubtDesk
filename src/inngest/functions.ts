@@ -153,19 +153,24 @@ export const sendReplyNotification = inngest.createFunction(
 export const sendDailyDigest = inngest.createFunction(
   { id: "send-daily-digest", triggers: [{ cron: "0 8 * * *" }] },
   async ({ step }: { step: InngestStep }) => {
-    const digestedCount = await step.run("process-daily-digest", async () => {
-      // 1. Get all users with daily digest preference
-      const dailyUsers = await db
+    // Step 1: fetch the target user list — this checkpoint is memoised by Inngest on retry.
+    const dailyUsers = await step.run("fetch-daily-users", async () => {
+      return db
         .select()
         .from(usersTable)
         .where(eq(usersTable.notificationPreference, "daily"));
+    });
 
-      if (dailyUsers.length === 0) return 0;
+    if (dailyUsers.length === 0) {
+      return { message: "No users with daily digest preference." };
+    }
 
-      let sentCount = 0;
+    let digestedCount = 0;
 
-      for (const user of dailyUsers) {
-        // Fetch all pending notifications for this user
+    // Step 2: one isolated step per user — Inngest memoises completed steps,
+    // so a mid-run crash only retries the failed user, not the whole batch.
+    for (const user of dailyUsers) {
+      const result = await step.run(`send-daily-digest-${user.email}`, async () => {
         const pending = await db
           .select({
             id: pendingNotificationsTable.id,
@@ -181,9 +186,8 @@ export const sendDailyDigest = inngest.createFunction(
           .innerJoin(repliesTable, eq(pendingNotificationsTable.replyId, repliesTable.id))
           .where(eq(pendingNotificationsTable.userEmail, user.email));
 
-        if (pending.length === 0) continue;
+        if (pending.length === 0) return { skipped: true };
 
-        // Group notifications by doubt
         const doubtsMap = new Map<number, {
           id: number;
           subject: string;
@@ -192,22 +196,26 @@ export const sendDailyDigest = inngest.createFunction(
         }>();
 
         for (const p of pending) {
+
           if (!doubtsMap.has(p.doubtId)) {
+
             doubtsMap.set(p.doubtId, {
               id: p.doubtId,
               subject: p.doubtSubject,
               content: p.doubtContent || "",
-              replies: []
+              replies: [],
             });
           }
           doubtsMap.get(p.doubtId)!.replies.push({
             replierName: p.replierName,
-            content: p.replyContent || ""
+            content: p.replyContent || "",
           });
         }
 
-        // Send digest email
-        await sendDigestEmail({
+        // Send first; only delete on confirmed success.
+        // If sendDigestEmail throws, the catch lets the step fail so Inngest
+        // retries it — pending rows are intentionally NOT deleted.
+          const emailResult = await sendDigestEmail({
           toEmail: user.email,
           subject: "[DoubtDesk] Your Daily Doubt Updates Digest",
           totalReplies: pending.length,
@@ -215,17 +223,21 @@ export const sendDailyDigest = inngest.createFunction(
           doubts: Array.from(doubtsMap.values()),
         });
 
-        // Delete processed pending notifications for this user
+        if (!emailResult?.success) {
+          // Email failed — throw so the step is retried and pending rows are preserved.
+          throw new Error(`Daily digest email failed for user: ${emailResult?.error ?? "unknown error"}`);
+        }
+        
+        // Delete only after confirmed send.
         const notificationIds = pending.map(p => p.id);
         await db
           .delete(pendingNotificationsTable)
           .where(inArray(pendingNotificationsTable.id, notificationIds));
+        return { skipped: false };
+      });
 
-        sentCount++;
-      }
-
-      return sentCount;
-    });
+      if (!result.skipped) digestedCount++;
+    }
 
     return { message: `Successfully sent daily digest to ${digestedCount} users.` };
   }
@@ -234,19 +246,21 @@ export const sendDailyDigest = inngest.createFunction(
 export const sendWeeklyDigest = inngest.createFunction(
   { id: "send-weekly-digest", triggers: [{ cron: "0 8 * * 1" }] },
   async ({ step }: { step: InngestStep }) => {
-    const digestedCount = await step.run("process-weekly-digest", async () => {
-      // 1. Get all users with weekly digest preference
-      const weeklyUsers = await db
+    const weeklyUsers = await step.run("fetch-weekly-users", async () => {
+      return db
         .select()
         .from(usersTable)
         .where(eq(usersTable.notificationPreference, "weekly"));
+    });
 
-      if (weeklyUsers.length === 0) return 0;
+    if (weeklyUsers.length === 0) {
+      return { message: "No users with weekly digest preference." };
+    }
 
-      let sentCount = 0;
+    let digestedCount = 0;
 
-      for (const user of weeklyUsers) {
-        // Fetch all pending notifications for this user
+    for (const user of weeklyUsers) {
+      const result = await step.run(`send-weekly-digest-${user.email}`, async () => {
         const pending = await db
           .select({
             id: pendingNotificationsTable.id,
@@ -262,9 +276,8 @@ export const sendWeeklyDigest = inngest.createFunction(
           .innerJoin(repliesTable, eq(pendingNotificationsTable.replyId, repliesTable.id))
           .where(eq(pendingNotificationsTable.userEmail, user.email));
 
-        if (pending.length === 0) continue;
+        if (pending.length === 0) return { skipped: true };
 
-        // Group notifications by doubt
         const doubtsMap = new Map<number, {
           id: number;
           subject: string;
@@ -278,37 +291,41 @@ export const sendWeeklyDigest = inngest.createFunction(
               id: p.doubtId,
               subject: p.doubtSubject,
               content: p.doubtContent || "",
-              replies: []
+              replies: [],
             });
           }
           doubtsMap.get(p.doubtId)!.replies.push({
             replierName: p.replierName,
-            content: p.replyContent || ""
+            content: p.replyContent || "",
           });
         }
 
-        // Send digest email
-        await sendDigestEmail({
-          toEmail: user.email,
-          subject: "[DoubtDesk] Your Weekly Doubt Updates Digest",
-          totalReplies: pending.length,
-          totalDoubts: doubtsMap.size,
-          doubts: Array.from(doubtsMap.values()),
-        });
+        try {
+          await sendDigestEmail({
+            toEmail: user.email,
+            subject: "[DoubtDesk] Your Weekly Doubt Updates Digest",
+            totalReplies: pending.length,
+            totalDoubts: doubtsMap.size,
+            doubts: Array.from(doubtsMap.values()),
+          });
+        } catch (emailErr) {
+          console.error(`[sendWeeklyDigest] Email failed for ${user.email}:`, emailErr);
+          throw emailErr;
+        }
 
-        // Delete processed pending notifications for this user
         const notificationIds = pending.map(p => p.id);
         await db
           .delete(pendingNotificationsTable)
           .where(inArray(pendingNotificationsTable.id, notificationIds));
 
-        sentCount++;
-      }
+        return { skipped: false };
+      });
 
-      return sentCount;
-    });
+      if (!result.skipped) digestedCount++;
+    }
 
     return { message: `Successfully sent weekly digest to ${digestedCount} users.` };
   }
 );
+
 export { detectConfusionSpikes } from "../app/api/inngest/ConfusionSpikeDetector";

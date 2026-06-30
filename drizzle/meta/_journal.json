@@ -2,117 +2,21 @@
   "version": "7",
   "dialect": "postgresql",
   "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1779121992842,
-      "tag": "0000_bitter_tyger_tiger",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1779525663345,
-      "tag": "0001_aspiring_warhawk",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1779870440438,
-      "tag": "0002_overjoyed_captain_flint",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1780031571662,
-      "tag": "0003_chemical_quasar",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1780032095705,
-      "tag": "0004_happy_blue_marvel",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1780032370230,
-      "tag": "0005_hot_phantom_reporter",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1780032370231,
-      "tag": "0006_replies_anonymization",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1780032370232,
-      "tag": "0007_environment_cascades",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1780032370233,
-      "tag": "0008_classroom_invites",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1780032370234,
-      "tag": "0009_query_indexes",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1780032370235,
-      "tag": "0010_identity_system_update",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1781077831112,
-      "tag": "0008_smiling_argent",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1781169675345,
-      "tag": "0009_add_doubt_embeddings_pgvector",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1781245145795,
-      "tag": "0009_first_dust",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "7",
-      "when": 1781354492608,
-      "tag": "0012_add_onboarding_fields",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "7",
-      "when": 1782465294878,
-      "tag": "0013_silky_gateway",
-      "breakpoints": true
-    }
+    { "idx": 0, "version": "7", "when": 1779121992842, "tag": "0000_bitter_tyger_tiger", "breakpoints": true },
+    { "idx": 1, "version": "7", "when": 1779525663345, "tag": "0001_aspiring_warhawk", "breakpoints": true },
+    { "idx": 2, "version": "7", "when": 1779870440438, "tag": "0002_overjoyed_captain_flint", "breakpoints": true },
+    { "idx": 3, "version": "7", "when": 1780031571662, "tag": "0003_chemical_quasar", "breakpoints": true },
+    { "idx": 4, "version": "7", "when": 1780032095705, "tag": "0004_happy_blue_marvel", "breakpoints": true },
+    { "idx": 5, "version": "7", "when": 1780032370230, "tag": "0005_hot_phantom_reporter", "breakpoints": true },
+    { "idx": 6, "version": "7", "when": 1780032370231, "tag": "0006_brainy_solo", "breakpoints": true },
+    { "idx": 7, "version": "7", "when": 1780032370232, "tag": "0007_replies_anonymization", "breakpoints": true },
+    { "idx": 8, "version": "7", "when": 1780032370233, "tag": "0008_environment_cascades", "breakpoints": true },
+    { "idx": 9, "version": "7", "when": 1780032370234, "tag": "0009_tidy_electro", "breakpoints": true },
+    { "idx": 10, "version": "7", "when": 1781077831112, "tag": "0010_smiling_argent", "breakpoints": true },
+    { "idx": 11, "version": "7", "when": 1781169675345, "tag": "0011_add_doubt_embeddings_pgvector", "breakpoints": true },
+    { "idx": 12, "version": "7", "when": 1781245145795, "tag": "0012_fulltext_search", "breakpoints": true },
+    { "idx": 13, "version": "7", "when": 1781300000000, "tag": "0013_identity_system_update", "breakpoints": true },
+    { "idx": 14, "version": "7", "when": 1781340000000, "tag": "0014_practice_attempts", "breakpoints": true },
+    { "idx": 15, "version": "7", "when": 1781354492608, "tag": "0015_add_onboarding_fields", "breakpoints": true }
   ]
 }

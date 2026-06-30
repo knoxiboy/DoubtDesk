@@ -8,6 +8,8 @@ import { buildErrorResponse, errorResponse } from '@/lib/error-handler';
 import { parseAndValidateRequest } from '@/lib/validations/validate';
 import { createClassroomSchema } from '@/lib/validations/classroom';
 import { Classroom } from '@/types';
+import { enforceApiRateLimit } from '@/lib/api-rate-limit';
+import { generalLimiter } from '@/lib/ratelimit';
 
 // 1. GET: List classrooms for the user + Recommendations
 export async function GET(req: Request) {
@@ -94,6 +96,14 @@ export async function POST(req: Request) {
         }
 
         const email = user.primaryEmailAddress.emailAddress;
+
+        const rateLimitResponse = await enforceApiRateLimit(generalLimiter, email, 'general');
+        if (rateLimitResponse) return rateLimitResponse;
+
+        const { errorResponse: validationResponse, data } = await parseAndValidateRequest(req, createClassroomSchema);
+        if (validationResponse) return validationResponse;
+
+        const { name, year } = data;
 
         // 0. Check if user is blocked
         const { isBlocked, errorResponse: blockErrorResponse } = await checkUserBlock(email);
