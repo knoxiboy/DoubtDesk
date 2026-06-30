@@ -13,6 +13,7 @@ import { createReplyNotification } from "@/lib/notifications/service";
 import { enforceApiRateLimit } from "@/lib/api-rate-limit";
 import { generalLimiter } from "@/lib/ratelimit";
 import { canTeach } from "@/lib/auth/membership-guard";
+import { toPublicReply } from "@/lib/anonymity";
 
 export async function GET(req: Request) {
   try {
@@ -98,7 +99,11 @@ export async function GET(req: Request) {
       }));
     }
 
-    return NextResponse.json(repliesWithVotes);
+    // Strip the reply author's userEmail before returning; expose only the
+    // anonymized handle and a session-derived `isOwnPost`. See src/lib/anonymity.ts.
+    const publicReplies = repliesWithVotes.map((reply: any) => toPublicReply(reply, email));
+
+    return NextResponse.json(publicReplies);
   } catch (error) {
     const { status, body } = buildErrorResponse(error);
     return NextResponse.json(body, { status });
@@ -273,7 +278,7 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json(newReply[0]);
+    return NextResponse.json(toPublicReply(newReply[0], email));
   } catch (error) {
     const { status, body } = buildErrorResponse(error);
     return NextResponse.json(body, { status });

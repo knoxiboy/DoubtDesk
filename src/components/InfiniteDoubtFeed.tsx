@@ -3,7 +3,7 @@
 import { MessageSquare, Loader2, ChevronDown } from "lucide-react";
 import DoubtCard from "@/components/DoubtCard";
 import useSWRInfinite from "swr/infinite";
-import { Doubt } from "@/types";
+import { PublicDoubt } from "@/types";
 
 const fetcher = async (url: string) => {
     const res = await fetch(url);
@@ -22,7 +22,7 @@ interface InfiniteDoubtFeedProps {
     tag?: string;
     isSolved?: string;
     role?: string;
-    onViewAISolution?: (doubt: Doubt) => void;
+    onViewAISolution?: (doubt: PublicDoubt) => void;
     emptyMessage?: string;
     emptyAction?: () => void;
     emptyActionLabel?: string;
@@ -145,7 +145,7 @@ export default function InfiniteDoubtFeed({
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {doubts.map((doubt: Doubt, index: number) => (
+                {doubts.map((doubt: PublicDoubt, index: number) => (
                     <DoubtCard
                         key={`${doubt.id}-${index}`}
                         doubt={doubt}

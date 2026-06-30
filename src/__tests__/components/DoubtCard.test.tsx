@@ -22,7 +22,9 @@ global.fetch = jest.fn(() =>
 
 const mockDoubt = {
     id: 1,
-    userEmail: 'student@example.com',
+    author: 'Student_7F3Q2',
+    authorInitial: '7',
+    isOwnPost: false,
     subject: 'Calculus',
     content: 'How do limits work in infinity?',
     createdAt: new Date().toISOString(),
@@ -42,7 +44,8 @@ const mockDoubt = {
 describe('DoubtCard Component', () => {
     it('renders doubt details correctly', () => {
         render(<DoubtCard doubt={mockDoubt} />);
-        expect(screen.getByText('student')).toBeInTheDocument();
+        // The card shows the anonymized handle, never the author's email.
+        expect(screen.getByText('Student_7F3Q2')).toBeInTheDocument();
         expect(screen.getByText('Calculus')).toBeInTheDocument();
         expect(screen.getByText('How do limits work in infinity?')).toBeInTheDocument();
     });

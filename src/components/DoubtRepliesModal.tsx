@@ -5,14 +5,15 @@ import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, Mor
 import { toast } from "sonner";
 import MarkdownRenderer from "./MarkdownRenderer";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
-import { Doubt } from "@/types";
-import { useUser } from "@clerk/nextjs";
+import { PublicDoubt } from "@/types";
 
 import { OFFLINE_REPLY_QUEUED } from "@/lib/copy-constants";
 interface Reply {
     id: number;
     doubtId: number;
-    userEmail?: string | null;
+    author?: string;
+    authorInitial?: string;
+    isOwnPost?: boolean;
     type: 'comment' | 'solution';
     content: string | null;
     imageUrl: string | null;
@@ -22,7 +23,7 @@ interface Reply {
 }
 
 interface DoubtRepliesModalProps {
-    doubt: Doubt;
+    doubt: PublicDoubt;
     isOpen: boolean;
     onClose: () => void;
     onReplyChange?: () => void;
@@ -42,7 +43,6 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [solutionContent, setSolutionContent] = useState("");
     const [solutionImage, setSolutionImage] = useState("");
     const [fileName, setFileName] = useState("");
-    const { user, isSignedIn } = useUser();
 
     const [isDoubtOwner, setIsDoubtOwner] = useState(false);
     const [isSolving, setIsSolving] = useState(false);
@@ -67,11 +67,11 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     useEffect(() => {
         if (isOpen || inline) {
             fetchReplies();
-            if (isSignedIn && user?.primaryEmailAddress?.emailAddress === doubt.userEmail) {
-                setIsDoubtOwner(true);
-            }
+            // Set both branches so a kept-mounted modal does not retain the previous
+            // thread's owner-only controls when isOwnPost changes.
+            setIsDoubtOwner(!!doubt.isOwnPost);
         }
-    }, [isOpen, doubt.id, doubt.userEmail, isSignedIn, user]);
+    }, [isOpen, doubt.id, doubt.isOwnPost, inline]);
 
     useEffect(() => {
         const loadPendingReplies = async () => {
@@ -420,7 +420,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     };
 
     const ReplyBubble = ({ reply }: { reply: any }) => {
-        const isMe = isSignedIn && user?.primaryEmailAddress?.emailAddress === reply.userEmail;
+        const isMe = !!reply.isOwnPost;
         const isOfficial = doubt.solvedReplyId === reply.id;
 
         return (
@@ -435,7 +435,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     <div className="flex items-center justify-between gap-4 mb-3">
                         <div className="flex items-center gap-2">
                             <span className={`text-[10px] font-black uppercase tracking-widest ${isMe ? 'text-blue-400' : 'text-slate-400'}`}>
-                                {reply.userEmail?.split('@')[0] || 'Anonymous'} {isMe && "(YOU)"}
+                                {reply.author || 'Anonymous'} {isMe && "(YOU)"}
                             </span>
                             {reply.type === 'solution' && isOfficial && (
                                 <div className="bg-emerald-500 text-slate-900 dark:text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-full shadow-lg shadow-emerald-500/20 flex items-center gap-1">

@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import DoubtPermalinkClient from "./DoubtPermalinkClient";
 import type { Metadata } from "next";
+import { toPublicDoubt } from "@/lib/anonymity";
 
 export async function generateMetadata(
     { params }: { params: Promise<{ id: string }> }
@@ -121,7 +122,11 @@ export default async function DoubtPermalinkPage(
         }
     }
 
+    // Sanitize before handing the row to a client component: props serialized into
+    // the RSC payload are visible in the browser, so the raw userEmail/embedding must
+    // be stripped here just as the API does. All server-side checks above used the
+    // raw row; only the client-facing shape is anonymized.
     return (
-        <DoubtPermalinkClient initialDoubt={doubt as any} />
+        <DoubtPermalinkClient initialDoubt={toPublicDoubt(doubt, email) as any} />
     );
 }

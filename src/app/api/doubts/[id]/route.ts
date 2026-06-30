@@ -4,6 +4,7 @@ import { doubtsTable, repliesTable, tagsTable, doubtTagsTable, bookmarksTable, l
 import { eq, sql, and, getTableColumns } from "drizzle-orm";
 import { getOptionalAuth, requireMembership } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/error-handler";
+import { toPublicDoubt } from "@/lib/anonymity";
 
 export async function GET(
     req: Request,
@@ -100,12 +101,9 @@ export async function GET(
             hasBookmarked = !!bookmarkRecord;
         }
 
-        return NextResponse.json({
-            ...doubt,
-            tags,
-            hasLiked,
-            hasBookmarked,
-        });
+        return NextResponse.json(
+            toPublicDoubt({ ...doubt, tags, hasLiked, hasBookmarked }, email)
+        );
 
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
