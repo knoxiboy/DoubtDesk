@@ -260,13 +260,15 @@ export const doubtsTable = pgTable("doubts", {
             table.classroomId,
             table.createdAt,
         ),
-        classroomTypeIndex: index("doubts_classroomId_type_idx").on(
+        classroomTypeIndex: index("doubts_classroomId_type_createdAt_idx").on(
             table.classroomId,
             table.type,
+            table.createdAt,
         ),
-        classroomSolvedIndex: index("doubts_classroomId_isSolved_idx").on(
+        classroomSolvedIndex: index("doubts_classroomId_isSolved_createdAt_idx").on(
             table.classroomId,
             table.isSolved,
+            table.createdAt,
         ),
         userEmailFk: foreignKey({
             columns: [table.userEmail],
