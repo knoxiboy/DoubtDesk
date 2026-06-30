@@ -10,27 +10,27 @@ const neonSql = neon(getDatabaseUrl());
 const db = drizzle(neonSql);
 
 async function main() {
-    // Read and execute 0006_replies_anonymization.sql manually
-    console.log("Running manual migration 0006_replies_anonymization.sql...");
-    const migration6 = fs.readFileSync(path.join(__dirname, '0006_replies_anonymization.sql'), 'utf-8').split('--> statement-breakpoint');
+    // Read and execute 0007_replies_anonymization.sql manually
+    console.log("Running manual migration 0007_replies_anonymization.sql...");
+    const migration6 = fs.readFileSync(path.join(__dirname, '0007_replies_anonymization.sql'), 'utf-8').split('--> statement-breakpoint');
     for (const q of migration6) {
         if (q.trim()) {
             await db.execute(sql.raw(q.trim()));
         }
     }
 
-    // Read and execute 0007_environment_cascades.sql manually
-    console.log("Running manual migration 0007_environment_cascades.sql...");
-    const migration7 = fs.readFileSync(path.join(__dirname, '0007_environment_cascades.sql'), 'utf-8').split('--> statement-breakpoint');
+    // Read and execute 0008_environment_cascades.sql manually
+    console.log("Running manual migration 0008_environment_cascades.sql...");
+    const migration7 = fs.readFileSync(path.join(__dirname, '0008_environment_cascades.sql'), 'utf-8').split('--> statement-breakpoint');
     for (const q of migration7) {
         if (q.trim()) {
             await db.execute(sql.raw(q.trim()));
         }
     }
 
-    // Read and execute 0009_fulltext_search.sql manually
-    console.log("Running manual migration 0009_fulltext_search.sql...");
-    const migration9 = fs.readFileSync(path.join(__dirname, '0009_fulltext_search.sql'), 'utf-8').split('--> statement-breakpoint');
+    // Read and execute 0012_fulltext_search.sql manually
+    console.log("Running manual migration 0012_fulltext_search.sql...");
+    const migration9 = fs.readFileSync(path.join(__dirname, '0012_fulltext_search.sql'), 'utf-8').split('--> statement-breakpoint');
     for (const q of migration9) {
         if (q.trim()) {
             await db.execute(sql.raw(q.trim()));
