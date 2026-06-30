@@ -18,6 +18,7 @@ import {
   isNull,
   or,
   not,
+  lt,
   sql,
   SQL,
   ilike,
@@ -38,6 +39,7 @@ import { buildRankOrder } from "@/lib/search";
 import { canTeach } from "@/lib/auth/membership-guard";
 import { currentUser } from "@clerk/nextjs/server";
 import { parsePositiveInt } from "@/lib/utils";
+import { decodeCursor, encodeCursor } from "@/lib/pagination";
 import { toPublicDoubt } from "@/lib/anonymity";
 
 export async function GET(req: Request) {
@@ -144,6 +146,15 @@ export async function GET(req: Request) {
         : 0;
     const page = Math.floor(offset / limit) + 1;
 
+    // Cursor-based pagination (issue #319): an opt-in alternative to offset for
+    // infinite scroll. Only honored for the default recency sort with no search,
+    // where (createdAt, id) is a stable monotonic keyset. Pinned-first ordering and
+    // rank/popular/most-replied sorts keep using offset pagination.
+    const decodedCursor = decodeCursor(searchParams.get("cursor"));
+    const cursorCreatedAt = decodedCursor?.createdAt ?? null;
+    const cursorId = decodedCursor?.id ?? null;
+    const useCursor = decodedCursor !== null && sort === "newest" && !search;
+
     if (tag && tag !== "All") {
       const normalizedTag = tag.trim().replace(/\s+/g, " ").toLowerCase();
       conditions.push(
@@ -167,6 +178,20 @@ export async function GET(req: Request) {
         Number,
       );
 
+    // EXISTS subqueries (issue #319): fold per-user like/bookmark status into the
+    // main query instead of two extra full-scan round-trips. Anonymous viewers
+    // resolve to false.
+    const hasLikedSql = (
+      email
+        ? sql<boolean>`EXISTS (SELECT 1 FROM ${likesTable} WHERE ${likesTable.doubtId} = ${doubtsTable.id} AND ${likesTable.userEmail} = ${email})`
+        : sql<boolean>`false`
+    ).mapWith(Boolean);
+    const hasBookmarkedSql = (
+      email
+        ? sql<boolean>`EXISTS (SELECT 1 FROM ${bookmarksTable} WHERE ${bookmarksTable.doubtId} = ${doubtsTable.id} AND ${bookmarksTable.userEmail} = ${email})`
+        : sql<boolean>`false`
+    ).mapWith(Boolean);
+
     const [totalCountRow] = await db
       .select({ count: count() })
       .from(doubtsTable)
@@ -177,54 +202,54 @@ export async function GET(req: Request) {
       .select({
         ...getTableColumns(doubtsTable),
         replyCount: replyCountSql,
+        hasLiked: hasLikedSql,
+        hasBookmarked: hasBookmarkedSql,
       })
       .from(doubtsTable);
 
-    const orderByFields: SQL[] = [desc(doubtsTable.isPinned)];
+    // Cursor mode orders purely by (createdAt, id) for a stable keyset; offset mode
+    // keeps pinned-first plus rank/popular/most-replied ordering.
+    const orderByFields: SQL[] = useCursor
+      ? [desc(doubtsTable.createdAt), desc(doubtsTable.id)]
+      : [desc(doubtsTable.isPinned)];
 
-    if (search) {
-      const rankOrder = buildRankOrder(search);
-      if (rankOrder) orderByFields.push(rankOrder);
+    if (!useCursor) {
+      if (search) {
+        const rankOrder = buildRankOrder(search);
+        if (rankOrder) orderByFields.push(rankOrder);
+      }
+
+      if (sort === "popular") {
+        orderByFields.push(desc(doubtsTable.likes));
+      } else if (sort === "most-replied") {
+        orderByFields.push(desc(replyCountSql));
+      }
+      orderByFields.push(desc(doubtsTable.createdAt));
     }
 
-    if (sort === "popular") {
-      orderByFields.push(desc(doubtsTable.likes));
-    } else if (sort === "most-replied") {
-      orderByFields.push(desc(replyCountSql));
-    }
-    orderByFields.push(desc(doubtsTable.createdAt));
+    let doubts = useCursor
+      ? await query
+          .where(
+            and(
+              ...conditions,
+              or(
+                lt(doubtsTable.createdAt, cursorCreatedAt as Date),
+                and(
+                  eq(doubtsTable.createdAt, cursorCreatedAt as Date),
+                  lt(doubtsTable.id, cursorId as number),
+                ),
+              ),
+            ),
+          )
+          .orderBy(...orderByFields)
+          .limit(limit)
+      : await query
+          .where(and(...conditions))
+          .orderBy(...orderByFields)
+          .limit(limit)
+          .offset(offset);
 
-    let doubts = await query
-      .where(and(...conditions))
-      .orderBy(...orderByFields)
-      .limit(limit)
-      .offset(offset);
-
-    if (email && doubts.length > 0) {
-      const userLikes = await db
-        .select({ doubtId: likesTable.doubtId })
-        .from(likesTable)
-        .where(eq(likesTable.userEmail, email));
-
-      const likedIds = new Set(userLikes.map((l) => l.doubtId));
-      doubts = doubts.map((doubt) => ({
-        ...doubt,
-        hasLiked: likedIds.has(doubt.id),
-      }));
-    }
-
-    if (doubts.length > 0 && email) {
-      const userBookmarks = await db
-        .select({ doubtId: bookmarksTable.doubtId })
-        .from(bookmarksTable)
-        .where(eq(bookmarksTable.userEmail, email));
-
-      const bookmarkedIds = new Set(userBookmarks.map((b) => b.doubtId));
-      doubts = doubts.map((doubt) => ({
-        ...doubt,
-        hasBookmarked: bookmarkedIds.has(doubt.id),
-      }));
-    }
+    // hasLiked / hasBookmarked are now resolved inline via EXISTS subqueries above.
 
     if (doubts.length > 0) {
       const tagRows = await db
@@ -256,7 +281,19 @@ export async function GET(req: Request) {
       }));
     }
 
-    const hasMore = offset + doubts.length < totalCount;
+    const hasMore = useCursor
+      ? doubts.length === limit
+      : offset + doubts.length < totalCount;
+
+    // Provide a cursor for recency-sorted feeds (whether this request used offset or
+    // cursor), so clients can switch to keyset pagination for deep infinite scroll.
+    const nextCursor =
+      doubts.length === limit && sort === "newest" && !search
+        ? encodeCursor(
+            doubts[doubts.length - 1].createdAt,
+            doubts[doubts.length - 1].id,
+          )
+        : null;
 
     // Strip author identifiers (userEmail), the internal embedding vector and
     // soft-delete marker before returning. Only the anonymized handle and a
@@ -269,6 +306,7 @@ export async function GET(req: Request) {
       totalCount,
       page,
       limit,
+      nextCursor,
     });
   } catch (error) {
     const { status, body } = buildErrorResponse(error);
