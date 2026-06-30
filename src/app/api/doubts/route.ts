@@ -146,14 +146,18 @@ export async function GET(req: Request) {
         : 0;
     const page = Math.floor(offset / limit) + 1;
 
-    // Cursor-based pagination (issue #319): an opt-in alternative to offset for
-    // infinite scroll. Only honored for the default recency sort with no search,
-    // where (createdAt, id) is a stable monotonic keyset. Pinned-first ordering and
-    // rank/popular/most-replied sorts keep using offset pagination.
+    // Cursor-based pagination (issue #319): opt-in via the `cursor` query param
+    // (present even when empty, for the first page). Cursor mode uses pure
+    // (createdAt, id) keyset ordering end-to-end, so `nextCursor` is only ever
+    // issued from an already-cursor-ordered response — never from a pinned-first
+    // offset page, which could otherwise skip newer unpinned doubts. Only honored
+    // for the default recency sort with no search. The keyset predicate is applied
+    // once a cursor token is actually present.
+    const cursorRequested = searchParams.has("cursor");
     const decodedCursor = decodeCursor(searchParams.get("cursor"));
     const cursorCreatedAt = decodedCursor?.createdAt ?? null;
     const cursorId = decodedCursor?.id ?? null;
-    const useCursor = decodedCursor !== null && sort === "newest" && !search;
+    const useCursor = cursorRequested && sort === "newest" && !search;
 
     if (tag && tag !== "All") {
       const normalizedTag = tag.trim().replace(/\s+/g, " ").toLowerCase();
@@ -227,22 +231,26 @@ export async function GET(req: Request) {
       orderByFields.push(desc(doubtsTable.createdAt));
     }
 
-    let doubts = useCursor
-      ? await query
-          .where(
+    // Apply the keyset predicate only once a cursor token is present (the first
+    // cursor-mode page has none and just returns the newest rows in keyset order).
+    const cursorKeyset =
+      cursorCreatedAt !== null && cursorId !== null
+        ? or(
+            lt(doubtsTable.createdAt, cursorCreatedAt),
             and(
-              ...conditions,
-              or(
-                lt(doubtsTable.createdAt, cursorCreatedAt as Date),
-                and(
-                  eq(doubtsTable.createdAt, cursorCreatedAt as Date),
-                  lt(doubtsTable.id, cursorId as number),
-                ),
-              ),
+              eq(doubtsTable.createdAt, cursorCreatedAt),
+              lt(doubtsTable.id, cursorId),
             ),
           )
+        : undefined;
+
+    // Cursor mode over-fetches one sentinel row so `hasMore` is exact (avoids a
+    // false positive + dead cursor when the remaining rows are exactly `limit`).
+    let doubts = useCursor
+      ? await query
+          .where(cursorKeyset ? and(...conditions, cursorKeyset) : and(...conditions))
           .orderBy(...orderByFields)
-          .limit(limit)
+          .limit(limit + 1)
       : await query
           .where(and(...conditions))
           .orderBy(...orderByFields)
@@ -250,6 +258,13 @@ export async function GET(req: Request) {
           .offset(offset);
 
     // hasLiked / hasBookmarked are now resolved inline via EXISTS subqueries above.
+
+    const hasMore = useCursor
+      ? doubts.length > limit
+      : offset + doubts.length < totalCount;
+    if (useCursor && hasMore) {
+      doubts = doubts.slice(0, limit); // drop the sentinel before enrichment
+    }
 
     if (doubts.length > 0) {
       const tagRows = await db
@@ -281,14 +296,10 @@ export async function GET(req: Request) {
       }));
     }
 
-    const hasMore = useCursor
-      ? doubts.length === limit
-      : offset + doubts.length < totalCount;
-
-    // Provide a cursor for recency-sorted feeds (whether this request used offset or
-    // cursor), so clients can switch to keyset pagination for deep infinite scroll.
+    // Only emit a cursor from an already-cursor-ordered response (see useCursor),
+    // so clients never resume keyset paging from a pinned-first offset page.
     const nextCursor =
-      doubts.length === limit && sort === "newest" && !search
+      useCursor && hasMore
         ? encodeCursor(
             doubts[doubts.length - 1].createdAt,
             doubts[doubts.length - 1].id,
