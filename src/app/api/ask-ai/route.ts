@@ -78,7 +78,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
 
   let classroomId: number | undefined;
-  if (body.classroomId !== undefined) {
+  if (body.classroomId !== undefined && body.classroomId !== null) {
     const raw = body.classroomId;
     if (typeof raw !== "number" || !Number.isInteger(raw)) {
       return NextResponse.json(
