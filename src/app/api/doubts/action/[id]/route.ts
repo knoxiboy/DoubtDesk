@@ -201,14 +201,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 }
             }
 
-            const [updated] = await db.update(doubtsTable)
-                .set({ 
-                    content: content || null, 
-                    subject, 
-                    imageUrl: imageUrl || null 
-                })
-                .where(eq(doubtsTable.id, doubtId))
-                .returning();
+            const tagsExplicitlyProvided = data.tags !== undefined;
 
             const normalizedTags: string[] = Array.from(new Set(
                 (Array.isArray(tags) ? tags : [])
@@ -216,30 +209,75 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                     .filter(Boolean)
             )).slice(0, 8);
 
-            await db.delete(doubtTagsTable).where(eq(doubtTagsTable.doubtId, doubtId));
+            const tagScopePredicate = doubt.classroomId
+                ? eq(tagsTable.classroomId, doubt.classroomId)
+                : isNull(tagsTable.classroomId);
 
-            const savedTags: Tag[] = [];
-            for (const normalizedName of normalizedTags) {
-                const [existingTag] = await db.select().from(tagsTable).where(and(
-                    eq(tagsTable.normalizedName, normalizedName),
-                    doubt.classroomId ? eq(tagsTable.classroomId, doubt.classroomId) : isNull(tagsTable.classroomId)
-                )).limit(1);
+            const { updated, savedTags } = await db.transaction(async (tx) => {
+                const [updatedRow] = await tx.update(doubtsTable)
+                    .set({
+                        content: content || null,
+                        subject,
+                        imageUrl: imageUrl || null
+                    })
+                    .where(eq(doubtsTable.id, doubtId))
+                    .returning();
 
-                const [tagRecord] = existingTag
-                    ? [existingTag]
-                    : await db.insert(tagsTable).values({
-                        name: normalizedName.replace(/\b\w/g, (char) => char.toUpperCase()),
-                        normalizedName,
-                        classroomId: doubt.classroomId,
-                        createdByEmail: email || null,
-                    }).returning();
+                if (!tagsExplicitlyProvided) {
+                    const existingLinks = await tx
+                        .select({ tag: tagsTable })
+                        .from(doubtTagsTable)
+                        .innerJoin(tagsTable, eq(tagsTable.id, doubtTagsTable.tagId))
+                        .where(eq(doubtTagsTable.doubtId, doubtId));
+                    return {
+                        updated: updatedRow,
+                        savedTags: existingLinks.map((row) => row.tag),
+                    };
+                }
 
-                savedTags.push(tagRecord);
-                await db.insert(doubtTagsTable).values({
-                    doubtId,
-                    tagId: tagRecord.id,
-                }).onConflictDoNothing();
-            }
+                const resolvedTags: Tag[] = [];
+                for (const normalizedName of normalizedTags) {
+                    const [existingTag] = await tx.select().from(tagsTable).where(and(
+                        eq(tagsTable.normalizedName, normalizedName),
+                        tagScopePredicate
+                    )).limit(1);
+
+                    let tagRecord = existingTag;
+                    if (!tagRecord) {
+                        const [createdTag] = await tx.insert(tagsTable).values({
+                            name: normalizedName.replace(/\b\w/g, (char) => char.toUpperCase()),
+                            normalizedName,
+                            classroomId: doubt.classroomId,
+                            createdByEmail: email || null,
+                        }).onConflictDoNothing().returning();
+
+                        if (createdTag) {
+                            tagRecord = createdTag;
+                        } else {
+                            const [raced] = await tx.select().from(tagsTable).where(and(
+                                eq(tagsTable.normalizedName, normalizedName),
+                                tagScopePredicate
+                            )).limit(1);
+                            tagRecord = raced;
+                        }
+                    }
+
+                    if (tagRecord) {
+                        resolvedTags.push(tagRecord);
+                    }
+                }
+
+                await tx.delete(doubtTagsTable).where(eq(doubtTagsTable.doubtId, doubtId));
+
+                for (const tag of resolvedTags) {
+                    await tx.insert(doubtTagsTable).values({
+                        doubtId,
+                        tagId: tag.id,
+                    });
+                }
+
+                return { updated: updatedRow, savedTags: resolvedTags };
+            });
 
             return NextResponse.json({ ...updated, tags: savedTags });
         }
