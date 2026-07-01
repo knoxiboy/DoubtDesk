@@ -7,7 +7,9 @@ import {
     sendReplyNotification, 
     sendDailyDigest, 
     sendWeeklyDigest,
-    detectConfusionSpikes
+    detectConfusionSpikes,
+    generateVideo,
+    cleanupStaleVideoJobs
 } from "../../../inngest/functions";
 
 // Serve your registered background processes safely
@@ -19,6 +21,8 @@ export const { GET, POST, PUT } = serve({
         sendReplyNotification,
         sendDailyDigest,
         sendWeeklyDigest,
-        detectConfusionSpikes
+        detectConfusionSpikes,
+        generateVideo,
+        cleanupStaleVideoJobs
     ],
 });

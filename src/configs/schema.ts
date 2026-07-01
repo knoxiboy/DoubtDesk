@@ -561,3 +561,27 @@ export const practiceAttemptsTable = pgTable("practice_attempts", {
         foreignColumns: [doubtsTable.id],
     }).onDelete("cascade"),
 }));
+
+// Async video generation jobs (issue #321).
+// Tracks the OCR → AI script → TTS → Remotion render pipeline as a background Inngest job
+// So the request handler returns immediately instead of blocking 30-60s past the serverless timeout.
+export const videoJobsTable = pgTable("video_jobs", {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    userEmail: varchar("user_email", { length: 255 }).notNull(),
+    // queued | processing | completed | failed
+    status: varchar("status", { length: 20 }).default("queued").notNull(),
+    progress: integer("progress").default(0).notNull(),
+    step: varchar("step", { length: 255 }),
+    videoType: varchar("video_type", { length: 20 }),
+    videoUrl: text("video_url"),
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+    userEmailIndex: index("video_jobs_user_email_idx").on(table.userEmail),
+    statusCreatedAtIndex: index("video_jobs_status_created_at_idx").on(table.status, table.createdAt),
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+}));
