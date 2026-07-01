@@ -78,3 +78,13 @@ button {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(170, 191, 255, 0.62);
 }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
