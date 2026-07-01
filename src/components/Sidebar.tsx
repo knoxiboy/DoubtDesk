@@ -74,9 +74,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
             <TooltipProvider>
                 <aside
-                    className={`fixed lg:sticky lg:top-0 lg:h-screen shrink-0 inset-y-0 left-0 z-40 w-72 bg-white dark:bg-black border-r border-slate-100 dark:border-zinc-900/60 shadow-xl lg:shadow-none transform transition-all duration-300 ease-out ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
-                >
-                    <div className="flex flex-col h-full">
+                    className={`fixed inset-y-0 left-0  z-40 w-72 bg-white dark:bg-black border-r border-slate-100 dark:border-zinc-900/60 shadow-xl lg:shadow-none transform transition-all duration-300 ease-out ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
+                    <div className="pt-16 md:pt-20 flex flex-col h-full">
                         <div className="flex items-center justify-between px-6 border-b border-slate-100 dark:border-zinc-900/60 h-16 md:h-20">
                             <Link
                                 href="/"
