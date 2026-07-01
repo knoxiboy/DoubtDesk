@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
-import { doubtsTable, repliesTable, membershipsTable, classroomsTable } from '@/configs/schema';
+import { doubtsTable, repliesTable, membershipsTable, classroomsTable, organizationMembershipsTable } from '@/configs/schema';
 import { desc, sql, and, eq, count, countDistinct, ne, inArray, isNull } from 'drizzle-orm';
 import { checkUserBlock } from '@/lib/auth-utils';
-import { buildErrorResponse } from '@/lib/error-handler';
+import { buildErrorResponse, errorResponse } from '@/lib/error-handler';
 import {
     parseOptionalClassroomId,
     requireAuth,
@@ -13,43 +13,82 @@ import {
 export async function GET(req: Request) {
     try {
         const { email } = await requireAuth();
-        const { isBlocked, errorResponse } = await checkUserBlock(email);
-        if (isBlocked) return errorResponse;
+        const { isBlocked, errorResponse: blockErrorResponse } = await checkUserBlock(email);
+        if (isBlocked) return blockErrorResponse;
 
         const { searchParams } = new URL(req.url);
         const classroomId = parseOptionalClassroomId(searchParams.get("classroomId"));
+        
+        // FIXED: Strictly validate organizationId and normalize scopes
+        const orgIdParam = searchParams.get("organizationId");
+        const organizationId = orgIdParam === null || orgIdParam === "" ? null : Number(orgIdParam);
+
+        if (organizationId !== null && (!Number.isSafeInteger(organizationId) || organizationId <= 0)) {
+            return errorResponse('Invalid organizationId', 400);
+        }
+
+        if (organizationId !== null && classroomId !== null) {
+            return errorResponse('Specify either organizationId or classroomId, not both', 400);
+        }
 
         let classroomFilter;
+        let activeClassroomIds: number[] = [];
 
-        if (classroomId) {
+        // 1. ORGANIZATION LEVEL SCOPING
+        if (organizationId !== null) {
+            const orgId = organizationId;
+            
+            // Verify org membership and role
+            const [orgMembership] = await db.select()
+                .from(organizationMembershipsTable)
+                .where(and(
+                    eq(organizationMembershipsTable.organizationId, orgId),
+                    eq(organizationMembershipsTable.userEmail, email)
+                ));
+
+            if (!orgMembership || !['owner', 'admin', 'teacher'].includes(orgMembership.role)) {
+                return errorResponse('Forbidden: Invalid tenant membership privileges', 403);
+            }
+
+            // Get all classrooms belonging to this organization
+            const orgClassrooms = await db.select({ id: classroomsTable.id })
+                .from(classroomsTable)
+                .where(eq(classroomsTable.organizationId, orgId));
+
+            activeClassroomIds = orgClassrooms.map(c => c.id);
+        } 
+        // 2. CLASSROOM LEVEL SCOPING
+        else if (classroomId !== null) {
             await requireMembership(email, classroomId);
-            classroomFilter = and(eq(doubtsTable.classroomId, classroomId), isNull(doubtsTable.deletedAt));
-        } else {
+            activeClassroomIds = [classroomId];
+        } 
+        // 3. GLOBAL FALLBACK (All user's joined classrooms)
+        else {
             const userMemberships = await db.select({ classroomId: membershipsTable.classroomId })
                 .from(membershipsTable)
                 .where(eq(membershipsTable.userEmail, email));
-
-            const userClassroomIds = userMemberships.map(m => m.classroomId);
-
-            if (userClassroomIds.length === 0) {
-                return NextResponse.json({
-                    trendingDoubts: [],
-                    mostAskedTopics: [],
-                    solvedStats: [],
-                    peakTime: [],
-                    engagement: { totalStudents: 0, totalDoubts: 0, totalReplies: 0 },
-                    weakTopics: [],
-                    topContributors: [],
-                    classroomSettings: {
-                        pedagogyLevel: "Undergraduate (Freshman)",
-                        targetGradeLevel: 13
-                    },
-                    recentAIReplies: []
-                });
-            }
-
-            classroomFilter = and(inArray(doubtsTable.classroomId, userClassroomIds), isNull(doubtsTable.deletedAt));
+            activeClassroomIds = userMemberships.map(m => m.classroomId);
         }
+
+        // Return empty state if no classrooms are found for the given scope
+        if (activeClassroomIds.length === 0) {
+            return NextResponse.json({
+                trendingDoubts: [],
+                mostAskedTopics: [],
+                solvedStats: [],
+                peakTime: [],
+                engagement: { totalStudents: 0, totalDoubts: 0, totalReplies: 0 },
+                weakTopics: [],
+                topContributors: [],
+                classroomSettings: {
+                    pedagogyLevel: "Undergraduate (Freshman)",
+                    targetGradeLevel: 13
+                },
+                recentAIReplies: []
+            });
+        }
+
+        classroomFilter = and(inArray(doubtsTable.classroomId, activeClassroomIds), isNull(doubtsTable.deletedAt));
 
         // Run all queries in parallel to eliminate sequential query latency
         const [
@@ -158,7 +197,7 @@ export async function GET(req: Request) {
                 .orderBy(desc(repliesTable.createdAt))
                 .limit(20),
         ]);
-
+        
         // 8. AI Teaching Suggestions & Weak Concept Detection (Heuristics)
         const weakTopics = mostAskedTopics.map((topic, index) => {
             const countValue = Number(topic.count);
@@ -201,7 +240,8 @@ export async function GET(req: Request) {
             pedagogyLevel: "Undergraduate (Freshman)",
             targetGradeLevel: 13
         };
-        if (classroomId) {
+        // Only fetch single classroom settings if it is specifically requested (and not an org request)
+        if (classroomId !== null) {
             try {
                 const [classroom] = await db.select({
                     pedagogyLevel: classroomsTable.pedagogyLevel,
