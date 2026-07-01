@@ -29,6 +29,7 @@ const footerSections = [
     links: [
       { label: "Privacy Policy", href: "/privacy-policy" },
       { label: "Terms of Service", href: "/terms-of-service" },
+      { label: "Guidelines", href: "/guidelines" }, // ← Added
       { label: "About", href: "/about" },
       { label: "FAQs", href: "/faq" },
     ],
@@ -47,13 +48,6 @@ const footerSections = [
   },
 ];
 
-const communityIcons = {
-  GitHub: Github,
-  Contributors: Users,
-  "Report Issue": MessageSquare,
-  Contact: Mail,
-} as const;
-
 export default function Footer() {
   const currentYear = new Date().getFullYear();
 
@@ -70,7 +64,7 @@ export default function Footer() {
     }
 
     const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
+      "(prefers-reduced-motion: reduce)",
     ).matches;
 
     window.scrollTo({
@@ -136,43 +130,68 @@ export default function Footer() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-8 sm:gap-10 w-full lg:max-w-2xl">
+            {/* Platform */}
             <div className="flex flex-col gap-4">
               <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-slate-900 dark:text-zinc-200">
                 Platform
               </h4>
               <ul className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-zinc-400">
                 <li>
-                  <Link href="/" onClick={scrollToTop} className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                  <Link
+                    href="/"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
                     <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span>Home</span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/rooms" onClick={scrollToTop} className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                  <Link
+                    href="/rooms"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
                     <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span>Virtual Campus</span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/ask-ai" onClick={scrollToTop} className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                  <Link
+                    href="/ask-ai"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
                     <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span>AI Solver</span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/public-rooms" onClick={scrollToTop} className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                  <Link
+                    href="/public-rooms"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
                     <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span>Public Doubts</span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/dashboard" onClick={scrollToTop} className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                  <Link
+                    href="/dashboard"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
                     <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span>Dashboard</span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/dashboard/analytics" onClick={scrollToTop} className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                  <Link
+                    href="/dashboard/analytics"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
                     <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span>Analytics</span>
                   </Link>
@@ -180,21 +199,40 @@ export default function Footer() {
               </ul>
             </div>
 
+            {/* Resources - Guidelines added here */}
             <div className="flex flex-col gap-4">
               <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-slate-900 dark:text-zinc-200">
                 Resources
               </h4>
               <ul className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-zinc-400">
                 <li>
-                  <Link href="/bookmarks" onClick={scrollToTop} className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                  <Link
+                    href="/bookmarks"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
                     <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span>Bookmarks</span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/faq" onClick={scrollToTop} className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                  <Link
+                    href="/faq"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
                     <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span>FAQs</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/guidelines"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span>Guidelines</span>
                   </Link>
                 </li>
                 <li>
@@ -207,13 +245,21 @@ export default function Footer() {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/terms-of-service" onClick={scrollToTop} className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                  <Link
+                    href="/terms-of-service"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
                     <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span>Terms of Service</span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/privacy-policy" onClick={scrollToTop} className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                  <Link
+                    href="/privacy-policy"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-1.5 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
                     <ChevronRight className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                     <span>Privacy Policy</span>
                   </Link>
@@ -221,27 +267,38 @@ export default function Footer() {
               </ul>
             </div>
 
+            {/* Community */}
             <div className="flex flex-col gap-4 col-span-2 md:col-span-1">
               <h4 className="text-xs font-bold uppercase tracking-[0.15em] text-slate-900 dark:text-zinc-200">
                 Community
               </h4>
               <ul className="space-y-3 text-xs sm:text-sm text-slate-600 dark:text-zinc-400">
                 <li>
-                  <Link href="/about" onClick={scrollToTop} className="group flex items-center gap-2 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                  <Link
+                    href="/about"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-2 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
                     <Users className="w-4 h-4 text-blue-500 shrink-0" />
                     <span>About</span>
                   </Link>
                 </li>
                 <li>
-                  <Link href="/contributors" onClick={scrollToTop} className="group flex items-center gap-2 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                  <Link
+                    href="/contributors"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-2 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
                     <Users className="w-4 h-4 text-blue-500 shrink-0" />
                     <span>Contributors</span>
                   </Link>
                 </li>
                 <li>
                   <Link
-                    href="/discussions" onClick={scrollToTop} 
-                    className="group flex items-center gap-2 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400">
+                    href="/discussions"
+                    onClick={scrollToTop}
+                    className="group flex items-center gap-2 transition-transform duration-200 hover:translate-x-0.5 hover:text-blue-500 dark:hover:text-blue-400"
+                  >
                     <MessageSquare className="w-4 h-4 text-blue-500 shrink-0" />
                     <span>Discussions</span>
                   </Link>
