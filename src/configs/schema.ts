@@ -382,6 +382,20 @@ export const moderationLogsTable = pgTable("moderation_logs", {
     }).onDelete("set null"),
 }));
 
+export const auditLogsTable = pgTable("audit_logs", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    actorEmail: varchar({ length: 255 }).notNull(),
+    targetEmail: varchar({ length: 255 }),
+    action: varchar({ length: 100 }).notNull(),
+    resourceType: varchar({ length: 50 }).notNull(),
+    resourceId: varchar({ length: 255 }),
+    metadata: text(),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    actorEmailIndex: index("audit_actor_idx").on(table.actorEmail),
+    actionIndex: index("audit_action_idx").on(table.action),
+}));
+
 export const bookmarksTable = pgTable(
     "bookmarks",
     {

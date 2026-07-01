@@ -7,6 +7,7 @@ import { moderateContent, handleModerationViolation } from "@/lib/moderation";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { updateDoubtActionSchema } from "@/lib/validations/doubt";
 import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubtStatus";
+import { auditLog, AUDIT_ACTIONS } from "@/lib/audit";
 import type { Tag } from "@/types";
 import { canTeach } from "@/lib/auth/membership-guard";
 
@@ -67,7 +68,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
             const secureUserIdentifier = email;
 
-            const result = await db.transaction(async (tx) => {
+            const result = await db.transaction(async (tx: typeof db) => {
+
                 const locked = await tx.execute(
                     sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} FOR UPDATE`
                 );
@@ -184,6 +186,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 })
                 .where(eq(doubtsTable.id, doubtId))
                 .returning();
+
+            void auditLog({
+                actorEmail: email || "unknown",
+                targetEmail: doubt.userEmail,
+                action: AUDIT_ACTIONS.DOUBT_SOLVED,
+                resourceType: "doubt",
+                resourceId: doubtId,
+                metadata: {
+                    previousStatus: doubt.isSolved,
+                    newStatus,
+                    replyId: newSolvedReplyId,
+                    solvedReplyId: newSolvedReplyId,
+                },
+            });
+
             return NextResponse.json(updated[0]);
         }
 
@@ -240,6 +257,23 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                     tagId: tagRecord.id,
                 }).onConflictDoNothing();
             }
+
+            void auditLog({
+                actorEmail: email || "unknown",
+                targetEmail: doubt.userEmail,
+                action: AUDIT_ACTIONS.DOUBT_EDITED,
+                resourceType: "doubt",
+                resourceId: doubtId,
+                metadata: {
+                    subject: doubt.subject,
+                    classroomId: doubt.classroomId,
+                    changedFields: {
+                        content: content !== undefined,
+                        subject: subject !== undefined,
+                        imageUrl: imageUrl !== undefined,
+                    },
+                },
+            });
 
             return NextResponse.json({ ...updated, tags: savedTags });
         }

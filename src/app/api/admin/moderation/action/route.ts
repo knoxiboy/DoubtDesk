@@ -4,9 +4,13 @@ import { moderationLogsTable, usersTable } from "@/configs/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { sendWarningEmail, sendBlockEmail } from "@/lib/email";
+import { auditLog, AUDIT_ACTIONS } from "@/lib/audit";
+import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(request: Request) {
     try {
+        const adminUser = await currentUser();
+        const adminEmail = adminUser?.primaryEmailAddress?.emailAddress || "admin";
         await requireAdmin();
 
         const body = await request.json();
@@ -25,7 +29,15 @@ export async function POST(request: Request) {
             await db.update(moderationLogsTable)
                 .set({ status: "dismissed" })
                 .where(eq(moderationLogsTable.id, logId));
-            
+
+            void auditLog({
+                actorEmail: adminEmail,
+                targetEmail: userEmail,
+                action: AUDIT_ACTIONS.MODERATION_DISMISSED,
+                resourceType: "moderation_log",
+                resourceId: logId,
+            });
+
             return NextResponse.json({ success: true, message: "Log dismissed" });
         }
 
@@ -43,6 +55,18 @@ export async function POST(request: Request) {
             if (log) {
                 await sendWarningEmail(userEmail, log.reason, newViolationCount);
             }
+
+            void auditLog({
+                actorEmail: adminEmail,
+                targetEmail: userEmail,
+                action: AUDIT_ACTIONS.USER_WARNED,
+                resourceType: "user",
+                resourceId: userEmail,
+                metadata: {
+                    violationCount: newViolationCount,
+                    moderationLogId: logId,
+                },
+            });
 
             return NextResponse.json({ success: true, message: "User warned successfully" });
         }
@@ -74,6 +98,19 @@ export async function POST(request: Request) {
                 .where(eq(moderationLogsTable.id, logId));
 
             await sendBlockEmail(userEmail, durationDays, newBlockCount);
+
+            void auditLog({
+                actorEmail: adminEmail,
+                targetEmail: userEmail,
+                action: AUDIT_ACTIONS.USER_BLOCKED,
+                resourceType: "user",
+                resourceId: userEmail,
+                metadata: {
+                    durationDays,
+                    blockCount: newBlockCount,
+                    moderationLogId: logId,
+                },
+            });
 
             return NextResponse.json({ success: true, message: "User blocked successfully" });
         }
