@@ -34,7 +34,10 @@ export async function POST(req: Request) {
   if (rateLimitResponse) return rateLimitResponse;
 
   const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
-  if (isBlocked) return blockResponse;
+  if (blockResponse) return blockResponse;
+  if (isBlocked) {
+    return NextResponse.json({ error: "User is blocked" }, { status: 403 });
+  }
 
   const { errorResponse, data } = await parseAndValidateRequest(req, generateVideoSchema);
   if (errorResponse) return errorResponse;
@@ -42,8 +45,10 @@ export async function POST(req: Request) {
   // One active generation per user. The background job releases this lock when it
   // finishes (success or failure); a 5-minute TTL guards against leaked locks.
   const lockKey = `video_lock:${user.id}`;
-  const lockAcquired = await redisClient.setnx(lockKey, "1");
-  if (!lockAcquired || lockAcquired === 0) {
+  // Atomic acquire (SET key val NX EX 300). Avoids the setnx-then-expire race that
+  // could leave the lock stuck forever if the expire step failed after setnx.
+  const lockAcquired = await redisClient.set(lockKey, "1", { nx: true, ex: 300 });
+  if (lockAcquired !== "OK") {
     return NextResponse.json(
       {
         error:
@@ -52,16 +57,17 @@ export async function POST(req: Request) {
       { status: 429 },
     );
   }
-  if (redisClient.expire) {
-    await redisClient.expire(lockKey, 300);
-  }
 
   try {
     const { content, imageUrl } = data;
 
-    const protocol = req.headers.get("x-forwarded-proto") || "http";
-    const host = req.headers.get("host");
-    const baseUrl = `${protocol}://${host}`;
+    // Use a configured, allowlisted origin — never request headers. Host and
+    // x-forwarded-proto are attacker-controlled here and would otherwise let a
+    // request choose the origin the background pipeline fetches assets from.
+    const baseUrl = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL;
+    if (!baseUrl) {
+      throw new Error("APP_URL is not configured");
+    }
 
     const jobId = randomUUID();
     await db.insert(videoJobsTable).values({
@@ -89,11 +95,10 @@ export async function POST(req: Request) {
     // Failed to enqueue → release the lock so the user can retry immediately.
     await redisClient.del(lockKey).catch(() => {});
     console.error("Failed to enqueue video generation:", error);
+    // Detail is logged above; return a stable generic message so we don't leak
+    // DB/queue/config internals to the client.
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to start video generation",
-      },
+      { error: "Failed to start video generation" },
       { status: 500 },
     );
   }

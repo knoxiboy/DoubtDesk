@@ -23,6 +23,11 @@ interface MockLimiter {
 
 interface MockRedis {
     setnx(key: string, value: unknown): Promise<number>;
+    set(
+      key: string,
+      value: unknown,
+      opts?: { nx?: boolean; ex?: number },
+    ): Promise<"OK" | null>;
     del(key: string): Promise<number>;
   expire?(key: string, seconds: number): Promise<number>;
 }
@@ -118,6 +123,16 @@ if (isRedisConfigured) {
       if (memoryMap.has(key)) return 0;
       memoryMap.set(key, { count: 1, reset: Date.now() + 5 * 60 * 1000 });
       return 1;
+    },
+    set: async (
+      key: string,
+      value: unknown,
+      opts?: { nx?: boolean; ex?: number },
+    ): Promise<"OK" | null> => {
+      if (opts?.nx && memoryMap.has(key)) return null;
+      const ttlMs = opts?.ex ? opts.ex * 1000 : 5 * 60 * 1000;
+      memoryMap.set(key, { count: 1, reset: Date.now() + ttlMs });
+      return "OK";
     },
     del: async (key: string) => {
       memoryMap.delete(key);

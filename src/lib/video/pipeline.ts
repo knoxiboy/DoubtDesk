@@ -4,6 +4,7 @@ import fs from "fs";
 import Groq from "groq-sdk";
 import axios from "axios";
 import Tesseract from "tesseract.js";
+import { uploadVideo } from "./storage";
 
 export interface SceneData {
   text?: string;
@@ -129,9 +130,12 @@ Return ONLY a JSON object: {"type": "concept" | "math"}`;
     response_format: { type: "json_object" },
   });
 
-  const videoType = JSON.parse(
+  const classificationPayload = JSON.parse(
     classification.choices[0]?.message?.content || '{"type": "concept"}',
-  ).type;
+  ) as { type?: unknown };
+  // Only "math" and "concept" are supported; anything else (e.g. "MATH",
+  // "other") falls back to "concept" so we never persist/render an unknown type.
+  const videoType = classificationPayload.type === "math" ? "math" : "concept";
 
   // 3. Generate the appropriate script.
   await onProgress({ progress: 45, step: "Writing script…" });
@@ -168,7 +172,7 @@ Return ONLY a JSON object with a "scenes" array.`;
   const script = JSON.parse(scriptCompletion.choices[0]?.message?.content || "{}");
   const rawScenes = videoType === "math" ? script.steps : script.scenes;
 
-  if (!rawScenes || rawScenes.length === 0) {
+  if (!Array.isArray(rawScenes) || rawScenes.length === 0) {
     throw new Error("Failed to generate script scenes.");
   }
 
@@ -185,7 +189,12 @@ Return ONLY a JSON object with a "scenes" array.`;
       const urls = getGoogleTtsUrls(narrationText, "en", 1);
       const audioBuffers = await Promise.all(
         urls.map(async (url) => {
-          const response = await axios({ method: "get", url, responseType: "arraybuffer" });
+          const response = await axios({
+            method: "get",
+            url,
+            responseType: "arraybuffer",
+            timeout: 15_000,
+          });
           return Buffer.from(response.data);
         }),
       );
@@ -198,7 +207,7 @@ Return ONLY a JSON object with a "scenes" array.`;
 
   // 5. Render the video with Remotion.
   await onProgress({ progress: 90, step: "Rendering video…" });
-  const entryPoint = path.resolve("./lib/video/remotion/index.tsx");
+  const entryPoint = path.resolve(process.cwd(), "src/lib/video/remotion/index.tsx");
   const outputLocation = path.resolve(`./public/videos/video-${Date.now()}.mp4`);
   if (!fs.existsSync(path.resolve("./public/videos"))) {
     fs.mkdirSync(path.resolve("./public/videos"), { recursive: true });
@@ -236,5 +245,22 @@ Return ONLY a JSON object with a "scenes" array.`;
     }),
   ).catch((err) => console.error("Error during temp audio cleanup:", err));
 
+  // Persist the render to durable object storage (issue #321). The local
+  // public/videos path is ephemeral in serverless/Inngest execution and isn't
+  // guaranteed to be served by the instance handling playback, so upload to
+  // Supabase Storage and return that URL. Falls back to the local path only when
+  // storage is not configured (e.g. local dev).
+  const objectName = `renders/${path.basename(outputLocation)}`;
+  const uploadedUrl = await uploadVideo(outputLocation, objectName);
+  if (uploadedUrl) {
+    await fs.promises.unlink(outputLocation).catch(() => {});
+    return { videoUrl: uploadedUrl, videoType };
+  }
+
+  console.warn(
+    "[video] durable storage not configured; returning ephemeral local path. Set " +
+      "NEXT_PUBLIC_SUPABASE_URL and a Supabase key (SUPABASE_SERVICE_ROLE_KEY " +
+      "recommended) to persist renders in production.",
+  );
   return { videoUrl: `/videos/${path.basename(outputLocation)}`, videoType };
 }

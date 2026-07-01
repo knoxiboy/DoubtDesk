@@ -409,7 +409,7 @@ export const cleanupStaleVideoJobs = inngest.createFunction(
         .where(
           and(
             inArray(videoJobsTable.status, ["queued", "processing"]),
-            lt(videoJobsTable.createdAt, cutoff),
+            lt(videoJobsTable.updatedAt, cutoff),
           ),
         )
         .returning({ id: videoJobsTable.id });
