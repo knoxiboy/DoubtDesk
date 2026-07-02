@@ -254,6 +254,22 @@ export const doubtsTable = pgTable("doubts", {
             table.userEmail,
             table.classroomId,
         ),
+        // Composite indexes supporting the feed's filter + recency ordering
+        // (WHERE classroomId = ? [AND type/isSolved] ORDER BY createdAt DESC).
+        classroomCreatedAtIndex: index("doubts_classroomId_createdAt_idx").on(
+            table.classroomId,
+            table.createdAt,
+        ),
+        classroomTypeIndex: index("doubts_classroomId_type_createdAt_idx").on(
+            table.classroomId,
+            table.type,
+            table.createdAt,
+        ),
+        classroomSolvedIndex: index("doubts_classroomId_isSolved_createdAt_idx").on(
+            table.classroomId,
+            table.isSolved,
+            table.createdAt,
+        ),
         userEmailFk: foreignKey({
             columns: [table.userEmail],
             foreignColumns: [usersTable.email],
