@@ -4,7 +4,6 @@ import { usersTable, moderationLogsTable } from "@/configs/schema";
 import { eq, sql } from "drizzle-orm";
 import { sendWarningEmail, sendBlockEmail } from "./email";
 import { z } from "zod";
-import { sql } from "drizzle-orm";
 
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY || 'dummy_key',

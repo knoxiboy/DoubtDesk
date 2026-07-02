@@ -97,6 +97,10 @@ export default function ClassroomPage() {
   const [activeAIDoubt, setActiveAIDoubt] = useState<Doubt | null>(null);
   const [isAskModalOpen, setIsAskModalOpen] = useState(false);
   const [isCodeModalOpen, setIsCodeModalOpen] = useState(false);
+  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [inviteUrl, setInviteUrl] = useState("");
+  const [inviteExpiresAt, setInviteExpiresAt] = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
   const [copied, setCopied] = useState(false);
   const [doubtFilter, setDoubtFilter] = useState<
     "unsolved" | "in-progress" | "solved"
@@ -143,6 +147,7 @@ export default function ClassroomPage() {
       : activeTab === "community"
         ? "community"
         : "ai";
+  const hasTeacherAccess = isTeacherRole(classroom?.role);
 
   const fetcher = (url: string) => fetch(url).then((res) => res.json());
   const updateSort = (nextSort: DoubtSortValue) => {
