@@ -126,7 +126,7 @@ Rules:
 
         // 3. Filter down to clusters that actually meet the spike threshold
         const spikeClusters = clusteringResult.clusters.filter(
-            (c) => Array.isArray(c.doubtIndices) && c.doubtIndices.length >= SPIKE_THRESHOLD && c.topic
+            (c: TopicCluster) => Array.isArray(c.doubtIndices) && c.doubtIndices.length >= SPIKE_THRESHOLD && c.topic
         );
 
         if (spikeClusters.length === 0) {
@@ -160,8 +160,8 @@ Rules:
                 }
 
                 const mappedIds = cluster.doubtIndices
-                    .map((idx) => dynamicDoubts[idx - 1]?.id)
-                    .filter((id): id is number => typeof id === "number")
+                    .map((idx: number) => dynamicDoubts[idx - 1]?.id)
+                    .filter((id: number | undefined): id is number => typeof id === "number")
                     .slice(0, 5);
 
                 const computedAction = `Consider hosting a brief interactive discussion or query resolution session regarding "${cluster.topic}".`;
