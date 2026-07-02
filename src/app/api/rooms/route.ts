@@ -100,11 +100,6 @@ export async function POST(req: Request) {
         const rateLimitResponse = await enforceApiRateLimit(generalLimiter, email, 'general');
         if (rateLimitResponse) return rateLimitResponse;
 
-        const { errorResponse: validationResponse, data } = await parseAndValidateRequest(req, createClassroomSchema);
-        if (validationResponse) return validationResponse;
-
-        const { name, year } = data;
-
         // 0. Check if user is blocked
         const { isBlocked, errorResponse: blockErrorResponse } = await checkUserBlock(email);
         if (isBlocked) return blockErrorResponse;
