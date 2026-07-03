@@ -61,6 +61,15 @@ function makeStep() {
   };
 }
 
+// Inngest's createFunction returns a function object whose handler is stored on
+// `.fn`; invoke that directly to unit-test the handler with a mock step.
+function runHandler(
+  fn: unknown,
+  step: ReturnType<typeof makeStep>,
+): Promise<unknown> {
+  return (fn as { fn: (ctx: { step: unknown }) => Promise<unknown> }).fn({ step });
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("sendDailyDigest — per-user step isolation", () => {
@@ -115,8 +124,7 @@ describe("sendDailyDigest — per-user step isolation", () => {
     const { sendDailyDigest } = await import("@/inngest/functions");
 
     const step = makeStep();
-    // @ts-expect-error — internal test invocation bypasses Inngest runtime types
-    await expect(sendDailyDigest({ step })).rejects.toThrow("SMTP timeout");
+    await expect(runHandler(sendDailyDigest, step)).rejects.toThrow("SMTP timeout");
 
     // Alice's row MUST have been deleted (email succeeded).
     expect(dbMock.delete).toHaveBeenCalledTimes(1);
@@ -146,19 +154,17 @@ describe("sendDailyDigest — per-user step isolation", () => {
 
     const deleteChain = { where: jest.fn().mockResolvedValue(undefined) };
     (dbMock.delete as jest.Mock).mockReturnValue(deleteChain);
-    mockSendDigestEmail.mockResolvedValue(undefined);
+    mockSendDigestEmail.mockResolvedValue({ success: true });
 
     const { sendDailyDigest } = await import("@/inngest/functions");
 
     // First run — completes successfully.
     const step = makeStep();
-    // @ts-expect-error
-    await sendDailyDigest({ step });
+    await runHandler(sendDailyDigest, step);
     expect(mockSendDigestEmail).toHaveBeenCalledTimes(1);
 
     // Simulate Inngest retry: same step shim (memoised results) → per-user step is a no-op.
-    // @ts-expect-error
-    await sendDailyDigest({ step });
+    await runHandler(sendDailyDigest, step);
     // sendDigestEmail must NOT be called again.
     expect(mockSendDigestEmail).toHaveBeenCalledTimes(1);
   });
