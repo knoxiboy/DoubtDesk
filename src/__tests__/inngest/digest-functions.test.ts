@@ -115,7 +115,8 @@ describe("sendDailyDigest — per-user step isolation", () => {
     const { sendDailyDigest } = await import("@/inngest/functions");
 
     const step = makeStep();
-    await expect((sendDailyDigest as any).fn({ step })).rejects.toThrow("SMTP timeout");
+    // @ts-expect-error — internal test invocation bypasses Inngest runtime types
+    await expect(sendDailyDigest({ step })).rejects.toThrow("SMTP timeout");
 
     // Alice's row MUST have been deleted (email succeeded).
     expect(dbMock.delete).toHaveBeenCalledTimes(1);
@@ -145,17 +146,19 @@ describe("sendDailyDigest — per-user step isolation", () => {
 
     const deleteChain = { where: jest.fn().mockResolvedValue(undefined) };
     (dbMock.delete as jest.Mock).mockReturnValue(deleteChain);
-    mockSendDigestEmail.mockResolvedValue({ success: true });
+    mockSendDigestEmail.mockResolvedValue(undefined);
 
     const { sendDailyDigest } = await import("@/inngest/functions");
 
     // First run — completes successfully.
     const step = makeStep();
-    await (sendDailyDigest as any).fn({ step });
+    // @ts-expect-error
+    await sendDailyDigest({ step });
     expect(mockSendDigestEmail).toHaveBeenCalledTimes(1);
 
     // Simulate Inngest retry: same step shim (memoised results) → per-user step is a no-op.
-    await (sendDailyDigest as any).fn({ step });
+    // @ts-expect-error
+    await sendDailyDigest({ step });
     // sendDigestEmail must NOT be called again.
     expect(mockSendDigestEmail).toHaveBeenCalledTimes(1);
   });
