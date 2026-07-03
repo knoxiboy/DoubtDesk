@@ -304,6 +304,25 @@ export const doubtTagsTable = pgTable("doubt_tags", {
     }).onDelete("cascade"),
 }));
 
+export const doubtUpvotesTable = pgTable("doubt_upvotes", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    doubtId: integer().notNull(),
+    userEmail: varchar({ length: 255 }).notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    doubtIdIndex: index("doubt_upvotes_doubtId_idx").on(table.doubtId),
+    userEmailIndex: index("doubt_upvotes_userEmail_idx").on(table.userEmail),
+    uniqueUpvote: uniqueIndex("doubt_upvote_unique_idx").on(table.doubtId, table.userEmail),
+    doubtIdFk: foreignKey({
+        columns: [table.doubtId],
+        foreignColumns: [doubtsTable.id],
+    }).onDelete("cascade"),
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+}));
+
 export const repliesTable = pgTable("replies", {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
     doubtId: integer("doubt_id").notNull(),
