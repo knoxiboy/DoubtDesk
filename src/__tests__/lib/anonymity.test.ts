@@ -57,7 +57,6 @@ describe("anonymity: fail closed in production", () => {
         if (origSalt === undefined) delete process.env.ANON_HANDLE_SALT;
         else process.env.ANON_HANDLE_SALT = origSalt;
     });
-    });
 
     it("throws when ANON_HANDLE_SALT is missing in production", () => {
         delete process.env.ANON_HANDLE_SALT;
