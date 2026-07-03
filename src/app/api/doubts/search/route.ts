@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { doubtsTable } from "@/configs/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, or, ilike } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
     try {
@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Invalid classroomId or query too short" }, { status: 400 });
         }
 
+        const searchPattern = `%${query}%`;
         const results = await db
             .select({
                 id: doubtsTable.id,
@@ -30,7 +31,10 @@ export async function GET(req: NextRequest) {
             .from(doubtsTable)
             .where(and(
                 eq(doubtsTable.classroomId, classroomIdInt),
-                sql`(${doubtsTable.content}::text ILIKE ${'%' + query + '%'} OR ${doubtsTable.subject}::text ILIKE ${'%' + query + '%'})`
+                or(
+                    ilike(doubtsTable.content, searchPattern),
+                    ilike(doubtsTable.subject, searchPattern)
+                )
             ))
             .orderBy(doubtsTable.createdAt)
             .limit(10);
