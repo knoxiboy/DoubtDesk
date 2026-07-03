@@ -22,7 +22,7 @@ let mockReply: {
 let mockUpdatedDoubt: { id: number } | null = { id: 1 };
 
 // jest.mock factories are hoisted, and the hoist guard only permits references to
-// out-of-scope variables whose names match /^mock/i — hence these names.
+// out-of-scope variables whose names match /^mock/i: hence these names.
 const mockInngestSend = jest.fn();
 let mockSelectCallCount = 0;
 
