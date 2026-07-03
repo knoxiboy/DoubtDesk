@@ -1,20 +1,16 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 
-let inScanningPhase = false;
-
 try {
   // Get list of staged files using execFileSync to avoid shell command injection
-  const stagedFilesOutput = execFileSync('git', ['diff', '--cached', '--name-only'], { encoding: 'utf8' });
+  // Use null-delimited output (-z) to safely handle spaces and special characters in filenames
+  const stagedFilesOutput = execFileSync('git', ['diff', '--cached', '--name-only', '-z'], { encoding: 'utf8' });
   const stagedFiles = stagedFilesOutput
-    .split('\n')
-    .map(f => f.trim())
+    .split('\0')
     .filter(f => f && fs.existsSync(f) && fs.lstatSync(f).isFile());
 
   const secretRegex = /(?:pk|sk)_(?:test|live)_(?!your_key_here|placeholder)[a-zA-Z0-9_.\-$]{15,}/gi;
   let foundSecrets = false;
-
-  inScanningPhase = true;
 
   for (const file of stagedFiles) {
     // Read the staged content of the file using execFileSync with args array
@@ -36,13 +32,6 @@ try {
     process.exit(1);
   }
 } catch (error) {
-  if (inScanningPhase) {
-    // Fail closed for unexpected failures during scan phase
-    console.error(`\x1b[31m[ERROR] Secrets check failed during scan: ${error.message}\x1b[0m`);
-    process.exit(1);
-  } else {
-    // Fail open only for initial git/setup environment check issues (e.g. git command not found)
-    console.warn(`[WARNING] Secrets check bypassed due to setup/env error: ${error.message}`);
-    process.exit(0);
-  }
+  console.error(`\x1b[31m[ERROR] Secrets check failed: ${error.message}\x1b[0m`);
+  process.exit(1);
 }
