@@ -1,8 +1,8 @@
 /**
  * Keyset (cursor) pagination helpers for the doubts feed (issue #319).
  *
- * A cursor encodes the ordering key of the last row seen — the doubt's
- * `createdAt` timestamp plus its `id` as a tiebreaker — so the next page can be
+ * A cursor encodes the ordering key of the last row seen - the doubt's
+ * `createdAt` timestamp plus its `id` as a tiebreaker - so the next page can be
  * fetched with a `WHERE (createdAt, id) < (cursorCreatedAt, cursorId)` keyset
  * predicate instead of a growing `OFFSET`. This keeps deep pagination O(log n)
  * on an index rather than O(n).
