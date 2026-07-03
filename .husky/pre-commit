@@ -1,1 +1,3 @@
+node scripts/check-secrets.js
 npx lint-staged
+
