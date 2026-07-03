@@ -149,7 +149,7 @@ export async function GET(req: Request) {
     // Cursor-based pagination (issue #319): opt-in via the `cursor` query param
     // (present even when empty, for the first page). Cursor mode uses pure
     // (createdAt, id) keyset ordering end-to-end, so `nextCursor` is only ever
-    // issued from an already-cursor-ordered response — never from a pinned-first
+    // issued from an already-cursor-ordered response: never from a pinned-first
     // offset page, which could otherwise skip newer unpinned doubts. Only honored
     // for the default recency sort with no search. The keyset predicate is applied
     // once a cursor token is actually present.
