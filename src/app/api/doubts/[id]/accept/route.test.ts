@@ -1,4 +1,3 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 // ── Mutable per-test state shared between mocks ──────────────────────────────
@@ -22,22 +21,22 @@ let mockReply: {
 
 let mockUpdatedDoubt: { id: number } | null = { id: 1 };
 
-const inngestSend = vi.fn();
+const inngestSend = jest.fn();
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
-vi.mock("@clerk/nextjs/server", () => ({
-    currentUser: vi.fn().mockResolvedValue({
+jest.mock("@clerk/nextjs/server", () => ({
+    currentUser: jest.fn().mockResolvedValue({
         primaryEmailAddress: { emailAddress: "asker@test.com" },
     }),
 }));
 
-vi.mock("@/inngest/client", () => ({
+jest.mock("@/inngest/client", () => ({
     inngest: { send: inngestSend },
 }));
 
 let selectCallCount = 0;
 
-vi.mock("@/configs/db", () => {
+jest.mock("@/configs/db", () => {
     const makeSelectChain = (result: unknown[]) => ({
         from: () => ({ where: () => ({ limit: () => Promise.resolve(result) }) }),
     });
@@ -47,21 +46,21 @@ vi.mock("@/configs/db", () => {
 
     return {
         db: {
-            select: vi.fn().mockImplementation(() => {
+            select: jest.fn().mockImplementation(() => {
                 selectCallCount += 1;
                 if (selectCallCount === 1) {
                     return makeSelectChain(mockDoubt ? [mockDoubt] : []);
                 }
                 return makeSelectChain(mockReply ? [mockReply] : []);
             }),
-            update: vi.fn().mockImplementation(() =>
+            update: jest.fn().mockImplementation(() =>
                 makeUpdateChain(mockUpdatedDoubt ? [mockUpdatedDoubt] : [])
             ),
         },
     };
 });
 
-vi.mock("@/configs/schema", () => ({
+jest.mock("@/configs/schema", () => ({
     doubtsTable: {
         id: "id",
         userEmail: "userEmail",
@@ -71,15 +70,15 @@ vi.mock("@/configs/schema", () => ({
     repliesTable: { id: "id", doubtId: "doubtId", userEmail: "userEmail" },
 }));
 
-vi.mock("drizzle-orm", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("drizzle-orm")>();
+jest.mock("drizzle-orm", () => {
+    const actual = jest.requireActual("drizzle-orm");
     return {
         ...actual,
-        eq: vi.fn(),
-        and: vi.fn(),
-        or: vi.fn(),
-        ne: vi.fn(),
-        isNull: vi.fn(),
+        eq: jest.fn(),
+        and: jest.fn(),
+        or: jest.fn(),
+        ne: jest.fn(),
+        isNull: jest.fn(),
     };
 });
 
@@ -103,7 +102,7 @@ async function callPost(replyId = 42) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 describe("POST /api/doubts/[id]/accept — idempotency (issue #687)", () => {
     beforeEach(() => {
-        vi.clearAllMocks();
+        jest.clearAllMocks();
         inngestSend.mockReset();
         selectCallCount = 0;
 
@@ -164,7 +163,7 @@ describe("POST /api/doubts/[id]/accept — idempotency (issue #687)", () => {
     it("returns 500 with a generic message and does not leak error details", async () => {
         // Make the DB throw to exercise the catch block
         const { db } = await import("@/configs/db");
-        vi.mocked(db.select).mockImplementationOnce(() => {
+        jest.mocked(db.select).mockImplementationOnce(() => {
             throw new Error("relation \"doubts\" does not exist");
         });
 

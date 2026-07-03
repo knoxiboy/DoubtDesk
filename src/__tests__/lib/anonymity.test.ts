@@ -52,10 +52,10 @@ describe("anonymity: fail closed in production", () => {
     const origSalt = process.env.ANON_HANDLE_SALT;
 
     afterEach(() => {
-        if (origEnv === undefined) delete process.env.NODE_ENV;
-        else process.env.NODE_ENV = origEnv;
-        if (origSalt === undefined) delete process.env.ANON_HANDLE_SALT;
-        else process.env.ANON_HANDLE_SALT = origSalt;
+        if (origEnv === undefined) delete mutableEnv.NODE_ENV;
+        else mutableEnv.NODE_ENV = origEnv;
+        if (origSalt === undefined) delete mutableEnv.ANON_HANDLE_SALT;
+        else mutableEnv.ANON_HANDLE_SALT = origSalt;
     });
 
     it("throws when ANON_HANDLE_SALT is missing in production", () => {
