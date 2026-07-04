@@ -139,9 +139,14 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: "ID is required" }, { status: 400 });
         }
 
-        await db
+        const deleted = await db
             .delete(resumesTable)
-            .where(and(eq(resumesTable.id, parseInt(id)), eq(resumesTable.userEmail, userEmail)));
+            .where(and(eq(resumesTable.id, parseInt(id)), eq(resumesTable.userEmail, userEmail)))
+            .returning();
+
+        if (deleted.length === 0) {
+            return NextResponse.json({ error: "Resume not found" }, { status: 404 });
+        }
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
