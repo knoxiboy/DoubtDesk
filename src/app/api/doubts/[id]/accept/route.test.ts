@@ -1,4 +1,3 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
 // ── Mutable per-test state shared between mocks ──────────────────────────────
@@ -22,22 +21,22 @@ let mockReply: {
 
 let mockUpdatedDoubt: { id: number } | null = { id: 1 };
 
-const inngestSend = vi.fn();
+const mockInngestSend = jest.fn();
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
-vi.mock("@clerk/nextjs/server", () => ({
-    currentUser: vi.fn().mockResolvedValue({
+jest.mock("@clerk/nextjs/server", () => ({
+    currentUser: jest.fn().mockResolvedValue({
         primaryEmailAddress: { emailAddress: "asker@test.com" },
     }),
 }));
 
-vi.mock("@/inngest/client", () => ({
-    inngest: { send: inngestSend },
+jest.mock("@/inngest/client", () => ({
+    inngest: { send: mockInngestSend },
 }));
 
-let selectCallCount = 0;
+let mockSelectCallCount = 0;
 
-vi.mock("@/configs/db", () => {
+jest.mock("@/configs/db", () => {
     const makeSelectChain = (result: unknown[]) => ({
         from: () => ({ where: () => ({ limit: () => Promise.resolve(result) }) }),
     });
@@ -47,21 +46,21 @@ vi.mock("@/configs/db", () => {
 
     return {
         db: {
-            select: vi.fn().mockImplementation(() => {
-                selectCallCount += 1;
-                if (selectCallCount === 1) {
+            select: jest.fn().mockImplementation(() => {
+                mockSelectCallCount += 1;
+                if (mockSelectCallCount === 1) {
                     return makeSelectChain(mockDoubt ? [mockDoubt] : []);
                 }
                 return makeSelectChain(mockReply ? [mockReply] : []);
             }),
-            update: vi.fn().mockImplementation(() =>
+            update: jest.fn().mockImplementation(() =>
                 makeUpdateChain(mockUpdatedDoubt ? [mockUpdatedDoubt] : [])
             ),
         },
     };
 });
 
-vi.mock("@/configs/schema", () => ({
+jest.mock("@/configs/schema", () => ({
     doubtsTable: {
         id: "id",
         userEmail: "userEmail",
@@ -71,17 +70,18 @@ vi.mock("@/configs/schema", () => ({
     repliesTable: { id: "id", doubtId: "doubtId", userEmail: "userEmail" },
 }));
 
-vi.mock("drizzle-orm", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("drizzle-orm")>();
+jest.mock("drizzle-orm", () => {
+    const actual = jest.requireActual("drizzle-orm") as typeof import("drizzle-orm");
     return {
         ...actual,
-        eq: vi.fn(),
-        and: vi.fn(),
-        or: vi.fn(),
-        ne: vi.fn(),
-        isNull: vi.fn(),
+        eq: jest.fn(),
+        and: jest.fn(),
+        or: jest.fn(),
+        ne: jest.fn(),
+        isNull: jest.fn(),
     };
 });
+
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 function makeRequest(replyId: number): NextRequest {
@@ -103,9 +103,9 @@ async function callPost(replyId = 42) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 describe("POST /api/doubts/[id]/accept — idempotency (issue #687)", () => {
     beforeEach(() => {
-        vi.clearAllMocks();
-        inngestSend.mockReset();
-        selectCallCount = 0;
+        jest.clearAllMocks();
+        mockInngestSend.mockReset();
+        mockSelectCallCount = 0;
 
         // Default: unsolved doubt, valid reply, state-changing update
         mockDoubt = { userEmail: "asker@test.com", isSolved: "unsolved", solvedReplyId: null };
@@ -121,8 +121,8 @@ describe("POST /api/doubts/[id]/accept — idempotency (issue #687)", () => {
         expect(body.success).toBe(true);
         expect(body.message).toBe("Answer accepted successfully");
         // karma event fired exactly once
-        expect(inngestSend).toHaveBeenCalledTimes(1);
-        expect(inngestSend).toHaveBeenCalledWith(
+        expect(mockInngestSend).toHaveBeenCalledTimes(1);
+        expect(mockInngestSend).toHaveBeenCalledWith(
             expect.objectContaining({ name: "karma/answer.accepted" })
         );
     });
@@ -140,31 +140,31 @@ describe("POST /api/doubts/[id]/accept — idempotency (issue #687)", () => {
         expect(body.success).toBe(true);
         expect(body.message).toBe("Answer was already accepted (no-op)");
         // No karma event fired
-        expect(inngestSend).not.toHaveBeenCalled();
+        expect(mockInngestSend).not.toHaveBeenCalled();
     });
 
     it("karmaScore is awarded only once after two POSTs with the same replyId", async () => {
         // First POST — genuine state transition
         const res1 = await callPost(42);
         expect((await res1.json()).message).toBe("Answer accepted successfully");
-        expect(inngestSend).toHaveBeenCalledTimes(1);
+        expect(mockInngestSend).toHaveBeenCalledTimes(1);
 
         // Second POST — UPDATE finds no row to change (idempotency guard at DB level)
-        selectCallCount = 0;
-        inngestSend.mockClear();
+        mockSelectCallCount = 0;
+        mockInngestSend.mockClear();
         mockDoubt = { userEmail: "asker@test.com", isSolved: "solved", solvedReplyId: 42 };
         mockUpdatedDoubt = null;
 
         const res2 = await callPost(42);
         expect((await res2.json()).message).toBe("Answer was already accepted (no-op)");
         // inngest.send was NOT called on the second request
-        expect(inngestSend).not.toHaveBeenCalled();
+        expect(mockInngestSend).not.toHaveBeenCalled();
     });
 
     it("returns 500 with a generic message and does not leak error details", async () => {
         // Make the DB throw to exercise the catch block
         const { db } = await import("@/configs/db");
-        vi.mocked(db.select).mockImplementationOnce(() => {
+        jest.mocked(db.select).mockImplementationOnce(() => {
             throw new Error("relation \"doubts\" does not exist");
         });
 

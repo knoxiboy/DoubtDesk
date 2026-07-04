@@ -52,12 +52,12 @@ describe("anonymity: fail closed in production", () => {
     const origSalt = process.env.ANON_HANDLE_SALT;
 
     afterEach(() => {
-        if (origEnv === undefined) delete process.env.NODE_ENV;
-        else process.env.NODE_ENV = origEnv;
+        if (origEnv === undefined) delete mutableEnv.NODE_ENV;
+        else mutableEnv.NODE_ENV = origEnv;
         if (origSalt === undefined) delete process.env.ANON_HANDLE_SALT;
         else process.env.ANON_HANDLE_SALT = origSalt;
     });
-    });
+    
 
     it("throws when ANON_HANDLE_SALT is missing in production", () => {
         delete process.env.ANON_HANDLE_SALT;
@@ -77,6 +77,7 @@ describe("anonymity: fail closed in production", () => {
         expect(getAnonymousHandle("user@example.com")).toMatch(/^Student_[A-Z0-9]{5}$/);
     });
 });
+
 
 describe("anonymity: getAnonymousInitial", () => {
     it("returns a single character derived from the handle, not the email", () => {

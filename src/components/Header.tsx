@@ -108,7 +108,7 @@ export default function Header() {
         </Link>
 
         {/* Desktop Navigation Links */}
-        <div className="hidden md:flex items-center gap-4 flex-wrap">
+        <div className="hidden lg:flex items-center gap-4 flex-wrap">
           {pageLinks.map((link) => {
             const scrollId = link.href.startsWith("#")
               ? link.href.slice(1)
@@ -134,7 +134,7 @@ export default function Header() {
         </div>
 
         {/* Desktop Right Section */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden lg:flex items-center gap-4">
           <ThemeToggle />
 
           <SignedOut>
@@ -189,7 +189,7 @@ export default function Header() {
         </div>
 
         {/* Mobile Menu Toggle and Theme */}
-        <div className="flex md:hidden items-center gap-3 relative z-50 ml-auto">
+        <div className="flex lg:hidden items-center gap-3 relative z-50 ml-auto">
           <ThemeToggle />
           <button
             onClick={() => setIsOpen(!isOpen)}
@@ -211,7 +211,7 @@ export default function Header() {
 
       {/* Mobile Menu */}
       <div
-        className={`fixed inset-0 h-screen w-screen z-40 bg-white dark:bg-black transform transition-transform duration-300 ease-in-out md:hidden flex flex-col pt-24 px-6 pb-8 gap-8 overflow-y-auto ${
+        className={`fixed inset-0 h-screen w-screen z-40 bg-white dark:bg-black transform transition-transform duration-300 ease-in-out lg:hidden flex flex-col pt-24 px-6 pb-8 gap-8 overflow-y-auto ${
           isOpen ? "translate-y-0" : "-translate-y-full"
         }`}
       >
