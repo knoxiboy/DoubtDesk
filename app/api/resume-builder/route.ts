@@ -49,9 +49,9 @@ export async function POST(req: NextRequest) {
 
             return NextResponse.json(inserted[0]);
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Resume Save Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -110,9 +110,9 @@ export async function GET(req: NextRequest) {
         });
 
         return NextResponse.json(resumes);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Resume Fetch Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -133,24 +133,32 @@ export async function DELETE(req: NextRequest) {
         if (isBlocked) return errorResponse;
 
         const { searchParams } = new URL(req.url);
-        const id = searchParams.get("id");
+        const idParam = searchParams.get("id");
 
-        if (!id) {
+        if (!idParam) {
             return NextResponse.json({ error: "ID is required" }, { status: 400 });
         }
 
+        // Reject anything that isn't a clean integer (e.g. "123abc")
+        if (!/^\d+$/.test(idParam)) {
+            return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+        }
+
+        const id = parseInt(idParam, 10);
+
+        // Only return the id column — no need to pull the full row (resumeData) just to check existence
         const deleted = await db
             .delete(resumesTable)
-            .where(and(eq(resumesTable.id, parseInt(id)), eq(resumesTable.userEmail, userEmail)))
-            .returning();
+            .where(and(eq(resumesTable.id, id), eq(resumesTable.userEmail, userEmail)))
+            .returning({ id: resumesTable.id });
 
         if (deleted.length === 0) {
             return NextResponse.json({ error: "Resume not found" }, { status: 404 });
         }
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Resume Delete Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
