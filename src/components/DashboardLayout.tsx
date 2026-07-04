@@ -24,7 +24,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showSignOutDialog, setShowSignOutDialog] = useState(false);
 
   const { signOut } = useClerk();
@@ -82,7 +82,8 @@ export default function DashboardLayout({
               <button
                 onClick={() => setIsSidebarOpen((prev) => !prev)}
                 className=" p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-900 transition-all duration-300"
-                aria-label="Open sidebar"
+                aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+                aria-expanded={isSidebarOpen}
               >
                 <Menu className="w-5 h-5" />
               </button>
