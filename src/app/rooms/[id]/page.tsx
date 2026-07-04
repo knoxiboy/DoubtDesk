@@ -897,11 +897,11 @@ export default function ClassroomPage() {
                 {doubtFilter === "in-progress" && (
                   <div className="space-y-6">
                     <div className="flex items-center gap-4">
-                      <div className="h-[1px] flex-1 bg-gradient-to-r vom-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
+                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
                       <h3 className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/5 px-4 py-1.5 rounded-full border border-amber-500/10">
                         In Progress
                       </h3>
-                      <div className="h-[1px] flex-1 bg-gradient-to-r vom-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
+                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       {Array.isArray(doubts) &&
@@ -928,11 +928,11 @@ export default function ClassroomPage() {
                 {doubtFilter === "solved" && (
                   <div className="space-y-6">
                     <div className="flex items-center gap-4">
-                      <div className="h-[1px] flex-1 bg-gradient-to-r vom-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
+                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
                       <h3 className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-500/5 px-4 py-1.5 rounded-full border border-emerald-500/10">
                         Teacher Resolved
                       </h3>
-                      <div className="h-[1px] flex-1 bg-gradient-to-r vom-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
+                      <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-200 dark:via-zinc-900 to-transparent"></div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       {Array.isArray(doubts) &&
