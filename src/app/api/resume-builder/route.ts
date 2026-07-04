@@ -84,9 +84,17 @@ export async function GET(req: NextRequest) {
                 return NextResponse.json({ error: "Resume not found" }, { status: 404 });
             }
 
+            let parsedData = {};
+            try {
+                parsedData = JSON.parse(result[0].resumeData);
+            } catch (e) {
+                console.error("Single Resume Parse Error:", e);
+                parsedData = {};
+            }
+
             const resume = {
                 ...result[0],
-                resumeData: JSON.parse(result[0].resumeData)
+                resumeData: parsedData
             };
 
             return NextResponse.json(resume);
@@ -97,7 +105,7 @@ export async function GET(req: NextRequest) {
             .from(resumesTable)
             .where(eq(resumesTable.userEmail, userEmail));
 
-        const resumes = results.map(item => {
+        const resumes = results.map((item: any) => {
             try {
                 return {
                     ...item,
