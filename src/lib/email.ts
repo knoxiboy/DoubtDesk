@@ -100,7 +100,7 @@ export async function sendReplyNotificationEmail(params: {
 }) {
     const { toEmail, doubtId, doubtSubject, doubtContent, replierName, replyContent } = params;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const doubtLink = `${appUrl}`;
+    const doubtLink = `${appUrl}/doubts/${doubtId}`;
     const cleanDoubtContent = doubtContent.length > 100 ? `${doubtContent.slice(0, 97)}...` : doubtContent;
     const cleanReplyContent = replyContent.length > 180 ? `${replyContent.slice(0, 177)}...` : replyContent;
 
