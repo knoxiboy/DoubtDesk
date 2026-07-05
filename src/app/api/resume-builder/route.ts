@@ -5,6 +5,13 @@ import { eq, and } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
 
+function normalizeParsedResumeData(value: unknown): Record<string, unknown> {
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+    }
+    return {};
+}
+
 // Postgres 4-byte signed integer max limit
 const MAX_PG_INT = 2147483647;
 
@@ -128,7 +135,7 @@ export async function GET(req: NextRequest) {
             .from(resumesTable)
             .where(eq(resumesTable.userEmail, userEmail));
 
-        const resumes = results.map((item: any) => {
+        const resumes = results.map((item: (typeof results)[number]) => {
             try {
                 const parsed = JSON.parse(item.resumeData);
                 return {
