@@ -3,10 +3,11 @@ import type { NonRetriableError } from "inngest";
 import fs from "fs";
 import path from "path";
 import { db } from "../configs/db";
-import { doubtsTable, usersTable, pendingNotificationsTable, repliesTable } from "../configs/schema";
-import { eq, inArray } from "drizzle-orm";
-import { emailNotificationLimiter } from "../lib/ratelimit";
+import { doubtsTable, usersTable, pendingNotificationsTable, repliesTable, videoJobsTable } from "../configs/schema";
+import { eq, inArray, and, lt } from "drizzle-orm";
+import { emailNotificationLimiter, redisClient } from "../lib/ratelimit";
 import { sendReplyNotificationEmail, sendDigestEmail } from "../lib/email";
+import { runVideoPipeline } from "../lib/video/pipeline";
 
 interface InngestEvent {
     data: Record<string, unknown>;
@@ -329,3 +330,90 @@ export const sendWeeklyDigest = inngest.createFunction(
 );
 
 export { detectConfusionSpikes } from "../app/api/inngest/ConfusionSpikeDetector";
+// ── Async video generation (issue #321) ──────────────────────────────────────
+// Runs the OCR -> AI script -> TTS -> Remotion render pipeline off the request
+// path, persisting progress to the video_jobs row so clients can stream it.
+export const generateVideo = inngest.createFunction(
+  { id: "generate-video", retries: 0, triggers: [{ event: "video/generate.requested" }] },
+  async ({ event, step }: { event: InngestEvent; step: InngestStep }) => {
+    const { jobId, content, imageUrl, baseUrl, lockKey } = event.data as {
+      jobId: string;
+      content: string | null;
+      imageUrl: string | null;
+      baseUrl: string;
+      lockKey?: string;
+    };
+
+    if (!jobId) {
+      throw new Error("generateVideo: missing jobId in event payload");
+    }
+
+    try {
+      const result = await step.run("run-video-pipeline", async () => {
+        return await runVideoPipeline(
+          { content, imageUrl, baseUrl },
+          async ({ progress, step: label }) => {
+            await db
+              .update(videoJobsTable)
+              .set({ status: "processing", progress, step: label, updatedAt: new Date() })
+              .where(eq(videoJobsTable.id, jobId));
+          },
+        );
+      });
+
+      await step.run("mark-video-complete", async () => {
+        await db
+          .update(videoJobsTable)
+          .set({
+            status: "completed",
+            progress: 100,
+            step: "Done",
+            videoUrl: result.videoUrl,
+            videoType: result.videoType,
+            updatedAt: new Date(),
+          })
+          .where(eq(videoJobsTable.id, jobId));
+      });
+
+      return { jobId, videoUrl: result.videoUrl, type: result.videoType };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Rendering failed";
+      await db
+        .update(videoJobsTable)
+        .set({ status: "failed", error: message, updatedAt: new Date() })
+        .where(eq(videoJobsTable.id, jobId));
+      throw error;
+    } finally {
+      // Release the per-user generation lock so the user can start another video.
+      if (lockKey) {
+        await redisClient.del(lockKey).catch(() => {});
+      }
+    }
+  },
+);
+
+// Mark video jobs that have been stuck in queued/processing for too long as
+// failed, so the UI doesn't spin forever if a background run was lost.
+export const cleanupStaleVideoJobs = inngest.createFunction(
+  { id: "cleanup-stale-video-jobs", triggers: [{ cron: "*/15 * * * *" }] },
+  async ({ step }: { step: InngestStep }) => {
+    return await step.run("fail-stale-video-jobs", async () => {
+      const cutoff = new Date(Date.now() - 15 * 60 * 1000); // 15 minutes
+      const failed = await db
+        .update(videoJobsTable)
+        .set({
+          status: "failed",
+          error: "Video generation timed out",
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            inArray(videoJobsTable.status, ["queued", "processing"]),
+            lt(videoJobsTable.updatedAt, cutoff),
+          ),
+        )
+        .returning({ id: videoJobsTable.id });
+      return { failedStaleJobs: failed.length };
+    });
+  },
+);
