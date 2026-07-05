@@ -5,6 +5,13 @@ import { eq, and } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
 
+function normalizeParsedResumeData(value: unknown): Record<string, unknown> {
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+    }
+    return {};
+}
+
 // Postgres 4-byte signed integer max limit
 const MAX_PG_INT = 2147483647;
 
@@ -107,9 +114,17 @@ export async function GET(req: NextRequest) {
                 return NextResponse.json({ error: "Resume not found" }, { status: 404 });
             }
 
+            let parsedData: unknown = {};
+            try {
+                parsedData = JSON.parse(result[0].resumeData);
+            } catch (e) {
+                console.error("Single Resume Parse Error:", e);
+                parsedData = {};
+            }
+
             const resume = {
                 ...result[0],
-                resumeData: JSON.parse(result[0].resumeData)
+                resumeData: normalizeParsedResumeData(parsedData)
             };
 
             return NextResponse.json(resume);
@@ -120,11 +135,12 @@ export async function GET(req: NextRequest) {
             .from(resumesTable)
             .where(eq(resumesTable.userEmail, userEmail));
 
-        const resumes = results.map(item => {
+        const resumes = results.map((item: (typeof results)[number]) => {
             try {
+                const parsed = JSON.parse(item.resumeData);
                 return {
                     ...item,
-                    resumeData: JSON.parse(item.resumeData)
+                    resumeData: normalizeParsedResumeData(parsed)
                 };
             } catch (e) {
                 console.error("Parse Error:", e);
