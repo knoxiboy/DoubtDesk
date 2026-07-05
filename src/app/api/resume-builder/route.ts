@@ -5,6 +5,13 @@ import { eq, and } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth-utils";
 
+function normalizeParsedResumeData(value: unknown): Record<string, unknown> {
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        return value as Record<string, unknown>;
+    }
+    return {};
+}
+
 export async function POST(req: NextRequest) {
     try {
         const user = await currentUser();
@@ -84,7 +91,7 @@ export async function GET(req: NextRequest) {
                 return NextResponse.json({ error: "Resume not found" }, { status: 404 });
             }
 
-            let parsedData = {};
+            let parsedData: unknown = {};
             try {
                 parsedData = JSON.parse(result[0].resumeData);
             } catch (e) {
@@ -94,7 +101,7 @@ export async function GET(req: NextRequest) {
 
             const resume = {
                 ...result[0],
-                resumeData: parsedData
+                resumeData: normalizeParsedResumeData(parsedData)
             };
 
             return NextResponse.json(resume);
@@ -107,9 +114,10 @@ export async function GET(req: NextRequest) {
 
         const resumes = results.map((item: any) => {
             try {
+                const parsed = JSON.parse(item.resumeData);
                 return {
                     ...item,
-                    resumeData: JSON.parse(item.resumeData)
+                    resumeData: normalizeParsedResumeData(parsed)
                 };
             } catch (e) {
                 console.error("Parse Error:", e);
