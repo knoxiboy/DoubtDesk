@@ -17,7 +17,7 @@ export default function robots(): MetadataRoute.Robots {
       ],
     },
     sitemap: `${
-      process.env.NEXT_PUBLIC_APP_URL || "https://doubtdesk.vercel.app"
+      process.env.NEXT_PUBLIC_APP_URL || "https://doubt-desk-seven.vercel.app"
     }/sitemap.xml`,
   };
 }
