@@ -11,6 +11,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import RecommendedClassrooms from "@/components/RecommendedClassrooms"
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs"
+import Link from "next/link";
 
 type AnalyticsData = {
     trendingDoubts: any[];
@@ -86,9 +87,27 @@ export default function Dashboard() {
         return (
             <>
                 <SignedIn>
-                    <div role="status" className="p-10 text-center text-sm text-slate-500 dark:text-zinc-400">
-                        {ANALYTICS_UNAVAILABLE_MESSAGE}
-                    </div>
+                    <div
+  role="status"
+  className="p-10 text-center border rounded-xl"
+>
+  <div className="text-5xl mb-4">📊</div>
+
+  <h3 className="text-xl font-semibold mb-2">
+    Analytics Unavailable
+  </h3>
+
+  <p className="text-slate-500 mb-4">
+    Analytics will appear once classroom activity becomes available.
+  </p>
+
+  <Link
+  href="/rooms"
+  className="inline-block rounded-lg bg-purple-600 px-4 py-2 text-white"
+>
+  Go To Virtual Campus
+</Link>
+</div>
                 </SignedIn>
                 <SignedOut>
                     <RedirectToSignIn />

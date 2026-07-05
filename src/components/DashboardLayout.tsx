@@ -75,14 +75,15 @@ export default function DashboardLayout({
         onClose={() => setIsSidebarOpen(false)}
       />
 
-      <div className="flex flex-1 min-w-0 flex-col relative z-10">
+      <div className={`flex flex-1 min-w-0 flex-col relative z-10 transition-all duration-300 ${ isSidebarOpen ? "lg:ml-72" : "lg:ml-0"}`}>
         <header className="sticky top-0 z-20 flex h-16 md:h-20 shrink-0 items-center border-b border-slate-100 dark:border-zinc-900/60 bg-white/80 dark:bg-black/80 backdrop-blur-xl transition-colors duration-500">
           <div className="flex flex-1 items-center justify-between px-4 md:px-6">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-900 transition-all duration-300"
-                aria-label="Open sidebar"
+                onClick={() => setIsSidebarOpen((prev) => !prev)}
+                className=" p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-900 transition-all duration-300"
+                aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+                aria-expanded={isSidebarOpen}
               >
                 <Menu className="w-5 h-5" />
               </button>

@@ -77,6 +77,7 @@ describe("anonymity: fail closed in production", () => {
     });
 });
 
+
 describe("anonymity: getAnonymousInitial", () => {
     it("returns a single character derived from the handle, not the email", () => {
         const initial = getAnonymousInitial("zach@example.com");

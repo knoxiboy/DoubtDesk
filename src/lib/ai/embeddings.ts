@@ -8,7 +8,7 @@ const groq = new Groq({
 });
 
 const EMBEDDING_DIMENSIONS = 1536;
-const DEFAULT_SIMILARITY_THRESHOLD = 0.8; // cosine similarity
+const DEFAULT_SIMILARITY_THRESHOLD = 80; // 0..100 scale, matching similarity expression output
 const DEFAULT_TOP_K = 5;
 
 function getEmbeddingInput(content: string, subject?: string | null) {

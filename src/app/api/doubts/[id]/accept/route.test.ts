@@ -37,6 +37,8 @@ jest.mock("@/inngest/client", () => ({
     inngest: { send: mockInngestSend },
 }));
 
+let mockSelectCallCount = 0;
+
 jest.mock("@/configs/db", () => {
     const makeSelectChain = (result: unknown[]) => ({
         from: () => ({ where: () => ({ limit: () => Promise.resolve(result) }) }),
@@ -82,6 +84,7 @@ jest.mock("drizzle-orm", () => {
         isNull: jest.fn(),
     };
 });
+
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 function makeRequest(replyId: number): NextRequest {
