@@ -92,7 +92,7 @@ export async function GET(req: Request) {
                 ...m,
                 isOwner: isOwnerEmail(m.userEmail),
             }))
-            : members.map((m) => ({
+            : members.map((m: any) => ({
                 displayName: `${m.role.toLowerCase() === 'student' ? 'Student' : 'Member'}_${m.id}`,
                 role: m.role,
                 joinedAt: m.joinedAt,

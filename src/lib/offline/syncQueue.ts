@@ -11,7 +11,7 @@ export interface SyncItem {
 }
 
 function openDB(): Promise<IDBDatabase> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve: any, reject: any) => {
         if (typeof window === "undefined" || !window.indexedDB) {
             reject(new Error("IndexedDB is not supported in this environment"));
             return;
@@ -41,7 +41,7 @@ export async function addToQueue(url: string, method: 'POST', payload: any): Pro
         timestamp: Date.now()
     };
     
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve: any, reject: any) => {
         const transaction = db.transaction(STORE_NAME, "readwrite");
         const store = transaction.objectStore(STORE_NAME);
         const request = store.put(item);
@@ -58,13 +58,13 @@ export async function addToQueue(url: string, method: 'POST', payload: any): Pro
 export async function getQueue(): Promise<SyncItem[]> {
     try {
         const db = await openDB();
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve: any, reject: any) => {
             const transaction = db.transaction(STORE_NAME, "readonly");
             const store = transaction.objectStore(STORE_NAME);
             const request = store.getAll();
             request.onsuccess = () => {
                 const items = request.result as SyncItem[];
-                items.sort((a, b) => a.timestamp - b.timestamp);
+                items.sort((a: any, b: any) => a.timestamp - b.timestamp);
                 resolve(items);
             };
             request.onerror = () => reject(request.error);
@@ -76,7 +76,7 @@ export async function getQueue(): Promise<SyncItem[]> {
 
 export async function removeFromQueue(id: string): Promise<void> {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve: any, reject: any) => {
         const transaction = db.transaction(STORE_NAME, "readwrite");
         const store = transaction.objectStore(STORE_NAME);
         const request = store.delete(id);
@@ -148,7 +148,7 @@ export async function syncOfflineQueue(): Promise<void> {
     
     if (typeof navigator !== "undefined" && navigator.locks) {
         try {
-            await navigator.locks.request("syncOfflineQueueLock", { ifAvailable: true }, async (lock) => {
+            await navigator.locks.request("syncOfflineQueueLock", { ifAvailable: true }, async (lock: any) => {
                 if (!lock) {
                     // Lock could not be acquired (already held by another tab or service worker)
                     return;

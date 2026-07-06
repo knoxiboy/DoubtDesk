@@ -126,7 +126,7 @@ export default function MembersListView() {
                             </p>
                         </div>
                     ) : (
-                        members.map((member) => (
+                        members.map((member: any) => (
                             <div
                                 key={`${member.userEmail || member.displayName}-${id}`}
                                 className="p-4 border border-slate-200 dark:border-zinc-800 rounded-xl"
@@ -149,7 +149,7 @@ export default function MembersListView() {
                 {totalPages > 1 && (
                     <div className="flex items-center justify-center gap-2 mt-8">
                         <button
-                            onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                            onClick={() => setPage((prev: any) => Math.max(prev - 1, 1))}
                             disabled={page === 1 || loading}
                             className="h-10 w-10 flex items-center justify-center rounded-lg border bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                             aria-label="Previous page"
@@ -157,7 +157,7 @@ export default function MembersListView() {
                             <ChevronLeft className="w-4 h-4" />
                         </button>
 
-                        {Array.from({ length: totalPages }, (_, i) => (
+                        {Array.from({ length: totalPages }, (_: any, i: any) => (
                             <button
                                 key={i}
                                 disabled={loading}
@@ -179,7 +179,7 @@ export default function MembersListView() {
                         ))}
 
                         <button
-                            onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                            onClick={() => setPage((prev: any) => Math.min(prev + 1, totalPages))}
                             disabled={page === totalPages || loading}
                             className="h-10 w-10 flex items-center justify-center rounded-lg border bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                             aria-label="Next page"

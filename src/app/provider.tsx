@@ -113,7 +113,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
             .then(({ syncOfflineQueue }) => {
                 syncOfflineQueue();
             })
-            .catch((err) => {
+            .catch((err: any) => {
                 console.error("Failed to load syncQueue for offline synchronization:", err);
             });
 

@@ -29,8 +29,8 @@ export async function GET(req: NextRequest) {
             .from(membershipsTable)
             .where(eq(membershipsTable.userEmail, email));
         const teacherMembershipIds = teacherMemberships
-            .filter((membership) => ["teacher", "owner", "admin"].includes(membership.role))
-            .map((membership) => membership.classroomId);
+            .filter((membership: any) => ["teacher", "owner", "admin"].includes(membership.role))
+            .map((membership: any) => membership.classroomId);
         
         const isTeacherOrAdmin =
             dbUser?.role === 'teacher' ||
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
                 }).from(classroomsTable).where(inArray(classroomsTable.id, teacherMembershipIds))
                 : [];
             const accessibleClassrooms = new Map(
-                [...classroomsTaught, ...membershipClassrooms].map((classroom) => [classroom.id, classroom])
+                [...classroomsTaught, ...membershipClassrooms].map((classroom: any) => [classroom.id, classroom])
             );
             classroomsList = [...accessibleClassrooms.values()].map(c => ({
                 id: c.id,
@@ -172,7 +172,7 @@ export async function GET(req: NextRequest) {
             doubts.forEach(doubt => {
                 const doubtReplies = replies.filter(r => r.doubtId === doubt.id);
                 if (doubtReplies.length > 0) {
-                    const earliestReply = doubtReplies.reduce((prev, curr) => {
+                    const earliestReply = doubtReplies.reduce((prev: any, curr: any) => {
                         return new Date(prev.createdAt) < new Date(curr.createdAt) ? prev : curr;
                     });
                     const diffMs = new Date(earliestReply.createdAt).getTime() - new Date(doubt.createdAt).getTime();
@@ -199,7 +199,7 @@ export async function GET(req: NextRequest) {
                 subjectsMap[d.subject] = (subjectsMap[d.subject] || 0) + 1;
             });
             subjects = Object.entries(subjectsMap).map(([subject, count]) => ({ subject, count }))
-                .sort((a, b) => b.count - a.count);
+                .sort((a: any, b: any) => b.count - a.count);
 
             // Hourly peak times
             const hoursMap: Record<string, number> = {};

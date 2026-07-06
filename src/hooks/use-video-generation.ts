@@ -56,7 +56,7 @@ export function useVideoGeneration() {
       );
       sourceRef.current = es;
 
-      es.onmessage = (evt) => {
+      es.onmessage = (evt: any) => {
         let data: Partial<VideoGenerationState> & { type?: string };
         try {
           data = JSON.parse(evt.data);
@@ -65,7 +65,7 @@ export function useVideoGeneration() {
         }
         if (data.type === "timeout") return; // EventSource will reconnect
 
-        setState((prev) => ({
+        setState((prev: any) => ({
           ...prev,
           status: (data.status as VideoJobStatus) ?? prev.status,
           progress:
@@ -96,18 +96,18 @@ export function useVideoGeneration() {
         });
         const data = await res.json();
         if (!res.ok) {
-          setState((p) => ({
+          setState((p: any) => ({
             ...p,
             status: "failed",
             error: data?.error ?? "Failed to start video generation",
           }));
           return null;
         }
-        setState((p) => ({ ...p, jobId: data.jobId, status: "queued" }));
+        setState((p: any) => ({ ...p, jobId: data.jobId, status: "queued" }));
         subscribe(data.jobId);
         return data.jobId as string;
       } catch (e) {
-        setState((p) => ({
+        setState((p: any) => ({
           ...p,
           status: "failed",
           error: e instanceof Error ? e.message : "Network error",

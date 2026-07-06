@@ -60,7 +60,7 @@ export default function DiscussionModal({
       replies: [],
     };
 
-    setComments((prev) => [...prev, newComment]);
+    setComments((prev: any) => [...prev, newComment]);
 
     setCommentText("");
   };
@@ -119,7 +119,7 @@ export default function DiscussionModal({
 
             <textarea
               value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
+              onChange={(e: any) => setCommentText(e.target.value)}
               placeholder="Write a comment..."
               aria-label="Write a comment"
               rows={4}
@@ -173,7 +173,7 @@ export default function DiscussionModal({
           </div>
 
           <div className="space-y-6">
-            {comments.map((comment) => (
+            {comments.map((comment: any) => (
               <CommentItem
                 key={comment.id}
                 comment={comment}

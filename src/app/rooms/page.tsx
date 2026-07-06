@@ -169,7 +169,7 @@ export default function RoomsPage() {
                     <div className="space-y-6">
                         <Skeleton className="h-6 w-48 bg-slate-100 dark:bg-zinc-900" />
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {[1, 2, 3].map((i) => (
+                            {[1, 2, 3].map((i: any) => (
                                 <RoomCardSkeleton key={i} />
                             ))}
                         </div>
@@ -198,7 +198,7 @@ export default function RoomsPage() {
                                 <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" /> My Academic Circles
                             </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {rooms.map((room) => (
+                                {rooms.map((room: any) => (
                                     <RoomCard key={room.id} room={room} isRecommended={false} />
                                 ))}
                             </div>
@@ -210,7 +210,7 @@ export default function RoomsPage() {
                                     <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" /> Recommended for {appUser?.year} at {appUser?.university}
                                 </h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {recommended.map((room) => (
+                                    {recommended.map((room: any) => (
                                         <RoomCard key={room.id} room={room} isRecommended={true} onDiscover={() => setIsJoinModalOpen(true)} />
                                     ))}
                                 </div>
@@ -236,7 +236,7 @@ export default function RoomsPage() {
                                     type="text" 
                                     required 
                                     value={createData.name}
-                                    onChange={(e) => setCreateData({ ...createData, name: e.target.value })}
+                                    onChange={(e: any) => setCreateData({ ...createData, name: e.target.value })}
                                     placeholder="e.g. Advanced Calculus Section A"
                                     className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-xl focus:outline-none focus:border-blue-500/50 transition-all font-medium text-sm" 
                                 />
@@ -246,7 +246,7 @@ export default function RoomsPage() {
                                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 px-1">Target Year</label>
                                 <select 
                                     value={createData.year}
-                                    onChange={(e) => setCreateData({ ...createData, year: e.target.value })}
+                                    onChange={(e: any) => setCreateData({ ...createData, year: e.target.value })}
                                     className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-xl focus:outline-none focus:border-blue-500/50 transition-all font-medium appearance-none cursor-pointer text-sm"
                                 >
                                     <option className="bg-white dark:bg-zinc-900" value="1st Year">1st Year</option>
@@ -294,7 +294,7 @@ export default function RoomsPage() {
                                     required 
                                     maxLength={8}
                                     value={joinCode}
-                                    onChange={(e) => setJoinCode(e.target.value)}
+                                    onChange={(e: any) => setJoinCode(e.target.value)}
                                     placeholder="XXXXXX"
                                     className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-xl focus:outline-none focus:border-blue-500/50 transition-all font-black text-center text-2xl tracking-[0.3em] uppercase placeholder:text-slate-300 dark:placeholder:text-zinc-700 text-slate-900 dark:text-white" 
                                 />

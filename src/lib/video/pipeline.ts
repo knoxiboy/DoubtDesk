@@ -69,7 +69,7 @@ function splitTextIntoChunks(text: string, maxLen: number = 200): string[] {
 
 function getGoogleTtsUrls(text: string, lang: string = "en", speed: number = 1): string[] {
   const chunks = splitTextIntoChunks(text, 200);
-  return chunks.map((chunk) => {
+  return chunks.map((chunk: any) => {
     const queryParams = new URLSearchParams({
       ie: "UTF-8",
       q: chunk,
@@ -188,7 +188,7 @@ Return ONLY a JSON object with a "scenes" array.`;
 
       const urls = getGoogleTtsUrls(narrationText, "en", 1);
       const audioBuffers = await Promise.all(
-        urls.map(async (url) => {
+        urls.map(async (url: any) => {
           const response = await axios({
             method: "get",
             url,
@@ -243,7 +243,7 @@ Return ONLY a JSON object with a "scenes" array.`;
         console.error("Failed to delete temp audio file:", err);
       }
     }),
-  ).catch((err) => console.error("Error during temp audio cleanup:", err));
+  ).catch((err: any) => console.error("Error during temp audio cleanup:", err));
 
   // Persist the render to durable object storage (issue #321). The local
   // public/videos path is ephemeral in serverless/Inngest execution and isn't

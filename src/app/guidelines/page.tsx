@@ -64,7 +64,7 @@ export default function GuidelinesPage() {
 
         {/* Quick Navigation */}
         <div className="flex flex-wrap gap-3 mb-16 justify-center">
-          {sections.map((section) => {
+          {sections.map((section: any) => {
             const Icon = section.icon;
             return (
               <a

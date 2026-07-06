@@ -58,7 +58,7 @@ describe("AI Career Chat API Endpoint", () => {
 
     it.each(["null", "[]"])(
         "returns 400 for non-object JSON body %s",
-        async (body) => {
+        async (body: any) => {
             const request = new Request("http://localhost/api/ai-career-chat-agent", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

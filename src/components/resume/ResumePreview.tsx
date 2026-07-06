@@ -68,7 +68,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
                     <section className="mb-4">
                         <h2 className="text-[11px] font-black uppercase tracking-widest mb-3 border-b-[1.5px] border-slate-900 pb-1 text-slate-900">Professional Experience</h2>
                         <div className="space-y-4">
-                            {experience.map((exp, idx) => (
+                            {experience.map((exp: any, idx: any) => (
                                 <div key={idx} className={`${idx > 0 ? "pt-3 border-t border-slate-100" : ""}`}>
                                     <div className="flex justify-between items-baseline mb-0.5">
                                         <h3 className="text-[11px] font-bold text-slate-900">{exp.role || "Role"}</h3>
@@ -76,7 +76,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
                                     </div>
                                     <h4 className="text-[10px] font-semibold text-slate-700 italic mb-2">{exp.company || "Company"}</h4>
                                     <div className="space-y-1.5 pl-2">
-                                        {exp.description.split('\n').filter(p => p.trim()).map((point, pIdx) => (
+                                        {exp.description.split('\n').filter(p => p.trim()).map((point: any, pIdx: any) => (
                                             <div key={pIdx} className="flex gap-2.5">
                                                 <span className="text-[9px] mt-1.5 text-slate-600 dark:text-slate-400">•</span>
                                                 <p className="text-[10px] leading-snug text-slate-700">
@@ -96,7 +96,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
                     <section className="mb-4">
                         <h2 className="text-[11px] font-black uppercase tracking-widest mb-3 border-b-[1.5px] border-slate-900 pb-1 text-slate-900">Strategic Projects</h2>
                         <div className="space-y-4">
-                            {projects.map((project, idx) => (
+                            {projects.map((project: any, idx: any) => (
                                 <div key={idx} className={`${idx > 0 ? "pt-3 border-t border-slate-100" : ""}`}>
                                     <div className="flex justify-between items-baseline mb-2">
                                         <h3 className="text-[11px] font-bold text-slate-900 flex items-center gap-2">
@@ -105,7 +105,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
                                         </h3>
                                         {project.technologies && project.technologies.length > 0 && (
                                             <div className="flex gap-1.5">
-                                                {project.technologies.map((tech, i) => (
+                                                {project.technologies.map((tech: any, i: any) => (
                                                     <span key={i} className="text-[8px] px-2 py-0.5 bg-slate-50 text-slate-600 rounded-full font-bold uppercase tracking-tighter border border-slate-100">
                                                         {tech}
                                                     </span>
@@ -114,7 +114,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
                                         )}
                                     </div>
                                     <div className="space-y-1.5 pl-2">
-                                        {project.description.split('\n').filter(p => p.trim()).map((point, pIdx) => (
+                                        {project.description.split('\n').filter(p => p.trim()).map((point: any, pIdx: any) => (
                                             <div key={pIdx} className="flex gap-2.5">
                                                 <span className="text-[9px] mt-1.5 text-slate-600 dark:text-slate-400">•</span>
                                                 <p className="text-[10px] leading-snug text-slate-700">
@@ -134,7 +134,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
                     <section className="mb-4">
                         <h2 className="text-[11px] font-black uppercase tracking-widest mb-3 border-b-[1.5px] border-slate-900 pb-1 text-slate-900">Education</h2>
                         <div className="space-y-3">
-                            {education.map((edu, idx) => (
+                            {education.map((edu: any, idx: any) => (
                                 <div key={idx} className="">
                                     <div className="flex justify-between items-baseline mb-0.5">
                                         <h3 className="text-[11px] font-bold text-slate-900">{edu.institution || "Institution"}</h3>
@@ -155,7 +155,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
                     <section className="mb-4">
                         <h2 className="text-[11px] font-black uppercase tracking-widest mb-3 border-b-[1.5px] border-slate-900 pb-1 text-slate-900">Technical Skills</h2>
                         <div className="space-y-2.5">
-                            {skills.map((skill, idx) => (
+                            {skills.map((skill: any, idx: any) => (
                                 <div key={idx} className="flex items-start">
                                     <span className="text-[10px] font-bold text-slate-900 w-[45mm] flex-shrink-0">{skill.category}:</span>
                                     <span className="text-[10px] text-slate-700 leading-normal">{skill.skills.join(", ")}</span>
@@ -166,11 +166,11 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
                 )}
 
                 {/* Custom Sections */}
-                {customSections && customSections.length > 0 && customSections.map((section, sIdx) => (
+                {customSections && customSections.length > 0 && customSections.map((section: any, sIdx: any) => (
                     <section key={section.id || sIdx} className="mb-4">
                         <h2 className="text-[11px] font-black uppercase tracking-widest mb-3 border-b-[1.5px] border-slate-900 pb-1 text-slate-900">{section.title}</h2>
                         <div className="space-y-4">
-                            {section.items.map((item, iIdx) => (
+                            {section.items.map((item: any, iIdx: any) => (
                                 <div key={iIdx} className="">
                                     <div className="flex justify-between items-baseline mb-0.5">
                                         {item.title && <h3 className="text-[11px] font-bold text-slate-900">{item.title}</h3>}
@@ -183,7 +183,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
                                         </div>
                                     )}
                                     <div className="space-y-1.5 pl-2">
-                                        {item.description.split('\n').filter(p => p.trim()).map((point, pIdx) => (
+                                        {item.description.split('\n').filter(p => p.trim()).map((point: any, pIdx: any) => (
                                             <div key={pIdx} className="flex gap-2.5">
                                                 <span className="text-[9px] mt-1.5 text-slate-600 dark:text-slate-400">•</span>
                                                 <p className="text-[10px] leading-snug text-slate-700">
@@ -203,7 +203,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ data }) => {
                     <section>
                         <h2 className="text-[11px] font-black uppercase tracking-widest mb-3 border-b-[1.5px] border-slate-900 pb-1 text-slate-900">Honors & Awards</h2>
                         <div className="space-y-2.5">
-                            {honors.filter(h => h).map((honor, idx) => (
+                            {honors.filter(h => h).map((honor: any, idx: any) => (
                                 <div key={idx} className="flex items-start gap-3">
                                     <Trophy className="w-3.5 h-3.5 text-orange-500 mt-0.5 flex-shrink-0" />
                                     <span className="text-[10px] text-slate-700 leading-snug">{honor}</span>

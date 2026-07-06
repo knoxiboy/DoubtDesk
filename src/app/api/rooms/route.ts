@@ -54,7 +54,7 @@ export async function GET(req: Request) {
         let recommendedRooms: Classroom[] = [];
 
         if (dbUser && dbUser.university && dbUser.year) {
-            const joinedIds = joinedRooms.map((r) => r.id);
+            const joinedIds = joinedRooms.map((r: any) => r.id);
             
             let conditions = [
                 eq(classroomsTable.university, dbUser.university),
@@ -133,7 +133,7 @@ export async function POST(req: Request) {
         const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
 
         // Transactional insert: create room and then add teacher as member atomically
-        const newRoom = await db.transaction(async (tx) => {
+        const newRoom = await db.transaction(async (tx: any) => {
             const [room] = await tx
                 .insert(classroomsTable)
                 .values({

@@ -125,7 +125,7 @@ export async function GET(req: Request) {
         .select({ doubtId: bookmarksTable.doubtId })
         .from(bookmarksTable)
         .where(eq(bookmarksTable.userEmail, email));
-      const bookmarkedIds = userBookmarks.map((b) => b.doubtId);
+      const bookmarkedIds = userBookmarks.map((b: any) => b.doubtId);
       if (bookmarkedIds.length > 0) {
         conditions.push(inArray(doubtsTable.id, bookmarkedIds));
       } else {
@@ -206,8 +206,8 @@ export async function GET(req: Request) {
         .from(likesTable)
         .where(eq(likesTable.userEmail, email));
 
-      const likedIds = new Set(userLikes.map((l) => l.doubtId));
-      doubts = doubts.map((doubt) => ({
+      const likedIds = new Set(userLikes.map((l: any) => l.doubtId));
+      doubts = doubts.map((doubt: any) => ({
         ...doubt,
         hasLiked: likedIds.has(doubt.id),
       }));
@@ -219,8 +219,8 @@ export async function GET(req: Request) {
         .from(bookmarksTable)
         .where(eq(bookmarksTable.userEmail, email));
 
-      const bookmarkedIds = new Set(userBookmarks.map((b) => b.doubtId));
-      doubts = doubts.map((doubt) => ({
+      const bookmarkedIds = new Set(userBookmarks.map((b: any) => b.doubtId));
+      doubts = doubts.map((doubt: any) => ({
         ...doubt,
         hasBookmarked: bookmarkedIds.has(doubt.id),
       }));
@@ -236,11 +236,11 @@ export async function GET(req: Request) {
         })
         .from(doubtTagsTable)
         .innerJoin(tagsTable, eq(doubtTagsTable.tagId, tagsTable.id))
-        .where(inArray(doubtTagsTable.doubtId, doubts.map((d) => d.id)));
+        .where(inArray(doubtTagsTable.doubtId, doubts.map((d: any) => d.id)));
 
       const tagsByDoubt = tagRows.reduce<
         Record<number, { id: number; name: string; normalizedName: string }[]>
-      >((acc, row) => {
+      >((acc: any, row: any) => {
         acc[row.doubtId] = acc[row.doubtId] || [];
         acc[row.doubtId].push({
           id: row.id,
@@ -250,7 +250,7 @@ export async function GET(req: Request) {
         return acc;
       }, {});
 
-      doubts = doubts.map((doubt) => ({
+      doubts = doubts.map((doubt: any) => ({
         ...doubt,
         tags: tagsByDoubt[doubt.id] || [],
       }));
@@ -261,7 +261,7 @@ export async function GET(req: Request) {
     // Strip author identifiers (userEmail), the internal embedding vector and
     // soft-delete marker before returning. Only the anonymized handle and a
     // session-derived `isOwnPost` flag are exposed. See src/lib/anonymity.ts.
-    const publicDoubts = doubts.map((doubt) => toPublicDoubt(doubt, email));
+    const publicDoubts = doubts.map((doubt: any) => toPublicDoubt(doubt, email));
 
     return NextResponse.json({
       doubts: publicDoubts,
@@ -374,7 +374,7 @@ export async function POST(req: Request) {
           name: "doubt/created",
           data: { classroomId: parsedClassroomId, doubtId: newDoubt.id },
         })
-        .catch((err) => console.error("Inngest background worker exception:", err));
+        .catch((err: any) => console.error("Inngest background worker exception:", err));
 
       createClassroomDoubtNotifications({
         classroomId: parsedClassroomId,
@@ -383,7 +383,7 @@ export async function POST(req: Request) {
         authorEmail: email,
         authorName: user.fullName || email,
         doubtType,
-      }).catch((err) => console.error("Notification trigger async failure:", err));
+      }).catch((err: any) => console.error("Notification trigger async failure:", err));
     }
 
     const normalizedTags: string[] = Array.from(
@@ -411,7 +411,7 @@ export async function POST(req: Request) {
           ),
         );
 
-      const existingTagsMap = new Map(existingClassroomTags.map((t) => [t.normalizedName, t]));
+      const existingTagsMap = new Map(existingClassroomTags.map((t: any) => [t.normalizedName, t]));
       const tagsToInsert: (typeof tagsTable.$inferInsert)[] = [];
 
       for (const name of normalizedTags) {
@@ -420,7 +420,7 @@ export async function POST(req: Request) {
           savedTags.push(match);
         } else {
           tagsToInsert.push({
-            name: name.replace(/\b\w/g, (char) => char.toUpperCase()),
+            name: name.replace(/\b\w/g, (char: any) => char.toUpperCase()),
             normalizedName: name,
             classroomId: parsedClassroomId,
             createdByEmail: email,

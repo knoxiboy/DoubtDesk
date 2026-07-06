@@ -45,7 +45,7 @@ export async function createClassroomDoubtNotifications(params: {
         .from(membershipsTable)
         .where(eq(membershipsTable.classroomId, classroomId));
 
-    const recipients = new Set<string>(memberRows.map((row) => row.userEmail));
+    const recipients = new Set<string>(memberRows.map((row: any) => row.userEmail));
     if (room.teacherEmail) {
         recipients.add(room.teacherEmail);
     }
@@ -53,7 +53,7 @@ export async function createClassroomDoubtNotifications(params: {
 
     const notifications = Array.from(recipients)
         .filter(Boolean)
-        .map((userEmail) => ({
+        .map((userEmail: any) => ({
             userEmail,
             title: `New doubt in ${room.name}`,
             message: `${authorName} posted ${subject ? `a ${subject} doubt` : "a new doubt"} in ${room.name}.`,

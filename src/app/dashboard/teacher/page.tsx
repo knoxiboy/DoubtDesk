@@ -58,7 +58,7 @@ export default function TeacherDashboard() {
         }
 
         fetch(`/api/teacher/insights?classroomId=${classroomId}`)
-            .then(async (res) => {
+            .then(async (res: any) => {
                 // Handle non-2xx responses before storing data
                 if (!res.ok) {
                     const body = await res.json().catch(() => ({}));
@@ -66,11 +66,11 @@ export default function TeacherDashboard() {
                 }
                 return res.json();
             })
-            .then((json) => {
+            .then((json: any) => {
                 setData(json);
                 setLoading(false);
             })
-            .catch((err) => {
+            .catch((err: any) => {
                 console.error(err);
                 setError(err.message || "Failed to load analytics.");
                 setLoading(false);
@@ -135,7 +135,7 @@ export default function TeacherDashboard() {
                         bg: "bg-emerald-500/10",
                         border: "border-slate-200 dark:border-zinc-900"
                     }
-                ].map((stat, i) => (
+                ].map((stat: any, i: any) => (
                     <div key={i} className={`bg-white/50 dark:bg-zinc-950/30 border ${stat.border} rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-slate-200/5 dark:shadow-none group`}>
                         <div className="flex items-center gap-4">
                             <div className={`p-3.5 ${stat.bg} rounded-xl`}>
@@ -205,7 +205,7 @@ export default function TeacherDashboard() {
                                         contentStyle={{ backgroundColor: '#09090b', border: '1px solid #18181b', borderRadius: '12px' }}
                                         itemStyle={{ fontSize: '11px', color: '#fff', fontWeight: 'bold' }}
                                     />
-                                    <Legend verticalAlign="bottom" height={36} formatter={(value) => <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">{value}</span>} />
+                                    <Legend verticalAlign="bottom" height={36} formatter={(value: any) => <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500">{value}</span>} />
                                 </PieChart>
                             </ResponsiveContainer>
                         )}
@@ -241,7 +241,7 @@ export default function TeacherDashboard() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                        {recommendations.map((rec, i) => {
+                        {recommendations.map((rec: any, i: any) => {
                             const styles = PRIORITY_STYLES[rec.priority] || PRIORITY_STYLES.medium;
                             return (
                                 <div

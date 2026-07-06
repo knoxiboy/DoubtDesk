@@ -40,7 +40,7 @@ export async function checkAndAwardBadges(userEmail: string): Promise<string[]> 
         .from(userBadgesTable)
         .where(eq(userBadgesTable.userEmail, userEmail));
 
-    const earnedIds = new Set(alreadyEarned.map((b) => b.badgeId));
+    const earnedIds = new Set(alreadyEarned.map((b: any) => b.badgeId));
 
     // Fetch user stats once (avoids N+1 queries)
     const [user] = await db
@@ -165,7 +165,7 @@ export async function updateStreak(userEmail: string): Promise<void> {
     if (daysDiff === 0) {
         const nextStreakVal = user.currentStreak + 1;
 
-        await db.transaction(async (tx) => {
+        await db.transaction(async (tx: any) => {
             // Compute the target score inline to resolve level scaling factors
             const nextScoreSql = sql`${usersTable.karmaScore} + 5`;
 

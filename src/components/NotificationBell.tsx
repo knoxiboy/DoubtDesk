@@ -73,7 +73,7 @@ export default function NotificationBell() {
 
         const source = new EventSource('/api/notifications/stream')
 
-        source.addEventListener('notification', (event) => {
+        source.addEventListener('notification', (event: any) => {
             const payload = JSON.parse((event as MessageEvent).data) as Notification
 
             toast(payload.title, {
@@ -237,7 +237,7 @@ export default function NotificationBell() {
                         </div>
                     ) : (
                         <div className="flex flex-col">
-                            {notifications.map((notification) => (
+                            {notifications.map((notification: any) => (
                                 <div 
                                     key={notification.id}
                                     onClick={() => {
@@ -267,7 +267,7 @@ export default function NotificationBell() {
                                         <Link 
                                             href={notification.link} 
                                             className="absolute inset-0 z-10" 
-                                            onClick={(e) => {
+                                            onClick={(e: any) => {
                                                 if (!notification.isRead) {
                                                     markAsRead(notification.id)
                                                 }

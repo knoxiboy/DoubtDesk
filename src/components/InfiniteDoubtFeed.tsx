@@ -95,7 +95,7 @@ export default function InfiniteDoubtFeed({
     });
 
     const pages = data?.map(normalizePage);
-    const doubts = pages ? pages.flatMap((page) => page.doubts) : [];
+    const doubts = pages ? pages.flatMap((page: any) => page.doubts) : [];
     const isPageError = pages?.[0]?.error !== undefined;
     const isEmpty = !error && !isPageError && pages?.[0]?.doubts.length === 0;
     const isReachingEnd = isEmpty || (pages && !pages[pages.length - 1]?.hasMore);

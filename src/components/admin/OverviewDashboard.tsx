@@ -378,7 +378,7 @@ export default function OverviewDashboard() {
                                                             paddingAngle={3}
                                                             label={({ subject, count }) => `${subject}: ${count}`}
                                                         >
-                                                            {data.stats.subjectVolume.map((entry, index) => (
+                                                            {data.stats.subjectVolume.map((entry: any, index: any) => (
                                                                 <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} stroke="rgba(0,0,0,0.05)" />
                                                             ))}
                                                         </Pie>
@@ -448,7 +448,7 @@ export default function OverviewDashboard() {
                                         <input
                                             type="text"
                                             value={searchQuery}
-                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            onChange={(e: any) => setSearchQuery(e.target.value)}
                                             placeholder="Search by name, teacher or uni..."
                                             className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl text-xs font-semibold focus:outline-none focus:border-blue-500/50 transition-all text-slate-900 dark:text-white"
                                         />
@@ -476,7 +476,7 @@ export default function OverviewDashboard() {
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {filteredClassrooms.map((classroom) => (
+                                                {filteredClassrooms.map((classroom: any) => (
                                                     <TableRow key={classroom.id} className="border-b border-slate-100 dark:border-zinc-900/60 hover:bg-slate-50/50 dark:hover:bg-zinc-950/20">
                                                         <TableCell className="font-bold text-xs text-slate-900 dark:text-white py-4">
                                                             <div className="flex flex-col">
@@ -560,7 +560,7 @@ export default function OverviewDashboard() {
                                 </Card>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {data.confusionAlerts.map((alert) => (
+                                    {data.confusionAlerts.map((alert: any) => (
                                         <Card key={alert.id} className="rounded-3xl border border-rose-500/20 shadow-md bg-white dark:bg-zinc-950 overflow-hidden relative">
                                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-rose-500 to-amber-500" />
                                             <CardHeader className="pb-2">

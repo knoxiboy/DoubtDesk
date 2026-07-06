@@ -33,7 +33,7 @@ jest.mock('@/configs/schema', () => ({
 }));
 
 jest.mock('drizzle-orm', () => ({
-    eq: jest.fn((field, value) => ({ field, value })),
+    eq: jest.fn((field: any, value: any) => ({ field, value })),
 }));
 
 function makeSignedRequest(method: string, email = 'Student@College.edu') {

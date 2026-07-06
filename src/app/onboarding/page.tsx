@@ -117,7 +117,7 @@ export default function OnboardingPage() {
                         {step === 1 ? (
                             <>
                                 <div className="grid grid-cols-2 gap-3">
-                                    {['student', 'teacher'].map((role) => (
+                                    {['student', 'teacher'].map((role: any) => (
                                         <button
                                             key={role}
                                             type="button"
@@ -140,7 +140,7 @@ export default function OnboardingPage() {
                                         type="text"
                                         required
                                         value={formData.university}
-                                        onChange={(e) => setFormData({ ...formData, university: e.target.value })}
+                                        onChange={(e: any) => setFormData({ ...formData, university: e.target.value })}
                                         placeholder="e.g. Stanford University"
                                         className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
                                     />
@@ -156,7 +156,7 @@ export default function OnboardingPage() {
                                             type="email"
                                             required
                                             value={formData.collegeEmail}
-                                            onChange={(e) => setFormData({ ...formData, collegeEmail: e.target.value })}
+                                            onChange={(e: any) => setFormData({ ...formData, collegeEmail: e.target.value })}
                                             placeholder="yourname@college.edu"
                                             className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
                                         />
@@ -168,7 +168,7 @@ export default function OnboardingPage() {
                                             <select
                                                 id="year-select"
                                                 value={formData.year}
-                                                onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                                                onChange={(e: any) => setFormData({ ...formData, year: e.target.value })}
                                                 className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium appearance-none cursor-pointer"
                                             >
                                                 <option className="bg-white dark:bg-zinc-900" value="1st Year">1st Year</option>
@@ -202,7 +202,7 @@ export default function OnboardingPage() {
                                                 id="interests-input"
                                                 type="text"
                                                 value={formData.interests}
-                                                onChange={(e) => setFormData({ ...formData, interests: e.target.value })}
+                                                onChange={(e: any) => setFormData({ ...formData, interests: e.target.value })}
                                                 placeholder="e.g. Algorithms, Web Development, Physics"
                                                 className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
                                             />
@@ -214,7 +214,7 @@ export default function OnboardingPage() {
                                             <textarea
                                                 id="learning-goals-textarea"
                                                 value={formData.learningGoals}
-                                                onChange={(e) => setFormData({ ...formData, learningGoals: e.target.value })}
+                                                onChange={(e: any) => setFormData({ ...formData, learningGoals: e.target.value })}
                                                 placeholder="e.g. Master backend engineering, collaborate on open-source, or excel in exams"
                                                 rows={3}
                                                 className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium resize-none"
@@ -233,7 +233,7 @@ export default function OnboardingPage() {
                                                 id="subjects-input"
                                                 type="text"
                                                 value={formData.subjects}
-                                                onChange={(e) => setFormData({ ...formData, subjects: e.target.value })}
+                                                onChange={(e: any) => setFormData({ ...formData, subjects: e.target.value })}
                                                 placeholder="e.g. Computer Science, Calculus, Chemistry"
                                                 className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
                                             />
@@ -246,7 +246,7 @@ export default function OnboardingPage() {
                                                 id="institute-info-input"
                                                 type="text"
                                                 value={formData.instituteInfo}
-                                                onChange={(e) => setFormData({ ...formData, instituteInfo: e.target.value })}
+                                                onChange={(e: any) => setFormData({ ...formData, instituteInfo: e.target.value })}
                                                 placeholder="e.g. Department of Information Technology"
                                                 className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all font-medium"
                                             />

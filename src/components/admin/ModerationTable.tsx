@@ -102,7 +102,7 @@ export default function ModerationTable({ logs, onActionSuccess }: ModerationTab
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {logs.map((log) => (
+                    {logs.map((log: any) => (
                         <TableRow key={log.id}>
                             <TableCell>
                                 <div className="font-medium">{log.userName || "Unknown"}</div>
@@ -185,7 +185,7 @@ export default function ModerationTable({ logs, onActionSuccess }: ModerationTab
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
                         <AlertDialogAction 
-                            onClick={(e) => {
+                            onClick={(e: any) => {
                                 e.preventDefault();
                                 if (actionLog) {
                                     handleAction(actionLog.log.id, actionLog.log.userEmail, actionLog.action);

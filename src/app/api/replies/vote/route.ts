@@ -55,7 +55,7 @@ export async function POST(req: Request) {
         }
 
         // ── 3. ATOMIC TRANSACTION FLOW ──────────────────────────────────────
-        const result = await db.transaction(async (tx) => {
+        const result = await db.transaction(async (tx: any) => {
 
             // Check existing vote inside transaction
             const existingLike = await tx.select()

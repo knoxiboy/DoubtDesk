@@ -43,7 +43,7 @@ export default function NotFound() {
 
       {/* Floating Particles (Knowledge Fragments) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
+        {[...Array(20)].map((_: any, i: any) => (
           <motion.div
             key={i}
             animate={{

@@ -30,7 +30,7 @@ export default function CommentItem({ comment }: Props) {
       replies: [],
     };
 
-    setReplies((prev) => [...prev, newReply]);
+    setReplies((prev: any) => [...prev, newReply]);
 
     setReplyText("");
     setShowReply(false);
@@ -70,7 +70,7 @@ export default function CommentItem({ comment }: Props) {
         <button
           type="button"
           aria-label={`Reply to ${comment.author}`}
-          onClick={() => setShowReply((prev) => !prev)}
+          onClick={() => setShowReply((prev: any) => !prev)}
           className="
           mt-3 text-sm text-blue-500 hover:text-blue-600
           transition-colors duration-200
@@ -85,7 +85,7 @@ export default function CommentItem({ comment }: Props) {
 
             <textarea
               value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
+              onChange={(e: any) => setReplyText(e.target.value)}
               placeholder="Write a reply..."
               aria-label="Write a reply"
               rows={3}
@@ -141,7 +141,7 @@ export default function CommentItem({ comment }: Props) {
 
       {replies.length > 0 && (
         <div className="space-y-4">
-          {replies.map((reply) => (
+          {replies.map((reply: any) => (
             <CommentItem
               key={reply.id}
               comment={reply}

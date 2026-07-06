@@ -33,7 +33,7 @@ export default async function ProfilePage() {
 
   // Find primary email address matching Clerk ID specifications safely
   const primaryEmailObj = user.emailAddresses.find(
-    (email) => email.id === user.primaryEmailAddressId
+    (email: any) => email.id === user.primaryEmailAddressId
   );
   
   if (!primaryEmailObj?.emailAddress) {

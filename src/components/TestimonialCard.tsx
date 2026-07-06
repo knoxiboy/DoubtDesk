@@ -17,7 +17,7 @@ export default function TestimonialCard({
     <div className="w-[320px] flex-shrink-0 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/40 p-5 shadow-sm hover:shadow-md transition-all duration-300">
       {/* Rating */}
       <div className="flex gap-1 mb-3">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {Array.from({ length: 5 }).map((_: any, i: any) => (
           <span
             key={i}
             className={

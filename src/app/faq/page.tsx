@@ -138,7 +138,7 @@ export default function FAQPage() {
               type="text"
               placeholder="Search parameters or questions..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e: any) => setSearch(e.target.value)}
               className="w-full rounded-xl border border-slate-200 dark:border-zinc-900 bg-slate-50 dark:bg-zinc-950/30 pl-12 pr-4 py-3.5 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 outline-none transition-all duration-300 focus:border-blue-500/40 dark:focus:border-blue-500/20 focus:bg-white dark:focus:bg-black"
             />
           </div>
@@ -146,9 +146,9 @@ export default function FAQPage() {
 
         {/* Clean Stack FAQ Grid Pipeline */}
         <div className="space-y-16 relative z-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
-          {faqSections.map((section, sectionIndex) => {
+          {faqSections.map((section: any, sectionIndex: any) => {
             const SectionIcon = section.icon;
-            const filteredFaqs = section.faqs.filter((faq) =>
+            const filteredFaqs = section.faqs.filter((faq: any) =>
               faq.question.toLowerCase().includes(search.toLowerCase())
             );
 
@@ -167,7 +167,7 @@ export default function FAQPage() {
 
                 {/* Clean Borderless FAQ List Wrapper */}
                 <div className="divide-y divide-slate-100 dark:divide-zinc-900/60">
-                  {filteredFaqs.map((faq, faqIndex) => {
+                  {filteredFaqs.map((faq: any, faqIndex: any) => {
                     const id = `${sectionIndex}-${faqIndex}`;
                     const isOpen = openIndex === id;
 

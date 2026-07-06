@@ -103,12 +103,12 @@ function markModerationFailure() {
 
 function containsHighRiskContent(content: string): boolean {
     const normalizedContent = content.toLowerCase();
-    return HIGH_RISK_PATTERNS.some((pattern) => pattern.test(normalizedContent));
+    return HIGH_RISK_PATTERNS.some((pattern: any) => pattern.test(normalizedContent));
 }
 
 function containsPromptInjection(content: string): boolean {
     const normalizedContent = content.toLowerCase();
-    return PROMPT_INJECTION_PATTERNS.some((pattern) => pattern.test(normalizedContent));
+    return PROMPT_INJECTION_PATTERNS.some((pattern: any) => pattern.test(normalizedContent));
 }
 
 function logModeration(level: 'warn' | 'error', action: string, detail: string) {
@@ -249,9 +249,9 @@ export async function moderateContent(
             );
 
             const ModerationResultSchema = z.object({
-                isAllowed: z.any().transform((val) => val === true || String(val).toLowerCase() === 'true'),
-                reason: z.any().transform((val) => val ? String(val) : "Content looks good"),
-                violationType: z.any().optional().transform((val) => {
+                isAllowed: z.any().transform((val: any) => val === true || String(val).toLowerCase() === 'true'),
+                reason: z.any().transform((val: any) => val ? String(val) : "Content looks good"),
+                violationType: z.any().optional().transform((val: any) => {
                     if (!val) return undefined;
                     const v = String(val).toLowerCase();
                     if (v === 'abusive' || v === 'off-topic' || v === 'spam' || v === 'other') {
@@ -294,7 +294,7 @@ export async function moderateContent(
                 
                 // Exponential backoff
                 if (attempt < MAX_MODERATION_RETRIES - 1) {
-                    await new Promise((resolve) => setTimeout(resolve, 500 * Math.pow(2, attempt)));
+                    await new Promise((resolve: any) => setTimeout(resolve, 500 * Math.pow(2, attempt)));
                 }
                 continue;
             }
@@ -328,7 +328,7 @@ export async function handleModerationViolation(
 ): Promise<string | null> {
     if (moderation.isAllowed) return null;
 
-    return db.transaction(async (tx) => {
+    return db.transaction(async (tx: any) => {
         // Atomically increment violationCount at the DB level — eliminates the
         // read-modify-write race under concurrent violation processing.
         const [updated] = await tx.update(usersTable).set({

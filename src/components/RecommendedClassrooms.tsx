@@ -134,7 +134,7 @@ export default function RecommendedClassrooms() {
             </div>
 
             <div className="space-y-4">
-                {classrooms.map((classroom) => (
+                {classrooms.map((classroom: any) => (
                     <div
                         key={classroom.id}
                         className="rounded-xl border p-4 transition hover:border-black"

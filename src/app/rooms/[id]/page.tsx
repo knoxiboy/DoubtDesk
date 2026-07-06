@@ -149,7 +149,7 @@ export default function ClassroomPage() {
         : "ai";
   const hasTeacherAccess = isTeacherRole(classroom?.role);
 
-  const fetcher = (url: string) => fetch(url).then((res) => res.json());
+  const fetcher = (url: string) => fetch(url).then((res: any) => res.json());
   const updateSort = (nextSort: DoubtSortValue) => {
     const nextParams = new URLSearchParams(searchParams.toString());
     if (nextSort === "newest") {
@@ -225,7 +225,7 @@ export default function ClassroomPage() {
 
   useHotkeys(
     "n",
-    (e) => {
+    (e: any) => {
       e.preventDefault();
       setIsAskModalOpen(true);
     },
@@ -264,9 +264,9 @@ export default function ClassroomPage() {
   useEffect(() => {
     if (classroom?.id) {
       fetch(`/api/classroom/pedagogy?classroomId=${classroom.id}`)
-        .then((r) => r.json())
+        .then((r: any) => r.json())
         .then(setPedagogyProfile)
-        .catch((err) => {
+        .catch((err: any) => {
           console.error(err);
           toast.error("Failed to load pedagogy profile");
         });
@@ -438,7 +438,7 @@ export default function ClassroomPage() {
                   icon: GraduationCap,
                 },
                 { id: "insights", label: "Insights", icon: TrendingUp },
-              ].map((tab) => (
+              ].map((tab: any) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
@@ -494,21 +494,21 @@ export default function ClassroomPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {Array.isArray(doubts) &&
                     doubts
-                      .filter((d) => d.type === "ai")
-                      .map((doubt) => (
+                      .filter((d: any) => d.type === "ai")
+                      .map((doubt: any) => (
                         <DoubtCard
                           key={doubt.id}
                           doubt={doubt}
                           role={classroom?.role}
                           onUpdate={() => mutate()}
-                          onViewAISolution={(d) => {
+                          onViewAISolution={(d: any) => {
                             setActiveAIDoubt(d);
                             setActiveTab("ask-ai");
                           }}
                         />
                       ))}
                   {Array.isArray(doubts) &&
-                    doubts.filter((d) => d.type === "ai").length === 0 && (
+                    doubts.filter((d: any) => d.type === "ai").length === 0 && (
                       <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-xs font-bold uppercase tracking-widest opacity-30">
                         No resolved AI queries in this classroom yet.
                       </div>
@@ -551,7 +551,7 @@ export default function ClassroomPage() {
                 <input
                   type="text"
                   value={tagFilter}
-                  onChange={(e) => setTagFilter(e.target.value)}
+                  onChange={(e: any) => setTagFilter(e.target.value)}
                   placeholder="Filter tag"
                   className="w-full sm:w-32 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/50"
                 />
@@ -579,7 +579,7 @@ export default function ClassroomPage() {
                   type="text"
                   placeholder="Search classroom board..."
                   value={searchVal}
-                  onChange={(e) => setSearchVal(e.target.value)}
+                  onChange={(e: any) => setSearchVal(e.target.value)}
                   className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-3 pl-11 pr-4 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all"
                 />
               </div>
@@ -591,7 +591,7 @@ export default function ClassroomPage() {
                   "Physics",
                   "Chemistry",
                   "Programming",
-                ].map((s) => (
+                ].map((s: any) => (
                   <button
                     key={s}
                     onClick={() => setSubjectFilter(s)}
@@ -659,9 +659,9 @@ export default function ClassroomPage() {
                       {Array.isArray(doubts) &&
                         doubts
                           .filter(
-                            (d) => d.isSolved === "unsolved" || !d.isSolved,
+                            (d: any) => d.isSolved === "unsolved" || !d.isSolved,
                           )
-                          .map((doubt) => (
+                          .map((doubt: any) => (
                             <DoubtCard
                               key={doubt.id}
                               doubt={doubt}
@@ -671,7 +671,7 @@ export default function ClassroomPage() {
                           ))}
                       {(!Array.isArray(doubts) ||
                         doubts.filter(
-                          (d) => d.isSolved === "unsolved" || !d.isSolved,
+                          (d: any) => d.isSolved === "unsolved" || !d.isSolved,
                         ).length === 0) && (
                         <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
                           No unsolved queries in this category.
@@ -692,8 +692,8 @@ export default function ClassroomPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       {Array.isArray(doubts) &&
                         doubts
-                          .filter((d) => d.isSolved === "in-progress")
-                          .map((doubt) => (
+                          .filter((d: any) => d.isSolved === "in-progress")
+                          .map((doubt: any) => (
                             <DoubtCard
                               key={doubt.id}
                               doubt={doubt}
@@ -702,7 +702,7 @@ export default function ClassroomPage() {
                             />
                           ))}
                       {(!Array.isArray(doubts) ||
-                        doubts.filter((d) => d.isSolved === "in-progress")
+                        doubts.filter((d: any) => d.isSolved === "in-progress")
                           .length === 0) && (
                         <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
                           No doubts in progress right now.
@@ -723,8 +723,8 @@ export default function ClassroomPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       {Array.isArray(doubts) &&
                         doubts
-                          .filter((d) => d.isSolved === "solved")
-                          .map((doubt) => (
+                          .filter((d: any) => d.isSolved === "solved")
+                          .map((doubt: any) => (
                             <DoubtCard
                               key={doubt.id}
                               doubt={doubt}
@@ -733,7 +733,7 @@ export default function ClassroomPage() {
                             />
                           ))}
                       {(!Array.isArray(doubts) ||
-                        doubts.filter((d) => d.isSolved === "solved").length ===
+                        doubts.filter((d: any) => d.isSolved === "solved").length ===
                           0) && (
                         <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
                           No resolved queries yet.
@@ -783,7 +783,7 @@ export default function ClassroomPage() {
                 <input
                   type="text"
                   value={tagFilter}
-                  onChange={(e) => setTagFilter(e.target.value)}
+                  onChange={(e: any) => setTagFilter(e.target.value)}
                   placeholder="Filter tag"
                   className="w-full sm:w-32 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/50"
                 />
@@ -813,7 +813,7 @@ export default function ClassroomPage() {
                   type="text"
                   placeholder="Search teacher queries..."
                   value={searchVal}
-                  onChange={(e) => setSearchVal(e.target.value)}
+                  onChange={(e: any) => setSearchVal(e.target.value)}
                   className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-3 pl-11 pr-4 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-purple-500/50 transition-all"
                 />
               </div>
@@ -825,7 +825,7 @@ export default function ClassroomPage() {
                   "Physics",
                   "Chemistry",
                   "Programming",
-                ].map((s) => (
+                ].map((s: any) => (
                   <button
                     key={s}
                     onClick={() => setSubjectFilter(s)}
@@ -860,9 +860,9 @@ export default function ClassroomPage() {
                       {Array.isArray(doubts) &&
                         doubts
                           .filter(
-                            (d) => d.isSolved === "unsolved" || !d.isSolved,
+                            (d: any) => d.isSolved === "unsolved" || !d.isSolved,
                           )
-                          .map((doubt) => (
+                          .map((doubt: any) => (
                             <DoubtCard
                               key={doubt.id}
                               doubt={doubt}
@@ -872,7 +872,7 @@ export default function ClassroomPage() {
                           ))}
                       {(!Array.isArray(doubts) ||
                         doubts.filter(
-                          (d) => d.isSolved === "unsolved" || !d.isSolved,
+                          (d: any) => d.isSolved === "unsolved" || !d.isSolved,
                         ).length === 0) && (
                         <div className="col-span-full py-24 text-center space-y-4 bg-slate-100 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[2.5rem]">
                           <GraduationCap className="w-12 h-12 text-slate-700 mx-auto" />
@@ -906,8 +906,8 @@ export default function ClassroomPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       {Array.isArray(doubts) &&
                         doubts
-                          .filter((d) => d.isSolved === "in-progress")
-                          .map((doubt) => (
+                          .filter((d: any) => d.isSolved === "in-progress")
+                          .map((doubt: any) => (
                             <DoubtCard
                               key={doubt.id}
                               doubt={doubt}
@@ -916,7 +916,7 @@ export default function ClassroomPage() {
                             />
                           ))}
                       {(!Array.isArray(doubts) ||
-                        doubts.filter((d) => d.isSolved === "in-progress")
+                        doubts.filter((d: any) => d.isSolved === "in-progress")
                           .length === 0) && (
                         <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
                           No teacher doubts in progress right now.
@@ -937,8 +937,8 @@ export default function ClassroomPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       {Array.isArray(doubts) &&
                         doubts
-                          .filter((d) => d.isSolved === "solved")
-                          .map((doubt) => (
+                          .filter((d: any) => d.isSolved === "solved")
+                          .map((doubt: any) => (
                             <DoubtCard
                               key={doubt.id}
                               doubt={doubt}
@@ -947,7 +947,7 @@ export default function ClassroomPage() {
                             />
                           ))}
                       {(!Array.isArray(doubts) ||
-                        doubts.filter((d) => d.isSolved === "solved").length ===
+                        doubts.filter((d: any) => d.isSolved === "solved").length ===
                           0) && (
                         <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-500 text-[10px] uppercase font-black tracking-widest opacity-40">
                           No resolved queries yet.
@@ -1286,9 +1286,9 @@ function ClassroomInsightsView({
     );
 
   const solvedCount =
-    data?.solvedStats.find((s) => s.status === "solved")?.count || 0;
+    data?.solvedStats.find((s: any) => s.status === "solved")?.count || 0;
   const unsolvedCount =
-    data?.solvedStats.find((s) => s.status !== "solved")?.count || 0;
+    data?.solvedStats.find((s: any) => s.status !== "solved")?.count || 0;
   const totalDoubtStats = Number(solvedCount) + Number(unsolvedCount);
   const solvedPercentage =
     totalDoubtStats > 0 ? (Number(solvedCount) / totalDoubtStats) * 100 : 0;
@@ -1345,7 +1345,7 @@ function ClassroomInsightsView({
             bg: "bg-emerald-500/10",
             border: "border-slate-200 dark:border-zinc-900",
           },
-        ].map((stat, i) => (
+        ].map((stat: any, i: any) => (
           <div
             key={i}
             className={`bg-white/50 dark:bg-zinc-950/30 border ${stat.border} rounded-2xl p-6 backdrop-blur-md flex items-center justify-between hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-slate-200/5 dark:shadow-none group`}
@@ -1409,7 +1409,7 @@ function ClassroomInsightsView({
             </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {data?.mostAskedTopics.map((topic, i) => {
+            {data?.mostAskedTopics.map((topic: any, i: any) => {
               const intensity = Math.min(Number(topic.count) * 10, 100);
               return (
                 <div
@@ -1540,7 +1540,7 @@ function ClassroomInsightsView({
                   ),
                 },
               ];
-              return data.topContributors.map((contributor, i) => {
+              return data.topContributors.map((contributor: any, i: any) => {
                 const style = rankStyles[i] || {
                   bg: "bg-white/5",
                   border: "border-white/10",
@@ -1611,9 +1611,9 @@ function ClassroomInsightsView({
         </div>
         <div className="overflow-x-auto pb-4 w-full scrollbar-hide">
           <div className="grid grid-cols-24 gap-1 h-32 items-end pt-4 min-w-[600px]">
-            {Array.from({ length: 24 }).map((_, hour) => {
+            {Array.from({ length: 24 }).map((_: any, hour: any) => {
               const activity =
-                data?.peakTime.find((p) => p.hour === hour)?.count || 0;
+                data?.peakTime.find((p: any) => p.hour === hour)?.count || 0;
               const heightPercentage = Math.min((activity / 10) * 100, 100);
               return (
                 <div
@@ -1643,11 +1643,11 @@ function ClassroomInsightsView({
           <Zap className="w-4 h-4 text-yellow-500" /> AI Pedagogical Insights
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {(data?.mostAskedTopics.filter((t) => t.severity !== "Low").length ??
+          {(data?.mostAskedTopics.filter((t: any) => t.severity !== "Low").length ??
             0) > 0 ? (
             data?.mostAskedTopics
-              .filter((t) => t.severity !== "Low")
-              .map((topic, i) => (
+              .filter((t: any) => t.severity !== "Low")
+              .map((topic: any, i: any) => (
                 <div
                   key={i}
                   className="bg-gradient-to-br from-blue-600/10 to-purple-600/10 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2.5rem] p-5 sm:p-8 flex flex-col sm:flex-row items-start gap-4 sm:gap-6 relative overflow-hidden group"
@@ -1699,12 +1699,12 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
   useEffect(() => {
     setLoading(true);
     fetch(`/api/analytics/personal?classroomId=${classroomId}`)
-      .then((res) => res.json())
-      .then((d) => {
+      .then((res: any) => res.json())
+      .then((d: any) => {
         setPersonalData(d);
         setLoading(false);
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error("Failed to load personal analytics:", err);
         setLoading(false);
       });
@@ -1771,7 +1771,7 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
             </span>
           </div>
           <div className="grid gap-4">
-            {personalData.weakTopics.map((topic, i) => (
+            {personalData.weakTopics.map((topic: any, i: any) => (
               <div
                 key={i}
                 className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 hover:bg-slate-200 dark:hover:bg-white/[0.08] transition-all group relative overflow-hidden"
@@ -1830,7 +1830,7 @@ function PersonalMentorView({ classroomId }: { classroomId: number }) {
                 </p>
               </div>
               <div className="grid gap-3">
-                {personalData.recommendations.practiceQuestions.map((q, i) => (
+                {personalData.recommendations.practiceQuestions.map((q: any, i: any) => (
                   <div
                     key={i}
                     className="flex items-center gap-3 bg-white dark:bg-zinc-900 p-4 rounded-xl border border-slate-200 dark:border-zinc-800 hover:border-emerald-500/30 transition-all duration-300 shadow-sm"

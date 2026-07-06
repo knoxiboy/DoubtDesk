@@ -168,7 +168,7 @@ export default function PracticeModal({
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+        <Dialog open={isOpen} onOpenChange={(open: any) => !open && handleClose()}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-950 border-white/10 text-white p-0">
                 {/* Decorative gradient header */}
                 <div className="relative overflow-hidden px-6 pt-6 pb-4">
@@ -306,7 +306,7 @@ export default function PracticeModal({
                                 <Textarea
                                     id="practice-answer-input"
                                     value={answer}
-                                    onChange={(e) => setAnswer(e.target.value)}
+                                    onChange={(e: any) => setAnswer(e.target.value)}
                                     placeholder="Write your step-by-step solution here..."
                                     rows={6}
                                     className="bg-white/5 border-white/10 text-white placeholder:text-slate-600 rounded-xl focus:border-blue-500/40 focus:ring-blue-500/20 resize-y"
@@ -416,7 +416,7 @@ export default function PracticeModal({
                                         </span>
                                     </div>
                                     <ul className="space-y-1.5">
-                                        {gradeResult.strengths.map((s, i) => (
+                                        {gradeResult.strengths.map((s: any, i: any) => (
                                             <li
                                                 key={i}
                                                 className="text-slate-300 text-xs flex items-start gap-2"
@@ -439,7 +439,7 @@ export default function PracticeModal({
                                         </span>
                                     </div>
                                     <ul className="space-y-1.5">
-                                        {gradeResult.improvements.map((imp, i) => (
+                                        {gradeResult.improvements.map((imp: any, i: any) => (
                                             <li
                                                 key={i}
                                                 className="text-slate-300 text-xs flex items-start gap-2"

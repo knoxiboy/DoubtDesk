@@ -21,7 +21,7 @@ registerRoot(() => {
             width={1920}
             height={1080}
             calculateMetadata={async ({ props }: { props: VideoProps }) => {
-                const totalDuration = props.scenes.reduce((acc, scene) => acc + Math.max(30, (scene.duration || 5) * 30), 0);
+                const totalDuration = props.scenes.reduce((acc: any, scene: any) => acc + Math.max(30, (scene.duration || 5) * 30), 0);
                 return {
                     durationInFrames: totalDuration,
                 };

@@ -35,7 +35,7 @@ export function CommandMenu() {
         const down = (e: KeyboardEvent) => {
             if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault()
-                setOpen((open) => !open)
+                setOpen((open: any) => !open)
             }
         }
 

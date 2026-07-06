@@ -74,7 +74,7 @@ export async function generateRecommendations(
     try {
         const topicSummary = weakTopics
             .map(
-                (t, i) =>
+                (t: any, i: any) =>
                     `${i + 1}. Topic: "${t.topic || "General"}" | Subject: ${t.subject} | Total Doubts: ${t.totalCount} | Unresolved: ${t.unresolvedCount}`
             )
             .join("\n");
@@ -157,7 +157,7 @@ Return ONLY a valid JSON object in this exact shape:
         for (const wt of weakTopics) {
             const key = makeKey(wt.topic, wt.subject);
             const alreadyCovered = results.some(
-                (r) => makeKey(r.topic, r.subject) === key
+                (r: any) => makeKey(r.topic, r.subject) === key
             );
             if (!alreadyCovered) {
                 results.push(buildFallbackRecommendation(wt));

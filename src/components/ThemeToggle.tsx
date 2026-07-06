@@ -24,8 +24,8 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         if (!isSignedIn) return;
 
         fetch("/api/user/preferences")
-            .then((res) => res.json())
-            .then((data) => {
+            .then((res: any) => res.json())
+            .then((data: any) => {
                 if (data.themePreference) {
                     setTheme(data.themePreference);
                 }

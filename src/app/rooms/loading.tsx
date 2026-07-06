@@ -6,7 +6,7 @@ export default function Loading() {
       <Skeleton className="h-8 w-48 rounded" />
       <Skeleton className="h-6 w-56 rounded" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+        {Array.from({ length: 4 }).map((_: any, i: any) => (
           <Skeleton key={i} className="h-32 rounded-xl" />
         ))}
       </div>

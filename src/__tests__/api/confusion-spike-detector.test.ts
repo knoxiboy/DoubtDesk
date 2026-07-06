@@ -9,7 +9,7 @@ jest.mock('groq-sdk', () => ({
 
 jest.mock('@/inngest/client', () => ({
     inngest: {
-        createFunction: jest.fn((_config, _handler) => ({ id: 'detect-confusion-spikes' })),
+        createFunction: jest.fn((_config: any, _handler: any) => ({ id: 'detect-confusion-spikes' })),
     },
 }));
 

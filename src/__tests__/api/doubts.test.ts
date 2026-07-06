@@ -147,9 +147,9 @@ const createChainWithData = (data: any[]) => {
             const hasLikes = orderFields.some(f => matchesPattern(f, 'likes'));
             const hasCount = orderFields.some(f => matchesPattern(f, 'count'));
             if (hasLikes) {
-                result.sort((a, b) => b.likes - a.likes);
+                result.sort((a: any, b: any) => b.likes - a.likes);
             } else if (hasCount) {
-                result.sort((a, b) => b.count - a.count);
+                result.sort((a: any, b: any) => b.count - a.count);
             }
             return chain;
         },
@@ -237,7 +237,7 @@ describe('Doubts API Endpoints', () => {
     });
 
     it('GET should support popular sorting', async () => {
-    mockQueryDoubts = [...mockDoubts].sort((a, b) => b.likes - a.likes);
+    mockQueryDoubts = [...mockDoubts].sort((a: any, b: any) => b.likes - a.likes);
     const req = new Request('http://localhost/api/doubts?subject=Physics&sort=popular');
     const res = await GET(req);
     const json = await res.json();

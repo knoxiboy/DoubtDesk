@@ -331,7 +331,7 @@ export default function Home() {
               id="features-grid"
               className="grid gap-6 scroll-mt-20 sm:grid-cols-2 lg:grid-cols-3"
             >
-              {features.map((feature, i) => {
+              {features.map((feature: any, i: any) => {
                 const Icon = feature.icon;
                 return (
                   <div
@@ -378,7 +378,7 @@ export default function Home() {
             </div>
             <div className="grid md:grid-cols-3 gap-8 relative">
               <div className="hidden md:block absolute top-12 left-[15%] right-[15%] h-0.5 bg-gradient-to-r from-blue-100 via-indigo-100 to-blue-100 dark:from-zinc-900 dark:via-zinc-800 dark:to-zinc-900 -z-10 transition-colors duration-300" />
-              {howItWorks.map((step, index) => (
+              {howItWorks.map((step: any, index: any) => (
                 <div
                   key={step.title}
                   style={{ animationDelay: `${index * 150}ms` }}
@@ -419,7 +419,7 @@ export default function Home() {
               </p>
             </div>
             <div className="grid md:grid-cols-3 gap-6">
-              {testimonials.map((t, index) => (
+              {testimonials.map((t: any, index: any) => (
                 <div
                   key={t.name}
                   style={{ animationDelay: `${index * 200}ms` }}

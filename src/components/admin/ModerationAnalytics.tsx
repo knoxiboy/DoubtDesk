@@ -33,12 +33,12 @@ const COLORS = ["#3b82f6", "#06b6d4", "#8b5cf6", "#f59e0b", "#ef4444"];
 
 export default function ModerationAnalytics({ stats }: AnalyticsProps) {
   // Normalize chart data safely
-  const flagsPerDay = stats.flagsPerDay.map((item) => ({
+  const flagsPerDay = stats.flagsPerDay.map((item: any) => ({
     date: item.date,
     count: Number(item.count ?? 0),
   }));
 
-  const violationCategories = stats.violationCategories.map((item) => ({
+  const violationCategories = stats.violationCategories.map((item: any) => ({
     name: item.name,
     value: Number(item.value ?? 0),
   }));
@@ -211,7 +211,7 @@ export default function ModerationAnalytics({ stats }: AnalyticsProps) {
                   paddingAngle={4}
                   label={({ name, value }) => `${name}: ${value}`}
                 >
-                  {violationCategories.map((entry, index) => (
+                  {violationCategories.map((entry: any, index: any) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}

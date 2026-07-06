@@ -43,7 +43,7 @@ export function DeleteConfirmationDialog({
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
-            onClick={(e) => {
+            onClick={(e: any) => {
               e.preventDefault();
               onConfirm();
             }}

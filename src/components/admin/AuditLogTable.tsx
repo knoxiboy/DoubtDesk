@@ -69,7 +69,7 @@ export default function AuditLogTable({ logs }: AuditLogTableProps) {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {logs.map((log) => (
+                    {logs.map((log: any) => (
                         <TableRow key={log.id}>
                             <TableCell>
                                 <div className="flex items-center gap-2">

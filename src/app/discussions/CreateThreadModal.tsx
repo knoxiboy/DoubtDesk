@@ -91,7 +91,7 @@ export default function CreateThreadModal({
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e: any) => setTitle(e.target.value)}
             placeholder="Thread title"
             aria-label="Thread title"
             className="
@@ -108,7 +108,7 @@ export default function CreateThreadModal({
 
           <textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e: any) => setDescription(e.target.value)}
             placeholder="Describe your discussion..."
             aria-label="Thread description"
             rows={5}
@@ -130,7 +130,7 @@ export default function CreateThreadModal({
             <input
               type="checkbox"
               checked={anonymous}
-              onChange={() => setAnonymous((prev) => !prev)}
+              onChange={() => setAnonymous((prev: any) => !prev)}
               aria-label="Post anonymously"
               className="h-4 w-4 accent-blue-600"
             />

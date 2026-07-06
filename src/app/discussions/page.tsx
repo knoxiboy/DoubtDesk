@@ -126,7 +126,7 @@ export default function DiscussionsPage() {
   };
 
   const handleCreateThread = (thread: Thread) => {
-    setThreadList((prev) => [thread, ...prev]);
+    setThreadList((prev: any) => [thread, ...prev]);
   };
 
   const handleOpenThread = (thread: Thread) => {
@@ -202,7 +202,7 @@ export default function DiscussionsPage() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categories.map((category) => {
+            {categories.map((category: any) => {
               const Icon = category.icon;
 
               return (
@@ -277,7 +277,7 @@ export default function DiscussionsPage() {
 
           <div className="grid gap-5">
 
-            {threadList.map((thread) => (
+            {threadList.map((thread: any) => (
               <div
                 key={thread.id}
                 className="
@@ -372,7 +372,7 @@ export default function DiscussionsPage() {
             "Keep discussions academic",
             "Avoid spam or abusive content",
             "Help peers learn collaboratively",
-          ].map((rule) => (
+          ].map((rule: any) => (
             <div
               key={rule}
               className="

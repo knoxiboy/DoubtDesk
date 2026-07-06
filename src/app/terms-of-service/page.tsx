@@ -74,7 +74,7 @@ export default function TermsOfServicePage() {
         </div>
 
         <div className="grid gap-6">
-          {sections.map((section, index) => {
+          {sections.map((section: any, index: any) => {
             const Icon = section.icon;
 
             return (

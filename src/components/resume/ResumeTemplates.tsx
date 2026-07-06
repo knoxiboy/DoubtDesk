@@ -155,7 +155,7 @@ export const downloadResume = (data: ResumeData) => {
         // 4. Experience
         if (experience.length > 0) {
             sectionHeader("Professional Experience");
-            experience.forEach((exp, idx) => {
+            experience.forEach((exp: any, idx: any) => {
                 if (y > 250) { doc.addPage(); y = 20; }
 
                 // Role (Left) & Date (Right)
@@ -181,7 +181,7 @@ export const downloadResume = (data: ResumeData) => {
 
                 // Description
                 const descPoints = exp.description.split('\n').filter(p => p.trim() !== "");
-                descPoints.forEach((point) => {
+                descPoints.forEach((point: any) => {
                     const descLines = doc.splitTextToSize(point, width - 6);
                     descLines.forEach((line: string, lIdx: number) => {
                         if (y > 280) { doc.addPage(); y = 20; }
@@ -198,7 +198,7 @@ export const downloadResume = (data: ResumeData) => {
         // 5. Projects
         if (projects.length > 0) {
             sectionHeader("Strategic Projects");
-            projects.forEach((proj, idx) => {
+            projects.forEach((proj: any, idx: any) => {
                 if (y > 250) { doc.addPage(); y = 20; }
 
                 // Title
@@ -246,7 +246,7 @@ export const downloadResume = (data: ResumeData) => {
 
                 // Description
                 const descPoints = proj.description.split('\n').filter(p => p.trim() !== "");
-                descPoints.forEach((point) => {
+                descPoints.forEach((point: any) => {
                     const descLines = doc.splitTextToSize(point, width - 6);
                     descLines.forEach((line: string, lIdx: number) => {
                         if (y > 280) { doc.addPage(); y = 20; }
@@ -263,7 +263,7 @@ export const downloadResume = (data: ResumeData) => {
         // 6. Education
         if (education.length > 0) {
             sectionHeader("Education");
-            education.forEach((edu, idx) => {
+            education.forEach((edu: any, idx: any) => {
                 if (y > 260) { doc.addPage(); y = 20; }
 
                 // Institution & Date
@@ -304,7 +304,7 @@ export const downloadResume = (data: ResumeData) => {
         if (skills.length > 0) {
             sectionHeader("Technical Skills");
             const colX = margin + 45; // Fixed column alignment X
-            skills.forEach((skill) => {
+            skills.forEach((skill: any) => {
                 if (y > 275) { doc.addPage(); y = 20; }
                 doc.setFontSize(9.5);
                 doc.setFont("helvetica", "bold");
@@ -320,9 +320,9 @@ export const downloadResume = (data: ResumeData) => {
 
         // 8. Custom Sections
         if (customSections && customSections.length > 0) {
-            customSections.forEach((section) => {
+            customSections.forEach((section: any) => {
                 sectionHeader(section.title);
-                section.items.forEach((item, idx) => {
+                section.items.forEach((item: any, idx: any) => {
                     if (y > 260) { doc.addPage(); y = 20; }
 
                     if (idx > 0) {
@@ -358,7 +358,7 @@ export const downloadResume = (data: ResumeData) => {
                     }
 
                     const descPoints = (item.description || "").split('\n').filter(p => p.trim() !== "");
-                    descPoints.forEach((point) => {
+                    descPoints.forEach((point: any) => {
                         const descLines = doc.splitTextToSize(point, width - 6);
                         descLines.forEach((line: string, idx: number) => {
                             if (y > 280) { doc.addPage(); y = 20; }
@@ -376,7 +376,7 @@ export const downloadResume = (data: ResumeData) => {
         // 9. Honors & Awards
         if (honors && honors.length > 0) {
             sectionHeader("Honors & Awards");
-            honors.forEach((honor) => {
+            honors.forEach((honor: any) => {
                 if (!honor) return;
                 if (y > 275) { doc.addPage(); y = 20; }
 

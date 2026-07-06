@@ -130,21 +130,21 @@ export default function AnalyticsDashboard() {
             
             csvContent += "DAILY DOUBT TRENDS\n";
             csvContent += "Date,Doubt Count\n";
-            data.trends.forEach((row) => {
+            data.trends.forEach((row: any) => {
                 csvContent += `"${row.date}",${row.count}\n`;
             });
             csvContent += "\n";
             
             csvContent += "SUBJECT WISE BREAKDOWN\n";
             csvContent += "Subject,Doubt Count\n";
-            data.subjects.forEach((row) => {
+            data.subjects.forEach((row: any) => {
                 csvContent += `"${row.subject}",${row.count}\n`;
             });
             csvContent += "\n";
 
             csvContent += "PEAK ACTIVITY HOURS\n";
             csvContent += "Hour,Doubt Count\n";
-            data.peakHours.forEach((row) => {
+            data.peakHours.forEach((row: any) => {
                 csvContent += `"${row.hour}",${row.count}\n`;
             });
             
@@ -212,7 +212,7 @@ export default function AnalyticsDashboard() {
                             </label>
                             <select
                                 value={selectedClassroom}
-                                onChange={(e) => setSelectedClassroom(e.target.value)}
+                                onChange={(e: any) => setSelectedClassroom(e.target.value)}
                                 className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-3.5 rounded-xl focus:outline-none focus:border-blue-500/50 transition-all font-semibold text-sm appearance-none cursor-pointer text-slate-900 dark:text-zinc-100"
                             >
                                 <option className="bg-white dark:bg-zinc-950" value="all">All Classrooms Combined</option>
@@ -233,7 +233,7 @@ export default function AnalyticsDashboard() {
                                     { value: "7", label: "7 Days" },
                                     { value: "30", label: "30 Days" },
                                     { value: "90", label: "90 Days" }
-                                ].map((item) => (
+                                ].map((item: any) => (
                                     <button
                                         key={item.value}
                                         onClick={() => setDateRange(item.value)}
@@ -261,7 +261,7 @@ export default function AnalyticsDashboard() {
                 {loading ? (
                     <div className="space-y-8">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {[1, 2, 3, 4].map((i) => (
+                            {[1, 2, 3, 4].map((i: any) => (
                                 <Skeleton key={i} className="h-32 rounded-2xl bg-slate-50 dark:bg-zinc-900/40" />
                             ))}
                         </div>
@@ -311,7 +311,7 @@ export default function AnalyticsDashboard() {
                                     bg: "bg-pink-500/10",
                                     border: "border-slate-200 dark:border-zinc-900"
                                 }
-                            ].map((card, i) => (
+                            ].map((card: any, i: any) => (
                                 <div key={i} className={`bg-white/50 dark:bg-zinc-950/30 border ${card.border} rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-slate-200/5 dark:shadow-none group`}>
                                     <div className="flex items-center justify-between gap-4">
                                         <div className={`p-3.5 ${card.bg} rounded-xl`}>

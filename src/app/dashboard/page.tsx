@@ -42,7 +42,7 @@ function DashboardSkeleton() {
             </header>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[1, 2, 3, 4].map((i) => (
+                {[1, 2, 3, 4].map((i: any) => (
                     <Skeleton key={i} className="h-32 rounded-2xl bg-slate-100 dark:bg-zinc-900" />
                 ))}
             </div>
@@ -185,7 +185,7 @@ export default function Dashboard() {
                                 bg: "bg-pink-500/10",
                                 border: "border-slate-200 dark:border-zinc-900"
                             }
-                        ].map((card, i) => (
+                        ].map((card: any, i: any) => (
                             <div key={i} className={`bg-white/50 dark:bg-zinc-950/30 border ${card.border} rounded-2xl p-6 backdrop-blur-md flex flex-col justify-between hover:-translate-y-1 transition-all duration-300 shadow-xl shadow-slate-200/5 dark:shadow-none group`}>
                                 <div className="flex items-center justify-between gap-4">
                                     <div className={`p-3.5 ${card.bg} rounded-xl`}>
@@ -297,7 +297,7 @@ export default function Dashboard() {
                                         No active doubts inside your classrooms yet.
                                     </div>
                                 ) : (
-                                    data.trendingDoubts.map((doubt) => (
+                                    data.trendingDoubts.map((doubt: any) => (
                                         <div key={doubt.id} className="group p-5 bg-slate-50/50 dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 hover:border-purple-500/40 dark:hover:bg-zinc-900/30 rounded-2xl transition-all duration-300 flex flex-col gap-3 shadow-sm">
                                             <div className="flex items-center justify-between">
                                                 <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
@@ -328,7 +328,7 @@ export default function Dashboard() {
                                         <p className="text-slate-400 dark:text-zinc-500 text-xs font-semibold text-center py-4">No critical weak spots detected!</p>
                                     ) : (
                                         <div className="space-y-3">
-                                            {data.weakTopics.slice(0, 2).map((topic) => (
+                                            {data.weakTopics.slice(0, 2).map((topic: any) => (
                                                 <div key={topic.subject} className="flex items-center gap-3 p-3.5 bg-red-500/5 dark:bg-red-500/10 rounded-xl border border-red-500/10 hover:scale-[1.02] transition-transform duration-300">
                                                     <div className="w-9 h-9 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0 border border-red-500/20">
                                                         <BookOpen className="w-4 h-4 text-red-600 dark:text-red-400" />
@@ -357,7 +357,7 @@ export default function Dashboard() {
                                         <div className="py-8 text-center text-slate-400 dark:text-zinc-500 font-semibold text-xs opacity-60">No helpers recorded yet.</div>
                                     ) : (
                                         <div className="space-y-3">
-                                            {data.topContributors.slice(0, 3).map((contributor, i) => (
+                                            {data.topContributors.slice(0, 3).map((contributor: any, i: any) => (
                                                 <div key={i} className="flex items-center gap-3 bg-slate-50/50 dark:bg-zinc-900/40 border border-slate-200/60 dark:border-zinc-800/60 rounded-xl p-4 hover:scale-[1.01] transition-all duration-300 shadow-sm">
                                                     <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-xs font-bold text-slate-500 dark:text-zinc-400">
                                                         {i + 1}

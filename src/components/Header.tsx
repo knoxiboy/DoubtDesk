@@ -109,7 +109,7 @@ export default function Header() {
 
         {/* Desktop Navigation Links */}
         <div className="hidden lg:flex items-center gap-4 flex-wrap">
-          {pageLinks.map((link) => {
+          {pageLinks.map((link: any) => {
             const scrollId = link.href.startsWith("#")
               ? link.href.slice(1)
               : null;
@@ -242,7 +242,7 @@ export default function Header() {
           className="flex flex-col gap-1 w-full"
           aria-label="Mobile navigation container"
         >
-          {pageLinks.map((link) => {
+          {pageLinks.map((link: any) => {
             const scrollId = link.href.startsWith("#")
               ? link.href.slice(1)
               : null;

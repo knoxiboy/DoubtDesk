@@ -8,7 +8,7 @@ export const createReplySchema = z.object({
   content: trimmedString.max(5000).optional().nullable(),
   imageUrl: safeUrl.optional().nullable(),
   createdAt: z.string().datetime().optional().nullable(),
-}).refine((data) => data.content || data.imageUrl, {
+}).refine((data: any) => data.content || data.imageUrl, {
   message: "Either content or imageUrl is required",
   path: ["content"]
 });

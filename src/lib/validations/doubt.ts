@@ -10,7 +10,7 @@ export const createDoubtSchema = z.object({
   type: z.enum(["community", "teacher", "ai"]).default("community"),
   tags: z.array(trimmedString.min(1).max(80)).max(8).default([]),
   createdAt: z.string().datetime().optional().nullable(),
-}).refine((data) => data.content || data.imageUrl, {
+}).refine((data: any) => data.content || data.imageUrl, {
   message: "Either content or imageUrl is required",
   path: ["content"]
 });

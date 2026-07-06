@@ -39,7 +39,7 @@ function usesRouteLevelLimit(path: string, method: string) {
     );
 }
 
-export default clerkMiddleware(async (auth, req) => {
+export default clerkMiddleware(async (auth: any, req: any) => {
     const path = req.nextUrl.pathname;
 
     if (path.startsWith('/api/inngest')) {
@@ -122,7 +122,7 @@ export default clerkMiddleware(async (auth, req) => {
                 const client = await clerkClient();
                 const user = await client.users.getUser(userId);
                 email = user.emailAddresses.find(
-                    (e) => e.id === user.primaryEmailAddressId
+                    (e: any) => e.id === user.primaryEmailAddressId
                 )?.emailAddress;
             } catch (err) {
                 console.error("Middleware fallback getUser error:", err);

@@ -7,7 +7,7 @@ export default function LiveCampusThreadPanel() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setDots((prev) => (prev.length >= 3 ? "" : prev + "."));
+      setDots((prev: any) => (prev.length >= 3 ? "" : prev + "."));
     }, 600);
     return () => clearInterval(interval);
   }, []);

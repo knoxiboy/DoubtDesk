@@ -17,7 +17,7 @@ export const DoubtVideo = ({
 }) => {
     return (
         <Series>
-            {scenes.map((scene, i) => (
+            {scenes.map((scene: any, i: any) => (
                 <Series.Sequence key={i} durationInFrames={Math.max(30, (scene.duration || 5) * 30)}>
                     {type === 'math' ? (
                         <MathStep equation={scene.equation || ''} index={i} />

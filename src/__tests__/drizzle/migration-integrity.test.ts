@@ -6,14 +6,14 @@ const drizzleDir = path.join(process.cwd(), 'drizzle');
 function getMigrationFiles(): string[] {
     return fs
         .readdirSync(drizzleDir)
-        .filter((f) => f.endsWith('.sql'))
+        .filter((f: any) => f.endsWith('.sql'))
         .sort();
 }
 
 describe('drizzle migration directory integrity', () => {
     it('has no duplicate numeric version prefixes', () => {
         const files = getMigrationFiles();
-        const prefixes = files.map((f) => f.match(/^(\d+)_/)?.[1]);
+        const prefixes = files.map((f: any) => f.match(/^(\d+)_/)?.[1]);
 
         expect(prefixes.every(Boolean)).toBe(true);
 
@@ -34,11 +34,11 @@ describe('drizzle migration directory integrity', () => {
         const journal = JSON.parse(fs.readFileSync(journalPath, 'utf-8'));
         const entries = journal.entries as { idx: number; tag: string }[];
 
-        const idxValues = entries.map((e) => e.idx);
+        const idxValues = entries.map((e: any) => e.idx);
         expect(new Set(idxValues).size).toBe(idxValues.length);
 
-        const sortedIdx = [...idxValues].sort((a, b) => a - b);
-        sortedIdx.forEach((idx, i) => expect(idx).toBe(i));
+        const sortedIdx = [...idxValues].sort((a: any, b: any) => a - b);
+        sortedIdx.forEach((idx: any, i: any) => expect(idx).toBe(i));
 
         for (const entry of entries) {
             const sqlPath = path.join(drizzleDir, `${entry.tag}.sql`);
@@ -46,10 +46,10 @@ describe('drizzle migration directory integrity', () => {
         }
 
          const files = getMigrationFiles();
-        const tags = entries.map((e) => e.tag);
+        const tags = entries.map((e: any) => e.tag);
         expect(new Set(tags).size).toBe(tags.length);
 
-         const journalTags = new Set(entries.map((e) => e.tag));
+         const journalTags = new Set(entries.map((e: any) => e.tag));
         expect(journalTags.size).toBe(files.length);
          for (const file of files) {
              const tag = file.replace(/\.sql$/, '');

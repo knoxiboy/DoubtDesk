@@ -59,7 +59,7 @@ const SUBJECT_KEYWORDS: Record<string, string[]> = {
 const suggestSubject = (text: string) => {
     const normalized = text.toLowerCase();
     return Object.entries(SUBJECT_KEYWORDS).find(([, keywords]) =>
-        keywords.some((keyword) => normalized.includes(keyword))
+        keywords.some((keyword: any) => normalized.includes(keyword))
     )?.[0] || "";
 };
 
@@ -69,7 +69,7 @@ const suggestTags = (text: string, subject: string) => {
 
     if (subject) tags.add(subject);
     Object.entries(SUBJECT_KEYWORDS).forEach(([topic, keywords]) => {
-        if (keywords.some((keyword) => normalized.includes(keyword))) tags.add(topic);
+        if (keywords.some((keyword: any) => normalized.includes(keyword))) tags.add(topic);
     });
 
     return Array.from(tags).slice(0, 4);
@@ -122,7 +122,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
     );
 
     const suggestedTags = (Array.isArray(suggestedTagsData) ? suggestedTagsData : []).filter(
-        (rec) => !tags.some((t) => t.toLowerCase() === rec.name.toLowerCase())
+        (rec: any) => !tags.some((t: any) => t.toLowerCase() === rec.name.toLowerCase())
     );
     const [subjectWasEdited, setSubjectWasEdited] = useState(false);
     const [suggestedSubject, setSuggestedSubject] = useState("");
@@ -291,8 +291,8 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
     const addTag = (tagName: string) => {
         const cleanTag = tagName.trim().replace(/\s+/g, " ");
         if (!cleanTag) return;
-        setTags((currentTags) => {
-            if (currentTags.some((tag) => tag.toLowerCase() === cleanTag.toLowerCase())) {
+        setTags((currentTags: any) => {
+            if (currentTags.some((tag: any) => tag.toLowerCase() === cleanTag.toLowerCase())) {
                 return currentTags;
             }
             return [...currentTags, cleanTag].slice(0, 8);
@@ -417,7 +417,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                         <input
                             type="text"
                             value={subject}
-                            onChange={(e) => {
+                            onChange={(e: any) => {
                                 setSubject(e.target.value);
                                 setSubjectWasEdited(true);
                             }}
@@ -474,7 +474,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                 <textarea
                                     ref={contentTextareaRef}
                                     value={content}
-                                    onChange={(e) => setContent(e.target.value)}
+                                    onChange={(e: any) => setContent(e.target.value)}
                                     placeholder="Type your question here... (Markdown supported)"
                                     className={`w-full h-32 bg-slate-100 dark:bg-white/5 border rounded-2xl p-4 text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 transition-all resize-none ${
                                         isTooLong
@@ -540,8 +540,8 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                             <input
                                 type="text"
                                 value={tagDraft}
-                                onChange={(e) => setTagDraft(e.target.value)}
-                                onKeyDown={(e) => {
+                                onChange={(e: any) => setTagDraft(e.target.value)}
+                                onKeyDown={(e: any) => {
                                     if (e.key === "Enter" || e.key === ",") {
                                         e.preventDefault();
                                         addTag(tagDraft);
@@ -561,7 +561,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                         {suggestedTags.length > 0 && (
                             <div className="flex flex-wrap gap-2 items-center px-1 py-1">
                                 <span className="text-[9px] text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest">Recommended:</span>
-                                {suggestedTags.map((tag) => (
+                                {suggestedTags.map((tag: any) => (
                                     <button
                                         type="button"
                                         key={tag.id}
@@ -575,11 +575,11 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                         )}
                         {tags.length > 0 && (
                             <div className="flex flex-wrap gap-2">
-                                {tags.map((tag) => (
+                                {tags.map((tag: any) => (
                                     <button
                                         key={tag}
                                         type="button"
-                                        onClick={() => setTags((currentTags) => currentTags.filter((item) => item !== tag))}
+                                        onClick={() => setTags((currentTags: any) => currentTags.filter((item: any) => item !== tag))}
                                         className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-200 text-[10px] font-bold"
                                     >
                                         {tag}
@@ -597,7 +597,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                         </div>
                         <div
                             className="relative group"
-                            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                            onDragOver={(e: any) => { e.preventDefault(); setIsDragging(true); }}
                             onDragLeave={() => setIsDragging(false)}
                             onDrop={handleDrop}
                         >
@@ -620,7 +620,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={(e) => { e.stopPropagation(); setFileName(""); setImageUrl(""); setFileSize(""); }}
+                                                onClick={(e: any) => { e.stopPropagation(); setFileName(""); setImageUrl(""); setFileSize(""); }}
                                                 className="mt-2 text-[10px] bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-slate-900 dark:hover:text-white px-4 py-1.5 rounded-xl font-black uppercase tracking-widest transition-all z-20"
                                             >
                                                 Remove Attachment
@@ -637,7 +637,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={(e) => { e.stopPropagation(); setFileName(""); setImageUrl(""); setFileSize(""); }}
+                                                onClick={(e: any) => { e.stopPropagation(); setFileName(""); setImageUrl(""); setFileSize(""); }}
                                                 className="text-[10px] bg-red-500/20 hover:bg-red-500 text-red-400 hover:text-slate-900 dark:hover:text-white px-4 py-1 rounded-xl font-black uppercase tracking-widest transition-all z-20"
                                             >
                                                 Remove Attachment
@@ -689,7 +689,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                         </span>
                                     </div>
                                     <div className="divide-y divide-yellow-500/10 max-h-64 overflow-y-auto">
-                                        {similarDoubts.map((d) => (
+                                        {similarDoubts.map((d: any) => (
                                             <div key={d.id} className="px-4 py-3 space-y-1.5">
                                                 <div className="flex items-start justify-between gap-3">
                                                     <div className="flex-1 min-w-0">

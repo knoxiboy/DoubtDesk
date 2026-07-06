@@ -114,7 +114,7 @@ export async function POST(req: Request) {
 
     const doubtList = recentDoubts
       .map(
-        (d, i) =>
+        (d: any, i: any) =>
           `[${i}] Subject: ${d.subject} | Content: ${(d.content || "").slice(0, 150)}`,
       )
       .join("\n");
@@ -154,7 +154,7 @@ Do not include any explanation or markdown.`;
 
       matches = Array.isArray(parsed)
         ? parsed.filter(
-            (item) =>
+            (item: any) =>
               typeof item.index === "number" &&
               typeof item.similarity === "number",
           )
@@ -164,15 +164,15 @@ Do not include any explanation or markdown.`;
       return NextResponse.json({ similarDoubts: [] });
     }
 
-    const highMatches = matches.filter((m) => m.similarity >= 80).slice(0, 5);
+    const highMatches = matches.filter((m: any) => m.similarity >= 80).slice(0, 5);
     const similarDoubts: SimilarDoubt[] = [];
 
     const solvedReplyIds = highMatches
-      .map((match) => recentDoubts[match.index])
+      .map((match: any) => recentDoubts[match.index])
       .filter(
-        (doubt) => doubt && doubt.isSolved === "solved" && doubt.solvedReplyId,
+        (doubt: any) => doubt && doubt.isSolved === "solved" && doubt.solvedReplyId,
       )
-      .map((doubt) => doubt.solvedReplyId!);
+      .map((doubt: any) => doubt.solvedReplyId!);
 
     const solvedReplies =
       solvedReplyIds.length > 0
@@ -186,7 +186,7 @@ Do not include any explanation or markdown.`;
         : [];
 
     const replyMap = new Map(
-      solvedReplies.map((reply) => [reply.id, reply.content]),
+      solvedReplies.map((reply: any) => [reply.id, reply.content]),
     );
 
     for (const match of highMatches) {
@@ -212,7 +212,7 @@ Do not include any explanation or markdown.`;
       });
     }
 
-    similarDoubts.sort((a, b) => b.similarity - a.similarity);
+    similarDoubts.sort((a: any, b: any) => b.similarity - a.similarity);
     return NextResponse.json({ similarDoubts });
   } catch (error) {
     const { status, body } = buildErrorResponse(error);

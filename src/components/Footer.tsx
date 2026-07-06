@@ -321,7 +321,7 @@ export default function Footer() {
 
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-5 text-center sm:text-left">
           <div className="flex items-center gap-3.5 order-2 sm:order-1">
-            {socialLinks.map((social) => {
+            {socialLinks.map((social: any) => {
               const isInternal = social.href.startsWith("/");
 
               return isInternal ? (

@@ -134,7 +134,7 @@ export default function PublicRoomsPage() {
         : []) as Doubt[];
     
     // Apply local filters to pending doubts so they match the active view
-    const matchingPendingDoubts = pendingDoubts.filter((d) => {
+    const matchingPendingDoubts = pendingDoubts.filter((d: any) => {
         // 1. Subject filter
         if (filter !== "All") {
             if (filter === "Bookmarked") {
@@ -175,7 +175,7 @@ export default function PublicRoomsPage() {
     });
 
     const allDoubts = [...matchingPendingDoubts, ...doubts];
-    const filteredDoubts = (allDoubts as any[]).filter((d) => {
+    const filteredDoubts = (allDoubts as any[]).filter((d: any) => {
         if (statusFilter === 'all') return true;
         if (statusFilter === 'unsolved') return d.isSolved === 'unsolved' || !d.isSolved;
         if (statusFilter === 'in-progress') return d.isSolved === 'in-progress';
@@ -252,7 +252,7 @@ export default function PublicRoomsPage() {
                         type="text"
                         placeholder="Search for doubts, subjects, or keywords..."
                         value={searchVal}
-                        onChange={(e) => setSearchVal(e.target.value)}
+                        onChange={(e: any) => setSearchVal(e.target.value)}
                         className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl py-4 pl-12 pr-6 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 transition-all shadow-sm"
                     />
                 </div>
@@ -268,7 +268,7 @@ export default function PublicRoomsPage() {
                             filtersList.push("Bookmarked");
                         }
                         return filtersList;
-                    })().map((f) => (
+                    })().map((f: any) => (
                         <button
                             key={f}
                             onClick={() => {
@@ -302,8 +302,8 @@ export default function PublicRoomsPage() {
                                 type="text"
                                 placeholder="Type filter..."
                                 value={customFilter}
-                                onChange={(e) => setCustomFilter(e.target.value)}
-                                onKeyDown={(e) => {
+                                onChange={(e: any) => setCustomFilter(e.target.value)}
+                                onKeyDown={(e: any) => {
                                     if (e.key === 'Enter') setAppliedCustomFilter(customFilter);
                                 }}
                                 className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-[11px] font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500 transition-all w-36"
@@ -322,8 +322,8 @@ export default function PublicRoomsPage() {
                             type="text"
                             placeholder="Filter by tag..."
                             value={tagFilter}
-                            onChange={(e) => setTagFilter(e.target.value)}
-                            onKeyDown={(e) => {
+                            onChange={(e: any) => setTagFilter(e.target.value)}
+                            onKeyDown={(e: any) => {
                                 if (e.key === "Enter") fetchDoubts();
                             }}
                             className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-[11px] font-medium text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:border-blue-500 transition-all w-36"
@@ -348,7 +348,7 @@ export default function PublicRoomsPage() {
                         { key: 'unsolved',    label: 'Unsolved',    active: "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400" },
                         { key: 'in-progress', label: 'In Progress', active: "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400" },
                         { key: 'solved',      label: 'Solved',      active: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400" },
-                    ] as const).map((s) => (
+                    ] as const).map((s: any) => (
                         <button
                             key={s.key}
                             onClick={() => setStatusFilter(s.key)}

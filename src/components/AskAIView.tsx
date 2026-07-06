@@ -68,8 +68,8 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
   }, [messages]);
 
   useEffect(() => {
-    setMessages((prev) =>
-      prev.map((msg) =>
+    setMessages((prev: any) =>
+      prev.map((msg: any) =>
         msg.role === "assistant"
           ? { ...msg, isCelebration: mode === "mentor" && isCelebrationMessage(msg.content) }
           : msg
@@ -177,10 +177,10 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
         isCelebration: mode === "mentor" && isCelebrationMessage(replyText),
       };
 
-      setMessages((prev) => [...prev, assistantMsg]);
+      setMessages((prev: any) => [...prev, assistantMsg]);
       onSuccess?.();
     } catch {
-      setMessages((prev) => [
+      setMessages((prev: any) => [
         ...prev,
         {
           id: generateId(),
@@ -223,7 +223,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
           </p>
         )}
 
-        {messages.map((msg) => (
+        {messages.map((msg: any) => (
           <div key={msg.id} className={["flex", msg.role === "user" ? "justify-end" : "justify-start"].join(" ")}>
             <div
               className={[
@@ -245,7 +245,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
             <span className="sr-only">{ASK_AI_COPY.loading}</span>
             <div className="bg-slate-800 rounded-2xl rounded-bl-sm px-4 py-3">
               <span className="flex gap-1">
-                {[0, 1, 2].map((i) => (
+                {[0, 1, 2].map((i: any) => (
                   <span
                     key={i}
                     className="w-2 h-2 rounded-full bg-slate-400 animate-bounce"
@@ -266,7 +266,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
             aria-label={ASK_AI_COPY.inputLabel[mode]}
             placeholder={ASK_AI_COPY.placeholder[mode]}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e: any) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
             disabled={isLoading}

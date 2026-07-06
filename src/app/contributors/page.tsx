@@ -79,7 +79,7 @@ export default async function ContributorsPage() {
 
         {/* Stats Section */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-24">
-          {stats.map((stat) => {
+          {stats.map((stat: any) => {
             const Icon = stat.icon;
 
             return (
@@ -119,7 +119,7 @@ export default async function ContributorsPage() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {contributors.map((contributor) => (
+            {contributors.map((contributor: any) => (
               <Link
                 key={contributor.id}
                 href={contributor.html_url}

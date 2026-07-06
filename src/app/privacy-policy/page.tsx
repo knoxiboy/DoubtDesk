@@ -83,7 +83,7 @@ export default function PrivacyPolicyPage() {
 
         {/* Responsive Block-style Glassmorphism Grid */}
         <div className="grid gap-6 md:grid-cols-2 relative z-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
-          {sections.map((section, index) => {
+          {sections.map((section: any, index: any) => {
             const Icon = section.icon;
 
             return (

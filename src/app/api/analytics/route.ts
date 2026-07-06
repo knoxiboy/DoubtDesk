@@ -199,7 +199,7 @@ export async function GET(req: Request) {
         ]);
         
         // 8. AI Teaching Suggestions & Weak Concept Detection (Heuristics)
-        const weakTopics = mostAskedTopics.map((topic, index) => {
+        const weakTopics = mostAskedTopics.map((topic: any, index: any) => {
             const countValue = Number(topic.count);
             let suggestion = "";
 

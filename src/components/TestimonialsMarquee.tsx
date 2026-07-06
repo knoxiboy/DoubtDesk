@@ -82,7 +82,7 @@ export default function TestimonialsMarquee({
         {/* Testimonial Marquee */}
         <div className="marquee-container overflow-hidden relative">
           <div className="marquee-track flex gap-6 w-max py-2">
-            {duplicatedTestimonials.map((testimonial, index) => (
+            {duplicatedTestimonials.map((testimonial: any, index: any) => (
               <TestimonialCard
                 key={`${testimonial.id}-${index}`}
                 testimonial={testimonial}

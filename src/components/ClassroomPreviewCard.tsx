@@ -18,7 +18,7 @@ export default function ClassroomPreviewCard() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setUpdateIndex((current) => (current + 1) % liveUpdates.length);
+      setUpdateIndex((current: any) => (current + 1) % liveUpdates.length);
     }, 2600);
 
     return () => window.clearInterval(timer);
@@ -125,7 +125,7 @@ export default function ClassroomPreviewCard() {
         </div>
 
         <div className="mt-4 grid gap-2 border-t border-white/10 pt-4">
-          {liveUpdates.map((update, index) => {
+          {liveUpdates.map((update: any, index: any) => {
             const isActive = index === updateIndex;
 
             return (

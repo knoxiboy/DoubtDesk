@@ -150,7 +150,7 @@ export default function AboutPage() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature) => {
+            {features.map((feature: any) => {
               const Icon = feature.icon;
 
               return (
@@ -182,7 +182,7 @@ export default function AboutPage() {
             </h2>
 
             <div className="flex flex-wrap justify-center gap-4">
-              {techStack.map((tech) => (
+              {techStack.map((tech: any) => (
                 <div
                   key={tech}
                  className="px-5 py-3 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900/70 text-slate-700 dark:text-slate-300 hover:border-blue-500/50 dark:hover:border-cyan-400/60 hover:text-blue-600 dark:hover:text-cyan-300 hover:-translate-y-1 hover:shadow-md hover:shadow-blue-500/10 dark:hover:shadow-cyan-500/20 transition-all duration-300"      >

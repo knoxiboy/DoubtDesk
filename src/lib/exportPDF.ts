@@ -70,7 +70,7 @@ export function exportDoubtsPDF(classroomName: string, doubts: ExportDoubt[]): v
     y += 3;
 
     // Summary line
-    const solvedCount = doubts.filter((d) => d.isSolved === "solved").length;
+    const solvedCount = doubts.filter((d: any) => d.isSolved === "solved").length;
     const unsolvedCount = doubts.length - solvedCount;
     doc.setFontSize(9);
     doc.text(
@@ -93,7 +93,7 @@ export function exportDoubtsPDF(classroomName: string, doubts: ExportDoubt[]): v
         doc.text("No doubts found matching the selected filters.", marginLeft, y);
     }
 
-    doubts.forEach((doubt, index) => {
+    doubts.forEach((doubt: any, index: any) => {
         // Estimate space needed for this doubt block (minimum ~35mm)
         checkPageOverflow(45);
 

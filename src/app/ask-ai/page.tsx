@@ -357,7 +357,7 @@ export default function AskAIPage() {
                                     { label: 'Step-by-step', desc: 'Follow every logic move', color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-200' },
                                     { label: 'Image to answer', desc: 'Upload problem photos', color: 'bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-200' },
                                     { label: 'Smart follow-ups', desc: 'Ask more about any step', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200' },
-                                ].map((item) => (
+                                ].map((item: any) => (
                                     <div key={item.label} className={`rounded-3xl border border-slate-200 dark:border-slate-800 p-4 ${item.color}`}>
                                         <p className="text-sm font-bold">{item.label}</p>
                                         <p className="text-xs mt-1 text-slate-600 dark:text-slate-300">{item.desc}</p>
@@ -390,8 +390,8 @@ export default function AskAIPage() {
                                     <textarea
                                         id="doubt-input"
                                         value={prompt}
-                                        onChange={(e) => setPrompt(e.target.value)}
-                                        onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAskAI(); }}
+                                        onChange={(e: any) => setPrompt(e.target.value)}
+                                        onKeyDown={(e: any) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAskAI(); }}
                                         placeholder="e.g. How do I solve x² - 5x + 6 = 0?   (Ctrl+Enter to submit)"
                                         rows={4}
                                         className="w-full bg-white/60 dark:bg-black/60 border border-slate-200 dark:border-white/8 rounded-2xl px-5 py-4 text-slate-900 dark:text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500/40 transition-all resize-none font-medium text-[15px] leading-relaxed"
@@ -399,7 +399,7 @@ export default function AskAIPage() {
                                     />
                                     
                                     <div className="flex flex-wrap gap-2">
-                                        {EXAMPLE_PROMPTS.map((ex) => (
+                                        {EXAMPLE_PROMPTS.map((ex: any) => (
                                             <button
                                                 key={ex}
                                                 onClick={() => setPrompt(ex)}
@@ -445,7 +445,7 @@ export default function AskAIPage() {
                                     {imageBase64 && (
                                         <textarea
                                             value={prompt}
-                                            onChange={(e) => setPrompt(e.target.value)}
+                                            onChange={(e: any) => setPrompt(e.target.value)}
                                             placeholder="Optional: Add context or a specific question about this image..."
                                             rows={2}
                                             className="w-full bg-white/60 dark:bg-black/60 border border-slate-200 dark:border-white/8 rounded-2xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-purple-500/40 transition-all resize-none text-sm"
@@ -534,7 +534,7 @@ export default function AskAIPage() {
                     
                     {messages.length > 0 && (
                         <div className="space-y-6 pb-16">
-                            {messages.map((msg, msgIdx) => {
+                            {messages.map((msg: any, msgIdx: any) => {
                                 if (msg.role === 'user' && msgIdx > 0) {
                                     return (
                                         <div key={msgIdx} className="flex justify-end animate-in slide-in-from-right-4 duration-300">
@@ -552,7 +552,7 @@ export default function AskAIPage() {
                                     return (
                                         <div key={msgIdx} className={`space-y-4 animate-in fade-in duration-500 ${msgIdx > 1 ? 'slide-in-from-left-4' : 'slide-in-from-bottom-6'}`}>
                                             {sections.length > 0 ? (
-                                                sections.map((sec, idx) => {
+                                                sections.map((sec: any, idx: any) => {
                                                     const meta = SECTION_META[sec.title];
                                                     return (
                                                         <div
@@ -627,8 +627,8 @@ export default function AskAIPage() {
                                                 ref={followUpInputRef}
                                                 type="text"
                                                 value={followUpPrompt}
-                                                onChange={(e) => setFollowUpPrompt(e.target.value)}
-                                                onKeyDown={(e) => { if (e.key === 'Enter') handleAskAI('standard', true); }}
+                                                onChange={(e: any) => setFollowUpPrompt(e.target.value)}
+                                                onKeyDown={(e: any) => { if (e.key === 'Enter') handleAskAI('standard', true); }}
                                                 placeholder={activeStepContext ? "Ask about this step..." : "Ask a follow-up about any step..."}
                                                 className="w-full bg-white/60 dark:bg-black/60 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all font-medium"
                                             />
@@ -721,7 +721,7 @@ export default function AskAIPage() {
                                     { icon: <ListOrdered className="w-5 h-5" />, label: 'Step-by-step', desc: 'Clear, logical breakdown' },
                                     { icon: <Brain className="w-5 h-5" />, label: 'Simplified', desc: 'Easy to understand' },
                                     { icon: <CheckCircle2 className="w-5 h-5" />, label: 'Final Answer', desc: 'Direct answer highlighted' },
-                                ].map((f) => (
+                                ].map((f: any) => (
                                     <div key={f.label} className="bg-white/40 dark:bg-black/40 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-center">
                                         <div className="w-10 h-10 mx-auto bg-slate-100 dark:bg-white/5 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 mb-3">{f.icon}</div>
                                         <p className="text-slate-900 dark:text-white font-bold text-sm">{f.label}</p>

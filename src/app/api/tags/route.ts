@@ -144,7 +144,7 @@ export async function POST(req: Request) {
         if (existing) return NextResponse.json(existing);
 
         const [tag] = await db.insert(tagsTable).values({
-            name: normalizedName.replace(/\b\w/g, (char) => char.toUpperCase()),
+            name: normalizedName.replace(/\b\w/g, (char: any) => char.toUpperCase()),
             normalizedName,
             classroomId,
             createdByEmail: email,

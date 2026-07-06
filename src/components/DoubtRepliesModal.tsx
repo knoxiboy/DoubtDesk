@@ -468,7 +468,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     {menuOpenId === reply.id && (
                                         <div className="absolute top-10 right-0 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl py-1 w-32 animate-in zoom-in-95 duration-200 z-50 overflow-hidden">
                                             <button
-                                                onClick={(e) => {
+                                                onClick={(e: any) => {
                                                     e.stopPropagation();
                                                     if (reply.type === 'solution') {
                                                         setSolutionContent(reply.content || "");
@@ -487,7 +487,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                                 <Pencil className="w-3 h-3" /> Edit
                                             </button>
                                             <button
-                                                onClick={(e) => {
+                                                onClick={(e: any) => {
                                                     e.stopPropagation();
                                                     setReplyToDelete(reply.id);
                                                     setMenuOpenId(null);
@@ -528,7 +528,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     <textarea
                                         ref={editTextareaRef}
                                         value={editContent}
-                                        onChange={(e) => setEditContent(e.target.value)}
+                                        onChange={(e: any) => setEditContent(e.target.value)}
                                         className="w-full bg-white/50 dark:bg-slate-950/50 border border-blue-500/20 rounded-2xl p-4 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500/50 transition-all h-28 resize-none"
                                     />
                                 )}
@@ -564,7 +564,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={(e) => { e.stopPropagation(); window.open(reply.imageUrl!, "_blank"); }}
+                                                onClick={(e: any) => { e.stopPropagation(); window.open(reply.imageUrl!, "_blank"); }}
                                                 className="p-2.5 bg-red-500/10 hover:bg-red-500 hover:text-slate-900 dark:hover:text-white text-red-400 rounded-xl transition-all border border-red-500/20 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0"
                                                 title="Open PDF in new tab"
                                             >
@@ -713,7 +713,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                     ) : (
                         <div className="space-y-6">
                             {(() => {
-                                const allReplies = [...replies, ...pendingReplies].sort((a, b) => {
+                                const allReplies = [...replies, ...pendingReplies].sort((a: any, b: any) => {
                                     const timeA = new Date(a.createdAt).getTime() || 0;
                                     const timeB = new Date(b.createdAt).getTime() || 0;
                                     if (timeA !== timeB) {
@@ -743,7 +743,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                 }
 
                                 let lastDate = "";
-                                return filteredReplies.map((reply, index) => {
+                                return filteredReplies.map((reply: any, index: any) => {
                                     const replyDate = new Date(reply.createdAt).toLocaleDateString([], {
                                         day: 'numeric',
                                         month: 'long',
@@ -846,7 +846,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                 <textarea
                                     ref={solutionTextareaRef}
                                     value={solutionContent}
-                                    onChange={(e) => setSolutionContent(e.target.value)}
+                                    onChange={(e: any) => setSolutionContent(e.target.value)}
                                     placeholder="Explain your solution clearly and step-by-step..."
                                     className="w-full h-40 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[1.5rem] p-5 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none font-medium leading-relaxed placeholder:text-slate-600 shadow-inner"
                                 />
@@ -961,8 +961,8 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                         <input
                                             type="text"
                                             value={chatText}
-                                            onChange={(e) => setChatText(e.target.value)}
-                                            onKeyDown={(e) => {
+                                            onChange={(e: any) => setChatText(e.target.value)}
+                                            onKeyDown={(e: any) => {
                                                 if (e.key === 'Enter') {
                                                     handlePost('comment');
                                                 }
@@ -1017,7 +1017,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                         <X className="w-8 h-8" />
                     </button>
 
-                    <div className="relative w-full h-full p-12 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative w-full h-full p-12 flex items-center justify-center" onClick={(e: any) => e.stopPropagation()}>
                         <div className="relative max-w-full max-h-full">
                             <img
                                 src={fullscreenImageUrl}
@@ -1036,7 +1036,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             
             <DeleteConfirmationDialog
                 isOpen={replyToDelete !== null}
-                onClose={(open) => {
+                onClose={(open: any) => {
                     if (!open) setReplyToDelete(null);
                 }}
                 onConfirm={() => {

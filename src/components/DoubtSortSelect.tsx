@@ -31,12 +31,12 @@ export default function DoubtSortSelect({ value, onValueChange, className }: Dou
                 <ArrowUpDown className="w-4 h-4 text-blue-500" />
                 Sort
             </div>
-            <Select value={value} onValueChange={(nextValue) => onValueChange(nextValue as DoubtSortValue)}>
+            <Select value={value} onValueChange={(nextValue: any) => onValueChange(nextValue as DoubtSortValue)}>
                 <SelectTrigger className="h-11 min-w-[12rem] rounded-2xl border-slate-200 dark:border-white/10 bg-white/70 dark:bg-slate-950/60 text-slate-900 dark:text-white shadow-sm">
                     <SelectValue placeholder="Newest" />
                 </SelectTrigger>
                 <SelectContent>
-                    {sortOptions.map((option) => (
+                    {sortOptions.map((option: any) => (
                         <SelectItem key={option.value} value={option.value}>
                             <span className="flex flex-col items-start">
                                 <span>{option.label}</span>

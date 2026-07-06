@@ -12,7 +12,7 @@ export function RoadmapSkeleton() {
 
             {/* Milestones Skeleton */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
+                {[1, 2, 3, 4, 5, 6].map((i: any) => (
                     <div key={i} className="p-8 bg-zinc-50 rounded-[2.5rem] border border-zinc-100 space-y-6">
                         <Skeleton className="h-6 w-1/4 rounded-full" />
                         <Skeleton className="h-8 w-full rounded-xl" />
@@ -52,7 +52,7 @@ export function ResumeAnalysisSkeleton() {
                 <div className="bg-white rounded-[2.5rem] p-10 border border-zinc-100 space-y-8">
                     <Skeleton className="h-8 w-1/2 rounded-xl" />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {[1, 2, 3, 4].map((i) => (
+                        {[1, 2, 3, 4].map((i: any) => (
                             <div key={i} className="flex gap-4 p-5 bg-zinc-50 rounded-2xl border border-zinc-100">
                                 <Skeleton className="h-8 w-8 rounded-full shrink-0" />
                                 <Skeleton className="h-12 w-full rounded-xl" />
@@ -62,7 +62,7 @@ export function ResumeAnalysisSkeleton() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {[1, 2].map((i) => (
+                    {[1, 2].map((i: any) => (
                         <div key={i} className="bg-zinc-50 rounded-[2.5rem] p-10 border border-zinc-100 space-y-6">
                             <Skeleton className="h-6 w-1/3 rounded-lg" />
                             <div className="space-y-3">

@@ -20,7 +20,7 @@ describe('getDatabaseUrl', () => {
         }
     });
 
-    it.each([undefined, '', '   '])('returns dummy URL when DATABASE_URL is %p', (databaseUrl) => {
+    it.each([undefined, '', '   '])('returns dummy URL when DATABASE_URL is %p', (databaseUrl: any) => {
         if (databaseUrl === undefined) {
             delete process.env.DATABASE_URL;
         } else {

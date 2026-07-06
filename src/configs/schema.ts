@@ -46,7 +46,7 @@ export const classroomsTable = pgTable(
         targetGradeLevel: integer().default(13).notNull(),
         createdAt: timestamp().defaultNow().notNull(),
     },
-    (table) => ({
+    (table: any) => ({
         teacherEmailIndex: index("classrooms_teacherEmail_idx").on(table.teacherEmail),
     }),
 );
@@ -57,7 +57,7 @@ export const membershipsTable = pgTable("memberships", {
     classroomId: integer().notNull(),
     role: varchar({ length: 20 }).notNull(),
     joinedAt: timestamp().defaultNow().notNull(),
-}, (table) => {
+}, (table: any) => {
     return {
         userEmailIndex: index("userEmail_idx").on(table.userEmail),
         classroomIdIndex: index("classroomId_idx").on(table.classroomId),
@@ -87,7 +87,7 @@ export const classroomInvitesTable = pgTable("classroom_invites", {
   usedCount: integer("used_count").default(0).notNull(),
   maxUses: integer("max_uses"),
   revokedAt: timestamp("revoked_at"),
-}, (table) => ({
+}, (table: any) => ({
   tokenHashIdx: uniqueIndex("classroom_invites_token_hash_idx").on(table.tokenHash),
   classroomIdIdx: index("classroom_invites_classroom_id_idx").on(table.classroomId),
   expiresAtIdx: index("classroom_invites_expires_at_idx").on(table.expiresAt),
@@ -111,7 +111,7 @@ export const chatHistoryTable = pgTable("chat_history", {
     role: varchar({ length: 20 }).notNull(),
     content: text().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     chatIdIndex: index("chatHistory_chatId_idx").on(table.chatId),
     userIdFk: foreignKey({
         columns: [table.userEmail],
@@ -125,7 +125,7 @@ export const roadmapsTable = pgTable("roadmaps", {
     targetField: varchar({ length: 255 }).notNull(),
     roadmapData: text().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     userIdFk: foreignKey({
         columns: [table.userEmail],
         foreignColumns: [usersTable.email],
@@ -139,7 +139,7 @@ export const coverLettersTable = pgTable("cover_letters", {
     userDetails: text().notNull(),
     coverLetter: text().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     userIdFk: foreignKey({
         columns: [table.userEmail],
         foreignColumns: [usersTable.email],
@@ -154,7 +154,7 @@ export const resumeAnalysisTable = pgTable("resume_analysis", {
     analysisData: text().notNull(),
     resumeName: varchar({ length: 255 }),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     userIdFk: foreignKey({
         columns: [table.userEmail],
         foreignColumns: [usersTable.email],
@@ -174,7 +174,7 @@ export const resumesTable = pgTable("resumes", {
     resumeData: text().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
     updatedAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     userIdFk: foreignKey({
         columns: [table.userEmail],
         foreignColumns: [usersTable.email],
@@ -201,7 +201,7 @@ export const doubtsTable = pgTable("doubts", {
     // Semantic duplicate detection
     // NOTE: stored as pgvector embedding(1536)
     embedding: vector({ dimensions: 1536 }),
-}, (table) => {
+}, (table: any) => {
     return {
         classroomIdIndex: index("doubt_classroomId_idx").on(table.classroomId),
         typeIndex: index("type_idx").on(table.type),
@@ -230,7 +230,7 @@ export const tagsTable = pgTable("tags", {
     classroomId: integer(),
     createdByEmail: varchar({ length: 255 }),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     classroomIdIndex: index("tag_classroomId_idx").on(table.classroomId),
     normalizedNameIndex: uniqueIndex("tag_scope_name_idx").on(table.normalizedName, table.classroomId),
     createdByEmailFk: foreignKey({
@@ -248,7 +248,7 @@ export const doubtTagsTable = pgTable("doubt_tags", {
     doubtId: integer().notNull(),
     tagId: integer().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     doubtIdIndex: index("doubt_tag_doubtId_idx").on(table.doubtId),
     tagIdIndex: index("doubt_tag_tagId_idx").on(table.tagId),
     uniqueDoubtTag: uniqueIndex("doubt_tag_unique_idx").on(table.doubtId, table.tagId),
@@ -276,7 +276,7 @@ export const repliesTable = pgTable("replies", {
     pedagogyDrifted: boolean("pedagogy_drifted").default(false),
     driftExplanation: text("drift_explanation"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     doubtIdIndex: index("doubtId_idx").on(table.doubtId),
     doubtIdFk: foreignKey({
         columns: [table.doubtId],
@@ -293,7 +293,7 @@ export const likesTable = pgTable("likes", {
     userEmail: varchar({ length: 255 }).notNull(),
     doubtId: integer().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     doubtIdFk: foreignKey({
         columns: [table.doubtId],
         foreignColumns: [doubtsTable.id],
@@ -310,7 +310,7 @@ export const replyLikesTable = pgTable("reply_likes", {
     userEmail: varchar({ length: 255 }).notNull(),
     replyId: integer().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     replyIdFk: foreignKey({
         columns: [table.replyId],
         foreignColumns: [repliesTable.id],
@@ -330,7 +330,7 @@ export const moderationLogsTable = pgTable("moderation_logs", {
     contentSnippet: text(),
     status: varchar({ length: 20 }).default("pending").notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     userEmailCreatedAtIndex: index("moderation_logs_userEmail_createdAt_idx").on(
         table.userEmail,
         table.createdAt,
@@ -350,7 +350,7 @@ export const auditLogsTable = pgTable("audit_logs", {
     resourceId: varchar({ length: 255 }),
     metadata: text(),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     actorEmailIndex: index("audit_actor_idx").on(table.actorEmail),
     actionIndex: index("audit_action_idx").on(table.action),
 }));
@@ -363,7 +363,7 @@ export const bookmarksTable = pgTable(
         doubtId: integer().notNull(),
         createdAt: timestamp().defaultNow().notNull(),
     },
-    (table) => ({
+    (table: any) => ({
         userEmailIndex: index("bookmark_userEmail_idx").on(table.userEmail),
         doubtIdIndex: index("bookmark_doubtId_idx").on(table.doubtId),
         userEmailFk: foreignKey({
@@ -387,7 +387,7 @@ export const notificationsTable = pgTable("notifications", {
     type: varchar({ length: 50 }).notNull(),
     isRead: boolean().default(false).notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     userEmailIndex: index("notification_userEmail_idx").on(table.userEmail),
     userEmailFk: foreignKey({
         columns: [table.userEmail],
@@ -401,7 +401,7 @@ export const pendingNotificationsTable = pgTable("pending_notifications", {
     doubtId: integer().notNull(),
     replyId: integer().notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => {
+}, (table: any) => {
     return {
         userEmailIdx: index("pending_notifications_user_email_idx").on(table.userEmail),
         userEmailFk: foreignKey({
@@ -432,7 +432,7 @@ export const karmaTransactionsTable = pgTable("karma_transactions", {
     doubtId: integer(),
     note: text(),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     userEmailIndex: index("karma_tx_userEmail_idx").on(table.userEmail),
     eventTypeIndex: index("karma_tx_eventType_idx").on(table.eventType),
     userEmailFk: foreignKey({
@@ -464,7 +464,7 @@ export const userBadgesTable = pgTable("user_badges", {
     userEmail: varchar({ length: 255 }).notNull(),
     badgeId: integer().notNull(),
     awardedAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     userEmailIndex: index("user_badge_userEmail_idx").on(table.userEmail),
     badgeIdIndex: index("user_badge_badgeId_idx").on(table.badgeId),
     userEmailFk: foreignKey({
@@ -495,7 +495,7 @@ export const confusionAlertsTable = pgTable("confusion_alerts", {
     acknowledgedAt: timestamp(),
     acknowledgedBy: varchar({ length: 255 }),
     createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     classroomIdIndex: index("confusion_alerts_classroomId_idx").on(table.classroomId),
     statusIndex: index("confusion_alerts_status_idx").on(table.status),
     classroomCreatedIndex: index("confusion_alerts_classroom_created_idx").on(table.classroomId, table.createdAt),
@@ -522,7 +522,7 @@ export const practiceAttemptsTable = pgTable("practice_attempts", {
     isCorrect: boolean("is_correct"),
     aiFeedback: text("ai_feedback"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     userEmailIndex: index("practice_attempts_userEmail_idx").on(table.userEmail),
     doubtIdIndex: index("practice_attempts_doubtId_idx").on(table.originalDoubtId),
     userEmailFk: foreignKey({
@@ -550,7 +550,7 @@ export const videoJobsTable = pgTable("video_jobs", {
     error: text("error"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => ({
+}, (table: any) => ({
     userEmailIndex: index("video_jobs_user_email_idx").on(table.userEmail),
     statusCreatedAtIndex: index("video_jobs_status_created_at_idx").on(table.status, table.createdAt),
     userEmailFk: foreignKey({

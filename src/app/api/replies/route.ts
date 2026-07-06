@@ -219,7 +219,7 @@ export async function POST(req: Request) {
       replyContent: content || "",
       classroomId: doubt.classroomId || null,
       doubtType: doubt.type ?? "community",
-    }).catch((notificationErr) => {
+    }).catch((notificationErr: any) => {
       console.error("Failed to create reply notification:", notificationErr);
     });
 

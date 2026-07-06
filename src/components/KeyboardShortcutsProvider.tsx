@@ -35,7 +35,7 @@ export function KeyboardShortcutsProvider({ children }: { children: React.ReactN
     const { setTheme, resolvedTheme } = useTheme()
     const { isSignedIn } = useUser()
 
-    const toggleOpen = () => setIsOpen((prev) => !prev)
+    const toggleOpen = () => setIsOpen((prev: any) => !prev)
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -52,7 +52,7 @@ export function KeyboardShortcutsProvider({ children }: { children: React.ReactN
 
             if (e.key === "?") {
                 e.preventDefault()
-                setIsOpen((prev) => !prev)
+                setIsOpen((prev: any) => !prev)
             }
         }
 
@@ -66,7 +66,7 @@ export function KeyboardShortcutsProvider({ children }: { children: React.ReactN
         enabled: isOpen,
     })
 
-    useHotkeys("t", (e) => {
+    useHotkeys("t", (e: any) => {
         e.preventDefault()
         const nextTheme = resolvedTheme === "dark" ? "light" : "dark"
         setTheme(nextTheme)
@@ -107,11 +107,11 @@ function KeyboardShortcutsHelp({ isOpen, onOpenChange }: { isOpen: boolean, onOp
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                    {shortcuts.map((shortcut, i) => (
+                    {shortcuts.map((shortcut: any, i: any) => (
                         <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5">
                             <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{shortcut.description}</span>
                             <div className="flex gap-1">
-                                {shortcut.key.split(" + ").map((k, j) => (
+                                {shortcut.key.split(" + ").map((k: any, j: any) => (
                                     <React.Fragment key={j}>
                                         <Kbd>{k}</Kbd>
                                         {j < shortcut.key.split(" + ").length - 1 && <span className="text-slate-500 dark:text-slate-500 self-center mx-1">+</span>}

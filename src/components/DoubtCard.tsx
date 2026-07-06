@@ -537,14 +537,14 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                 >
                     <button
                         className="absolute top-8 right-8 p-3 rounded-full bg-slate-200 dark:bg-white/10 hover:bg-white/20 text-slate-900 dark:text-white transition-all z-[110]"
-                        onClick={(e) => { e.stopPropagation(); setIsFullscreenImageOpen(false); }}
+                        onClick={(e: any) => { e.stopPropagation(); setIsFullscreenImageOpen(false); }}
                         aria-label="Close fullscreen view"
                     >
                         <X className="w-6 h-6" />
                     </button>
                     <div
                         className="relative max-w-7xl max-h-[90vh] w-full h-full flex items-center justify-center animate-in zoom-in-95 duration-300"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e: any) => e.stopPropagation()}
                     >
                         <img
                             src={doubt.imageUrl ?? undefined}
