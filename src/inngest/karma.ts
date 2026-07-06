@@ -30,7 +30,7 @@ async function executeKarmaTransaction(payload: {
     }
 
     try {
-        await db.transaction(async (tx) => {
+        await db.transaction(async (tx: any) => {
             const targetScoreSql = sql`${usersTable.karmaScore} + ${points}`;
             const atomicLevelCaseSql = sql`CASE 
                 WHEN ${targetScoreSql} >= 1500 THEN 5
@@ -201,7 +201,7 @@ export const dailyStreakProcessor = inngest.createFunction(
                     const points = KARMA_POINTS["streak_bonus"];
 
                     // Keep the streak increment and bonus award combined in one atomic transaction block
-                    await db.transaction(async (tx) => {
+                    await db.transaction(async (tx: any) => {
                         
                         // 1. Increment User Streak Counter
                         await tx

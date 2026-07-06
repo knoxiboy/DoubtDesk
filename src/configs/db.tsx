@@ -3,9 +3,9 @@ import { getDatabaseUrl } from './database-url';
 
 let _db: ReturnType<typeof drizzle> | undefined;
 
-export const db = (() => {
+export const db: ReturnType<typeof drizzle> = (() => {
     if (process.env.NODE_ENV === 'test') {
-        return undefined as any;
+        return undefined as unknown as ReturnType<typeof drizzle>;
     }
     if (!_db) {
         _db = drizzle(getDatabaseUrl());

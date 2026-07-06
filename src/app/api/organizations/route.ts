@@ -84,7 +84,7 @@ export async function POST(req: Request) {
       return errorResponse('An organization with this identifier slug already exists', 409);
     }
 
-    const createdOrg = await db.transaction(async (tx) => {
+    const createdOrg = await db.transaction(async (tx: any) => {
       const [org] = await tx
         .insert(organizationsTable)
         .values({

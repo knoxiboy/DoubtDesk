@@ -328,7 +328,7 @@ export async function handleModerationViolation(
 ): Promise<string | null> {
     if (moderation.isAllowed) return null;
 
-    return db.transaction(async (tx) => {
+    return db.transaction(async (tx: any) => {
         // Atomically increment violationCount at the DB level — eliminates the
         // read-modify-write race under concurrent violation processing.
         const [updated] = await tx.update(usersTable).set({

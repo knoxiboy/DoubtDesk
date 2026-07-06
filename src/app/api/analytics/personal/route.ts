@@ -51,7 +51,7 @@ export async function GET(req: Request) {
         }
 
         // Prepare doubt summaries for AI analysis
-        const doubtContext = userDoubts.map(d => `- [${d.subject}]: ${d.content}`).join('\n');
+        const doubtContext = userDoubts.map((d: any) => `- [${d.subject}]: ${d.content}`).join('\n');
 
         const systemPrompt = `You are an AI Learning Mentor. Analyze the student's academic doubts across their classroom activities.
         Your goal is to identify patterns, recurring sub-topics they struggle with, and provide actionable recommendations.

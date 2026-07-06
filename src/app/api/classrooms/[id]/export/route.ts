@@ -75,10 +75,10 @@ export async function GET(
             .groupBy(repliesTable.doubtId);
 
         const countsMap = Object.fromEntries(
-            replyCounts.map((r) => [r.doubtId, r.count])
+            replyCounts.map((r: any) => [r.doubtId, r.count])
         );
 
-        const doubtsWithReplies = doubts.map((doubt) => ({
+        const doubtsWithReplies = doubts.map((doubt: any) => ({
             ...doubt,
             replyCount: countsMap[doubt.id] || 0,
         }));

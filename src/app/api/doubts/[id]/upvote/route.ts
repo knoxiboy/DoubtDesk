@@ -66,7 +66,7 @@ export async function POST(
         let updatedReply;
 
         try {
-            updatedReply = await db.transaction(async (tx) => {
+            updatedReply = await db.transaction(async (tx: any) => {
                 
                 // A. FIX: Standardized column input across all vote handlers to use the stable identifier.
                 // Note: If your Drizzle schema explicitly names the column field `userName`, we map the unique 

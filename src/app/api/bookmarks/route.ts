@@ -22,7 +22,7 @@ export async function GET(req: Request) {
             return NextResponse.json([]);
         }
 
-        const doubtIds = bookmarks.map(b => b.doubtId);
+        const doubtIds = bookmarks.map((b: any) => b.doubtId);
 
         // Fetch doubts
         let doubts = await db.select().from(doubtsTable)
@@ -34,7 +34,7 @@ export async function GET(req: Request) {
             .from(likesTable)
             .where(eq(likesTable.userEmail, email));
 
-        const likedIds = new Set(userLikes.map(l => l.doubtId));
+        const likedIds = new Set(userLikes.map((l: any) => l.doubtId));
         const bookmarkedIds = new Set(doubtIds);
 
         // Fetch reply counts
@@ -46,9 +46,9 @@ export async function GET(req: Request) {
         .where(inArray(repliesTable.doubtId, doubtIds))
         .groupBy(repliesTable.doubtId);
 
-        const countsMap = Object.fromEntries(replyCounts.map(r => [r.doubtId, r.count]));
+        const countsMap = Object.fromEntries(replyCounts.map((r: any) => [r.doubtId, r.count]));
 
-        doubts = doubts.map(doubt => ({
+        doubts = doubts.map((doubt: any) => ({
             ...doubt,
             hasLiked: likedIds.has(doubt.id),
             hasBookmarked: bookmarkedIds.has(doubt.id),

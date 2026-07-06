@@ -37,7 +37,7 @@ export async function GET(request: Request) {
             count: count(),
         }).from(moderationLogsTable).groupBy(sql`DATE(${moderationLogsTable.createdAt})`).orderBy(sql`DATE(${moderationLogsTable.createdAt}) ASC`).limit(30);
 
-        const formattedFlagsPerDay = flagsPerDay.map(f => ({
+        const formattedFlagsPerDay = flagsPerDay.map((f: any) => ({
             date: typeof f.date === 'string' ? f.date : new Date(f.date).toISOString().split('T')[0],
             count: f.count
         }));

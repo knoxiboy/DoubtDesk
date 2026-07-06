@@ -31,6 +31,36 @@ export const usersTable = pgTable("users", {
     createdAt: timestamp().defaultNow().notNull(),
 });
 
+export const organizationsTable = pgTable("organizations", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    name: varchar({ length: 255 }).notNull(),
+    slug: varchar({ length: 255 }).notNull().unique(),
+    ownerEmail: varchar("owner_email", { length: 255 }).notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+});
+
+export const organizationMembershipsTable = pgTable(
+    "organization_memberships",
+    {
+        id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        organizationId: integer("organization_id").notNull(),
+        userEmail: varchar("user_email", { length: 255 }).notNull(),
+        role: varchar({ length: 20 }).default("member").notNull(),
+        createdAt: timestamp().defaultNow().notNull(),
+    },
+    (table) => ({
+        organizationIdFk: foreignKey({
+            columns: [table.organizationId],
+            foreignColumns: [organizationsTable.id],
+        }).onDelete("cascade"),
+        userEmailFk: foreignKey({
+            columns: [table.userEmail],
+            foreignColumns: [usersTable.email],
+        }).onDelete("cascade"),
+        orgMembershipUnique: unique("org_memberships_userEmail_orgId_unique").on(table.userEmail, table.organizationId),
+    }),
+);
+
 export const classroomsTable = pgTable(
     "classrooms",
     {
@@ -44,10 +74,16 @@ export const classroomsTable = pgTable(
         allowedEmailDomains: text("allowed_email_domains").array(),
         pedagogyLevel: varchar({ length: 50 }).default("Undergraduate (Freshman)").notNull(),
         targetGradeLevel: integer().default(13).notNull(),
+        organizationId: integer("organization_id"),
         createdAt: timestamp().defaultNow().notNull(),
     },
     (table) => ({
         teacherEmailIndex: index("classrooms_teacherEmail_idx").on(table.teacherEmail),
+        organizationIdIndex: index("classrooms_orgId_idx").on(table.organizationId),
+        organizationIdFk: foreignKey({
+            columns: [table.organizationId],
+            foreignColumns: [organizationsTable.id],
+        }).onDelete("set null"),
     }),
 );
 

@@ -230,7 +230,7 @@ export const sendDailyDigest = inngest.createFunction(
         }
         
         // Delete only after confirmed send.
-        const notificationIds = pending.map(p => p.id);
+        const notificationIds = pending.map((p: any) => p.id);
         await db
           .delete(pendingNotificationsTable)
           .where(inArray(pendingNotificationsTable.id, notificationIds));
@@ -314,7 +314,7 @@ export const sendWeeklyDigest = inngest.createFunction(
           throw emailErr;
         }
 
-        const notificationIds = pending.map(p => p.id);
+        const notificationIds = pending.map((p: any) => p.id);
         await db
           .delete(pendingNotificationsTable)
           .where(inArray(pendingNotificationsTable.id, notificationIds));

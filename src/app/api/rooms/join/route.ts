@@ -44,7 +44,7 @@ export async function POST(req: Request) {
         // 1b. Check email domain restrictions if set
         if (classroom.allowedEmailDomains && classroom.allowedEmailDomains.length > 0) {
             const emailDomain = email.split('@')[1]?.toLowerCase();
-            if (!emailDomain || !classroom.allowedEmailDomains.some(d => emailDomain === d.toLowerCase())) {
+            if (!emailDomain || !classroom.allowedEmailDomains.some((d: any) => emailDomain === d.toLowerCase())) {
                 return NextResponse.json({
                     error: `Only email addresses from ${classroom.allowedEmailDomains.join(', ')} domains can join this classroom`
                 }, { status: 403 });

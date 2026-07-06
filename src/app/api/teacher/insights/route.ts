@@ -99,7 +99,7 @@ export async function GET(req: Request) {
 
         const sampleIdsByKey = new Map<string, number[]>();
         await Promise.all(
-            unresolvedPerTopic.map(async (row) => {
+            unresolvedPerTopic.map(async (row: any) => {
                 if (!row.topic) return;
                 const rows = await db
                     .select({ id: doubtsTable.id })
@@ -114,13 +114,13 @@ export async function GET(req: Request) {
                     )
                     .orderBy(sql`${doubtsTable.createdAt} DESC`)
                     .limit(5);
-                sampleIdsByKey.set(`${row.topic}::${row.subject}`, rows.map((r) => r.id));
+                sampleIdsByKey.set(`${row.topic}::${row.subject}`, rows.map((r: any) => r.id));
             })
         );
 
-        const weakTopics: WeakTopic[] = unresolvedPerTopic.map((row) => {
+        const weakTopics: WeakTopic[] = unresolvedPerTopic.map((row: any) => {
             const totalEntry = totalPerTopic.find(
-                (t) => t.topic === row.topic && t.subject === row.subject
+                (t: any) => t.topic === row.topic && t.subject === row.subject
             );
             const sampleIds = sampleIdsByKey.get(`${row.topic}::${row.subject}`) ?? [];
             return {

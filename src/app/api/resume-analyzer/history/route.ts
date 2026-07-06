@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
             .orderBy(desc(resumeAnalysisTable.createdAt));
 
         // Parse JSON strings back to objects
-        const parsedHistory = history.map(item => ({
+        const parsedHistory = history.map((item: any) => ({
             ...item,
             analysisData: JSON.parse(item.analysisData)
         }));

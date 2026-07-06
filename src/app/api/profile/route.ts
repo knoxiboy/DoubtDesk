@@ -32,8 +32,8 @@ export async function GET(req: Request) {
         const dbUser = dbUserResults[0];
 
         const classroomIds = memberships
-            .map((m) => m.classroomId)
-            .filter((id): id is number => id !== null && id !== undefined);
+            .map((m: any) => m.classroomId)
+            .filter((id: any): id is number => id !== null && id !== undefined);
 
         let classrooms: ProfileClassroom[] = [];
         if (classroomIds.length > 0) {
@@ -45,7 +45,7 @@ export async function GET(req: Request) {
 
         const totalDoubts = doubts?.length || 0;
         const totalReplies = replies?.length || 0;
-        const helpfulVotes = doubts ? doubts.reduce((acc, doubt) => acc + (doubt.likes || 0), 0) : 0;
+        const helpfulVotes = doubts ? doubts.reduce((acc: any, doubt: any) => acc + (doubt.likes || 0), 0) : 0;
 
         const rawJoinDate = dbUser?.createdAt || (clerkUser?.createdAt ? new Date(clerkUser.createdAt) : new Date());
         const joinDate = rawJoinDate instanceof Date ? rawJoinDate.toISOString() : new Date(rawJoinDate).toISOString();

@@ -45,7 +45,7 @@ export async function createClassroomDoubtNotifications(params: {
         .from(membershipsTable)
         .where(eq(membershipsTable.classroomId, classroomId));
 
-    const recipients = new Set<string>(memberRows.map((row) => row.userEmail));
+    const recipients = new Set<string>(memberRows.map((row: any) => row.userEmail));
     if (room.teacherEmail) {
         recipients.add(room.teacherEmail);
     }

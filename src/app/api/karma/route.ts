@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
         // ── 2. TRANSACTION MUTATION MANAGEMENT ───────────────────────────────────
         // FIX: Wrap all mutation procedures within an explicit database-level transaction.
         // If anything fails or throws an integrity error, the whole execution rolls back cleanly.
-        const result = await db.transaction(async (tx) => {
+        const result = await db.transaction(async (tx: any) => {
             const targetScoreSql = sql`${usersTable.karmaScore} + ${points}`;
             const atomicLevelCaseSql = sql`CASE 
                 WHEN ${targetScoreSql} >= 1500 THEN 5
