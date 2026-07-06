@@ -1,5 +1,41 @@
 // configs/schema.ts
-import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique, vector } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique, vector, pgEnum } from "drizzle-orm/pg-core";
+
+// ═══════════════════════════════════════════════════════════════════
+//   MULTI-TENANT ORGANIZATION TABLES
+// ═══════════════════════════════════════════════════════════════════
+
+export const orgRoleEnum = pgEnum("org_role", ["owner", "admin", "teacher", "member"]);
+
+export const organizationsTable = pgTable("organizations", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    name: varchar({ length: 255 }).notNull(),
+    slug: varchar({ length: 255 }).notNull().unique(),
+    ownerEmail: varchar("owner_email", { length: 255 }).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const organizationMembershipsTable = pgTable("organization_memberships", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    organizationId: integer("organization_id").notNull(),
+    userEmail: varchar("user_email", { length: 255 }).notNull(),
+    role: orgRoleEnum("role").default("member").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+    orgIdFk: foreignKey({
+        columns: [table.organizationId],
+        foreignColumns: [organizationsTable.id],
+    }).onDelete("cascade"),
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+    uniqueOrgMembership: unique("org_memberships_userEmail_orgId_unique").on(table.userEmail, table.organizationId),
+}));
+
+// ═══════════════════════════════════════════════════════════════════
+//   CORE TABLES
+// ═══════════════════════════════════════════════════════════════════
 
 export const usersTable = pgTable("users", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -35,6 +71,7 @@ export const classroomsTable = pgTable(
     "classrooms",
     {
         id: integer().primaryKey().generatedAlwaysAsIdentity(),
+        organizationId: integer("organization_id"),
         name: varchar({ length: 255 }).notNull(),
         university: varchar({ length: 255 }).notNull(),
         year: varchar({ length: 50 }).notNull(),
@@ -48,6 +85,11 @@ export const classroomsTable = pgTable(
     },
     (table) => ({
         teacherEmailIndex: index("classrooms_teacherEmail_idx").on(table.teacherEmail),
+        orgIdIndex: index("classrooms_orgId_idx").on(table.organizationId),
+        orgIdFk: foreignKey({
+            columns: [table.organizationId],
+            foreignColumns: [organizationsTable.id],
+        }).onDelete("set null"),
     }),
 );
 
