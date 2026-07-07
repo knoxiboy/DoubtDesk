@@ -225,9 +225,8 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
     const handlePostOrUpdate = () => {
         if (editingId && replies.find(r => r.id === editingId)?.type === 'solution') {
-            // Update mode for solution
             updateSolution();
-        } else {
+        } else if (!editingId) {
             handlePost('solution');
         }
     };
