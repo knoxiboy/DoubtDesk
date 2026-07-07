@@ -183,21 +183,19 @@ export function Provider({ children }: { children: React.ReactNode }) {
 
     return (
         <UserContext.Provider value={{ appUser, setAppUser, loading, refresh }}>
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="doubtdesk-theme">
-                <Suspense fallback={null}>
-                    <NavigationEvents onChange={() => setIsNavigating(false)} />
-                </Suspense>
-                <KeyboardShortcutsProvider>
-                    <SessionTracker />
+            <Suspense fallback={null}>
+                <NavigationEvents onChange={() => setIsNavigating(false)} />
+            </Suspense>
+            <KeyboardShortcutsProvider>
+                <SessionTracker />
 
-                    {/* 🌀 This catches client-side clicks instantly! */}
-                    {isNavigating && <FullScreenSpinner />}
+                {/* 🌀 This catches client-side clicks instantly! */}
+                {isNavigating && <FullScreenSpinner />}
 
-                    {children}
-                    <CommandMenu />
-                    <ThemedToaster />
-                </KeyboardShortcutsProvider>
-            </ThemeProvider>
+                {children}
+                <CommandMenu />
+                <ThemedToaster />
+            </KeyboardShortcutsProvider>
         </UserContext.Provider>
     );
 }
