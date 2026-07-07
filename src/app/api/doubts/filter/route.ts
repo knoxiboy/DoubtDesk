@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
             .limit(100);
 
         // Strip author identifiers before returning — see src/lib/anonymity.ts.
-        const publicDoubts = doubts.map((doubt) => toPublicDoubt(doubt, email));
+        const publicDoubts = doubts.map((doubt: (typeof doubts)[number]) => toPublicDoubt(doubt, email));
 
         return NextResponse.json({
             success: true,
