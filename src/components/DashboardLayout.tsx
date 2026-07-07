@@ -102,6 +102,13 @@ export default function DashboardLayout({
               <SignedIn>
                 <div className="flex items-center gap-3">
                   <NotificationBell />
+                  <button
+                    onClick={() => setShowSignOutDialog(true)}
+                    className="p-2 rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-900 transition-all duration-300"
+                    aria-label="Sign out"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
                 </div>
               </SignedIn>
             </div>
