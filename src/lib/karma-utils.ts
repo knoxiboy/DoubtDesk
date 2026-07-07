@@ -153,7 +153,18 @@ export async function updateStreak(userEmail: string): Promise<void> {
         .where(eq(usersTable.email, userEmail))
         .limit(1);
 
-    if (!user || !user.lastActiveDate) return;
+    if (!user) return;
+
+    if (!user.lastActiveDate) {
+        await db
+            .update(usersTable)
+            .set({
+                lastActiveDate: new Date(),
+                currentStreak: 1,
+            })
+            .where(eq(usersTable.email, userEmail));
+        return;
+    }
 
     const now = new Date();
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -198,6 +209,12 @@ export async function updateStreak(userEmail: string): Promise<void> {
         });
 
         await checkAndAwardBadges(userEmail);
+
+    } else if (daysDiff === 1) {
+        await db
+            .update(usersTable)
+            .set({ lastActiveDate: new Date() })
+            .where(eq(usersTable.email, userEmail));
 
     } else if (daysDiff >= 2) {
         if (user.currentStreak > 0) {
