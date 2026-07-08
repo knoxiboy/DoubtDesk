@@ -162,11 +162,6 @@ export async function GET(req: Request) {
       conditions.push(eq(doubtsTable.isSolved, "unsolved"));
     }
 
-    const replyCountSql =
-      sql<number>`coalesce((SELECT count(*) FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`.mapWith(
-        Number,
-      );
-
     const [totalCountRow] = await db
       .select({ count: count() })
       .from(doubtsTable)
@@ -176,7 +171,6 @@ export async function GET(req: Request) {
     const query = db
       .select({
         ...getTableColumns(doubtsTable),
-        replyCount: replyCountSql,
       })
       .from(doubtsTable);
 
@@ -190,7 +184,10 @@ export async function GET(req: Request) {
     if (sort === "popular") {
       orderByFields.push(desc(doubtsTable.likes));
     } else if (sort === "most-replied") {
-      orderByFields.push(desc(replyCountSql));
+      // Needed here only to sort correctly at the DB level before paging.
+      // Not selected as a column, so it costs nothing for any other sort mode.
+      const replyCountOrderSql = sql`coalesce((SELECT count(*) FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`;
+      orderByFields.push(desc(replyCountOrderSql));
     }
     orderByFields.push(desc(doubtsTable.createdAt));
 
@@ -199,6 +196,25 @@ export async function GET(req: Request) {
       .orderBy(...orderByFields)
       .limit(limit)
       .offset(offset);
+
+    // Batch-fetch reply counts for just the returned page (max `limit` ids)
+    // instead of running a correlated subquery per row in the SELECT.
+    if (doubts.length > 0) {
+      const replyCountRows = await db
+        .select({ doubtId: repliesTable.doubtId, count: count() })
+        .from(repliesTable)
+        .where(inArray(repliesTable.doubtId, doubts.map((d: any) => d.id)))
+        .groupBy(repliesTable.doubtId);
+
+      const replyCountMap = new Map(
+        replyCountRows.map((r: any) => [r.doubtId, Number(r.count)]),
+      );
+
+      doubts = doubts.map((doubt: any) => ({
+        ...doubt,
+        replyCount: replyCountMap.get(doubt.id) ?? 0,
+      }));
+    }
 
     if (email && doubts.length > 0) {
       const userLikes = await db
@@ -238,15 +254,18 @@ export async function GET(req: Request) {
         .innerJoin(tagsTable, eq(doubtTagsTable.tagId, tagsTable.id))
         .where(inArray(doubtTagsTable.doubtId, doubts.map((d: any) => d.id)));
 
-      const tagsByDoubt = tagRows.reduce((acc, row: typeof tagRows[number]) => {
-        acc[row.doubtId as number] = acc[row.doubtId as number] || [];
-        (acc[row.doubtId as number] as { id: number; name: string; normalizedName: string }[]).push({
-          id: row.id,
-          name: row.name,
-          normalizedName: row.normalizedName,
-        });
-        return acc;
-      }, {} as Record<number, { id: number; name: string; normalizedName: string }[]>);
+      const tagsByDoubt = tagRows.reduce(
+        (acc: Record<number, { id: number; name: string; normalizedName: string }[]>, row: typeof tagRows[number]) => {
+          acc[row.doubtId] = acc[row.doubtId] || [];
+          acc[row.doubtId].push({
+            id: row.id,
+            name: row.name,
+            normalizedName: row.normalizedName,
+          });
+          return acc;
+        },
+        {},
+      );
 
       doubts = doubts.map((doubt: any) => ({
         ...doubt,

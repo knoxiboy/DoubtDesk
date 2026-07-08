@@ -24,7 +24,7 @@ jobs:
     if: |
       github.event_name == 'issue_comment' &&
       !github.event.issue.pull_request &&
-      contains(github.event.comment.body, '/assign') &&
+      (contains(github.event.comment.body, 'assign') || contains(github.event.comment.body, 'Assign') || contains(github.event.comment.body, '/assign')) &&
       !contains(github.event.comment.body, '/assign @') &&
       !contains(github.event.comment.body, '/duplicate') &&
       !contains(github.event.comment.body, '/already-implemented')
