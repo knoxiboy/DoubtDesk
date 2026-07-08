@@ -1,7 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 
 import { db } from "@/configs/db";
-import { ApiError } from "@/lib/error-handler";
+import { ApiError } from "@/lib/errors/error-handler";
 import {
     parseClassroomId,
     parseOptionalClassroomId,

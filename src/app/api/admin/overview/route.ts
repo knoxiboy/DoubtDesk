@@ -1,4 +1,5 @@
 // src/app/api/admin/overview/route.ts
+import { parsePositiveInt } from "@/lib/utils/utils";
 export const dynamic = "force-dynamic";
 
 import { requireAdmin } from "@/lib/auth/requireAdmin";
@@ -13,16 +14,24 @@ import {
     moderationLogsTable
 } from "@/configs/schema";
 import { count, eq, and, gte, sql, desc, isNotNull, isNull } from "drizzle-orm";
-import { successResponse, buildErrorResponse } from "@/lib/error-handler";
+import { successResponse, buildErrorResponse } from "@/lib/errors/error-handler";
 
 export async function GET(request: Request) {
     try {
         // 1. Guard route: redirect or throw if not an authorized admin
         await requireAdmin();
 
+        //const { searchParams } = new URL(request.url);
+        //const limit = parseInt(searchParams.get("limit") || "50");
+        //const offset = parseInt(searchParams.get("offset") || "0");
+
         const { searchParams } = new URL(request.url);
-        const limit = parseInt(searchParams.get("limit") || "50");
-        const offset = parseInt(searchParams.get("offset") || "0");
+        const limitStr = searchParams.get("limit") || "50";
+        const offsetStr = searchParams.get("offset") || "0";
+
+        // Secure parsing with upper limit cap of 100
+        const limit = Math.min(parsePositiveInt(limitStr, 50), 100);
+        const offset = parsePositiveInt(offsetStr, 0);
 
         // 2. Platform-level KPIs
         const totalUsersResult = await db.select({ value: count() }).from(usersTable);
@@ -132,17 +141,17 @@ export async function GET(request: Request) {
         .groupBy(doubtsTable.classroomId);
 
         // Build mapping helpers
-        const studentCountMap = new Map(studentCounts.map(c => [c.classroomId, c.count]));
-        const doubtStatsMap = new Map(doubtStats.map(d => [d.classroomId, d]));
-        const pedagogyStatsMap = new Map(pedagogyStats.map(p => [p.classroomId, p]));
-        const alertsCountMap = new Map(activeAlertsPerClassroom.map(a => [a.classroomId, a.count]));
-        const resolutionTimeMap = new Map(resolutionTimes.map(r => [r.classroomId, r.avgTimeMins]));
+        const studentCountMap = new Map(studentCounts.map((c: any) => [c.classroomId, c.count]));
+        const doubtStatsMap = new Map(doubtStats.map((d: any) => [d.classroomId, d]));
+        const pedagogyStatsMap = new Map(pedagogyStats.map((p: any) => [p.classroomId, p]));
+        const alertsCountMap = new Map(activeAlertsPerClassroom.map((a: any) => [a.classroomId, a.count]));
+        const resolutionTimeMap = new Map(resolutionTimes.map((r: any) => [r.classroomId, r.avgTimeMins]));
 
-        const classroomHealth = classrooms.map(classroom => {
+        const classroomHealth = classrooms.map((classroom: any) => {
             const cId = classroom.id;
             const enrolledStudents = studentCountMap.get(cId) || 0;
-            const dStats = doubtStatsMap.get(cId) || { total: 0, solved: 0 };
-            const pStats = pedagogyStatsMap.get(cId) || { totalReplies: 0, driftedReplies: 0 };
+            const dStats: any = doubtStatsMap.get(cId) || { total: 0, solved: 0 };
+            const pStats: any = pedagogyStatsMap.get(cId) || { totalReplies: 0, driftedReplies: 0 };
             const alertsCount = alertsCountMap.get(cId) || 0;
             const avgResolutionTime = resolutionTimeMap.get(cId) || 0;
 

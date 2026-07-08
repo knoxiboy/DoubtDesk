@@ -10,7 +10,7 @@ import {
     requireAuth,
     requireTeacher,
 } from "@/lib/auth/membership-guard";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { requireAdmin } from "@/lib/auth/requireAdmin";
 
 export async function GET(req: NextRequest) {
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
             .where(eq(membershipsTable.userEmail, email));
         const teacherMembershipIds = teacherMemberships
             .filter((membership) => ["teacher", "owner", "admin"].includes(membership.role))
-            .map((membership) => membership.classroomId);
+            .map((membership: any) => membership.classroomId);
         
         const isTeacherOrAdmin =
             dbUser?.role === 'teacher' ||
@@ -80,9 +80,9 @@ export async function GET(req: NextRequest) {
                 }).from(classroomsTable).where(inArray(classroomsTable.id, teacherMembershipIds))
                 : [];
             const accessibleClassrooms = new Map(
-                [...classroomsTaught, ...membershipClassrooms].map((classroom) => [classroom.id, classroom])
+                [...classroomsTaught, ...membershipClassrooms].map((classroom: any) => [classroom.id, classroom])
             );
-            classroomsList = [...accessibleClassrooms.values()].map(c => ({
+            classroomsList = [...accessibleClassrooms.values()].map((c: any) => ({
                 id: c.id,
                 name: c.name,
                 university: c.university
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
             }
             selectedClassroomIds = [classroomId];
         } else {
-            selectedClassroomIds = classroomsList.map(c => c.id);
+            selectedClassroomIds = classroomsList.map((c: any) => c.id);
         }
 
         // 5. Query and Aggregate Data
@@ -118,7 +118,7 @@ export async function GET(req: NextRequest) {
                 );
 
             if (doubts.length > 0) {
-                const doubtIds = doubts.map(d => d.id);
+                const doubtIds = doubts.map((d: any) => d.id);
                 replies = await db.select()
                     .from(repliesTable)
                     .where(inArray(repliesTable.doubtId, doubtIds));
@@ -161,10 +161,10 @@ export async function GET(req: NextRequest) {
 
             // Unique active students
             const uniqueStudents = new Set<string>();
-            doubts.forEach(d => {
+            doubts.forEach((d: any) => {
                 if (d.userEmail) uniqueStudents.add(d.userEmail);
             });
-            replies.forEach(r => {
+            replies.forEach((r: any) => {
                 if (r.userEmail && r.userEmail !== 'ai@doubtdesk.com' && r.userEmail !== dbUser?.email) {
                     uniqueStudents.add(r.userEmail);
                 }
@@ -174,7 +174,7 @@ export async function GET(req: NextRequest) {
             // Average response time
             let responseTimesSum = 0;
             let doubtsWithRepliesCount = 0;
-            doubts.forEach(doubt => {
+            doubts.forEach((doubt: any) => {
                 const doubtReplies = replies.filter(r => r.doubtId === doubt.id);
                 if (doubtReplies.length > 0) {
                     const earliestReply = doubtReplies.reduce((prev, curr) => {
@@ -192,7 +192,7 @@ export async function GET(req: NextRequest) {
 
             // Daily trends
             const trendsMap: Record<string, number> = {};
-            doubts.forEach(d => {
+            doubts.forEach((d: any) => {
                 const dateKey = new Date(d.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 trendsMap[dateKey] = (trendsMap[dateKey] || 0) + 1;
             });
@@ -200,7 +200,7 @@ export async function GET(req: NextRequest) {
 
             // Subject wise distribution
             const subjectsMap: Record<string, number> = {};
-            doubts.forEach(d => {
+            doubts.forEach((d: any) => {
                 subjectsMap[d.subject] = (subjectsMap[d.subject] || 0) + 1;
             });
             subjects = Object.entries(subjectsMap).map(([subject, count]) => ({ subject, count }))
@@ -213,7 +213,7 @@ export async function GET(req: NextRequest) {
                 const hourFormatted = `${h.toString().padStart(2, '0')}:00`;
                 hoursMap[hourFormatted] = 0;
             }
-            doubts.forEach(d => {
+            doubts.forEach((d: any) => {
                 const hour = new Date(d.createdAt).getHours();
                 const hourFormatted = `${hour.toString().padStart(2, '0')}:00`;
                 if (hour >= 8 && hour <= 22) {

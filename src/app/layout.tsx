@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import ScrollToTopButton from "@/components/ScrollToTopButton";
+import ScrollToTopButton from "@/components/layout/ScrollToTopButton";
 import { DM_Sans } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
 import { Provider } from "./provider";
 import { ThemeProvider } from "next-themes";
-import Footer from "@/components/Footer";
-import Header from "@/components/Header";
+import Footer from "@/components/layout/Footer";
+import Header from "@/components/layout/Header";
 
 const AppFont = DM_Sans({
   weight: ['400', '500', '700'],

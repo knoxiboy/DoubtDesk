@@ -71,7 +71,7 @@ jest.mock("@/configs/schema", () => ({
 }));
 
 jest.mock("drizzle-orm", () => {
-    const actual = jest.requireActual("drizzle-orm");
+    const actual = jest.requireActual("drizzle-orm") as typeof import("drizzle-orm");
     return {
         ...actual,
         eq: jest.fn(),
@@ -81,6 +81,7 @@ jest.mock("drizzle-orm", () => {
         isNull: jest.fn(),
     };
 });
+
 
 // ── Helper ────────────────────────────────────────────────────────────────────
 function makeRequest(replyId: number): NextRequest {

@@ -4,7 +4,7 @@ import { db } from "@/configs/db";
 import { practiceAttemptsTable } from "@/configs/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth/membership-guard";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 
 export async function POST(
     req: Request,

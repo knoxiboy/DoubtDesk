@@ -114,11 +114,11 @@ export async function GET(req: Request) {
                     )
                     .orderBy(sql`${doubtsTable.createdAt} DESC`)
                     .limit(5);
-                sampleIdsByKey.set(`${row.topic}::${row.subject}`, rows.map((r) => r.id));
+                sampleIdsByKey.set(`${row.topic}::${row.subject}`, rows.map((r: any) => r.id));
             })
         );
 
-        const weakTopics: WeakTopic[] = unresolvedPerTopic.map((row) => {
+        const weakTopics: WeakTopic[] = unresolvedPerTopic.map((row: any) => {
             const totalEntry = totalPerTopic.find(
                 (t) => t.topic === row.topic && t.subject === row.subject
             );

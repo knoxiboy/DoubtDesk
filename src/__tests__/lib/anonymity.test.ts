@@ -5,7 +5,7 @@ import {
     toPublicAuthored,
     toPublicDoubt,
     toPublicReply,
-} from "@/lib/anonymity";
+} from "@/lib/anonymity/anonymity";
 
 describe("anonymity: getAnonymousHandle", () => {
     it("returns 'Anonymous' when there is no email", () => {
@@ -54,12 +54,13 @@ describe("anonymity: fail closed in production", () => {
     afterEach(() => {
         if (origEnv === undefined) delete mutableEnv.NODE_ENV;
         else mutableEnv.NODE_ENV = origEnv;
-        if (origSalt === undefined) delete mutableEnv.ANON_HANDLE_SALT;
-        else mutableEnv.ANON_HANDLE_SALT = origSalt;
+        if (origSalt === undefined) delete process.env.ANON_HANDLE_SALT;
+        else process.env.ANON_HANDLE_SALT = origSalt;
     });
+    
 
     it("throws when ANON_HANDLE_SALT is missing in production", () => {
-        delete mutableEnv.ANON_HANDLE_SALT;
+        delete process.env.ANON_HANDLE_SALT;
         mutableEnv.NODE_ENV = "production";
         expect(() => getAnonymousHandle("user@example.com")).toThrow(/ANON_HANDLE_SALT/);
     });
@@ -76,6 +77,7 @@ describe("anonymity: fail closed in production", () => {
         expect(getAnonymousHandle("user@example.com")).toMatch(/^Student_[A-Z0-9]{5}$/);
     });
 });
+
 
 describe("anonymity: getAnonymousInitial", () => {
     it("returns a single character derived from the handle, not the email", () => {

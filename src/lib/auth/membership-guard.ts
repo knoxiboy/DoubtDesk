@@ -30,7 +30,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/configs/db";
 import { classroomsTable, membershipsTable } from "@/configs/schema";
-import { ApiError } from "@/lib/error-handler";
+import { ApiError } from "@/lib/errors/error-handler";
 
 const TEACHER_ROLES = new Set(["teacher", "owner", "admin"]);
 

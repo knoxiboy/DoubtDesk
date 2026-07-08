@@ -1,6 +1,6 @@
 import { GET } from './route';
 import { NextRequest } from 'next/server';
-import { ApiError } from '@/lib/error-handler';
+import { ApiError } from '@/lib/errors/error-handler';
 
 const mockRequireAdmin = jest.fn();
 const mockRequireTeacher = jest.fn().mockImplementation(() => Promise.resolve({ role: 'teacher' }));

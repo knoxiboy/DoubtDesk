@@ -3,15 +3,15 @@ import { NextResponse } from "next/server";
 
 import { POST } from "@/app/api/doubts/check-similarity/route";
 import { db } from "@/configs/db";
-import { enforceApiRateLimit } from "@/lib/api-rate-limit";
-import { getAnonymousQuotaIdentifier } from "@/lib/request-identity";
-import { getSafeErrorDetails } from "@/lib/safe-error-details";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
+import { getAnonymousQuotaIdentifier } from "@/lib/auth/request-identity";
+import { getSafeErrorDetails } from "@/lib/errors/safe-error-details";
 
 jest.mock("@clerk/nextjs/server", () => ({
   currentUser: jest.fn(),
 }));
 
-jest.mock("@/lib/api-rate-limit", () => ({
+jest.mock("@/lib/ratelimit/api-rate-limit", () => ({
   enforceApiRateLimit: jest.fn(),
 }));
 
