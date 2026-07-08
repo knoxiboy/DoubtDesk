@@ -24,7 +24,7 @@ jobs:
     if: |
       github.event_name == 'issue_comment' &&
       !github.event.issue.pull_request &&
-      contains(github.event.comment.body, '/assign') &&
+      (contains(github.event.comment.body, 'assign') || contains(github.event.comment.body, 'Assign') || contains(github.event.comment.body, '/assign')) &&
       !contains(github.event.comment.body, '/assign @') &&
       !contains(github.event.comment.body, '/duplicate') &&
       !contains(github.event.comment.body, '/already-implemented')
@@ -171,12 +171,7 @@ jobs:
               });
             } catch (e) { /* label may not be present */ }
 
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: `✅ Assigned @${assignee} to this issue! Happy coding! 🚀`,
-            });
+            // Removed success comment here as cleanup-on-assign will now handle notifying the user.
 
   # ── Maintainer closes issue as duplicate or already-implemented ────────────────────────
   maintainer-close-issue:
@@ -313,4 +308,30 @@ jobs:
               console.log('Removed needs-maintainer-approval label.');
             } catch (e) {
               console.log('Label already removed or not present.');
+            }
+
+            // Post assignment notification
+            if (context.payload.assignee) {
+              const assignee = context.payload.assignee.login;
+              const marker = `<!-- assignment-notification-${assignee} -->`;
+              
+              try {
+                const { data: comments } = await github.rest.issues.listComments({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                });
+                
+                if (!comments.some(c => c.body && c.body.includes(marker))) {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: context.issue.number,
+                    body: `${marker}\n✅ Hi @${assignee}, you have been assigned to this issue! You have 7 days to work on this issue and create a PR. Happy coding! 🚀`,
+                  });
+                  console.log(`Posted assignment notification for @${assignee}`);
+                }
+              } catch (e) {
+                console.log(`Failed to post notification for @${assignee}: ${e.message}`);
+              }
             }

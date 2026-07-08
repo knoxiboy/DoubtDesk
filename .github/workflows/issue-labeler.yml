@@ -118,7 +118,7 @@ jobs:
               payload.action === 'closed' &&
               payload.issue.state_reason === 'not_planned'
             ) {
-              const keepLabels = new Set(['duplicate', 'invalid']);
+              const keepLabels = new Set(['duplicate', 'invalid', 'already-implemented']);
               for (const label of currentLabelObjects) {
                 if (keepLabels.has(label.name)) continue;
                 try {
@@ -135,34 +135,4 @@ jobs:
               }
             }
 
-            // ── 5. ASSIGNMENT-BASED MAINTAINER APPROVAL LABEL ──────────────
-            if (
-              context.eventName === 'issues' &&
-              ['opened', 'assigned', 'unassigned'].includes(payload.action)
-            ) {
-              const assignees = payload.issue.assignees || [];
-              const hasAssignees = assignees.length > 0;
-              const hasApprovalLabel = currentLabelNames.includes('needs-maintainer-approval');
 
-              if (!hasAssignees && !hasApprovalLabel) {
-                await github.rest.issues.addLabels({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issueNumber,
-                  labels: ['needs-maintainer-approval'],
-                });
-                console.log('Added needs-maintainer-approval (no assignees).');
-              } else if (hasAssignees && hasApprovalLabel) {
-                try {
-                  await github.rest.issues.removeLabel({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    issue_number: issueNumber,
-                    name: 'needs-maintainer-approval',
-                  });
-                  console.log('Removed needs-maintainer-approval (has assignees).');
-                } catch (e) {
-                  console.log(`Failed to remove needs-maintainer-approval: ${e.message}`);
-                }
-              }
-            }

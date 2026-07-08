@@ -70,7 +70,7 @@ describe('database configuration', () => {
         if (originalNodeEnv) {
             Object.defineProperty(process.env, 'NODE_ENV', { value: originalNodeEnv, writable: true });
         } else {
-            delete process.env.NODE_ENV;
+            delete (process.env as Record<string, string | undefined>).NODE_ENV;
         }
     });
 

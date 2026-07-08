@@ -9,15 +9,15 @@ import {
   classroomsTable,
   membershipsTable,
 } from "@/configs/schema";
-import { checkUserBlock } from "@/lib/auth-utils";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createClassroomInviteSchema } from "@/lib/validations/classroom";
 import {
   generateInviteToken,
   getInviteExpiry,
   hashInviteToken,
-} from "@/lib/invite-token";
+} from "@/lib/invites/invite-token";
 
 export async function POST(
   req: Request,

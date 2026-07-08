@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { classroomsTable, membershipsTable } from '@/configs/schema';
 import { eq, count, asc } from 'drizzle-orm';
-import { checkUserBlock } from '@/lib/auth-utils';
-import { buildErrorResponse } from '@/lib/error-handler';
+import { checkUserBlock } from '@/lib/auth/auth-utils';
+import { buildErrorResponse } from '@/lib/errors/error-handler';
 import {
     parseClassroomId,
     requireAuth,
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
                 ...m,
                 isOwner: isOwnerEmail(m.userEmail),
             }))
-            : members.map((m) => ({
+            : members.map((m: any) => ({
                 displayName: `${m.role.toLowerCase() === 'student' ? 'Student' : 'Member'}_${m.id}`,
                 role: m.role,
                 joinedAt: m.joinedAt,

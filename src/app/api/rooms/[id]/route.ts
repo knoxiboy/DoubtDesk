@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { classroomsTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';
-import { checkUserBlock } from '@/lib/auth-utils';
-import { buildErrorResponse } from '@/lib/error-handler';
+import { checkUserBlock } from '@/lib/auth/auth-utils';
+import { buildErrorResponse } from '@/lib/errors/error-handler';
 import {
     parseClassroomId,
     requireAuth,

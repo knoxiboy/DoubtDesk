@@ -4,7 +4,7 @@ import {
     sendBlockEmail,
     sendWarningEmail,
     verifyUnsubscribeToken,
-} from '@/lib/email';
+} from '@/lib/email/email';
 import { jest } from '@jest/globals';
 
 describe('Email Helper Functions', () => {

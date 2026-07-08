@@ -9,7 +9,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
-import Sidebar from '@/components/Sidebar';
+import Sidebar from '@/components/layout/Sidebar';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -20,7 +20,7 @@ import {
     AI_IMAGE_MAX_BYTES,
     AI_IMAGE_MAX_SIZE_LABEL,
     isAllowedAiImageMimeType,
-} from '@/lib/ai-image-validation';
+} from '@/lib/ai/ai-image-validation';
 import 'katex/dist/katex.min.css';
 
 type InputMode = 'text' | 'image';

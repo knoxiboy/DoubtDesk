@@ -8,7 +8,7 @@ import { and, eq, count, isNull } from "drizzle-orm";
 import { canTeach } from "@/lib/auth/membership-guard";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { auditLog, AUDIT_ACTIONS } from "@/lib/audit";
+import { auditLog, AUDIT_ACTIONS } from "@/lib/audit/audit";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {

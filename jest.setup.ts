@@ -86,7 +86,7 @@ jest.mock("react-hotkeys-hook", () => ({
     useHotkeys: () => {}
 }));
 
-jest.mock("@/lib/ratelimit", () => {
+jest.mock("@/lib/ratelimit/ratelimit", () => {
     const createLimiter = () => ({
         limit: jest.fn().mockResolvedValue({
             success: true,
@@ -101,6 +101,7 @@ jest.mock("@/lib/ratelimit", () => {
         generalLimiter: createLimiter(),
         emailNotificationLimiter: createLimiter(),
         videoLimiter: createLimiter(),
+        inviteCodeLimiter: createLimiter(),
         redisClient: {
             setnx: jest.fn().mockResolvedValue(1),
             del: jest.fn().mockResolvedValue(1),

@@ -574,3 +574,20 @@ export const videoJobsTable = pgTable("video_jobs", {
         foreignColumns: [usersTable.email],
     }).onDelete("cascade"),
 }));
+
+
+export const organizationsTable = pgTable("organizations", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    name: varchar({ length: 255 }).notNull(),
+    slug: varchar({ length: 255 }).notNull().unique(),
+    ownerEmail: varchar({ length: 255 }).notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+});
+
+export const organizationMembershipsTable = pgTable("organization_memberships", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    organizationId: integer().notNull(),
+    userEmail: varchar({ length: 255 }).notNull(),
+    role: varchar({ length: 20 }).notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+});

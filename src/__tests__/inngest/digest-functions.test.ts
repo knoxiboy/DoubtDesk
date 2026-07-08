@@ -1,5 +1,5 @@
 import { db } from "@/configs/db";
-import { sendDigestEmail } from "@/lib/email";
+import { sendDigestEmail } from "@/lib/email/email";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -11,8 +11,14 @@ jest.mock("@/configs/db", () => ({
   },
 }));
 
-jest.mock("@/lib/email", () => ({
+jest.mock("@/lib/email/email", () => ({
   sendDigestEmail: jest.fn(),
+}));
+
+jest.mock("@/inngest/client", () => ({
+  inngest: {
+    createFunction: jest.fn((config: unknown, handler: unknown) => handler),
+  },
 }));
 
 // Minimal drizzle-orm stubs
@@ -117,7 +123,7 @@ describe("sendDailyDigest — per-user step isolation", () => {
     // Alice succeeds, Bob throws
     mockSendDigestEmail
       .mockResolvedValueOnce({ success: true })            // alice: ok
-      .mockResolvedValueOnce({ success: false, error: "SMTP timeout" }); // bob: failmockSendDigestEmail
+      .mockResolvedValueOnce({ success: false, error: "SMTP timeout" }); // bob: fail
       
     // Import the function under test after mocks are set.
     // We simulate the Inngest function invocation directly.

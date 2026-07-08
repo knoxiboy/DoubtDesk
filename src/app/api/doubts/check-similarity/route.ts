@@ -4,15 +4,15 @@ import { and, eq, isNull, desc, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { findSemanticDuplicates } from "@/lib/ai/embeddings";
-import { enforceApiRateLimit } from "@/lib/api-rate-limit";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import {
   enforceAiAvailability,
   buildAiProviderErrorResponse,
 } from "@/lib/ai/kill-switch";
-import { aiLimiter } from "@/lib/ratelimit";
-import { getAnonymousQuotaIdentifier } from "@/lib/request-identity";
-import { getSafeErrorDetails } from "@/lib/safe-error-details";
+import { aiLimiter } from "@/lib/ratelimit/ratelimit";
+import { getAnonymousQuotaIdentifier } from "@/lib/auth/request-identity";
+import { getSafeErrorDetails } from "@/lib/errors/safe-error-details";
 import {
   parseOptionalClassroomId,
   requireAuth,
@@ -168,11 +168,11 @@ Do not include any explanation or markdown.`;
     const similarDoubts: SimilarDoubt[] = [];
 
     const solvedReplyIds = highMatches
-      .map((match) => recentDoubts[match.index])
+      .map((match: any) => recentDoubts[match.index])
       .filter(
         (doubt) => doubt && doubt.isSolved === "solved" && doubt.solvedReplyId,
       )
-      .map((doubt) => doubt.solvedReplyId!);
+      .map((doubt: any) => doubt.solvedReplyId!);
 
     const solvedReplies =
       solvedReplyIds.length > 0
@@ -186,7 +186,7 @@ Do not include any explanation or markdown.`;
         : [];
 
     const replyMap = new Map(
-      solvedReplies.map((reply) => [reply.id, reply.content]),
+      solvedReplies.map((reply: any) => [reply.id, reply.content]),
     );
 
     for (const match of highMatches) {
@@ -199,7 +199,7 @@ Do not include any explanation or markdown.`;
 
       const solvedAnswer =
         doubt.isSolved === "solved" && doubt.solvedReplyId
-          ? (replyMap.get(doubt.solvedReplyId) ?? null)
+          ? ((replyMap.get(doubt.solvedReplyId) ?? null) as string | null)
           : null;
 
       similarDoubts.push({

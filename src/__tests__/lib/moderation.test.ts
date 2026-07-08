@@ -1,4 +1,4 @@
-import { moderateContent } from '@/lib/moderation';
+import { moderateContent } from '@/lib/moderation/moderation';
 
 jest.mock('@/configs/db', () => ({
     db: {

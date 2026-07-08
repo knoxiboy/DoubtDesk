@@ -5,8 +5,8 @@ import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { inngest } from "@/inngest/client";
-import { checkUserBlock } from "@/lib/auth-utils";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { voteReplySchema } from "@/lib/validations/reply";
 

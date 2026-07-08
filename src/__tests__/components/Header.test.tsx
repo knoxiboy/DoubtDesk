@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import Header from "@/components/Header";
+import Header from "@/components/layout/Header";
 import { useRouter, usePathname } from "next/navigation";
 import { useAppUser } from "@/app/provider";
 
@@ -23,7 +23,7 @@ jest.mock("@/app/provider", () => ({
 }));
 
 // Mock ThemeToggle to keep tests focused
-jest.mock("@/components/ThemeToggle", () => ({
+jest.mock("@/components/layout/ThemeToggle", () => ({
   ThemeToggle: () => <div data-testid="theme-toggle" />,
 }));
 
