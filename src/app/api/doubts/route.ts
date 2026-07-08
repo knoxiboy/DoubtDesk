@@ -136,7 +136,7 @@ export async function GET(req: Request) {
     const pageStr = searchParams.get("page");
     const offsetStr = searchParams.get("offset");
     const limitStr = searchParams.get("limit");
-    const limit = parsePositiveInt(limitStr, 20);
+    const limit = parsePositiveInt(limitStr, 20, 100);
     const offset = offsetStr
       ? parsePositiveInt(offsetStr, 0)
       : pageStr
@@ -238,17 +238,15 @@ export async function GET(req: Request) {
         .innerJoin(tagsTable, eq(doubtTagsTable.tagId, tagsTable.id))
         .where(inArray(doubtTagsTable.doubtId, doubts.map((d: any) => d.id)));
 
-      const tagsByDoubt = tagRows.reduce<
-        Record<number, { id: number; name: string; normalizedName: string }[]>
-      >((acc, row) => {
-        acc[row.doubtId] = acc[row.doubtId] || [];
-        acc[row.doubtId].push({
+      const tagsByDoubt = tagRows.reduce((acc, row: typeof tagRows[number]) => {
+        acc[row.doubtId as number] = acc[row.doubtId as number] || [];
+        (acc[row.doubtId as number] as { id: number; name: string; normalizedName: string }[]).push({
           id: row.id,
           name: row.name,
           normalizedName: row.normalizedName,
         });
         return acc;
-      }, {});
+      }, {} as Record<number, { id: number; name: string; normalizedName: string }[]>);
 
       doubts = doubts.map((doubt: any) => ({
         ...doubt,
@@ -411,13 +409,13 @@ export async function POST(req: Request) {
           ),
         );
 
-      const existingTagsMap = new Map(existingClassroomTags.map((t: any) => [t.normalizedName, t]));
+      const existingTagsMap = new Map(existingClassroomTags.map((t: typeof tagsTable.$inferSelect) => [t.normalizedName, t]));
       const tagsToInsert: (typeof tagsTable.$inferInsert)[] = [];
 
       for (const name of normalizedTags) {
         const match = existingTagsMap.get(name);
         if (match) {
-          savedTags.push(match);
+          savedTags.push(match as typeof tagsTable.$inferSelect);
         } else {
           tagsToInsert.push({
             name: name.replace(/\b\w/g, (char) => char.toUpperCase()),
