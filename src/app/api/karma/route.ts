@@ -184,12 +184,11 @@ export async function POST(req: NextRequest) {
 
         // Intercept structural foreign key violations cleanly (e.g., bad replyId or doubtId format)
         if (error?.code === "23503") {
-            return NextResponse.json({ 
-                error: "Data Integrity Failure: Associated reference values do not exist in parent tables." 
+            return NextResponse.json({
+                error: "Data Integrity Failure: Associated reference values do not exist in parent tables."
             }, { status: 400 });
         }
-        
-        console.error("CRITICAL: Karma mutation endpoint exception:", error);
+
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });
     }

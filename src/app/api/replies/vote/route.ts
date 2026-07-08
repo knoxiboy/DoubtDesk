@@ -116,16 +116,7 @@ export async function POST(req: Request) {
 
         // ── 4. BACKGROUND SYSTEM EMISSION ───────────────────────────────────
         if (result && result.hasUpvoted && result.userEmail && originalReplyAuthorEmail) {
-            if (result.userEmail !== originalReplyAuthorEmail) {
-                console.error(
-                    "[replies/vote] reply author email diverged between fetch and update",
-                    {
-                        replyId,
-                        original: originalReplyAuthorEmail,
-                        postUpdate: result.userEmail,
-                    }
-                );
-            } else {
+            if (result.userEmail === originalReplyAuthorEmail) {
                 await inngest.send({
                     name: "karma/answer.upvoted",
                     data: {

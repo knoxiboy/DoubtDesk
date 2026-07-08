@@ -137,7 +137,6 @@ export async function POST(
         });
 
     } catch (error) {
-        console.error("CRITICAL: Upvote endpoint execution exception:", error);
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });
     }

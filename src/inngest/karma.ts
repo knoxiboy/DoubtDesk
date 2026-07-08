@@ -67,15 +67,12 @@ async function executeKarmaTransaction(payload: {
 
     } catch (error: any) {
         if (error instanceof Error && error.message === "USER_NOT_FOUND") {
-            console.error(`[CRITICAL] Aborting job worker. User target ${userEmail} does not exist in dataset.`);
             throw error;
         }
         if (error?.code === "23503") {
             const fkError = new Error(`[DATA INTEGRITY FAILURE] Foreign key violation for event ${eventType}.`);
-            console.error(fkError.message, error);
             throw fkError;
         }
-        console.error(`[CRITICAL] Background job processor failed for user ${userEmail}:`, error);
         throw error;
     }
 }
@@ -253,7 +250,6 @@ export const dailyStreakProcessor = inngest.createFunction(
                 
             } catch (err) {
                 failures++;
-                console.error(`[karma-streak] Streak update failed for target ${user.email}:`, err);
             }
         }
 

@@ -113,12 +113,6 @@ function containsPromptInjection(content: string): boolean {
 
 function logModeration(level: 'warn' | 'error', action: string, detail: string) {
     const truncatedDetail = detail.length > 100 ? detail.substring(0, 100) + '...' : detail;
-    const message = `[MODERATION] ${action}: ${truncatedDetail}`;
-    if (level === 'warn') {
-        console.warn(message);
-    } else {
-        console.error(message);
-    }
 }
 
 /**
@@ -281,12 +275,6 @@ export async function moderateContent(
             };
         } catch (error: unknown) {
             const err = error instanceof Error ? error : new Error(String(error));
-            console.error(
-                "Moderation error:",
-                err
-            );
-
-            logModeration('error', 'Provider connection error', String(error));
             lastError = err;
 
             if (shouldRetryModeration(error)) {
@@ -342,8 +330,6 @@ export async function handleModerationViolation(
             });
 
         if (!updated) {
-            // User row not found — log and bail without crashing the request.
-            console.error(`[handleModerationViolation] User not found: ${email}`);
             return null;
         }
 
