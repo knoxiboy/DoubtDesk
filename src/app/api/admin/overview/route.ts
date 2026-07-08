@@ -1,4 +1,5 @@
 // src/app/api/admin/overview/route.ts
+import { parsePositiveInt } from "@/lib/utils/utils";
 export const dynamic = "force-dynamic";
 
 import { requireAdmin } from "@/lib/auth/requireAdmin";
@@ -20,9 +21,17 @@ export async function GET(request: Request) {
         // 1. Guard route: redirect or throw if not an authorized admin
         await requireAdmin();
 
+        //const { searchParams } = new URL(request.url);
+        //const limit = parseInt(searchParams.get("limit") || "50");
+        //const offset = parseInt(searchParams.get("offset") || "0");
+
         const { searchParams } = new URL(request.url);
-        const limit = parseInt(searchParams.get("limit") || "50");
-        const offset = parseInt(searchParams.get("offset") || "0");
+        const limitStr = searchParams.get("limit") || "50";
+        const offsetStr = searchParams.get("offset") || "0";
+
+        // Secure parsing with upper limit cap of 100
+        const limit = Math.min(parsePositiveInt(limitStr, 50), 100);
+        const offset = parsePositiveInt(offsetStr, 0);
 
         // 2. Platform-level KPIs
         const totalUsersResult = await db.select({ value: count() }).from(usersTable);
