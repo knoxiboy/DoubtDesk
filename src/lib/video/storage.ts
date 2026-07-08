@@ -49,12 +49,14 @@ export async function getVideoSignedUrl(objectName: string): Promise<string> {
     );
   }
 
-  const { data } = await supabase.storage
+  const { data, error: signError } = await supabase.storage
     .from(VIDEO_BUCKET)
     .createSignedUrl(objectName, SIGNED_URL_EXPIRY_SECONDS);
 
-  if (!data?.signedUrl) {
-    throw new Error("Failed to create signed URL for video");
+  if (signError || !data?.signedUrl) {
+    throw new Error(
+      `Failed to create signed URL for video${signError ? `: ${signError.message}` : ""}`,
+    );
   }
 
   return data.signedUrl;

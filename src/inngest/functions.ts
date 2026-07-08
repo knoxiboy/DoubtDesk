@@ -47,26 +47,19 @@ export const cleanupTempAssets = inngest.createFunction(
       if (fs.existsSync(tmpRoot)) {
         const entries = fs.readdirSync(tmpRoot);
         for (const entry of entries) {
-          if (!entry.startsWith("doubtdesk-audio-")) continue;
-          const dirPath = path.join(tmpRoot, entry);
-          if (!fs.statSync(dirPath).isDirectory()) continue;
+          const entryPath = path.join(tmpRoot, entry);
+          const stats = fs.statSync(entryPath);
+          const isStale = now - stats.mtimeMs > retentionMs;
 
-          const files = fs.readdirSync(dirPath);
-          for (const file of files) {
-            const filePath = path.join(dirPath, file);
-            const stats = fs.statSync(filePath);
-            if (now - stats.mtimeMs > retentionMs) {
-              fs.unlinkSync(filePath);
-              count++;
-            }
+          if (entry.startsWith("doubtdesk-audio-") && stats.isDirectory() && isStale) {
+            fs.rmSync(entryPath, { recursive: true, force: true });
+            count++;
+            continue;
           }
 
-          if (files.length === 0 || count > 0) {
-            try {
-              fs.rmdirSync(dirPath);
-            } catch {
-              // directory not empty or other fs error; leave it
-            }
+          if (/^video-.*\.mp4$/i.test(entry) && stats.isFile() && isStale) {
+            fs.unlinkSync(entryPath);
+            count++;
           }
         }
       }

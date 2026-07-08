@@ -35,6 +35,13 @@ export interface VideoProgress {
 
 export type ProgressReporter = (update: VideoProgress) => Promise<void> | void;
 
+export async function cleanupVideoArtifacts(tempDir: string, outputLocation: string): Promise<void> {
+  await Promise.all([
+    fs.promises.unlink(outputLocation).catch(() => {}),
+    fs.promises.rm(tempDir, { recursive: true, force: true }).catch(() => {}),
+  ]);
+}
+
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY || "dummy_key",
 });
@@ -208,45 +215,30 @@ Return ONLY a JSON object with a "scenes" array.`;
   const entryPoint = path.resolve(process.cwd(), "src/lib/video/remotion/index.tsx");
   const outputLocation = path.join(os.tmpdir(), `video-${Date.now()}.mp4`);
 
-  const { bundle } = await import("@remotion/bundler");
-  const bundleLocation = await bundle({ entryPoint });
-
-  const compositionId = "DoubtVideo";
-  const inputProps = { type: videoType, scenes };
-
-  const composition = await selectComposition({
-    serveUrl: bundleLocation,
-    id: compositionId,
-    inputProps,
-  });
-  await renderMedia({
-    composition,
-    serveUrl: bundleLocation,
-    codec: "h264",
-    outputLocation,
-    inputProps,
-  });
-
-  const objectName = `renders/${path.basename(outputLocation)}`;
-  let videoUrl: string;
   try {
-    videoUrl = await uploadVideo(outputLocation, objectName);
+    const { bundle } = await import("@remotion/bundler");
+    const bundleLocation = await bundle({ entryPoint });
+
+    const compositionId = "DoubtVideo";
+    const inputProps = { type: videoType, scenes };
+
+    const composition = await selectComposition({
+      serveUrl: bundleLocation,
+      id: compositionId,
+      inputProps,
+    });
+    await renderMedia({
+      composition,
+      serveUrl: bundleLocation,
+      codec: "h264",
+      outputLocation,
+      inputProps,
+    });
+
+    const objectName = `renders/${path.basename(outputLocation)}`;
+    const videoUrl = await uploadVideo(outputLocation, objectName);
+    return { videoUrl, videoType };
   } finally {
-    await fs.promises.unlink(outputLocation).catch(() => {});
+    await cleanupVideoArtifacts(tempDir, outputLocation);
   }
-
-  // Clean up temporary audio files after a successful render.
-  await Promise.all(
-    scenes.map(async (scene: EnrichedScene) => {
-      try {
-        const fileName = path.basename(scene.audioUrl.replace("file://", ""));
-        const localPath = path.join(tempDir, fileName);
-        if (fs.existsSync(localPath)) await fs.promises.unlink(localPath);
-      } catch (err) {
-        console.error("Failed to delete temp audio file:", err);
-      }
-    }),
-  ).catch((err) => console.error("Error during temp audio cleanup:", err));
-
-  return { videoUrl, videoType };
 }

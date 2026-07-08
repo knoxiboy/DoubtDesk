@@ -112,7 +112,8 @@ export async function GET(req: Request) {
         if (snapshot.status === "completed" && snapshot.videoUrl) {
           try {
             snapshot.videoUrl = await getVideoSignedUrl(snapshot.videoUrl);
-          } catch {
+          } catch (err) {
+            console.error("Failed to sign video URL:", err);
             // keep stored object key; client will see a broken link rather than no status
           }
         }
