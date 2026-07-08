@@ -3,8 +3,8 @@ import { db } from '@/configs/db';
 import { organizationsTable, organizationMembershipsTable, usersTable } from '@/configs/schema';
 import { eq, and } from 'drizzle-orm';
 import { currentUser } from '@clerk/nextjs/server';
-import { errorResponse, buildErrorResponse } from '@/lib/error-handler';
-import { checkUserBlock } from '@/lib/auth-utils';
+import { errorResponse, buildErrorResponse } from '@/lib/errors/error-handler';
+import { checkUserBlock } from '@/lib/auth/auth-utils';
 import { z } from 'zod';
 
 // FIXED: Tightened schema validation to match db varchar(255) constraints

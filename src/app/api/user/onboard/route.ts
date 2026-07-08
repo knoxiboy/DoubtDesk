@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { usersTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { z } from 'zod';
 
@@ -90,14 +91,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true });
 
     } catch (error: unknown) {
-        const err = error as { errors?: unknown; message?: string };
         console.error('Onboarding error trace:', error);
-        if (err.errors) {
-            console.error('Clerk Detail Errors:', JSON.stringify(err.errors, null, 2));
-        }
-        return NextResponse.json(
-            { error: err.message || 'Failed to complete onboarding' },
-            { status: 500 }
-        );
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }

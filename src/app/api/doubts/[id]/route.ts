@@ -3,8 +3,8 @@ import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, tagsTable, doubtTagsTable, bookmarksTable, likesTable } from "@/configs/schema";
 import { eq, sql, and, getTableColumns } from "drizzle-orm";
 import { getOptionalAuth, requireMembership } from "@/lib/auth/membership-guard";
-import { buildErrorResponse } from "@/lib/error-handler";
-import { toPublicDoubt } from "@/lib/anonymity";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
+import { toPublicDoubt } from "@/lib/anonymity/anonymity";
 
 export async function GET(
     req: Request,

@@ -1,8 +1,8 @@
 import { POST } from '@/app/api/ask-ai/route';
-import { aiLimiter } from '@/lib/ratelimit';
-import { AI_REQUEST_MAX_BYTES } from '@/lib/ai-image-validation';
+import { aiLimiter } from '@/lib/ratelimit/ratelimit';
+import { AI_REQUEST_MAX_BYTES } from '@/lib/ai/ai-image-validation';
 
-jest.mock('@/lib/ratelimit', () => ({
+jest.mock('@/lib/ratelimit/ratelimit', () => ({
     aiLimiter: {
         limit: jest.fn().mockResolvedValue({
             success: true,

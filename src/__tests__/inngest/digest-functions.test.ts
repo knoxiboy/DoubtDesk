@@ -1,5 +1,5 @@
 import { db } from "@/configs/db";
-import { sendDigestEmail } from "@/lib/email";
+import { sendDigestEmail } from "@/lib/email/email";
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
@@ -11,7 +11,7 @@ jest.mock("@/configs/db", () => ({
   },
 }));
 
-jest.mock("@/lib/email", () => ({
+jest.mock("@/lib/email/email", () => ({
   sendDigestEmail: jest.fn(),
 }));
 

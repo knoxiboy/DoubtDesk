@@ -8,13 +8,13 @@
  */
 import { GET } from '@/app/api/doubts/[id]/route';
 import { currentUser } from '@clerk/nextjs/server';
-import { getAnonymousHandle } from '@/lib/anonymity';
+import { getAnonymousHandle } from '@/lib/anonymity/anonymity';
 
 jest.mock('@clerk/nextjs/server', () => ({
     currentUser: jest.fn(),
 }));
 
-jest.mock('@/lib/error-handler', () => ({
+jest.mock('@/lib/errors/error-handler', () => ({
     buildErrorResponse: jest.fn().mockReturnValue({ status: 500, body: { error: 'Internal Server Error' } }),
     ApiError: class ApiError extends Error {
         constructor(public statusCode: number, message: string) {

@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
 import { usersTable } from "@/configs/schema";
-import { verifyUnsubscribeToken } from "@/lib/email";
+import { verifyUnsubscribeToken } from "@/lib/email/email";
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 10;

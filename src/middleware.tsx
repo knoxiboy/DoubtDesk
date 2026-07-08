@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { aiLimiter, generalLimiter, videoLimiter } from '@/lib/ratelimit';
+import { aiLimiter, generalLimiter, videoLimiter } from '@/lib/ratelimit/ratelimit';
 import { db } from '@/configs/db';
 import { usersTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';

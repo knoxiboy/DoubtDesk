@@ -8,7 +8,7 @@ jest.mock('@clerk/nextjs/server', () => ({
     currentUser: () => currentUserMock(),
 }));
 
-jest.mock('@/lib/auth-utils', () => ({
+jest.mock('@/lib/auth/auth-utils', () => ({
     checkUserBlock: (...args: any[]) => checkUserBlockMock(...args),
 }));
 

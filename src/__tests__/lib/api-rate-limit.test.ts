@@ -1,4 +1,4 @@
-import { enforceApiRateLimit } from "@/lib/api-rate-limit";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
 
 const createLimiter = (result: {
   success: boolean;

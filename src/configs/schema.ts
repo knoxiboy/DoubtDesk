@@ -1,41 +1,5 @@
 // configs/schema.ts
-import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique, vector, pgEnum } from "drizzle-orm/pg-core";
-
-// ═══════════════════════════════════════════════════════════════════
-//   MULTI-TENANT ORGANIZATION TABLES (NEW)
-// ═══════════════════════════════════════════════════════════════════
-
-export const orgRoleEnum = pgEnum("org_role", ["owner", "admin", "teacher", "member"]);
-
-export const organizationsTable = pgTable("organizations", {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    name: varchar({ length: 255 }).notNull(),
-    slug: varchar({ length: 255 }).notNull().unique(),
-    ownerEmail: varchar("owner_email", { length: 255 }).notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const organizationMembershipsTable = pgTable("organization_memberships", {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    organizationId: integer("organization_id").notNull(),
-    userEmail: varchar("user_email", { length: 255 }).notNull(),
-    role: orgRoleEnum("role").default("member").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-}, (table) => ({
-    orgIdFk: foreignKey({
-        columns: [table.organizationId],
-        foreignColumns: [organizationsTable.id],
-    }).onDelete("cascade"),
-    userEmailFk: foreignKey({
-        columns: [table.userEmail],
-        foreignColumns: [usersTable.email],
-    }).onDelete("cascade"),
-    uniqueOrgMembership: unique("org_memberships_userEmail_orgId_unique").on(table.userEmail, table.organizationId),
-}));
-
-// ═══════════════════════════════════════════════════════════════════
-//   CORE TABLES
-// ═══════════════════════════════════════════════════════════════════
+import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique, vector } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -71,11 +35,11 @@ export const classroomsTable = pgTable(
     "classrooms",
     {
         id: integer().primaryKey().generatedAlwaysAsIdentity(),
-        organizationId: integer("organization_id"), // NEW: Optional link to an institute/org
         name: varchar({ length: 255 }).notNull(),
         university: varchar({ length: 255 }).notNull(),
         year: varchar({ length: 50 }).notNull(),
         teacherEmail: varchar({ length: 255 }).notNull(),
+        organizationId: integer(),
         inviteCode: varchar({ length: 10 }).notNull().unique(),
         inviteCodeExpiresAt: timestamp("invite_code_expires_at", { withTimezone: true }),
         allowedEmailDomains: text("allowed_email_domains").array(),
@@ -85,11 +49,6 @@ export const classroomsTable = pgTable(
     },
     (table) => ({
         teacherEmailIndex: index("classrooms_teacherEmail_idx").on(table.teacherEmail),
-        orgIdIndex: index("classrooms_orgId_idx").on(table.organizationId),
-        orgIdFk: foreignKey({
-            columns: [table.organizationId],
-            foreignColumns: [organizationsTable.id],
-        }).onDelete("set null"),
     }),
 );
 
@@ -145,84 +104,7 @@ export const classroomInvitesTable = pgTable("classroom_invites", {
   }).onDelete("cascade"),
 }));
 
-export const chatHistoryTable = pgTable("chat_history", {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    chatId: varchar({ length: 255 }).notNull(),
-    chatTitle: varchar({ length: 255 }),
-    userEmail: varchar({ length: 255 }).notNull(),
-    role: varchar({ length: 20 }).notNull(),
-    content: text().notNull(),
-    createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
-    chatIdIndex: index("chatHistory_chatId_idx").on(table.chatId),
-    userIdFk: foreignKey({
-        columns: [table.userEmail],
-        foreignColumns: [usersTable.email],
-    }).onDelete("cascade"),
-}));
 
-export const roadmapsTable = pgTable("roadmaps", {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userEmail: varchar({ length: 255 }).notNull(),
-    targetField: varchar({ length: 255 }).notNull(),
-    roadmapData: text().notNull(),
-    createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
-    userIdFk: foreignKey({
-        columns: [table.userEmail],
-        foreignColumns: [usersTable.email],
-    }).onDelete("cascade"),
-}));
-
-export const coverLettersTable = pgTable("cover_letters", {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userEmail: varchar({ length: 255 }).notNull(),
-    jobDescription: text().notNull(),
-    userDetails: text().notNull(),
-    coverLetter: text().notNull(),
-    createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
-    userIdFk: foreignKey({
-        columns: [table.userEmail],
-        foreignColumns: [usersTable.email],
-    }).onDelete("cascade"),
-}));
-
-export const resumeAnalysisTable = pgTable("resume_analysis", {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userEmail: varchar({ length: 255 }).notNull(),
-    resumeText: text().notNull(),
-    jobDescription: text(),
-    analysisData: text().notNull(),
-    resumeName: varchar({ length: 255 }),
-    createdAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
-    userIdFk: foreignKey({
-        columns: [table.userEmail],
-        foreignColumns: [usersTable.email],
-    }).onDelete("cascade"),
-}));
-
-export const sharedChatsTable = pgTable("shared_chats", {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    chatId: varchar({ length: 255 }).notNull().unique(),
-    createdAt: timestamp().defaultNow().notNull(),
-});
-
-export const resumesTable = pgTable("resumes", {
-    id: integer().primaryKey().generatedAlwaysAsIdentity(),
-    userEmail: varchar({ length: 255 }).notNull(),
-    resumeName: varchar({ length: 255 }).notNull(),
-    resumeData: text().notNull(),
-    createdAt: timestamp().defaultNow().notNull(),
-    updatedAt: timestamp().defaultNow().notNull(),
-}, (table) => ({
-    userIdFk: foreignKey({
-        columns: [table.userEmail],
-        foreignColumns: [usersTable.email],
-    }).onDelete("cascade"),
-    userEmailResumeNameUnique: unique("resumes_userEmail_resumeName_unique").on(table.userEmail, table.resumeName),
-}));
 
 export const doubtsTable = pgTable("doubts", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -329,6 +211,7 @@ export const repliesTable = pgTable("replies", {
         foreignColumns: [usersTable.email],
     }).onDelete("set null"),
 }));
+
 export const likesTable = pgTable("likes", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     userEmail: varchar({ length: 255 }).notNull(),
@@ -380,6 +263,20 @@ export const moderationLogsTable = pgTable("moderation_logs", {
         columns: [table.userEmail],
         foreignColumns: [usersTable.email],
     }).onDelete("set null"),
+}));
+
+export const auditLogsTable = pgTable("audit_logs", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    actorEmail: varchar({ length: 255 }).notNull(),
+    targetEmail: varchar({ length: 255 }),
+    action: varchar({ length: 100 }).notNull(),
+    resourceType: varchar({ length: 50 }).notNull(),
+    resourceId: varchar({ length: 255 }),
+    metadata: text(),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    actorEmailIndex: index("audit_actor_idx").on(table.actorEmail),
+    actionIndex: index("audit_action_idx").on(table.action),
 }));
 
 export const bookmarksTable = pgTable(
@@ -506,7 +403,7 @@ export const userBadgesTable = pgTable("user_badges", {
 }));
 
 // ═══════════════════════════════════════════════════════════════════
-//   ANALYTICS SYSTEM TABLES
+//   ANALYTICS SYSTEM TABLES (NEWLY ADDED)
 // ═══════════════════════════════════════════════════════════════════
 
 export const confusionAlertsTable = pgTable("confusion_alerts", {
@@ -537,6 +434,19 @@ export const confusionAlertsTable = pgTable("confusion_alerts", {
 }));
 
 // ═══════════════════════════════════════════════════════════════════
+//   AI SESSIONS TABLE
+// ═══════════════════════════════════════════════════════════════════
+
+export const aiSessionsTable = pgTable("aiSessions", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userName: varchar({ length: 255 }).notNull(),
+    subject: varchar({ length: 255 }).notNull(),
+    content: text().notNull(),
+    reply: text(),
+    createdAt: timestamp().defaultNow().notNull(),
+});
+
+// ═══════════════════════════════════════════════════════════════════
 //   AI PRACTICE SYSTEM TABLE
 // ═══════════════════════════════════════════════════════════════════
 
@@ -561,3 +471,43 @@ export const practiceAttemptsTable = pgTable("practice_attempts", {
         foreignColumns: [doubtsTable.id],
     }).onDelete("cascade"),
 }));
+
+// Async video generation jobs (issue #321). Tracks the OCR → AI script → TTS →
+// Remotion render pipeline as a background Inngest job so the request handler
+// returns immediately instead of blocking 30-60s past the serverless timeout.
+export const videoJobsTable = pgTable("video_jobs", {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    userEmail: varchar("user_email", { length: 255 }).notNull(),
+    // queued | processing | completed | failed
+    status: varchar("status", { length: 20 }).default("queued").notNull(),
+    progress: integer("progress").default(0).notNull(),
+    step: varchar("step", { length: 255 }),
+    videoType: varchar("video_type", { length: 20 }),
+    videoUrl: text("video_url"),
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+    userEmailIndex: index("video_jobs_user_email_idx").on(table.userEmail),
+    statusCreatedAtIndex: index("video_jobs_status_created_at_idx").on(table.status, table.createdAt),
+    userEmailFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+}));
+
+export const organizationsTable = pgTable("organizations", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    name: varchar({ length: 255 }).notNull(),
+    slug: varchar({ length: 255 }).notNull().unique(),
+    ownerEmail: varchar({ length: 255 }).notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+});
+
+export const organizationMembershipsTable = pgTable("organization_memberships", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    organizationId: integer().notNull(),
+    userEmail: varchar({ length: 255 }).notNull(),
+    role: varchar({ length: 20 }).notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+});

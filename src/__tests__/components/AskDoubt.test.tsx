@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import AskDoubt from '@/components/AskDoubt';
+import AskDoubt from '@/components/classroom/AskDoubt';
 
 describe('AskDoubt Modal Component', () => {
     it('returns null when isOpen is false', () => {

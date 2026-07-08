@@ -8,9 +8,9 @@ import {
   classroomsTable,
   membershipsTable,
 } from "@/configs/schema";
-import { checkUserBlock } from "@/lib/auth-utils";
-import { buildErrorResponse } from "@/lib/error-handler";
-import { hashInviteToken } from "@/lib/invite-token";
+import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
+import { hashInviteToken } from "@/lib/invites/invite-token";
 
 export async function POST(
   req: Request,
