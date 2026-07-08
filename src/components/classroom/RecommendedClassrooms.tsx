@@ -106,14 +106,14 @@ export default function RecommendedClassrooms() {
     }
 
     return (
-        <div className="rounded-2xl border bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-slate-200 dark:border-zinc-900 bg-white dark:bg-zinc-950/30 p-5 shadow-sm text-slate-900 dark:text-zinc-100">
             <div className="mb-4 flex items-center justify-between">
                 <div>
                     <h2 className="text-lg font-semibold">
                         Recommended For You
                     </h2>
 
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-slate-500 dark:text-zinc-400">
                         Personalized classrooms based on your profile
                     </p>
                 </div>
@@ -121,8 +121,8 @@ export default function RecommendedClassrooms() {
                 <button
                     onClick={refreshRecommendations}
                     disabled={refreshing}
-                    className="flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
-                 aria-label="Interactive button">
+                    className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-zinc-800 px-3 py-2 text-sm text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-900/60 transition"
+                  aria-label="Interactive button">
                     <RefreshCw
                         className={`h-4 w-4 ${
                             refreshing ? "animate-spin" : ""
@@ -137,15 +137,15 @@ export default function RecommendedClassrooms() {
                 {classrooms.map((classroom) => (
                     <div
                         key={classroom.id}
-                        className="rounded-xl border p-4 transition hover:border-black"
+                        className="rounded-xl border border-slate-100 dark:border-zinc-900 p-4 transition hover:border-blue-500/50 dark:hover:border-blue-500/40"
                     >
                         <div className="flex items-start justify-between gap-4">
                             <div className="space-y-2">
-                                <h3 className="font-semibold">
+                                <h3 className="font-semibold text-slate-900 dark:text-white">
                                     {classroom.name}
                                 </h3>
 
-                                <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                                <div className="flex flex-wrap gap-2 text-xs text-slate-400 dark:text-zinc-500">
                                     <span>
                                         {classroom.university}
                                     </span>
@@ -157,20 +157,20 @@ export default function RecommendedClassrooms() {
                                     </span>
                                 </div>
 
-                                <div className="flex items-center gap-4 text-xs text-gray-500">
+                                <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-zinc-400">
                                     <div className="flex items-center gap-1">
-                                        <Users className="h-3 w-3" />
+                                        <Users className="h-3 w-3 text-blue-600 dark:text-blue-400" />
                                         {classroom.memberCount} members
                                     </div>
 
                                     <div className="flex items-center gap-1">
-                                        <Flame className="h-3 w-3" />
+                                        <Flame className="h-3 w-3 text-orange-500 dark:text-orange-400" />
                                         {classroom.activityCount} discussions
                                     </div>
                                 </div>
                             </div>
 
-                            <button className="rounded-lg bg-black px-4 py-2 text-sm text-white hover:opacity-90" >
+                            <button className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm text-white font-bold transition duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98]" >
                                 Join
                             </button>
                         </div>

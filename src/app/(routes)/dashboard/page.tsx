@@ -9,7 +9,6 @@ import {
     BarChart, Bar, Cell, AreaChart, Area, Tooltip, XAxis, YAxis, ResponsiveContainer 
 } from "recharts"
 import { Skeleton } from "@/components/ui/skeleton"
-import RecommendedClassrooms from "@/components/classroom/RecommendedClassrooms"
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs"
 import Link from "next/link";
 
@@ -360,9 +359,6 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    <div className="relative z-10">
-                        <RecommendedClassrooms />
-                    </div>
                 </div>
             </SignedIn>
             <SignedOut>
