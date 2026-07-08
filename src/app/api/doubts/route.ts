@@ -252,7 +252,7 @@ export async function GET(req: Request) {
         })
         .from(doubtTagsTable)
         .innerJoin(tagsTable, eq(doubtTagsTable.tagId, tagsTable.id))
-        .where(inArray(doubtTagsTable.doubtId, doubts.map((d: any) => d.id)));
+        .where(inArray(doubtTagsTable.doubtId, doubts.map((d: { id: number }) => d.id)));
 
       const tagsByDoubt = tagRows.reduce<
         Record<number, { id: number; name: string; normalizedName: string }[]>
