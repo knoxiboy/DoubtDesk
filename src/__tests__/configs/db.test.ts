@@ -53,12 +53,13 @@ describe('getDatabaseUrl', () => {
 describe('database configuration', () => {
     const originalDatabaseUrl = process.env.DATABASE_URL;
     const originalNodeEnv = process.env.NODE_ENV;
+    const mutableEnv = process.env as Record<string, string | undefined>;
 
     beforeEach(() => {
         jest.resetModules();
         jest.clearAllMocks();
         delete process.env.DATABASE_URL;
-        Object.defineProperty(process.env, 'NODE_ENV', { value: 'test', writable: true });
+        mutableEnv.NODE_ENV = 'test';
     });
 
     afterEach(() => {
@@ -68,9 +69,9 @@ describe('database configuration', () => {
             delete process.env.DATABASE_URL;
         }
         if (originalNodeEnv) {
-            Object.defineProperty(process.env, 'NODE_ENV', { value: originalNodeEnv, writable: true });
+            mutableEnv.NODE_ENV = originalNodeEnv;
         } else {
-            delete (process.env as Record<string, string | undefined>).NODE_ENV;
+            delete mutableEnv.NODE_ENV;
         }
     });
 

@@ -66,7 +66,6 @@ export async function POST() {
         });
 
     } catch (error) {
-        console.error("Error seeding notifications:", error);
         return NextResponse.json({ error: "Failed to seed notifications" }, { status: 500 });
     }
 }

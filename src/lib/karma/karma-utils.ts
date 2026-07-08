@@ -165,7 +165,7 @@ export async function updateStreak(userEmail: string): Promise<void> {
     if (daysDiff === 0) {
         const nextStreakVal = user.currentStreak + 1;
 
-        await db.transaction(async (tx: any) => {
+        await db.transaction(async (tx) => {
             // Compute the target score inline to resolve level scaling factors
             const nextScoreSql = sql`${usersTable.karmaScore} + 5`;
 
