@@ -254,15 +254,18 @@ export async function GET(req: Request) {
         .innerJoin(tagsTable, eq(doubtTagsTable.tagId, tagsTable.id))
         .where(inArray(doubtTagsTable.doubtId, doubts.map((d: any) => d.id)));
 
-      const tagsByDoubt = tagRows.reduce((acc, row: typeof tagRows[number]) => {
-        acc[row.doubtId as number] = acc[row.doubtId as number] || [];
-        (acc[row.doubtId as number] as { id: number; name: string; normalizedName: string }[]).push({
-          id: row.id,
-          name: row.name,
-          normalizedName: row.normalizedName,
-        });
-        return acc;
-      }, {} as Record<number, { id: number; name: string; normalizedName: string }[]>);
+      const tagsByDoubt = tagRows.reduce(
+        (acc: Record<number, { id: number; name: string; normalizedName: string }[]>, row: typeof tagRows[number]) => {
+          acc[row.doubtId] = acc[row.doubtId] || [];
+          acc[row.doubtId].push({
+            id: row.id,
+            name: row.name,
+            normalizedName: row.normalizedName,
+          });
+          return acc;
+        },
+        {},
+      );
 
       doubts = doubts.map((doubt: any) => ({
         ...doubt,

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { db } from '@/configs/db';
 import { classroomsTable, membershipsTable } from '@/configs/schema';
 import { eq, and } from 'drizzle-orm';
@@ -7,9 +7,20 @@ import { checkUserBlock } from '@/lib/auth/auth-utils';
 import { buildErrorResponse } from '@/lib/errors/error-handler';
 import { parseAndValidateRequest } from '@/lib/validations/validate';
 import { joinClassroomSchema } from '@/lib/validations/classroom';
+import { inviteCodeLimiter } from '@/lib/ratelimit/ratelimit';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
     try {
+        // 0. Rate limit by IP (prevent brute-force enumeration of invite codes)
+        const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+        const rateLimitResult = await inviteCodeLimiter.limit(ip);
+        if (!rateLimitResult.success) {
+            return NextResponse.json(
+                { error: 'Too many join attempts. Please try again later.' },
+                { status: 429 }
+            );
+        }
+
         const { errorResponse, data } = await parseAndValidateRequest(req, joinClassroomSchema);
         if (errorResponse) return errorResponse;
 
@@ -22,11 +33,11 @@ export async function POST(req: Request) {
 
         const email = user.primaryEmailAddress.emailAddress;
 
-        // 0. Check if user is blocked
+        // 1. Check if user is blocked
         const { isBlocked, errorResponse: blockErrorResponse } = await checkUserBlock(email);
         if (isBlocked) return blockErrorResponse;
 
-        // 1. Find the classroom by invite code
+        // 2. Find the classroom by invite code
         const [classroom] = await db
             .select()
             .from(classroomsTable)
@@ -36,12 +47,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Invalid invite code' }, { status: 404 });
         }
 
-        // 1a. Check if invite code has expired
+        // 2a. Check if invite code has expired
         if (classroom.inviteCodeExpiresAt && new Date(classroom.inviteCodeExpiresAt) < new Date()) {
             return NextResponse.json({ error: 'Invite code has expired' }, { status: 410 });
         }
 
-        // 1b. Check email domain restrictions if set
+        // 2b. Check email domain restrictions if set
         if (classroom.allowedEmailDomains && classroom.allowedEmailDomains.length > 0) {
             const emailDomain = email.split('@')[1]?.toLowerCase();
             if (!emailDomain || !classroom.allowedEmailDomains.some(d => emailDomain === d.toLowerCase())) {
@@ -51,7 +62,7 @@ export async function POST(req: Request) {
             }
         }
 
-        // 2. Check if already a member
+        // 3. Check if already a member
         const [existingMember] = await db
             .select()
             .from(membershipsTable)
@@ -63,14 +74,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Already a member of this classroom' }, { status: 400 });
         }
 
-        // 3. Joining via an invite code always grants a baseline 'student' membership
+        // 4. Joining via an invite code always grants a baseline 'student' membership
         //    for this classroom. A user's global profile role (e.g. self-selected
         //    'teacher' at onboarding) must NEVER be copied into classroom membership --
         //    real teacher access to a classroom only comes from being its owner
         //    (classroomsTable.teacherEmail) or an explicit promotion by the owner/admin.
         const role = 'student' as const;
 
-        // 4. Add membership (the foreign key ensures referential integrity; the unique
+        // 5. Add membership (the foreign key ensures referential integrity; the unique
         //    constraint on memberships(userEmail, classroomId) prevents duplicates at the DB level too)
         const [newMembership] = await db.insert(membershipsTable).values({
             userEmail: email,
