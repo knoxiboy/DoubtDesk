@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { confusionAlertsTable } from "@/configs/schema";
 import { and, eq, desc } from "drizzle-orm";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import {
     parseClassroomId,
     requireAuth,

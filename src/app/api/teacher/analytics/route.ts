@@ -10,7 +10,7 @@ import {
     requireAuth,
     requireTeacher,
 } from "@/lib/auth/membership-guard";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 
 export async function GET(req: NextRequest) {
     try {

@@ -29,13 +29,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import ShapeGrid from "@/components/ShapeGrid";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import ShapeGrid from "@/components/marketing/ShapeGrid";
 import { Inter, Staatliches } from "next/font/google";
-import LiveCampusThreadPanel from "@/components/LiveCampusThreadPanel";
-import { scrollToSection } from "@/lib/scroll-to-section";
+import LiveCampusThreadPanel from "@/components/classroom/LiveCampusThreadPanel";
+import { scrollToSection } from "@/lib/utils/scroll-to-section";
 
-import TestimonialsMarquee from "@/components/TestimonialsMarquee"; //Testimonials marquee
+import TestimonialsMarquee from "@/components/marketing/TestimonialsMarquee"; //Testimonials marquee
 
 const inter = Inter({ subsets: ["latin"] });
 const staatliches = Staatliches({ weight: "400", subsets: ["latin"] });

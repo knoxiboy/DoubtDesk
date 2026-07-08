@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { usersTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';
-import { buildErrorResponse } from "@/lib/error-handler";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { z } from 'zod';
 

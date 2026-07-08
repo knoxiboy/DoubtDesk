@@ -3,8 +3,8 @@ import { db } from "@/configs/db";
 import { moderationLogsTable, usersTable } from "@/configs/schema";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { sendWarningEmail, sendBlockEmail } from "@/lib/email";
-import { auditLog, AUDIT_ACTIONS } from "@/lib/audit";
+import { sendWarningEmail, sendBlockEmail } from "@/lib/email/email";
+import { auditLog, AUDIT_ACTIONS } from "@/lib/audit/audit";
 import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(request: Request) {

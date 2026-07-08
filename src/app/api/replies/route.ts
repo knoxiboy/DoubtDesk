@@ -3,17 +3,17 @@ import { repliesTable, doubtsTable, replyLikesTable, usersTable, membershipsTabl
 import { eq, asc, and, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { moderateContent, handleModerationViolation } from "@/lib/moderation";
-import { buildErrorResponse, errorResponse } from "@/lib/error-handler";
+import { moderateContent, handleModerationViolation } from "@/lib/moderation/moderation";
+import { buildErrorResponse, errorResponse } from "@/lib/errors/error-handler";
 import { inngest } from "@/inngest/client";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createReplySchema } from "@/lib/validations/reply";
-import { DOUBT_STATUS } from "@/lib/doubtStatus";
+import { DOUBT_STATUS } from "@/lib/doubts/doubtStatus";
 import { createReplyNotification } from "@/lib/notifications/service";
-import { enforceApiRateLimit } from "@/lib/api-rate-limit";
-import { generalLimiter } from "@/lib/ratelimit";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
+import { generalLimiter } from "@/lib/ratelimit/ratelimit";
 import { canTeach } from "@/lib/auth/membership-guard";
-import { toPublicReply } from "@/lib/anonymity";
+import { toPublicReply } from "@/lib/anonymity/anonymity";
 
 export async function GET(req: Request) {
   try {

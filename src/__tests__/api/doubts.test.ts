@@ -2,7 +2,7 @@ import { GET, POST } from '@/app/api/doubts/route';
 import { db } from '@/configs/db';
 import { currentUser } from '@clerk/nextjs/server';
 
-jest.mock('@/lib/search', () => ({
+jest.mock('@/lib/search/search', () => ({
     buildSearchCondition: jest.fn().mockReturnValue(null),
     buildRankOrder: jest.fn().mockReturnValue(null),
 }));
@@ -10,7 +10,7 @@ jest.mock('@clerk/nextjs/server', () => ({
     currentUser: jest.fn()
 }));
 
-jest.mock('@/lib/moderation', () => ({
+jest.mock('@/lib/moderation/moderation', () => ({
     moderateContent: jest.fn().mockResolvedValue({ isAllowed: true, reason: 'Allowed' }),
     handleModerationViolation: jest.fn().mockResolvedValue(null)
 }));
@@ -19,7 +19,7 @@ jest.mock('@/lib/ai/categorizer', () => ({
     categorizeDoubt: jest.fn().mockResolvedValue('General')
 }));
 
-jest.mock('@/lib/error-handler', () => ({
+jest.mock('@/lib/errors/error-handler', () => ({
     buildErrorResponse: jest.fn().mockReturnValue({ status: 500, body: { error: 'Internal Server Error' } }),
     ApiError: class ApiError extends Error {
         constructor(public statusCode: number, message: string) {

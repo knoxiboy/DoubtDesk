@@ -3,13 +3,13 @@ import { db } from '@/configs/db';
 import { classroomsTable, membershipsTable, usersTable, organizationsTable, organizationMembershipsTable } from '@/configs/schema';
 import { eq, and, notInArray, isNull } from 'drizzle-orm';
 import { currentUser } from '@clerk/nextjs/server';
-import { checkUserBlock } from '@/lib/auth-utils';
-import { buildErrorResponse, errorResponse } from '@/lib/error-handler';
+import { checkUserBlock } from '@/lib/auth/auth-utils';
+import { buildErrorResponse, errorResponse } from '@/lib/errors/error-handler';
 import { parseAndValidateRequest } from '@/lib/validations/validate';
 import { createClassroomSchema } from '@/lib/validations/classroom';
 import { Classroom } from '@/types';
-import { enforceApiRateLimit } from '@/lib/api-rate-limit';
-import { generalLimiter } from '@/lib/ratelimit';
+import { enforceApiRateLimit } from '@/lib/ratelimit/api-rate-limit';
+import { generalLimiter } from '@/lib/ratelimit/ratelimit';
 
 // 1. GET: List classrooms for the user + Recommendations
 export async function GET(req: Request) {

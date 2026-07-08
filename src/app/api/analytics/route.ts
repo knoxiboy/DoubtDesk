@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { doubtsTable, repliesTable, membershipsTable, classroomsTable, organizationMembershipsTable } from '@/configs/schema';
 import { desc, sql, and, eq, count, countDistinct, ne, inArray, isNull } from 'drizzle-orm';
-import { checkUserBlock } from '@/lib/auth-utils';
-import { buildErrorResponse, errorResponse } from '@/lib/error-handler';
+import { checkUserBlock } from '@/lib/auth/auth-utils';
+import { buildErrorResponse, errorResponse } from '@/lib/errors/error-handler';
 import {
     parseOptionalClassroomId,
     requireAuth,

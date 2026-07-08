@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { generateUnsubscribeToken } from '@/lib/email';
+import { generateUnsubscribeToken } from '@/lib/email/email';
 
 const currentUserMock = jest.fn();
 jest.mock('@clerk/nextjs/server', () => ({

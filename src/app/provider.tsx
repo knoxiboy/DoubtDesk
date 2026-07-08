@@ -34,10 +34,10 @@ import SessionTracker from "@/components/auth/SessionTracker";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { KeyboardShortcutsProvider } from "@/components/KeyboardShortcutsProvider";
-import { CommandMenu } from "@/components/CommandMenu";
+import { KeyboardShortcutsProvider } from "@/components/layout/KeyboardShortcutsProvider";
+import { CommandMenu } from "@/components/layout/CommandMenu";
 import { ThemeProvider, useTheme } from "next-themes";
-import { FullScreenSpinner } from "../components/FullScreenSpinner";
+import { FullScreenSpinner } from "@/components/common/FullScreenSpinner";
 
 function ThemedToaster() {
     const { resolvedTheme } = useTheme();

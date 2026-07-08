@@ -4,11 +4,11 @@ import { and, eq } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
 import { membershipsTable, usersTable, aiSessionsTable } from "@/configs/schema";
-import { enforceApiRateLimit } from "@/lib/api-rate-limit";
-import { aiLimiter } from "@/lib/ratelimit";
-import { AI_REQUEST_MAX_BYTES } from "@/lib/ai-image-validation";
-import { buildSystemMessages } from "@/lib/socratic-prompt";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
+import { aiLimiter } from "@/lib/ratelimit/ratelimit";
+import { AI_REQUEST_MAX_BYTES } from "@/lib/ai/ai-image-validation";
+import { buildSystemMessages } from "@/lib/ai/socratic-prompt";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import type { AIMode } from "@/types/ai-chat";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_build_key" });

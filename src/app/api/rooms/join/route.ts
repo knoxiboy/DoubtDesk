@@ -3,8 +3,8 @@ import { db } from '@/configs/db';
 import { classroomsTable, membershipsTable } from '@/configs/schema';
 import { eq, and } from 'drizzle-orm';
 import { currentUser } from '@clerk/nextjs/server';
-import { checkUserBlock } from '@/lib/auth-utils';
-import { buildErrorResponse } from '@/lib/error-handler';
+import { checkUserBlock } from '@/lib/auth/auth-utils';
+import { buildErrorResponse } from '@/lib/errors/error-handler';
 import { parseAndValidateRequest } from '@/lib/validations/validate';
 import { joinClassroomSchema } from '@/lib/validations/classroom';
 

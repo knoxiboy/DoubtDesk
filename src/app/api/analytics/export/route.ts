@@ -19,7 +19,7 @@ import {
   inArray,
 } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
-import { checkUserBlock } from "@/lib/auth-utils";
+import { checkUserBlock } from "@/lib/auth/auth-utils";
 
 export async function GET(req: Request) {
   const user = await currentUser();
