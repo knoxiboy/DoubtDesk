@@ -101,6 +101,7 @@ jest.mock("@/lib/ratelimit/ratelimit", () => {
         generalLimiter: createLimiter(),
         emailNotificationLimiter: createLimiter(),
         videoLimiter: createLimiter(),
+        inviteCodeLimiter: createLimiter(),
         redisClient: {
             setnx: jest.fn().mockResolvedValue(1),
             del: jest.fn().mockResolvedValue(1),

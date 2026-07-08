@@ -99,8 +99,7 @@ export async function POST(
     // membership)`, so a duplicate concurrent join from the same user
     // can't consume a second slot for a membership that will just
     // conflict away.
-    // @ts-ignore - db.execute generic type not inferred in strict TS
-    const joinResult = await (db.execute as any)<{ membership_id: number }>(sql`
+    const joinResult = await db.execute(sql`
       WITH slot_claim AS (
         UPDATE ${classroomInvitesTable}
         SET used_count = used_count + 1

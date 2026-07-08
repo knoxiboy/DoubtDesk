@@ -1,3 +1,4 @@
+import { parsePositiveInt } from "@/lib/utils/utils";
 import { requireAdmin } from "@/lib/auth/requireAdmin";
 import { db } from "@/configs/db";
 import { moderationLogsTable, usersTable } from "@/configs/schema";
@@ -8,9 +9,19 @@ export async function GET(request: Request) {
     try {
         await requireAdmin();
 
+        //const { searchParams } = new URL(request.url);
+        //const page = parseInt(searchParams.get("page") || "1");
+        //const limit = parseInt(searchParams.get("limit") || "20");
+        //const offset = (page - 1) * limit;
+
         const { searchParams } = new URL(request.url);
-        const page = parseInt(searchParams.get("page") || "1");
-        const limit = parseInt(searchParams.get("limit") || "20");
+        
+        const pageStr = searchParams.get("page") || "1";
+        const limitStr = searchParams.get("limit") || "20";
+
+        const page = parsePositiveInt(pageStr, 1);
+        const limit = Math.min(parsePositiveInt(limitStr, 20), 100); // Cap at 100 max elements
+        
         const offset = (page - 1) * limit;
 
         // Analytics queries

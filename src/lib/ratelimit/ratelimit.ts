@@ -10,6 +10,7 @@ let aiDailyLimiter: Ratelimit | MockLimiter;
 let generalLimiter: Ratelimit | MockLimiter;
 let emailNotificationLimiter: Ratelimit | MockLimiter;
 let videoLimiter: Ratelimit | MockLimiter;
+let inviteCodeLimiter: Ratelimit | MockLimiter;
 let redisClient: Redis | MockRedis;
 
 interface MockLimiter {
@@ -83,6 +84,14 @@ if (isRedisConfigured) {
     prefix: "ratelimit:video",
   });
 
+  // Classroom Invite Code Joining: Strict brute-force protection (5 req/min per IP)
+  inviteCodeLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.fixedWindow(5, "1 m"),
+    analytics: true,
+    prefix: "ratelimit:invite_code",
+  });
+
   redisClient = redis;
 } else {
   // Simple in-memory fallback for local development
@@ -116,6 +125,7 @@ if (isRedisConfigured) {
   generalLimiter = createMockLimiter(30, 60 * 1000);
   emailNotificationLimiter = createMockLimiter(1, 5 * 60 * 1000); // 1 per 5 mins
   videoLimiter = createMockLimiter(3, 60 * 60 * 1000); // 3 per hour
+  inviteCodeLimiter = createMockLimiter(5, 60 * 1000); // 5 per minute
 
   // Provide a mock redis client for locks
   redisClient = {
@@ -148,4 +158,4 @@ if (isRedisConfigured) {
   };
 }
 
-export { aiLimiter, aiDailyLimiter, generalLimiter, emailNotificationLimiter, videoLimiter, redisClient };
+export { aiLimiter, aiDailyLimiter, generalLimiter, emailNotificationLimiter, videoLimiter, inviteCodeLimiter, redisClient };
