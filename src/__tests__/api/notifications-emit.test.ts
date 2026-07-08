@@ -12,10 +12,10 @@ jest.mock('@/lib/notifications/service', () => ({
     createReplyNotification: (...args: any[]) => createReplyNotificationMock(...args),
 }));
 
-const createQueryMock = (data: any) => ({
+const createQueryMock = (data) => ({
     from: () => createQueryMock(data),
     where: () => createQueryMock(data),
-    then: (resolve: any) => Promise.resolve(resolve(data)),
+    then: (resolve) => Promise.resolve(resolve(data)),
 });
 
 jest.mock('@/configs/db', () => ({

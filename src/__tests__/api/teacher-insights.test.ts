@@ -9,13 +9,13 @@ jest.mock('@clerk/nextjs/server', () => ({
 
 const selectResultsQueue: any[] = [];
 
-const createQueryMock = (data: any) => ({
+const createQueryMock = (data) => ({
     from: () => createQueryMock(data),
     where: () => createQueryMock(data),
     groupBy: () => createQueryMock(data),
     orderBy: () => createQueryMock(data),
     limit: () => createQueryMock(data),
-    then: (resolve: any) => Promise.resolve(resolve(data)),
+    then: (resolve) => Promise.resolve(resolve(data)),
 });
 
 jest.mock('@/configs/db', () => ({
