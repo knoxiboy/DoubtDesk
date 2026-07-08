@@ -126,6 +126,41 @@ describe('Reply Vote API Endpoint', () => {
         expect(res?.status).toBe(200);
         expect(json.hasUpvoted).toBe(true);
         expect(json.upvotes).toBe(6);
+
+        const { inngest } = jest.requireMock('@/inngest/client');
+        expect(inngest.send).toHaveBeenCalledWith({
+            name: 'karma/answer.upvoted',
+            data: {
+                replyAuthorEmail: 'author@example.com',
+                replyId: 1,
+                doubtId: undefined,
+            },
+        });
+    });
+
+    it('prevents a user from upvoting their own reply', async () => {
+        mockCurrentUser.mockResolvedValue({
+            id: 'author_clerk_id',
+            username: 'author',
+            fullName: 'Author User',
+            primaryEmailAddress: { emailAddress: 'author@example.com' },
+        });
+
+        mockSelectResultQueue.push(
+            [], // checkUserBlock (not blocked)
+            [{ id: 1, userEmail: 'author@example.com', upvotes: 5 }] // repliesTable select
+        );
+
+        const req = new Request('http://localhost/api/replies/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replyId: 1 }),
+        });
+
+        const res = await POST(req);
+        expect(res?.status).toBe(403);
+        const json = await res?.json();
+        expect(json.error).toContain('cannot upvote your own reply');
     });
 
     it('successfully removes an existing upvote, returning 200 status and the decremented upvote counter', async () => {
