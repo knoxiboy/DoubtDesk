@@ -67,7 +67,7 @@ export async function POST(
         let updatedReply;
 
         try {
-            updatedReply = await db.transaction(async (tx: any) => {
+            updatedReply = await db.transaction(async (tx) => {
                 
                 // A. FIX: Standardized column input across all vote handlers to use the stable identifier.
                 // Note: If your Drizzle schema explicitly names the column field `userName`, we map the unique 
@@ -137,7 +137,6 @@ export async function POST(
         });
 
     } catch (error) {
-        console.error("CRITICAL: Upvote endpoint execution exception:", error);
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });
     }

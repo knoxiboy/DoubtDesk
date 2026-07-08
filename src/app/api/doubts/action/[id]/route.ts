@@ -230,7 +230,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 ? eq(tagsTable.classroomId, doubt.classroomId)
                 : isNull(tagsTable.classroomId);
 
-            const { updated, savedTags } = await db.transaction(async (tx: any) => {
+            const { updated, savedTags } = await db.transaction(async (tx) => {
                 const [updatedRow] = await tx.update(doubtsTable)
                     .set({
                         content: content || null,
@@ -248,7 +248,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                         .where(eq(doubtTagsTable.doubtId, doubtId));
                     return {
                         updated: updatedRow,
-                        savedTags: existingLinks.map((row: any) => row.tag),
+                        savedTags: existingLinks.map((row: { tag: string }) => row.tag),
                     };
                 }
 

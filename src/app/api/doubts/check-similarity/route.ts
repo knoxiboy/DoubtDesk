@@ -168,11 +168,11 @@ Do not include any explanation or markdown.`;
     const similarDoubts: SimilarDoubt[] = [];
 
     const solvedReplyIds = highMatches
-      .map((match: any) => recentDoubts[match.index])
+      .map((match: { index: number }) => recentDoubts[match.index])
       .filter(
         (doubt) => doubt && doubt.isSolved === "solved" && doubt.solvedReplyId,
       )
-      .map((doubt: any) => doubt.solvedReplyId!);
+      .map((doubt: { solvedReplyId: number | null }) => doubt.solvedReplyId!);
 
     const solvedReplies =
       solvedReplyIds.length > 0
@@ -186,7 +186,7 @@ Do not include any explanation or markdown.`;
         : [];
 
     const replyMap = new Map(
-      solvedReplies.map((reply: any) => [reply.id, reply.content]),
+      solvedReplies.map((reply: { id: number; content: string }) => [reply.id, reply.content]),
     );
 
     for (const match of highMatches) {

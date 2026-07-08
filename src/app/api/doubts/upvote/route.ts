@@ -121,7 +121,6 @@ export async function POST(req: NextRequest) {
             isTrending: (updatedDoubt.likes ?? 0) >= 5,
         });
     } catch (error) {
-        console.error("CRITICAL: Doubt upvote endpoint execution exception:", error);
         return NextResponse.json(
             {
                 error: "Internal Server Error",
