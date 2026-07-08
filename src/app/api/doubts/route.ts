@@ -136,7 +136,7 @@ export async function GET(req: Request) {
     const pageStr = searchParams.get("page");
     const offsetStr = searchParams.get("offset");
     const limitStr = searchParams.get("limit");
-    const limit = parsePositiveInt(limitStr, 20);
+    const limit = parsePositiveInt(limitStr, 20, 100);
     const offset = offsetStr
       ? parsePositiveInt(offsetStr, 0)
       : pageStr
