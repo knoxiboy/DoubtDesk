@@ -2,9 +2,9 @@ import { db } from "@/configs/db";
 import { membershipsTable, tagsTable, doubtsTable, doubtTagsTable } from "@/configs/schema";
 import { and, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { enforceApiRateLimit } from "@/lib/api-rate-limit";
-import { generalLimiter } from "@/lib/ratelimit";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
+import { generalLimiter } from "@/lib/ratelimit/ratelimit";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import {
     parseOptionalClassroomId,
     requireAuth,

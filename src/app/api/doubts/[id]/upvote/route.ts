@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { repliesTable, replyLikesTable } from "@/configs/schema";
 import { eq, and, sql } from "drizzle-orm";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { inngest } from "@/inngest/client";
 import { currentUser } from "@clerk/nextjs/server";
 
@@ -137,12 +138,7 @@ export async function POST(
 
     } catch (error) {
         console.error("CRITICAL: Upvote endpoint execution exception:", error);
-        return NextResponse.json(
-            { 
-                error: "Internal Server Error", 
-                details: error instanceof Error ? error.message : "Database connection or structural query exception" 
-            }, 
-            { status: 500 }
-        );
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }

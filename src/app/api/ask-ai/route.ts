@@ -3,11 +3,12 @@ import Groq from "groq-sdk";
 import { and, eq } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
-import { membershipsTable, usersTable } from "@/configs/schema";
-import { enforceApiRateLimit } from "@/lib/api-rate-limit";
-import { aiLimiter } from "@/lib/ratelimit";
-import { AI_REQUEST_MAX_BYTES } from "@/lib/ai-image-validation";
-import { buildSystemMessages } from "@/lib/socratic-prompt";
+import { membershipsTable, usersTable, aiSessionsTable } from "@/configs/schema";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
+import { aiLimiter } from "@/lib/ratelimit/ratelimit";
+import { AI_REQUEST_MAX_BYTES } from "@/lib/ai/ai-image-validation";
+import { buildSystemMessages } from "@/lib/ai/socratic-prompt";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import type { AIMode } from "@/types/ai-chat";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_build_key" });
@@ -160,9 +161,9 @@ export async function POST(req: Request): Promise<NextResponse> {
       max_tokens: 700,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Groq API call failed";
-    console.error("[ask-ai] Groq error:", msg);
-    return NextResponse.json({ error: "AI service error" }, { status: 502 });
+    console.error("[ask-ai] Groq error:", err);
+    const { status, body } = buildErrorResponse(err);
+    return NextResponse.json(body, { status: status === 500 ? 502 : status });
   }
 
   const latencyMs = Date.now() - startMs;
@@ -173,24 +174,20 @@ export async function POST(req: Request): Promise<NextResponse> {
   const subject = subjectMatch?.[1]?.trim() ?? null;
   const reply = rawReply.replace(/^SUBJECT:.*$/m, "").trim();
 
-  const insertResult = await db
-    .insert("aiSessions" as any)
+  const [inserted] = await db
+    .insert(aiSessionsTable)
     .values({
       userName: user.fullName ?? "Unknown",
-      subject: subject ?? body.type ?? "General",
+      subject: subject ?? (typeof body.type === "string" ? body.type : "General"),
       content: prompt.slice(0, 80),
-    } as any)
+    })
     .returning();
-
-  const inserted = Array.isArray(insertResult)
-    ? insertResult[0]
-    : (insertResult as any)?.rows?.[0];
 
   if (inserted?.id) {
     await db
-      .update("aiSessions" as any)
-      .set({ reply } as any)
-      .where(`id = ${inserted.id}` as any);
+      .update(aiSessionsTable)
+      .set({ reply })
+      .where(eq(aiSessionsTable.id, inserted.id));
   }
 
   console.log(

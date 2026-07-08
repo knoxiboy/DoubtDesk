@@ -5,6 +5,7 @@ import { eq, or, inArray, isNull, and } from "drizzle-orm";
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, membershipsTable, classroomsTable, usersTable } from "@/configs/schema";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import type { ProfileClassroom } from "@/types/profile";
 
 export async function GET(req: Request) {
@@ -33,7 +34,7 @@ export async function GET(req: Request) {
 
         const classroomIds = memberships
             .map((m: any) => m.classroomId)
-            .filter((id: any): id is number => id !== null && id !== undefined);
+            .filter((id): id is number => id !== null && id !== undefined);
 
         let classrooms: ProfileClassroom[] = [];
         if (classroomIds.length > 0) {
@@ -45,7 +46,7 @@ export async function GET(req: Request) {
 
         const totalDoubts = doubts?.length || 0;
         const totalReplies = replies?.length || 0;
-        const helpfulVotes = doubts ? doubts.reduce((acc: any, doubt: any) => acc + (doubt.likes || 0), 0) : 0;
+        const helpfulVotes = doubts ? doubts.reduce((acc, doubt) => acc + (doubt.likes || 0), 0) : 0;
 
         const rawJoinDate = dbUser?.createdAt || (clerkUser?.createdAt ? new Date(clerkUser.createdAt) : new Date());
         const joinDate = rawJoinDate instanceof Date ? rawJoinDate.toISOString() : new Date(rawJoinDate).toISOString();
@@ -85,10 +86,8 @@ export async function GET(req: Request) {
         });
     } catch (error: unknown) {
         console.error("Profile API Error:", error);
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : "Internal Server Error" },
-            { status: 500 }
-        );
+        const { status, body } = buildErrorResponse(error);
+        return NextResponse.json(body, { status });
     }
 }
 

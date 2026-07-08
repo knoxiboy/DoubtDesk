@@ -8,11 +8,11 @@ import {
 import { eq, and } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { checkUserBlock } from "@/lib/auth-utils";
-import { moderateContent, handleModerationViolation } from "@/lib/moderation";
+import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { moderateContent, handleModerationViolation } from "@/lib/moderation/moderation";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { updateReplyActionSchema } from "@/lib/validations/reply";
-import { auditLog, AUDIT_ACTIONS } from "@/lib/audit";
+import { auditLog, AUDIT_ACTIONS } from "@/lib/audit/audit";
 import { canTeach } from "@/lib/auth/membership-guard";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

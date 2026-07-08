@@ -10,7 +10,7 @@ import {
     doubtsTable,
 } from "@/configs/schema";
 
-import { calculateRecommendationScore } from "@/lib/recommendation";
+import { calculateRecommendationScore } from "@/lib/ai/recommendation";
 
 export async function GET() {
     try {

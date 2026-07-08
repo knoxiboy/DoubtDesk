@@ -5,8 +5,8 @@ import path from "path";
 import { db } from "../configs/db";
 import { doubtsTable, usersTable, pendingNotificationsTable, repliesTable, videoJobsTable } from "../configs/schema";
 import { eq, inArray, and, lt } from "drizzle-orm";
-import { emailNotificationLimiter, redisClient } from "../lib/ratelimit";
-import { sendReplyNotificationEmail, sendDigestEmail } from "../lib/email";
+import { emailNotificationLimiter, redisClient } from "@/lib/ratelimit/ratelimit";
+import { sendReplyNotificationEmail, sendDigestEmail } from "@/lib/email/email";
 import { runVideoPipeline } from "../lib/video/pipeline";
 
 interface InngestEvent {

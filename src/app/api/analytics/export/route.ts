@@ -19,7 +19,7 @@ import {
   inArray,
 } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
-import { checkUserBlock } from "@/lib/auth-utils";
+import { checkUserBlock } from "@/lib/auth/auth-utils";
 
 export async function GET(req: Request) {
   const user = await currentUser();
@@ -179,7 +179,11 @@ export async function GET(req: Request) {
     ]);
 
     // 8. AI Teaching Suggestions & Weak Concept Detection (Heuristics)
+<<<<<<< HEAD
     const weakTopics = mostAskedTopics.map((topic: any, index: any) => {
+=======
+    const weakTopics = mostAskedTopics.map((topic: any, index: number) => {
+>>>>>>> origin/main
       const countValue = Number(topic.count);
       let suggestion = "";
 

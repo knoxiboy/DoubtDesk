@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import Groq from 'groq-sdk';
 import { currentUser } from '@clerk/nextjs/server';
-import { enforceApiRateLimit } from '@/lib/api-rate-limit';
-import { videoLimiter } from '@/lib/ratelimit';
+import { enforceApiRateLimit } from '@/lib/ratelimit/api-rate-limit';
+import { videoLimiter } from '@/lib/ratelimit/ratelimit';
 
 export async function POST(req: Request) {
     try {

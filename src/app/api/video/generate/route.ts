@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { currentUser } from "@clerk/nextjs/server";
-import { checkUserBlock } from "@/lib/auth-utils";
-import { redisClient, videoLimiter } from "@/lib/ratelimit";
-import { enforceApiRateLimit } from "@/lib/api-rate-limit";
+import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { redisClient, videoLimiter } from "@/lib/ratelimit/ratelimit";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { generateVideoSchema } from "@/lib/validations/video";
 import { db } from "@/configs/db";

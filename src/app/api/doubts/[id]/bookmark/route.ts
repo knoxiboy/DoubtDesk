@@ -3,8 +3,8 @@ import { bookmarksTable, doubtsTable, membershipsTable } from "@/configs/schema"
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { enforceApiRateLimit } from "@/lib/api-rate-limit";
-import { generalLimiter } from "@/lib/ratelimit";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
+import { generalLimiter } from "@/lib/ratelimit/ratelimit";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {

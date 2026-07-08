@@ -3,7 +3,7 @@ import { inngest } from "./client";
 import { db } from "@/configs/db";
 import { usersTable, karmaTransactionsTable } from "@/configs/schema";
 import { eq, sql, isNotNull, and } from "drizzle-orm"; 
-import { checkAndAwardBadges } from "@/lib/karma-utils";
+import { checkAndAwardBadges } from "@/lib/karma/karma-utils";
 
 // Karma points definitions inside worker
 const KARMA_POINTS: Record<string, number> = {

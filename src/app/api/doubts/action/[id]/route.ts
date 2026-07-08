@@ -3,11 +3,11 @@ import { doubtTagsTable, doubtsTable, likesTable, classroomsTable, repliesTable,
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { moderateContent, handleModerationViolation } from "@/lib/moderation";
+import { moderateContent, handleModerationViolation } from "@/lib/moderation/moderation";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { updateDoubtActionSchema } from "@/lib/validations/doubt";
-import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubtStatus";
-import { auditLog, AUDIT_ACTIONS } from "@/lib/audit";
+import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubts/doubtStatus";
+import { auditLog, AUDIT_ACTIONS } from "@/lib/audit/audit";
 import type { Tag } from "@/types";
 import { canTeach } from "@/lib/auth/membership-guard";
 

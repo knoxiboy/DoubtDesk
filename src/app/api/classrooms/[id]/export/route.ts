@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { doubtsTable, classroomsTable, repliesTable } from "@/configs/schema";
 import { and, eq, desc, gte, lte, sql, isNull } from "drizzle-orm";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import {
     parseClassroomId,
     requireAuth,

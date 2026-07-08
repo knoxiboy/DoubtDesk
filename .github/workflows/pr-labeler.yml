@@ -343,9 +343,9 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: prNumber,
-                body: `${rabbitMarker}\n@coderabbitai review`,
+                body: `${rabbitMarker}\n@coderabbitai review\n@codeantai review`,
               });
-              console.log('Requested CodeRabbit review');
+              console.log('Requested CodeRabbit and CodeAntAI review');
             }
 
   # ── Size Labeling (only on PR creation, update, or labeling) ──────────────────
@@ -529,7 +529,14 @@ jobs:
                 });
                 console.log(`PR #${number} merged — added approval labels.`);
 
-                const transientLabels = ['review-needed', 'needs-maintainer-approval'];
+                const transientLabels = [
+                  'review-needed',
+                  'needs-maintainer-approval',
+                  'quality : needs-work',
+                  'quality:needs-work',
+                  'merge-conflict',
+                  'need-star'
+                ];
                 for (const label of labels) {
                   const shouldRemove =
                     label.name.startsWith('size/') ||
@@ -584,6 +591,11 @@ jobs:
               return;
             }
 
+            if (prDetails.state === 'closed') {
+              console.log('PR is closed. Skipping dynamic label updates.');
+              return;
+            }
+
             let currentLabels = [];
             try {
               const { data } = await github.rest.issues.listLabelsOnIssue({
@@ -603,8 +615,8 @@ jobs:
             let mergeable = prDetails.mergeable;
             let attempt = 0;
             while (mergeable === null && attempt < 5) {
-              console.log(`PR #${number} mergeable status is null. Retrying in 3s...`);
-              await new Promise(r => setTimeout(r, 3000));
+              console.log(`PR #${number} mergeable status is null. Retrying in 10s...`);
+              await new Promise(r => setTimeout(r, 10000));
               try {
                 const { data: prRetry } = await github.rest.pulls.get({
                   owner: context.repo.owner,

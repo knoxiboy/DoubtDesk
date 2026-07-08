@@ -5,7 +5,7 @@ import {
     toPublicAuthored,
     toPublicDoubt,
     toPublicReply,
-} from "@/lib/anonymity";
+} from "@/lib/anonymity/anonymity";
 
 describe("anonymity: getAnonymousHandle", () => {
     it("returns 'Anonymous' when there is no email", () => {

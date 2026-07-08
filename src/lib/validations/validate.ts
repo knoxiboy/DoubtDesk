@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodSchema } from "zod";
-import { validationErrorResponse } from "@/lib/error-handler";
+import { validationErrorResponse } from "@/lib/errors/error-handler";
 
 export async function parseAndValidateRequest<T>(req: Request, schema: ZodSchema<T>) {
   let body;

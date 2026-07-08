@@ -5,7 +5,7 @@ jest.mock('@clerk/nextjs/server', () => ({
     currentUser: jest.fn()
 }));
 
-jest.mock('@/lib/error-handler', () => ({
+jest.mock('@/lib/errors/error-handler', () => ({
     buildErrorResponse: jest.fn().mockReturnValue({ status: 500, body: { error: 'Internal Server Error' } }),
     ApiError: class ApiError extends Error {
         constructor(public statusCode: number, message: string) {

@@ -13,7 +13,7 @@ import {
   SOCRATIC_TUTOR_SYSTEM_PROMPT,
   DIRECT_SYSTEM_PROMPT,
   type AIMode,
-} from "@/lib/socratic-prompt";
+} from "@/lib/ai/socratic-prompt";
 
 // ---------------------------------------------------------------------------
 // 1. buildSystemMessages

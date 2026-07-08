@@ -166,13 +166,13 @@ Joins/Creates a Classroom (via invite code)
 
 > Screenshots are located in the `screenshots/` directory and will be updated as the UI evolves.
 
-![Landing Page](https://github.com/navyamittal2245/DoubtDesk/blob/c6c7b24540c613b9b71ee825ba36e1b15d7eb617/screenshots/screenshot-1780079477082.png)
+![Landing Page](public/screenshots/landing.png)
 
-![AI Solver](https://github.com/navyamittal2245/DoubtDesk/blob/858dfb0064c6c67287e5892bba0fd4824a591f9a/screenshots/ai%20solver%20ss%20updated.png)
+![AI Solver](public/screenshots/ai-solver.png)
 
-![Classroom View](https://github.com/navyamittal2245/DoubtDesk/blob/858dfb0064c6c67287e5892bba0fd4824a591f9a/screenshots/classroom%20ss%20updated.png)
+![Classroom View](public/screenshots/classroom.png)
 
-![Analytics Dashboard](https://github.com/navyamittal2245/DoubtDesk/blob/858dfb0064c6c67287e5892bba0fd4824a591f9a/screenshots/dashboard%20screenshot.png)
+![Analytics Dashboard](public/screenshots/dashboard.png)
 
 ---
 

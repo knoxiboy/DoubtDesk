@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { doubtsTable, repliesTable, membershipsTable, classroomsTable, organizationMembershipsTable } from '@/configs/schema';
 import { desc, sql, and, eq, count, countDistinct, ne, inArray, isNull } from 'drizzle-orm';
-import { checkUserBlock } from '@/lib/auth-utils';
-import { buildErrorResponse, errorResponse } from '@/lib/error-handler';
+import { checkUserBlock } from '@/lib/auth/auth-utils';
+import { buildErrorResponse, errorResponse } from '@/lib/errors/error-handler';
 import {
     parseOptionalClassroomId,
     requireAuth,
@@ -199,7 +199,11 @@ export async function GET(req: Request) {
         ]);
         
         // 8. AI Teaching Suggestions & Weak Concept Detection (Heuristics)
+<<<<<<< HEAD
         const weakTopics = mostAskedTopics.map((topic: any, index: any) => {
+=======
+        const weakTopics = mostAskedTopics.map((topic: any, index: number) => {
+>>>>>>> origin/main
             const countValue = Number(topic.count);
             let suggestion = "";
 

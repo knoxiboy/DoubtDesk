@@ -3,7 +3,7 @@ import { db } from '@/configs/db';
 import { doubtsTable } from '@/configs/schema';
 import { and, eq, desc, isNull } from 'drizzle-orm';
 import Groq from 'groq-sdk';
-import { buildErrorResponse } from '@/lib/error-handler';
+import { buildErrorResponse } from '@/lib/errors/error-handler';
 import {
     parseClassroomId,
     requireAuth,
