@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
+import RecommendedClassrooms from "@/components/classroom/RecommendedClassrooms";
 
 interface Classroom {
     id: number;
@@ -175,21 +176,32 @@ export default function RoomsPage() {
                         </div>
                     </div>
                 ) : rooms.length === 0 ? (
-                    <div className="bg-slate-50/50 dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 rounded-2xl p-10 text-center space-y-4 shadow-sm max-w-3xl mx-auto">
-                        <div className="w-16 h-16 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-sm">
-                            <School className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                    <div className="space-y-10">
+                        <div className="bg-slate-50/50 dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 rounded-2xl p-10 text-center space-y-4 shadow-sm max-w-3xl mx-auto">
+                            <div className="w-16 h-16 bg-blue-500/10 border border-blue-500/20 rounded-xl flex items-center justify-center mx-auto mb-2 shadow-sm">
+                                <School className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">No Classrooms Detected</h2>
+                            <p className="text-slate-500 dark:text-zinc-400 max-w-sm mx-auto text-xs font-medium leading-relaxed">
+                                It seems you are not part of any academic environment yet. 
+                                {appUser?.role === 'teacher' ? " Create your first classroom to get started." : " Ask your teacher for the invite code to join."}
+                            </p>
+                            <button 
+                                onClick={() => appUser?.role === 'teacher' ? setIsCreateModalOpen(true) : setIsJoinModalOpen(true)}
+                                className="text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider text-xs flex items-center gap-2 mx-auto hover:gap-3 transition-all duration-300"
+                            >
+                                {appUser?.role === 'teacher' ? "Launch Classroom" : "Enter Invitation Code"} <ArrowRight className="w-4 h-4" />
+                            </button>
                         </div>
-                        <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">No Classrooms Detected</h2>
-                        <p className="text-slate-500 dark:text-zinc-400 max-w-sm mx-auto text-xs font-medium leading-relaxed">
-                            It seems you are not part of any academic environment yet. 
-                            {appUser?.role === 'teacher' ? " Create your first classroom to get started." : " Ask your teacher for the invite code to join."}
-                        </p>
-                        <button 
-                            onClick={() => appUser?.role === 'teacher' ? setIsCreateModalOpen(true) : setIsJoinModalOpen(true)}
-                            className="text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider text-xs flex items-center gap-2 mx-auto hover:gap-3 transition-all duration-300"
-                        >
-                            {appUser?.role === 'teacher' ? "Launch Classroom" : "Enter Invitation Code"} <ArrowRight className="w-4 h-4" />
-                        </button>
+
+                        {appUser?.role === 'student' && (
+                            <div className="max-w-5xl mx-auto">
+                                <RecommendedClassrooms onJoin={async (code) => {
+                                    setJoinCode(code);
+                                    setIsJoinModalOpen(true);
+                                }} />
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="space-y-10">
@@ -204,16 +216,12 @@ export default function RoomsPage() {
                             </div>
                         </div>
 
-                        {recommended.length > 0 && (
-                            <div className="space-y-4 pt-8 border-t border-slate-100 dark:border-zinc-900">
-                                <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-                                    <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" /> Recommended for {appUser?.year} at {appUser?.university}
-                                </h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {recommended.map((room) => (
-                                        <RoomCard key={room.id} room={room} isRecommended={true} onDiscover={() => setIsJoinModalOpen(true)} />
-                                    ))}
-                                </div>
+                        {appUser?.role === 'student' && (
+                            <div className="pt-8 border-t border-slate-100 dark:border-zinc-900">
+                                <RecommendedClassrooms onJoin={async (code) => {
+                                    setJoinCode(code);
+                                    setIsJoinModalOpen(true);
+                                }} />
                             </div>
                         )}
                     </div>

@@ -260,18 +260,15 @@ export default function ClassroomPage() {
     mutate();
   }, [activeTab, tagFilter, searchQuery, subjectFilter]);
 
-  // Fetch pedagogy profile for the current classroom
+  // Map pedagogy profile for the current classroom
   useEffect(() => {
     if (classroom?.id) {
-      fetch(`/api/classroom/pedagogy?classroomId=${classroom.id}`)
-        .then((r) => r.json())
-        .then(setPedagogyProfile)
-        .catch((err) => {
-          console.error(err);
-          toast.error("Failed to load pedagogy profile");
-        });
+      setPedagogyProfile({
+        pedagogyLevel: classroom.pedagogyLevel || "Undergraduate (Freshman)",
+        targetGradeLevel: classroom.targetGradeLevel || 13,
+      });
     }
-  }, [classroom?.id]);
+  }, [classroom?.id, classroom?.pedagogyLevel, classroom?.targetGradeLevel]);
 
   const copyCode = async () => {
     if (classroom?.inviteCode) {
