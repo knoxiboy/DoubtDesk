@@ -327,14 +327,18 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     try {
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
-        
+
+        if (!email) {                                                    
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); 
+        }                                                               
+
         const { id } = await params;
         const doubtId = parseInt(id);
 
         const [doubt] = await db.select().from(doubtsTable).where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
-        const isOwner = email && doubt.userEmail === email;
+        const isOwner = doubt.userEmail === email;   //simplified, email is guaranteed defined now
         let isTeacher = false;
 
         if (doubt.classroomId && email) {
