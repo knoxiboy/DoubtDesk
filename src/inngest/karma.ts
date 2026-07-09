@@ -1,7 +1,7 @@
 // inngest/karma.ts
 import { inngest } from "./client"; 
 import { db } from "@/configs/db";
-import { usersTable, karmaTransactionsTable } from "@/configs/schema";
+import { usersTable, karmaTransactionsTable, doubtsTable } from "@/configs/schema";
 import { eq, sql, isNotNull, and } from "drizzle-orm"; 
 import { checkAndAwardBadges } from "@/lib/karma/karma-utils";
 
@@ -111,6 +111,22 @@ export const onAnswerAccepted = inngest.createFunction(
             replyId: number;
             doubtId: number;
         };
+
+        // Defense in depth: even if the accept route's self-accept guard is
+        // bypassed (dev tooling, older client, direct event emit), refuse to
+        // credit karma when the reply author is also the doubt owner.
+        const [doubt] = await db
+            .select({ userEmail: doubtsTable.userEmail })
+            .from(doubtsTable)
+            .where(eq(doubtsTable.id, doubtId))
+            .limit(1);
+
+        if (doubt?.userEmail && doubt.userEmail === replyAuthorEmail) {
+            console.warn(
+                `[karma-answer-accepted] Refusing self-accept karma award for ${replyAuthorEmail} on doubt ${doubtId}`
+            );
+            return { success: false, skipped: "self_accept", userEmail: replyAuthorEmail };
+        }
 
         await executeKarmaTransaction({
             userEmail: replyAuthorEmail,
