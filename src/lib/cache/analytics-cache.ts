@@ -64,3 +64,31 @@ export async function writeAnalyticsCache<T>(key: string, data: T): Promise<void
         console.error('Analytics cache write failed:', err);
     }
 }
+
+/**
+ * Single-flight lock so concurrent requests for the same cache key
+ * (cold cache, or stale-revalidate) don't all fan out into the same
+ * 8-query computation at once. Only the request that acquires the
+ * lock computes; others either wait briefly for it to land in cache
+ * or, for background revalidation, simply skip since one refresh
+ * in flight is enough.
+ */
+const REVALIDATE_LOCK_TTL_SECONDS = 30; // generous upper bound on how long computeAnalyticsPayload should take
+
+export async function acquireAnalyticsLock(key: string): Promise<boolean> {
+    try {
+        const result = await redisClient.set(`${key}:lock`, '1', { nx: true, ex: REVALIDATE_LOCK_TTL_SECONDS });
+        return result === 'OK';
+    } catch (err) {
+        console.error('Analytics lock acquire failed:', err);
+        return true;
+    }
+}
+
+export async function releaseAnalyticsLock(key: string): Promise<void> {
+    try {
+        await redisClient.del(`${key}:lock`);
+    } catch (err) {
+        console.error('Analytics lock release failed:', err);
+    }
+}

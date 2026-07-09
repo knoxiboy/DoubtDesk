@@ -140,6 +140,7 @@ if (isRedisConfigured) {
     get: async <TData = string>(key: string): Promise<TData | null> => {
       const record = memoryMap.get(key);
       if (!record || Date.now() > record.reset) {
+        if (record) memoryMap.delete(key);
         mockValueStore.delete(key);
         return null;
       }

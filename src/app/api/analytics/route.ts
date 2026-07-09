@@ -13,6 +13,8 @@ import {
     buildAnalyticsCacheKey,
     readAnalyticsCache,
     writeAnalyticsCache,
+    acquireAnalyticsLock,
+    releaseAnalyticsLock,
 } from '@/lib/cache/analytics-cache';
 
 type AnalyticsPayload = Awaited<ReturnType<typeof computeAnalyticsPayload>>;
@@ -298,23 +300,53 @@ export async function GET(req: Request) {
             // Serve the stale data immediately, then refresh the cache
             // in the background (stale-while-revalidate) so the next
             // request gets fresh numbers without anyone paying the
-            // 8-query latency synchronously.
+            // 8-query latency synchronously. A lock ensures only one
+            // in-flight request actually revalidates per key - if a
+            // refresh is already running, other concurrent stale hits
+            // just keep serving the current stale data.
             after(async () => {
+                const acquiredLock = await acquireAnalyticsLock(cacheKey);
+                if (!acquiredLock) return;
                 try {
                     const fresh = await computeAnalyticsPayload(activeClassroomIds, classroomId);
                     await writeAnalyticsCache(cacheKey, fresh);
                 } catch (err) {
                     console.error('Background analytics revalidation failed:', err);
+                } finally {
+                    await releaseAnalyticsLock(cacheKey);
                 }
             });
             return NextResponse.json(cached.data);
         }
 
-        // Cache miss: compute synchronously and populate the cache for next time.
-        const payload = await computeAnalyticsPayload(activeClassroomIds, classroomId);
-        await writeAnalyticsCache(cacheKey, payload);
+        // Cache miss: try to be the single request that computes this key,
+        // to avoid a stampede of identical DB reads when many requests hit
+        // a cold/expired key at once.
+        const acquiredLock = await acquireAnalyticsLock(cacheKey);
 
-        return NextResponse.json(payload);
+        if (!acquiredLock) {
+            // Another request is already computing this key - poll briefly
+            // for it to land in the cache instead of also hitting the DB.
+            for (let attempt = 0; attempt < 5; attempt++) {
+                await new Promise((resolve) => setTimeout(resolve, 300));
+                const retry = await readAnalyticsCache<AnalyticsPayload>(cacheKey);
+                if (retry.status === 'fresh' || retry.status === 'stale') {
+                    return NextResponse.json(retry.data);
+                }
+            }
+            // Gave up waiting - fall through and compute directly rather
+            // than leaving this request empty-handed.
+        }
+
+        try {
+            const payload = await computeAnalyticsPayload(activeClassroomIds, classroomId);
+            await writeAnalyticsCache(cacheKey, payload);
+            return NextResponse.json(payload);
+        } finally {
+            if (acquiredLock) {
+                await releaseAnalyticsLock(cacheKey);
+            }
+        }
 
     } catch (error: unknown) {
         const { status, body } = buildErrorResponse(error);
