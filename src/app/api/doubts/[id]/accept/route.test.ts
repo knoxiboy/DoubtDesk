@@ -161,6 +161,20 @@ describe("POST /api/doubts/[id]/accept — idempotency (issue #687)", () => {
         expect(mockInngestSend).not.toHaveBeenCalled();
     });
 
+    it("returns 403 and does NOT emit karma when the reply author is the doubt owner (self-accept, issue #816)", async () => {
+        // Both doubt and reply are owned by the caller — the self-accept guard
+        // must reject the request before any state transition or event emit.
+        mockDoubt = { userEmail: "asker@test.com", isSolved: "unsolved", solvedReplyId: null };
+        mockReply = { userEmail: "asker@test.com", doubtId: 1 };
+
+        const res = await callPost(42);
+        const body = await res.json();
+
+        expect(res.status).toBe(403);
+        expect(body.error).toBe("Forbidden! You cannot accept your own reply.");
+        expect(mockInngestSend).not.toHaveBeenCalled();
+    });
+
     it("returns 500 with a generic message and does not leak error details", async () => {
         // Make the DB throw to exercise the catch block
         const { db } = await import("@/configs/db");

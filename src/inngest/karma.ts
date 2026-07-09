@@ -1,7 +1,7 @@
 // inngest/karma.ts
 import { inngest } from "./client"; 
 import { db } from "@/configs/db";
-import { usersTable, karmaTransactionsTable, doubtsTable } from "@/configs/schema";
+import { usersTable, karmaTransactionsTable, doubtsTable, repliesTable } from "@/configs/schema";
 import { eq, sql, isNotNull, and } from "drizzle-orm"; 
 import { checkAndAwardBadges } from "@/lib/karma/karma-utils";
 
@@ -112,31 +112,60 @@ export const onAnswerAccepted = inngest.createFunction(
             doubtId: number;
         };
 
-        // Defense in depth: even if the accept route's self-accept guard is
-        // bypassed (dev tooling, older client, direct event emit), refuse to
-        // credit karma when the reply author is also the doubt owner.
+        // Defense in depth: don't trust event payload fields at face value.
+        // Re-derive the reply's author and its parent doubt from the DB so a
+        // forged event that pairs a valid replyId with an unrelated doubtId
+        // (or lies about replyAuthorEmail) can't sneak past the self-accept
+        // guard. Same reasoning as the route handler — we never award karma
+        // without a DB-authoritative match.
+        const [reply] = await db
+            .select({
+                userEmail: repliesTable.userEmail,
+                doubtId: repliesTable.doubtId,
+            })
+            .from(repliesTable)
+            .where(eq(repliesTable.id, replyId))
+            .limit(1);
+
+        if (!reply || reply.doubtId !== doubtId) {
+            console.warn(
+                `[karma-answer-accepted] Rejecting karma event: reply ${replyId} does not belong to doubt ${doubtId}`
+            );
+            return { success: false, skipped: "reply_doubt_mismatch", userEmail: replyAuthorEmail };
+        }
+
         const [doubt] = await db
             .select({ userEmail: doubtsTable.userEmail })
             .from(doubtsTable)
             .where(eq(doubtsTable.id, doubtId))
             .limit(1);
 
-        if (doubt?.userEmail && doubt.userEmail === replyAuthorEmail) {
+        if (!doubt) {
             console.warn(
-                `[karma-answer-accepted] Refusing self-accept karma award for ${replyAuthorEmail} on doubt ${doubtId}`
+                `[karma-answer-accepted] Rejecting karma event: doubt ${doubtId} not found`
             );
-            return { success: false, skipped: "self_accept", userEmail: replyAuthorEmail };
+            return { success: false, skipped: "doubt_not_found", userEmail: replyAuthorEmail };
         }
 
+        if (reply.userEmail && doubt.userEmail && reply.userEmail === doubt.userEmail) {
+            console.warn(
+                `[karma-answer-accepted] Refusing self-accept karma award for ${reply.userEmail} on doubt ${doubtId}`
+            );
+            return { success: false, skipped: "self_accept", userEmail: reply.userEmail };
+        }
+
+        // Attribute the ledger row to the DB-derived author, not the event payload.
+        const authoritativeAuthor = reply.userEmail || replyAuthorEmail;
+
         await executeKarmaTransaction({
-            userEmail: replyAuthorEmail,
+            userEmail: authoritativeAuthor,
             eventType: "answer_accepted",
             replyId,
             doubtId,
             note: "Answer marked as accepted solution",
         });
 
-        return { success: true, userEmail: replyAuthorEmail };
+        return { success: true, userEmail: authoritativeAuthor };
     }
 );
 
