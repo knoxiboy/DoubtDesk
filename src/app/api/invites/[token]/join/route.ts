@@ -99,7 +99,7 @@ export async function POST(
     // membership)`, so a duplicate concurrent join from the same user
     // can't consume a second slot for a membership that will just
     // conflict away.
-    const joinResult = await db.execute<{ membership_id: number }>(sql`
+    const joinResult = await db.execute(sql`
       WITH slot_claim AS (
         UPDATE ${classroomInvitesTable}
         SET used_count = used_count + 1
@@ -119,7 +119,7 @@ export async function POST(
       FROM slot_claim
       ON CONFLICT (user_email, classroom_id) DO NOTHING
       RETURNING id AS membership_id
-    `);
+    `) as unknown as { rows: { membership_id: number }[] };
 
     if (joinResult.rows.length > 0) {
       // The CTE claimed a slot and inserted the membership atomically.

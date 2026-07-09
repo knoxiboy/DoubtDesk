@@ -1,6 +1,6 @@
 import { db } from "@/configs/db";
 import { doubtTagsTable, doubtsTable, likesTable, classroomsTable, repliesTable, tagsTable, membershipsTable } from "@/configs/schema";
-import { and, eq, isNull, sql, inArray } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation/moderation";
@@ -253,45 +253,44 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 }
 
                 const resolvedTags: Tag[] = [];
+                for (const normalizedName of normalizedTags) {
+                    const [existingTag] = await tx.select().from(tagsTable).where(and(
+                        eq(tagsTable.normalizedName, normalizedName),
+                        tagScopePredicate
+                    )).limit(1);
 
-                if (normalizedTags.length > 0) {
-                    const existingTags = await tx
-                        .select()
-                        .from(tagsTable)
-                        .where(and(
-                            inArray(tagsTable.normalizedName, normalizedTags),
-                            tagScopePredicate
-                        ));
+                    let tagRecord = existingTag;
+                    if (!tagRecord) {
+                        const [createdTag] = await tx.insert(tagsTable).values({
+                            name: normalizedName.replace(/\b\w/g, (char) => char.toUpperCase()),
+                            normalizedName,
+                            classroomId: doubt.classroomId,
+                            createdByEmail: email || null,
+                        }).onConflictDoNothing().returning();
 
-                    const existingTagsMap = new Map(existingTags.map((t) => [t.normalizedName, t]));
-                    const tagsToInsert: (typeof tagsTable.$inferInsert)[] = [];
-
-                    for (const name of normalizedTags) {
-                        const match = existingTagsMap.get(name);
-                        if (match) {
-                            resolvedTags.push(match);
+                        if (createdTag) {
+                            tagRecord = createdTag;
                         } else {
-                            tagsToInsert.push({
-                                name: name.replace(/\b\w/g, (char) => char.toUpperCase()),
-                                normalizedName: name,
-                                classroomId: doubt.classroomId,
-                                createdByEmail: email || null,
-                            });
+                            const [raced] = await tx.select().from(tagsTable).where(and(
+                                eq(tagsTable.normalizedName, normalizedName),
+                                tagScopePredicate
+                            )).limit(1);
+                            tagRecord = raced;
                         }
                     }
 
-                    if (tagsToInsert.length > 0) {
-                        const insertedRows = await tx.insert(tagsTable).values(tagsToInsert).returning();
-                        resolvedTags.push(...insertedRows);
+                    if (tagRecord) {
+                        resolvedTags.push(tagRecord);
                     }
                 }
 
                 await tx.delete(doubtTagsTable).where(eq(doubtTagsTable.doubtId, doubtId));
 
-                if (resolvedTags.length > 0) {
-                    await tx.insert(doubtTagsTable).values(
-                        resolvedTags.map((tag) => ({ doubtId, tagId: tag.id }))
-                    );
+                for (const tag of resolvedTags) {
+                    await tx.insert(doubtTagsTable).values({
+                        doubtId,
+                        tagId: tag.id,
+                    });
                 }
 
                 return { updated: updatedRow, savedTags: resolvedTags };

@@ -25,29 +25,33 @@ export async function GET(req: Request) {
             : (pageStr ? (parsePositiveInt(pageStr, 1) - 1) * limit : 0);
         const page = Math.floor(offset / limit) + 1;
 
-        // Run all independent queries in parallel
-        const [[totalCountRow], [unreadCountRow], notifications] = await Promise.all([
-            db.select({ count: sql<number>`count(*)::int` })
-                .from(notificationsTable)
-                .where(eq(notificationsTable.userEmail, userEmail)),
-            db.select({ count: sql<number>`count(*)::int` })
-                .from(notificationsTable)
-                .where(and(
-                    eq(notificationsTable.userEmail, userEmail),
-                    eq(notificationsTable.isRead, false)
-                )),
-            db.select()
-                .from(notificationsTable)
-                .where(eq(notificationsTable.userEmail, userEmail))
-                .orderBy(
-                    desc(notificationsTable.createdAt),
-                    desc(notificationsTable.id)
-                )
-                .limit(limit)
-                .offset(offset),
-        ]);
+        // Calculate total count globally
+        const [totalCountRow] = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(notificationsTable)
+            .where(eq(notificationsTable.userEmail, userEmail));
         const totalCount = totalCountRow?.count ?? 0;
+
+        // Calculate unread count globally
+        const [unreadCountRow] = await db
+            .select({ count: sql<number>`count(*)::int` })
+            .from(notificationsTable)
+            .where(and(
+                eq(notificationsTable.userEmail, userEmail),
+                eq(notificationsTable.isRead, false)
+            ));
         const unreadCount = unreadCountRow?.count ?? 0;
+
+        // Fetch user's notifications, ordered by most recent first
+        const notifications = await db.select()
+            .from(notificationsTable)
+            .where(eq(notificationsTable.userEmail, userEmail))
+            .orderBy(
+                desc(notificationsTable.createdAt),
+                desc(notificationsTable.id)
+            )
+            .limit(limit)
+            .offset(offset);
 
         const hasMore = offset + notifications.length < totalCount;
 
