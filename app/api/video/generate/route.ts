@@ -41,7 +41,7 @@ Return ONLY a JSON object: {"type": "concept" | "math"}`;
         });
 
         const videoType = JSON.parse(classification.choices[0]?.message?.content || '{"type": "concept"}').type;
-        console.log(`Detected video type: ${videoType}`);
+        // Detected video type logged
 
         // 3. Generate Appropriate Script
         let systemPrompt = "";
