@@ -18,7 +18,7 @@ export default function SessionTracker() {
             if (lastActivity) {
                 const elapsed = now - parseInt(lastActivity);
                 if (elapsed > SESSION_DURATION) {
-                    console.log("[SessionTracker] Session expired. Signing out...");
+                    // Session expired. Signing out...
                     localStorage.removeItem(STORAGE_KEY);
                     await signOut();
                     return;
