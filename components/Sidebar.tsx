@@ -10,7 +10,6 @@ import {
     History,
     CreditCard,
     User,
-    Menu,
     X,
     Users,
     MessageSquare,
