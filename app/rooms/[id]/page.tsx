@@ -322,7 +322,7 @@ export default function ClassroomPage() {
                             <div className="py-24 text-center space-y-4 bg-white/5 border border-dashed border-white/10 rounded-[2.5rem]">
                                 <MessageSquare className="w-12 h-12 text-slate-700 mx-auto" />
                                 <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">No community posts yet.</p>
-                                <button onClick={() => setIsAskModalOpen(true)} className="text-blue-500 font-black uppercase tracking-widest text-[10px] hover:underline underline-offset-4">Be the first to ask</button>
+                                <button type="button" onClick={() => setIsAskModalOpen(true)} className="text-blue-500 font-black uppercase tracking-widest text-[10px] hover:underline underline-offset-4">Be the first to ask</button>
                             </div>
                         ) : (
                             <div className="space-y-8 animate-in fade-in duration-500">
