@@ -6,17 +6,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
     LayoutDashboard,
-    Wrench,
-    History,
-    CreditCard,
-    User,
     Menu,
     X,
-    Users,
     MessageSquare,
-    BookOpen,
-    Code,
-    MoreHorizontal,
     Zap,
     School
 } from 'lucide-react'
