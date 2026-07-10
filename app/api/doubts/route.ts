@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 
         // Security: If classroomId is provided, check membership
         if (classroomId && email) {
-            console.log(`Security Check: Classroom ${classroomId}, User ${email}`);
+            // Security check logged
             const [membership] = await db.select().from(membershipsTable).where(
                 and(
                     eq(membershipsTable.userEmail, email),
