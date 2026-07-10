@@ -8,16 +8,10 @@ import {
     School, 
     Users, 
     ArrowRight, 
-    GraduationCap, 
     Loader2, 
     Sparkles, 
-    Search, 
-    Box, 
-    ShieldCheck, 
     Calendar,
     ChevronRight,
-    Copy,
-    Check,
     Home
 } from "lucide-react";
 import { useRouter } from "next/navigation";
