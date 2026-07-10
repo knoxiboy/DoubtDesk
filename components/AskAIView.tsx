@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import {
-    Send, Zap, BookOpen, Lightbulb, Loader2, RefreshCcw,
+    Send, Zap, Loader2,
     ImagePlus, X, Type, Camera, ListOrdered, Brain, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
