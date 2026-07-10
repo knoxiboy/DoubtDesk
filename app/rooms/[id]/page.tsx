@@ -8,7 +8,6 @@ import {
     MessageSquare, 
     TrendingUp, 
     Users, 
-    Settings, 
     Plus, 
     Loader2, 
     Sparkles, 
