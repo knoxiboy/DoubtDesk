@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
         // 1. OCR if image is provided
         if (imageUrl && !content) {
-            console.log("Performing OCR on image...");
+            // OCR performed below
             const { data: { text } } = await Tesseract.recognize(imageUrl, 'eng');
             content = text;
         }
