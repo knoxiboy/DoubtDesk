@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { SignInButton, SignUpButton, SignedIn, SignedOut, useClerk, UserButton } from "@clerk/nextjs";
-import { Sparkles, FileText, Map, MessageCircle, FileEdit, ArrowRight, Mail, Linkedin, Github } from "lucide-react";
+import { Sparkles, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import {
   AlertDialog,
