@@ -42,7 +42,7 @@ async function callGroqWithFallback(messages: any[], isVision: boolean) {
 
     for (const model of models) {
         try {
-            console.log(`Attempting Groq request with model: ${model}`);
+            // Attempting Groq request with model
             const completion = await groq.chat.completions.create({
                 messages,
                 model,
