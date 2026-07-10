@@ -611,7 +611,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             {solutionImage && (
                                 <div className="relative group/preview animate-in zoom-in-95 duration-300 w-full sm:w-fit">
                                     <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-slate-950 shadow-2xl group/img">
-                                        <img src={solutionImage} className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500" />
+                                        <img src={solutionImage} alt="Solution preview" className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500" />
                                         
                                         {/* Image Overlay */}
                                         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent flex flex-col justify-end p-3 translate-y-2 group-hover/img:translate-y-0 transition-transform">
