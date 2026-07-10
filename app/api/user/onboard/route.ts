@@ -17,7 +17,7 @@ export async function POST(req: Request) {
 
         // Fallback to currentUser if email not in claims
         if (!email) {
-            console.log("Email not in claims, fetching via currentUser()...");
+            // Email not in claims, fetching via currentUser()
             const user = await currentUser();
             email = user?.primaryEmailAddress?.emailAddress;
         }
