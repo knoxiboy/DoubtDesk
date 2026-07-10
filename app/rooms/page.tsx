@@ -4,20 +4,13 @@ import { useEffect, useState } from "react";
 import { useAppUser } from "../provider";
 import { 
     Plus, 
-    Link as LinkIcon, 
     School, 
     Users, 
     ArrowRight, 
-    GraduationCap, 
     Loader2, 
     Sparkles, 
-    Search, 
-    Box, 
-    ShieldCheck, 
     Calendar,
     ChevronRight,
-    Copy,
-    Check,
     Home
 } from "lucide-react";
 import { useRouter } from "next/navigation";
