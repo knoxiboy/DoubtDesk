@@ -2,7 +2,7 @@ import { renderMedia, selectComposition } from "@remotion/renderer";
 import path from "path";
 import fs from "fs";
 import os from "os";
-import Groq from "groq-sdk";
+import { groq } from "@/lib/ai/groq-client";
 import axios from "axios";
 import Tesseract from "tesseract.js";
 import { uploadVideo } from "./storage";
@@ -41,10 +41,6 @@ export async function cleanupVideoArtifacts(tempDir: string, outputLocation: str
     fs.promises.rm(tempDir, { recursive: true, force: true }).catch(() => {}),
   ]);
 }
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || "dummy_key",
-});
 
 function splitTextIntoChunks(text: string, maxLen: number = 200): string[] {
   const rawWords = text.split(/\s+/);
