@@ -403,7 +403,7 @@ export default function AskAIPage() {
                                         return "Something unexpected happened 😓 Please try again.";
                                     })()}
                                 </p>
-                                <button onClick={() => window.location.reload()}
+                                <button type="button" onClick={() => window.location.reload()}
                                     className="mt-3 px-3 py-1 rounded-lg bg-red-500 text-white text-xs hover:bg-red-600 transition">
                                     Retry
                                 </button>
