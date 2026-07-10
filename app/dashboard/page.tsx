@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { TrendingUp, Target, Zap, MessageCircle, AlertCircle, Loader2, Sparkles, Brain, BookOpen } from "lucide-react"
+import { TrendingUp, Target, AlertCircle, Sparkles, BookOpen } from "lucide-react"
 import Sidebar from "@/components/Sidebar"
 
 import { Skeleton } from "@/components/ui/skeleton"
