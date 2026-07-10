@@ -6,15 +6,14 @@ const withPWA = withPWAInit({
 });
 
 const isDev = process.env.NODE_ENV === "development";
+// Same fallback as layout.tsx's <ClerkProvider>, so the CSP stays in sync
+// with whichever Clerk instance actually loads. Publishable, not secret.
+const CLERK_FALLBACK_PUBLISHABLE_KEY = "pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA";
 
-// Clerk's Frontend API host is base64-encoded inside the publishable key
-// (`pk_<env>_<base64("<host>$")>`), so it's derived here instead of being
-// hardcoded. This keeps the CSP correct for every Clerk instance (local,
-// staging, production) without any extra config.
-// See: https://clerk.com/docs/guides/how-clerk-works/overview
+// Clerk's Frontend API host is base64-encoded in the publishable key
+// (pk_<env>_<base64("<host>$")>) - derived here so this works for any instance.
 function getClerkFrontendApiOrigin() {
-  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  if (!key) return "";
+  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || CLERK_FALLBACK_PUBLISHABLE_KEY;
   try {
     const host = Buffer.from(key.replace(/^pk_(test|live)_/, ""), "base64")
       .toString("utf-8")
@@ -25,9 +24,7 @@ function getClerkFrontendApiOrigin() {
   }
 }
 
-// Doubt/profile images and generated videos are uploaded to Supabase Storage
-// server-side and served back to the browser via their public URL, so that
-// origin needs to be allow-listed too.
+// Uploaded images/videos are served back from Supabase Storage's public URL.
 function getSupabaseOrigin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!url) return "";
@@ -41,10 +38,8 @@ function getSupabaseOrigin() {
 const clerkFrontendApi = getClerkFrontendApiOrigin();
 const supabaseOrigin = getSupabaseOrigin();
 
-// Baseline CSP for a Next.js + Clerk app. 'unsafe-inline' is required for
-// script-src/style-src because this repo doesn't use nonce-based Middleware
-// (see https://nextjs.org/docs/app/guides/content-security-policy); 'unsafe-eval'
-// is added only in development, where React needs it for error overlays.
+// 'unsafe-inline' is needed since this repo has no nonce-based CSP middleware
+// (Next's hydration scripts + Radix's inline styles both rely on it).
 const contentSecurityPolicy = `
   default-src 'self';
   script-src 'self' 'unsafe-inline' ${clerkFrontendApi} https://challenges.cloudflare.com${isDev ? " 'unsafe-eval'" : ""};
