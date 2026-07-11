@@ -364,11 +364,15 @@ export async function handleModerationViolation(
             blockedUntil = new Date();
             blockedUntil.setDate(blockedUntil.getDate() + durationDays);
 
-            // Persist block state in the same transaction.
+            // Persist block state in the same transaction. violationCount is reset
+            // to 0 here so the 3-strike counter starts fresh once the user is
+            // unblocked — without this, every violation after the first block
+            // would stay >= 3 and re-trigger an immediate additional block.
             await tx.update(usersTable).set({
                     isBlocked: true,
                     blockedUntil,
                     blockCount: newBlockCount,
+                    violationCount: 0,
                 })
                 .where(eq(usersTable.email, email));
 

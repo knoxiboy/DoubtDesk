@@ -61,14 +61,6 @@ export async function POST(req: Request) {
   try {
     const { content, imageUrl } = data;
 
-    // Use a configured, allowlisted origin — never request headers. Host and
-    // x-forwarded-proto are attacker-controlled here and would otherwise let a
-    // request choose the origin the background pipeline fetches assets from.
-    const baseUrl = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL;
-    if (!baseUrl) {
-      throw new Error("APP_URL is not configured");
-    }
-
     const jobId = randomUUID();
     await db.insert(videoJobsTable).values({
       id: jobId,
@@ -85,7 +77,6 @@ export async function POST(req: Request) {
         email,
         content: content ?? null,
         imageUrl: imageUrl ?? null,
-        baseUrl,
         lockKey,
       },
     });

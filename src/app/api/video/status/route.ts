@@ -2,6 +2,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
 import { videoJobsTable } from "@/configs/schema";
 import { eq } from "drizzle-orm";
+import { getVideoSignedUrl } from "@/lib/video/storage";
 
 // Always run dynamically; an SSE stream must never be cached.
 export const dynamic = "force-dynamic";
@@ -107,6 +108,16 @@ export async function GET(req: Request) {
           videoType: row.videoType,
           error: row.error,
         };
+
+        if (snapshot.status === "completed" && snapshot.videoUrl) {
+          try {
+            snapshot.videoUrl = await getVideoSignedUrl(snapshot.videoUrl);
+          } catch (err) {
+            console.error("Failed to sign video URL:", err);
+            // keep stored object key; client will see a broken link rather than no status
+          }
+        }
+
         const serialized = JSON.stringify(snapshot);
         if (serialized !== lastSerialized) {
           send(snapshot);

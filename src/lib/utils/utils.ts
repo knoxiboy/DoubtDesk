@@ -7,7 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 
 export const parsePositiveInt = (
   value: string | null,
-  fallback: number
+  fallback: number,
+  max?: number
 ): number => {
   if (!value || !/^\d+$/.test(value.trim())) {
     return fallback;
@@ -17,6 +18,10 @@ export const parsePositiveInt = (
 
   if (!Number.isSafeInteger(parsed) || parsed <= 0) {
     return fallback;
+  }
+
+  if (max !== undefined && parsed > max) {
+    return max;
   }
 
   return parsed;

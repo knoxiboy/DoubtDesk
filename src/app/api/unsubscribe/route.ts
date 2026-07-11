@@ -4,15 +4,32 @@ import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
 import { usersTable } from "@/configs/schema";
 import { verifyUnsubscribeToken } from "@/lib/email/email";
+import { randomBytes } from "crypto";
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 10;
 const unsubscribeAttempts = new Map<string, { count: number; resetAt: number }>();
 
+/**
+ * CSRF protection cookie name.
+ *
+ * The `__Host-` prefix is a browser security feature: it forces the browser
+ * to only send this cookie to the exact origin that set it, with Path=/,
+ * and only over HTTPS. This prevents subdomain-injection attacks.
+ * In development (HTTP) the prefix is dropped gracefully.
+ */
+const CSRF_COOKIE =
+    process.env.NODE_ENV === "production" ? "__Host-csrf_unsub" : "csrf_unsub";
+
+/** CSRF nonce TTL — must be consumed within 15 minutes of the GET. */
+const CSRF_COOKIE_MAX_AGE_SECONDS = 15 * 60;
+
 function getClientIp(req: NextRequest) {
-    return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-        || req.headers.get("x-real-ip")
-        || "unknown";
+    return (
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        req.headers.get("x-real-ip") ||
+        "unknown"
+    );
 }
 
 function isRateLimited(ip: string) {
@@ -55,6 +72,11 @@ function escapeHtml(value: string) {
         .replace(/'/g, "&#039;");
 }
 
+/** Generate a cryptographically random hex nonce. */
+function generateNonce(): string {
+    return randomBytes(32).toString("hex");
+}
+
 export async function GET(req: NextRequest) {
     const { email, expires, token } = getParams(req);
 
@@ -62,10 +84,15 @@ export async function GET(req: NextRequest) {
         return redirectWithError(req, "Invalid or expired unsubscribe link");
     }
 
+    // Generate a one-time CSRF nonce and embed it in both the form (hidden
+    // field) and a short-lived HttpOnly cookie. The POST handler verifies that
+    // both values match — a cross-site form cannot read the HttpOnly cookie, so
+    // it cannot supply the correct nonce even if it knows the unsubscribe URL.
+    const nonce = generateNonce();
+
     const unsubscribeAction = `/api/unsubscribe?email=${encodeURIComponent(email!)}&expires=${encodeURIComponent(expires!)}&token=${encodeURIComponent(token!)}`;
 
-    return new NextResponse(
-        `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
         <html lang="en">
             <head>
                 <meta charset="UTF-8" />
@@ -77,19 +104,34 @@ export async function GET(req: NextRequest) {
                     <h1 style="font-size:24px;margin:0 0 12px;">Unsubscribe from email notifications?</h1>
                     <p style="line-height:1.5;color:#cbd5e1;">This will turn off DoubtDesk email notifications for ${escapeHtml(email!)}.</p>
                     <form method="POST" action="${unsubscribeAction}">
+                        <input type="hidden" name="csrf_nonce" value="${escapeHtml(nonce)}" />
                         <button type="submit" style="border:0;border-radius:8px;background:#4f46e5;color:white;font-weight:700;padding:12px 18px;cursor:pointer;" >Unsubscribe</button>
                     </form>
                 </main>
             </body>
-        </html>`,
-        {
-            status: 200,
-            headers: {
-                "Content-Type": "text/html; charset=utf-8",
-                "Cache-Control": "no-store",
-            },
-        }
-    );
+        </html>`;
+
+    const res = new NextResponse(html, {
+        status: 200,
+        headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Cache-Control": "no-store",
+        },
+    });
+
+    // Store the nonce in a short-lived, HttpOnly, SameSite=Strict cookie.
+    // A cross-site attacker cannot read HttpOnly cookies via JS, and
+    // SameSite=Strict prevents the browser from sending the cookie on
+    // cross-site form POSTs — providing defence-in-depth.
+    res.cookies.set(CSRF_COOKIE, nonce, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: CSRF_COOKIE_MAX_AGE_SECONDS,
+        path: "/",
+    });
+
+    return res;
 }
 
 export async function POST(req: NextRequest) {
@@ -103,6 +145,34 @@ export async function POST(req: NextRequest) {
         if (!email || !isValidRequest(email, expires, token)) {
             return redirectWithError(req, "Invalid or expired unsubscribe link");
         }
+
+        // ── CSRF nonce verification ───────────────────────────────────────────
+        // Read the nonce from both the submitted form body and the cookie set
+        // during the GET. If they don't match (or either is absent), the
+        // submission is either cross-site or the form has been tampered with.
+        const contentType = req.headers.get("content-type") ?? "";
+        let formNonce: string | null = null;
+        if (contentType.includes("application/x-www-form-urlencoded")) {
+            const body = await req.text();
+            const params = new URLSearchParams(body);
+            formNonce = params.get("csrf_nonce");
+        } else if (contentType.includes("multipart/form-data")) {
+            const formData = await req.formData();
+            formNonce = formData.get("csrf_nonce") as string | null;
+        }
+
+        const cookieNonce = req.cookies.get(CSRF_COOKIE)?.value ?? null;
+
+        if (
+            !formNonce ||
+            !cookieNonce ||
+            formNonce.length !== cookieNonce.length ||
+            !timingSafeEqual(formNonce, cookieNonce)
+        ) {
+            console.warn("[unsubscribe] CSRF nonce mismatch", { ip, email });
+            return redirectWithError(req, "Invalid form submission. Please try the unsubscribe link again.");
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         const normalizedEmail = email.trim().toLowerCase();
 
@@ -145,9 +215,27 @@ export async function POST(req: NextRequest) {
             timestamp: new Date().toISOString(),
         }));
 
-        return NextResponse.redirect(new URL("/profile?unsubscribed=true", req.url));
+        // Clear the CSRF cookie after successful consumption so it cannot be reused.
+        const res = NextResponse.redirect(new URL("/profile?unsubscribed=true", req.url));
+        res.cookies.set(CSRF_COOKIE, "", { maxAge: 0, path: "/" });
+        return res;
     } catch (error: unknown) {
         console.error("Unsubscribe API Error:", error);
         return redirectWithError(req, "Internal Server Error");
     }
+}
+
+/**
+ * Constant-time string comparison to prevent timing attacks on the nonce.
+ * Both strings must be the same length (checked before calling).
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+    const bufA = Buffer.from(a, "utf8");
+    const bufB = Buffer.from(b, "utf8");
+    if (bufA.length !== bufB.length) return false;
+    let diff = 0;
+    for (let i = 0; i < bufA.length; i++) {
+        diff |= bufA[i] ^ bufB[i];
+    }
+    return diff === 0;
 }

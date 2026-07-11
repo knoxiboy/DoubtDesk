@@ -2,6 +2,7 @@ import { inngest } from "./client";
 import type { NonRetriableError } from "inngest";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { db } from "../configs/db";
 import { doubtsTable, usersTable, pendingNotificationsTable, repliesTable, videoJobsTable } from "../configs/schema";
 import { eq, inArray, and, lt } from "drizzle-orm";
@@ -38,28 +39,31 @@ export const cleanupTempAssets = inngest.createFunction(
   { id: "cleanup-temp-assets", triggers: [{ cron: "0 * * * *" }] },
   async ({ step }: { step: InngestStep }) => {
     const deletedFiles = await step.run("delete-old-files", async () => {
-      const tempDir = path.resolve("./public/temp-assets");
-      const videosDir = path.resolve("./public/videos");
-      const now = Date.now();
       const retentionMs = 24 * 60 * 60 * 1000; // 24 hours
+      const now = Date.now();
       let count = 0;
 
-      const cleanDir = (dirPath: string) => {
-        if (fs.existsSync(dirPath)) {
-          const files = fs.readdirSync(dirPath);
-          for (const file of files) {
-            const filePath = path.join(dirPath, file);
-            const stats = fs.statSync(filePath);
-            if (now - stats.mtimeMs > retentionMs) {
-              fs.unlinkSync(filePath);
-              count++;
-            }
+      const tmpRoot = os.tmpdir();
+      if (fs.existsSync(tmpRoot)) {
+        const entries = fs.readdirSync(tmpRoot);
+        for (const entry of entries) {
+          const entryPath = path.join(tmpRoot, entry);
+          const stats = fs.statSync(entryPath);
+          const isStale = now - stats.mtimeMs > retentionMs;
+
+          if (entry.startsWith("doubtdesk-audio-") && stats.isDirectory() && isStale) {
+            fs.rmSync(entryPath, { recursive: true, force: true });
+            count++;
+            continue;
+          }
+
+          if (/^video-.*\.mp4$/i.test(entry) && stats.isFile() && isStale) {
+            fs.unlinkSync(entryPath);
+            count++;
           }
         }
-      };
+      }
 
-      cleanDir(tempDir);
-      cleanDir(videosDir);
       return count;
     });
 
@@ -336,11 +340,10 @@ export { detectConfusionSpikes } from "../app/api/inngest/ConfusionSpikeDetector
 export const generateVideo = inngest.createFunction(
   { id: "generate-video", retries: 0, triggers: [{ event: "video/generate.requested" }] },
   async ({ event, step }: { event: InngestEvent; step: InngestStep }) => {
-    const { jobId, content, imageUrl, baseUrl, lockKey } = event.data as {
+    const { jobId, content, imageUrl, lockKey } = event.data as {
       jobId: string;
       content: string | null;
       imageUrl: string | null;
-      baseUrl: string;
       lockKey?: string;
     };
 
@@ -351,7 +354,7 @@ export const generateVideo = inngest.createFunction(
     try {
       const result = await step.run("run-video-pipeline", async () => {
         return await runVideoPipeline(
-          { content, imageUrl, baseUrl },
+          { content, imageUrl },
           async ({ progress, step: label }) => {
             await db
               .update(videoJobsTable)

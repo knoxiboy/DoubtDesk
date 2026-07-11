@@ -4,10 +4,11 @@ import fs from "fs";
 // Bucket that holds rendered videos. Override with SUPABASE_VIDEO_BUCKET.
 const VIDEO_BUCKET = process.env.SUPABASE_VIDEO_BUCKET || "videos";
 
+// How long generated video signed URLs remain valid (1 hour).
+const SIGNED_URL_EXPIRY_SECONDS = 60 * 60;
+
 function getStorageClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  // Prefer a service-role key for server-side writes; fall back to the anon key
-  // (which requires a public bucket / permissive insert policy).
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -15,19 +16,16 @@ function getStorageClient() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-/**
- * Upload a rendered video file to durable object storage (Supabase Storage) and
- * return its public URL (issue #321).
- *
- * Returns `null` when storage isn't configured, so callers can fall back to a
- * local/ephemeral path in development. Throws if an upload is attempted and fails.
- */
 export async function uploadVideo(
   localPath: string,
   objectName: string,
-): Promise<string | null> {
+): Promise<string> {
   const supabase = getStorageClient();
-  if (!supabase) return null;
+  if (!supabase) {
+    throw new Error(
+      "Video generation requires Supabase Storage. Please configure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
 
   const fileBuffer = await fs.promises.readFile(localPath);
   const { error } = await supabase.storage
@@ -40,6 +38,26 @@ export async function uploadVideo(
     throw new Error(`Video upload to storage failed: ${error.message}`);
   }
 
-  const { data } = supabase.storage.from(VIDEO_BUCKET).getPublicUrl(objectName);
-  return data.publicUrl;
+  return objectName;
+}
+
+export async function getVideoSignedUrl(objectName: string): Promise<string> {
+  const supabase = getStorageClient();
+  if (!supabase) {
+    throw new Error(
+      "Video streaming requires Supabase Storage. Please configure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
+
+  const { data, error: signError } = await supabase.storage
+    .from(VIDEO_BUCKET)
+    .createSignedUrl(objectName, SIGNED_URL_EXPIRY_SECONDS);
+
+  if (signError || !data?.signedUrl) {
+    throw new Error(
+      `Failed to create signed URL for video${signError ? `: ${signError.message}` : ""}`,
+    );
+  }
+
+  return data.signedUrl;
 }

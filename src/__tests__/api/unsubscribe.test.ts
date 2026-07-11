@@ -54,11 +54,64 @@ function makeUnsignedRequest(method: string, ip: string) {
     });
 }
 
+/** In the test (non-production) env the CSRF cookie drops the `__Host-` prefix. */
+const CSRF_COOKIE = 'csrf_unsub';
+
+/**
+ * Perform the GET that renders the unsubscribe form, then return the nonce the
+ * server set (via the Set-Cookie on the GET response) so a follow-up POST can
+ * replay a legitimate, same-origin submission.
+ */
+async function fetchCsrfNonce(email = 'Student@College.edu'): Promise<string> {
+    const res = await GET(makeSignedRequest('GET', email));
+    const nonce = res.cookies.get(CSRF_COOKIE)?.value;
+    if (!nonce) throw new Error('GET did not set a CSRF nonce cookie');
+    return nonce;
+}
+
+/**
+ * Build a POST that mimics the legitimate browser flow: the nonce hidden in the
+ * form body matches the nonce stored in the HttpOnly cookie. Without both
+ * values present and equal, the route refuses the submission.
+ */
+async function makeSignedPostRequest(email = 'Student@College.edu') {
+    const nonce = await fetchCsrfNonce(email);
+    const expires = Date.now() + 60_000;
+    const token = generateUnsubscribeToken(email, expires);
+    const url = `http://localhost/api/unsubscribe?email=${encodeURIComponent(email)}&expires=${expires}&token=${token}`;
+
+    return new NextRequest(url, {
+        method: 'POST',
+        headers: {
+            'x-forwarded-for': '127.0.0.1',
+            'content-type': 'application/x-www-form-urlencoded',
+            cookie: `${CSRF_COOKIE}=${nonce}`,
+        },
+        body: `csrf_nonce=${nonce}`,
+    });
+}
+
 describe('Unsubscribe API Endpoint', () => {
     beforeEach(() => {
         process.env.UNSUBSCRIBE_SECRET = 'test-unsubscribe-secret';
         jest.clearAllMocks();
         currentUserMock.mockResolvedValue(null);
+    });
+
+    it('emits a CSRF nonce cookie and embeds the same nonce in the form', async () => {
+        const res = await GET(makeSignedRequest('GET'));
+
+        expect(res.status).toBe(200);
+        expect(res.headers.get('content-type')).toContain('text/html');
+        expect(res.headers.get('cache-control')).toBe('no-store');
+
+        const nonce = res.cookies.get(CSRF_COOKIE)?.value;
+        expect(nonce).toBeTruthy();
+        expect(res.cookies.get(CSRF_COOKIE)?.httpOnly).toBe(true);
+        expect(res.cookies.get(CSRF_COOKIE)?.sameSite).toBe('strict');
+        // The form body must contain the same nonce so the POST can verify it.
+        expect(await res.text()).toContain(`name="csrf_nonce" value="${nonce}"`);
+        expect(mockUpdate).not.toHaveBeenCalled();
     });
 
     it('does not change notification preferences on GET', async () => {
@@ -67,6 +120,35 @@ describe('Unsubscribe API Endpoint', () => {
         expect(res.status).toBe(200);
         expect(res.headers.get('content-type')).toContain('text/html');
         expect(res.headers.get('cache-control')).toBe('no-store');
+        expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it('blocks a POST that is missing the CSRF nonce (cross-site style)', async () => {
+        const res = await POST(makeSignedRequest('POST'));
+
+        expect(res.status).toBe(307);
+        expect(res.headers.get('location')).toContain('Invalid%20form%20submission');
+        expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it('blocks a POST whose form nonce does not match the cookie nonce', async () => {
+        const nonce = await fetchCsrfNonce();
+        const expires = Date.now() + 60_000;
+        const token = generateUnsubscribeToken('Student@College.edu', expires);
+        const url = `http://localhost/api/unsubscribe?email=${encodeURIComponent('Student@College.edu')}&expires=${expires}&token=${token}`;
+
+        const res = await POST(new NextRequest(url, {
+            method: 'POST',
+            headers: {
+                'x-forwarded-for': '127.0.0.1',
+                'content-type': 'application/x-www-form-urlencoded',
+                cookie: `${CSRF_COOKIE}=${nonce}`,
+            },
+            body: 'csrf_nonce=deadbeefdeadbeefdeadbeefdeadbeef',
+        }));
+
+        expect(res.status).toBe(307);
+        expect(res.headers.get('location')).toContain('Invalid%20form%20submission');
         expect(mockUpdate).not.toHaveBeenCalled();
     });
 
@@ -104,8 +186,8 @@ describe('Unsubscribe API Endpoint', () => {
         expect(mockUpdate).not.toHaveBeenCalled();
     });
 
-    it('updates notification preferences only for a valid signed POST', async () => {
-        const res = await POST(makeSignedRequest('POST'));
+    it('updates notification preferences only for a valid signed POST with matching CSRF nonce', async () => {
+        const res = await POST(await makeSignedPostRequest());
 
         expect(res.status).toBe(307);
         expect(res.headers.get('location')).toBe('http://localhost/profile?unsubscribed=true');
@@ -115,6 +197,8 @@ describe('Unsubscribe API Endpoint', () => {
             notificationPreference: 'none',
         });
         expect(mockWhere).toHaveBeenCalledWith({ field: 'email', value: 'student@college.edu' });
+        // Cookie is cleared after a successful, one-time use.
+        expect(res.cookies.get(CSRF_COOKIE)?.maxAge).toBe(0);
     });
 
     it('refuses to unsubscribe when the signed-in user does not match the token email', async () => {
@@ -122,7 +206,7 @@ describe('Unsubscribe API Endpoint', () => {
             primaryEmailAddress: { emailAddress: 'attacker@example.com' },
         });
 
-        const res = await POST(makeSignedRequest('POST'));
+        const res = await POST(await makeSignedPostRequest());
 
         expect(res.status).toBe(307);
         expect(res.headers.get('location')).toContain('Signed-in%20user%20does%20not%20match');

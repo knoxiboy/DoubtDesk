@@ -136,7 +136,7 @@ export async function GET(req: Request) {
     const pageStr = searchParams.get("page");
     const offsetStr = searchParams.get("offset");
     const limitStr = searchParams.get("limit");
-    const limit = parsePositiveInt(limitStr, 20);
+    const limit = parsePositiveInt(limitStr, 20, 100);
     const offset = offsetStr
       ? parsePositiveInt(offsetStr, 0)
       : pageStr
@@ -216,11 +216,23 @@ export async function GET(req: Request) {
       }));
     }
 
+    // Only fetch the current user's likes/bookmarks for this page's doubts,
+    // not every like/bookmark they have ever made across the entire app.
+    const pageDoubtIds = doubts.map((d: any) => d.id);
+
     if (email && doubts.length > 0) {
-      const userLikes = await db
-        .select({ doubtId: likesTable.doubtId })
-        .from(likesTable)
-        .where(eq(likesTable.userEmail, email));
+      const userLikes =
+        pageDoubtIds.length > 0
+          ? await db
+              .select({ doubtId: likesTable.doubtId })
+              .from(likesTable)
+              .where(
+                and(
+                  eq(likesTable.userEmail, email),
+                  inArray(likesTable.doubtId, pageDoubtIds),
+                ),
+              )
+          : [];
 
       const likedIds = new Set(userLikes.map((l: any) => l.doubtId));
       doubts = doubts.map((doubt: any) => ({
@@ -230,10 +242,18 @@ export async function GET(req: Request) {
     }
 
     if (doubts.length > 0 && email) {
-      const userBookmarks = await db
-        .select({ doubtId: bookmarksTable.doubtId })
-        .from(bookmarksTable)
-        .where(eq(bookmarksTable.userEmail, email));
+      const userBookmarks =
+        pageDoubtIds.length > 0
+          ? await db
+              .select({ doubtId: bookmarksTable.doubtId })
+              .from(bookmarksTable)
+              .where(
+                and(
+                  eq(bookmarksTable.userEmail, email),
+                  inArray(bookmarksTable.doubtId, pageDoubtIds),
+                ),
+              )
+          : [];
 
       const bookmarkedIds = new Set(userBookmarks.map((b: any) => b.doubtId));
       doubts = doubts.map((doubt: any) => ({
@@ -243,7 +263,7 @@ export async function GET(req: Request) {
     }
 
     if (doubts.length > 0) {
-      const tagRows = await db
+      const tagRows: { doubtId: number; id: number; name: string; normalizedName: string }[] = await db
         .select({
           doubtId: doubtTagsTable.doubtId,
           id: tagsTable.id,
@@ -254,17 +274,18 @@ export async function GET(req: Request) {
         .innerJoin(tagsTable, eq(doubtTagsTable.tagId, tagsTable.id))
         .where(inArray(doubtTagsTable.doubtId, doubts.map((d: any) => d.id)));
 
-      const tagsByDoubt = tagRows.reduce<
-        Record<number, { id: number; name: string; normalizedName: string }[]>
-      >((acc, row) => {
-        acc[row.doubtId] = acc[row.doubtId] || [];
-        acc[row.doubtId].push({
-          id: row.id,
-          name: row.name,
-          normalizedName: row.normalizedName,
-        });
-        return acc;
-      }, {});
+      const tagsByDoubt = tagRows.reduce(
+        (acc: Record<number, { id: number; name: string; normalizedName: string }[]>, row: typeof tagRows[number]) => {
+          acc[row.doubtId] = acc[row.doubtId] || [];
+          acc[row.doubtId].push({
+            id: row.id,
+            name: row.name,
+            normalizedName: row.normalizedName,
+          });
+          return acc;
+        },
+        {},
+      );
 
       doubts = doubts.map((doubt: any) => ({
         ...doubt,
@@ -427,13 +448,13 @@ export async function POST(req: Request) {
           ),
         );
 
-      const existingTagsMap = new Map(existingClassroomTags.map((t: any) => [t.normalizedName, t]));
+      const existingTagsMap = new Map(existingClassroomTags.map((t: typeof tagsTable.$inferSelect) => [t.normalizedName, t]));
       const tagsToInsert: (typeof tagsTable.$inferInsert)[] = [];
 
       for (const name of normalizedTags) {
-        const match = existingTagsMap.get(name);
+        const match = existingTagsMap.get(name) as typeof tagsTable.$inferInsert | undefined;
         if (match) {
-          savedTags.push(match);
+          savedTags.push(match as typeof tagsTable.$inferSelect);
         } else {
           tagsToInsert.push({
             name: name.replace(/\b\w/g, (char) => char.toUpperCase()),
