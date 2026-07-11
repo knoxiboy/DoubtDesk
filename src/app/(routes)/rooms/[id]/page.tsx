@@ -104,7 +104,7 @@ export default function ClassroomPage() {
   const [copied, setCopied] = useState(false);
   const [doubtFilter, setDoubtFilter] = useState<
     "unsolved" | "in-progress" | "solved"
-  >("unsolved");
+  >((searchParams.get("doubtFilter") as "unsolved" | "in-progress" | "solved") || "unsolved");
   const [searchVal, setSearchVal] = useState(searchParams.get("search") || "");
   useEffect(() => {
     const urlSearch = searchParams.get("search");
@@ -119,6 +119,11 @@ export default function ClassroomPage() {
   const [tagFilter, setTagFilter] = useState("");
   const sort = (searchParams.get("sort") as DoubtSortValue) || "newest";
   const notificationTab = searchParams.get("tab");
+  const urlDoubtFilter = searchParams.get("doubtFilter") as
+    | "unsolved"
+    | "in-progress"
+    | "solved"
+    | null;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -140,6 +145,18 @@ export default function ClassroomPage() {
       setActiveTab("community");
     }
   }, [notificationTab, searchParams]);
+
+  useEffect(() => {
+    if (
+      urlDoubtFilter &&
+      (urlDoubtFilter === "unsolved" ||
+        urlDoubtFilter === "in-progress" ||
+        urlDoubtFilter === "solved") &&
+      urlDoubtFilter !== doubtFilter
+    ) {
+      setDoubtFilter(urlDoubtFilter);
+    }
+  }, [doubtFilter, urlDoubtFilter]);
 
   const type =
     activeTab === "teacher-doubts"
@@ -163,6 +180,24 @@ export default function ClassroomPage() {
       scroll: false,
     });
     setSize(1);
+  };
+
+  const updateDoubtFilter = (
+    nextFilter: "unsolved" | "in-progress" | "solved",
+  ) => {
+    setDoubtFilter(nextFilter);
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (nextFilter === "unsolved") {
+      nextParams.delete("doubtFilter");
+    } else {
+      nextParams.set("doubtFilter", nextFilter);
+    }
+
+    const query = nextParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
   };
 
   const getKey = (pageIndex: number, previousPageData: any) => {
@@ -525,19 +560,19 @@ export default function ClassroomPage() {
 
               <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 w-full sm:w-auto overflow-x-auto flex-nowrap scrollbar-hide whitespace-nowrap">
                 <button
-                  onClick={() => setDoubtFilter("unsolved")}
+                  onClick={() => updateDoubtFilter("unsolved")}
                   className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${doubtFilter === "unsolved" ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200"}`}
                 >
                   Unsolved
                 </button>
                 <button
-                  onClick={() => setDoubtFilter("in-progress")}
+                  onClick={() => updateDoubtFilter("in-progress")}
                   className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${doubtFilter === "in-progress" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200"}`}
                 >
                   In Progress
                 </button>
                 <button
-                  onClick={() => setDoubtFilter("solved")}
+                  onClick={() => updateDoubtFilter("solved")}
                   className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${doubtFilter === "solved" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200"}`}
                 >
                   Resolved
@@ -757,19 +792,19 @@ export default function ClassroomPage() {
 
               <div className="flex items-center gap-1.5 bg-white dark:bg-zinc-900 p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 w-full sm:w-auto overflow-x-auto flex-nowrap scrollbar-hide whitespace-nowrap">
                 <button
-                  onClick={() => setDoubtFilter("unsolved")}
+                  onClick={() => updateDoubtFilter("unsolved")}
                   className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${doubtFilter === "unsolved" ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200"}`}
                 >
                   Unsolved
                 </button>
                 <button
-                  onClick={() => setDoubtFilter("in-progress")}
+                  onClick={() => updateDoubtFilter("in-progress")}
                   className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${doubtFilter === "in-progress" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200"}`}
                 >
                   In Progress
                 </button>
                 <button
-                  onClick={() => setDoubtFilter("solved")}
+                  onClick={() => updateDoubtFilter("solved")}
                   className={`px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${doubtFilter === "solved" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "text-slate-400 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-200"}`}
                 >
                   Resolved
