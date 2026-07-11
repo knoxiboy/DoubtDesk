@@ -240,15 +240,16 @@ export const dailyStreakProcessor = inngest.createFunction(
                     await checkAndAwardBadges(user.email);
                     processed++;
 
-                } else if (daysDiff >= 2) {
-                    await db
-                        .update(usersTable)
-                        .set({ currentStreak: 0 })
-                        .where(eq(usersTable.email, user.email));
-                    processed++;
-                } else if (daysDiff === 1) {
-                    // Valid trailing active window path (Contributed yesterday, hasn't contributed today yet)
-                    skippedNoOp++;
+                } else if (daysDiff >= 1) {
+                    if (user.currentStreak > 0) {
+                        await db
+                            .update(usersTable)
+                            .set({ currentStreak: 0 })
+                            .where(eq(usersTable.email, user.email));
+                        processed++;
+                    } else {
+                        skippedNoOp++;
+                    }
                 }
                 
             } catch (err) {
