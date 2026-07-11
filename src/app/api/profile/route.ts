@@ -7,6 +7,12 @@ import { doubtsTable, repliesTable, membershipsTable, classroomsTable, usersTabl
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import type { ProfileClassroom } from "@/types/profile";
+import { z } from "zod";
+
+const profilePreferencesSchema = z.object({
+    emailNotificationsEnabled: z.boolean().optional(),
+    notificationPreference: z.enum(["instant", "daily", "weekly", "none"]).optional(),
+});
 
 export async function GET(req: Request) {
     try {
@@ -107,8 +113,12 @@ export async function POST(req: NextRequest) {
 
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
 
-        const body = await req.json();
-        const { emailNotificationsEnabled, notificationPreference } = body;
+        const parsed = profilePreferencesSchema.safeParse(await req.json());
+        if (!parsed.success) {
+            return NextResponse.json({ error: "Invalid preference payload" }, { status: 400 });
+        }
+
+        const { emailNotificationsEnabled, notificationPreference } = parsed.data;
 
         const updateData:  {
             emailNotificationsEnabled?: boolean;
@@ -125,10 +135,6 @@ export async function POST(req: NextRequest) {
         }
 
         if (notificationPreference !== undefined) {
-            const validPreferences = ["instant", "daily", "weekly", "none"];
-            if (!validPreferences.includes(notificationPreference)) {
-                return NextResponse.json({ error: "Invalid preference value" }, { status: 400 });
-            }
             updateData.notificationPreference = notificationPreference;
             if (notificationPreference === "none") {
                 updateData.emailNotificationsEnabled = false;

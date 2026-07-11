@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, MessageSquare, BookOpen, Users, ThumbsUp, Mail } from "lucide-react";
 import { format } from "date-fns";
+import { NotificationPreferencesCard } from "@/components/profile/NotificationPreferencesCard";
 
 // 1. Strict TypeScript Interface mapping user records to enforce full type safety
 interface DbUser {
@@ -20,6 +21,8 @@ interface DbUser {
   role?: string | null;
   university?: string | null;
   year?: string | number | null;
+  emailNotificationsEnabled?: boolean | null;
+  notificationPreference?: "instant" | "daily" | "weekly" | "none" | null;
 }
 
 export default async function ProfilePage() {
@@ -87,6 +90,8 @@ export default async function ProfilePage() {
     role: dbUser?.role || "Student",
     university: dbUser?.university || undefined,
     year: dbUser?.year || undefined,
+    emailNotificationsEnabled: dbUser?.emailNotificationsEnabled ?? true,
+    notificationPreference: (dbUser?.notificationPreference || "instant") as "instant" | "daily" | "weekly" | "none",
   };
 
   return (
@@ -181,6 +186,11 @@ export default async function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      <NotificationPreferencesCard
+        emailNotificationsEnabled={displayUser.emailNotificationsEnabled}
+        notificationPreference={displayUser.notificationPreference}
+      />
 
       {/* Tabs Menu Selection */}
       <Tabs defaultValue="doubts" className="w-full relative z-10">
