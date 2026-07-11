@@ -39,6 +39,8 @@ jest.mock('@/lib/validations/doubt', () => ({
     createDoubtSchema: {}
 }));
 
+const { buildSearchCondition, buildRankOrder } = require('@/lib/search/search');
+
 const mockDoubts = [
     {
         id: 1,
@@ -201,6 +203,7 @@ jest.mock('@/configs/db', () => ({
 
 describe('Doubts API Endpoints', () => {
     beforeEach(() => {
+        jest.clearAllMocks();
         mockQueryDoubts = mockDoubts;
         (currentUser as jest.Mock).mockResolvedValue({
             primaryEmailAddress: { emailAddress: 'student@example.com' },
@@ -234,6 +237,18 @@ describe('Doubts API Endpoints', () => {
         expect(json.totalCount).toBe(2);
         expect(json.page).toBe(1);
         expect(json.limit).toBe(20);
+    });
+
+    it('GET should use the safe full-text search helper for search queries', async () => {
+        (db.select as jest.Mock).mockImplementationOnce(() => createChainWithData([{ count: 2 }]))
+                                .mockImplementationOnce(() => createChainWithData(mockDoubts));
+
+        const req = new Request('http://localhost/api/doubts?search=%25_%25');
+        const res = await GET(req) as Response;
+
+        expect(res.status).toBe(200);
+        expect(buildSearchCondition).toHaveBeenCalledWith('%_%');
+        expect(buildRankOrder).toHaveBeenCalledWith('%_%');
     });
 
     it('GET should support popular sorting', async () => {
@@ -342,4 +357,3 @@ describe('Doubts API Endpoints', () => {
         expect(json.subject).toBe('Physics');
     });
 });
-

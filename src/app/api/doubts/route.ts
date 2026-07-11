@@ -20,7 +20,6 @@ import {
   not,
   sql,
   SQL,
-  ilike,
   desc,
   getTableColumns,
   count,
@@ -34,7 +33,7 @@ import { createClassroomDoubtNotifications } from "@/lib/notifications/service";
 import { inngest } from "@/inngest/client";
 import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
 import { generalLimiter } from "@/lib/ratelimit/ratelimit";
-import { buildRankOrder } from "@/lib/search/search";
+import { buildRankOrder, buildSearchCondition } from "@/lib/search/search";
 import { canTeach } from "@/lib/auth/membership-guard";
 import { currentUser } from "@clerk/nextjs/server";
 import { parsePositiveInt } from "@/lib/utils/utils";
@@ -103,13 +102,7 @@ export async function GET(req: Request) {
     }
 
     if (search) {
-      // NOTE: we deliberately do NOT match on userEmail. Matching the author's
-      // email here would let a caller probe email fragments and infer which
-      // anonymized posts belong to a given author from result presence/counts.
-      const searchCondition = or(
-        ilike(doubtsTable.content, `%${search}%`),
-        ilike(doubtsTable.subject, `%${search}%`),
-      );
+      const searchCondition = buildSearchCondition(search);
       if (searchCondition) conditions.push(searchCondition);
     }
 
