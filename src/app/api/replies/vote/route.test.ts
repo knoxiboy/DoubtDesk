@@ -161,6 +161,9 @@ describe('Reply Vote API Endpoint', () => {
         expect(res?.status).toBe(403);
         const json = await res?.json();
         expect(json.error).toContain('cannot upvote your own reply');
+
+        const { inngest } = jest.requireMock('@/inngest/client');
+        expect(inngest.send).not.toHaveBeenCalled();
     });
 
     it('successfully removes an existing upvote, returning 200 status and the decremented upvote counter', async () => {
