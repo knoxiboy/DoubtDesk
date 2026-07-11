@@ -4,6 +4,7 @@ import { MessageSquare, Loader2, ChevronDown } from "lucide-react";
 import DoubtCard from "@/components/classroom/DoubtCard";
 import useSWRInfinite from "swr/infinite";
 import { PublicDoubt } from "@/types";
+import { EmptyStatePanel } from "@/components/classroom/EmptyStatePanel";
 
 const fetcher = async (url: string) => {
     const res = await fetch(url);
@@ -127,18 +128,14 @@ export default function InfiniteDoubtFeed({
 
     if (isEmpty) {
         return (
-            <div className="py-24 text-center space-y-4 bg-slate-100 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[2.5rem]">
-                <MessageSquare className="w-12 h-12 text-slate-700 mx-auto" />
-                <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">{emptyMessage}</p>
-                {emptyAction && (
-                    <button
-                        onClick={emptyAction}
-                        className="text-blue-500 font-black uppercase tracking-widest text-[10px] hover:underline underline-offset-4"
-                     aria-label="Interactive button">
-                        {emptyActionLabel}
-                    </button>
-                )}
-            </div>
+            <EmptyStatePanel
+                icon={MessageSquare}
+                title={emptyMessage}
+                description="This classroom is quiet right now. Start the thread by posting a doubt or try a different filter."
+                actionLabel={emptyActionLabel || "Post a doubt"}
+                onAction={emptyAction}
+                secondaryLabel="No doubts found"
+            />
         );
     }
 

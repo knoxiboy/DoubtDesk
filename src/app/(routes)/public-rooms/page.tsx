@@ -11,6 +11,7 @@ import { useInView } from "react-intersection-observer";
 import ScrollToTopButton from "@/components/layout/ScrollToTopButton";
 import { Doubt } from "@/types";
 import { useUser } from "@clerk/nextjs";
+import { EmptyStatePanel } from "@/components/classroom/EmptyStatePanel";
 
 const PAGE_SIZE = 20;
 
@@ -393,84 +394,40 @@ export default function PublicRoomsPage() {
                     </button>
                 </div>
             ) : (
-                <div className="relative flex flex-col items-center justify-center py-20 rounded-2xl text-center px-6 overflow-hidden border border-slate-200 dark:border-zinc-900 bg-slate-50/30 dark:bg-zinc-950/10 shadow-inner z-10">
-                    <div className="absolute top-8 left-12 w-32 h-32 bg-blue-600/5 rounded-full blur-2xl" />
-                    <div className="absolute bottom-8 right-12 w-40 h-40 bg-indigo-600/5 rounded-full blur-2xl" />
-
-                    <div className="relative mb-6">
-                        {searchQuery ? (
-                            <div className="w-20 h-20 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-4 border border-blue-500/20 shadow-sm">
-                                <MessageSquare className="w-10 h-10 text-blue-500" />
-                            </div>
-                        ) : (
-                            <svg width="120" height="100" viewBox="0 0 140 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <ellipse cx="70" cy="110" rx="45" ry="6" fill="rgba(59,130,246,0.1)" />
-                                <rect x="48" y="22" width="68" height="46" rx="12" fill="rgba(139,92,246,0.1)" stroke="rgba(139,92,246,0.25)" strokeWidth="1"/>
-                                <polygon points="100,62 112,72 104,62" fill="rgba(139,92,246,0.1)" stroke="rgba(139,92,246,0.25)" strokeWidth="1"/>
-                                <rect x="18" y="10" width="76" height="52" rx="14" fill="rgba(59,130,246,0.12)" stroke="rgba(59,130,246,0.3)" strokeWidth="1.2"/>
-                                <polygon points="30,57 18,72 38,57" fill="rgba(59,130,246,0.12)" stroke="rgba(59,130,246,0.3)" strokeWidth="1.2"/>
-                                <rect x="30" y="24" width="40" height="4" rx="2" fill="rgba(59,130,246,0.4)"/>
-                                <rect x="30" y="34" width="52" height="4" rx="2" fill="rgba(59,130,246,0.2)"/>
-                                <rect x="30" y="44" width="30" height="4" rx="2" fill="rgba(59,130,246,0.15)"/>
-                                <g opacity="0.6">
-                                    <line x1="118" y1="14" x2="118" y2="22" stroke="rgba(139,92,246,0.6)" strokeWidth="1.5" strokeLinecap="round"/>
-                                    <line x1="114" y1="18" x2="122" y2="18" stroke="rgba(139,92,246,0.6)" strokeWidth="1.5" strokeLinecap="round"/>
-                                </g>
-                                <circle cx="12" cy="35" r="2" fill="rgba(59,130,246,0.2)"/>
-                                <circle cx="130" cy="55" r="2" fill="rgba(59,130,246,0.2)"/>
-                            </svg>
-                        )}
-                    </div>
-
-                    <div className="relative space-y-2 mb-6">
-                        <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                            {searchQuery 
-                                ? "No matching doubts" 
-                                : filter === "Bookmarked"
-                                    ? "No bookmarked doubts yet"
-                                    : randomMessage.headline}{" "}
-                            <span className="text-blue-600 dark:text-blue-400">
-                                {searchQuery ? "" : filter === "Bookmarked" ? "" : randomMessage.accent}
-                            </span>
-                        </h2>
-                        <p className="text-slate-500 dark:text-zinc-400 max-w-sm mx-auto text-xs font-medium leading-relaxed">
-                            {searchQuery 
-                                ? `We couldn't find any doubts matching "${searchQuery}". Try a different keyword or subject.`
-                                : filter === "Bookmarked"
-                                    ? "Save important doubts by clicking the bookmark icon on any doubt card to view them here later."
-                                    : filter === "All"
-                                        ? randomMessage.sub
-                                        : `${filter} is wide open. Drop a doubt, and watch your classmates rally around it.`}
-                        </p>
-                    </div>
-
-                    <div className="relative flex flex-col items-center gap-3">
-                        {searchQuery ? (
-                            <button
-                                onClick={() => setSearchVal("")}
-                                className="flex items-center gap-3 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98]"
-                            >
-                                Clear Search
-                            </button>
-                        ) : filter === "Bookmarked" ? (
-                            <button
-                                onClick={() => setFilter("All")}
-                                className="group flex items-center gap-3 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98]"
-                            >
-                                Explore public doubts
-                            </button>
-                        ) : (
-                            <button
-                                onClick={() => setIsAskModalOpen(true)}
-                                className="group flex items-center gap-3 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98]"
-                            >
-                                <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
-                                Be the first to ask
-                            </button>
-                        )}
-                        <p className="text-slate-400 dark:text-zinc-500 text-[10px] font-bold uppercase tracking-wider">Anonymous · No login needed</p>
-                    </div>
-                </div>
+                <EmptyStatePanel
+                    icon={MessageSquare}
+                    title={
+                        searchQuery
+                            ? "No matching doubts"
+                            : filter === "Bookmarked"
+                                ? "No bookmarked doubts yet"
+                                : `${randomMessage.headline} ${randomMessage.accent}`
+                    }
+                    description={
+                        searchQuery
+                            ? `We couldn't find any doubts matching "${searchQuery}". Try a different keyword or subject.`
+                            : filter === "Bookmarked"
+                                ? "Save important doubts by clicking the bookmark icon on any doubt card to view them here later."
+                                : filter === "All"
+                                    ? randomMessage.sub
+                                    : `${filter} is wide open. Drop a doubt, and watch your classmates rally around it.`
+                    }
+                    actionLabel={
+                        searchQuery
+                            ? "Clear search"
+                            : filter === "Bookmarked"
+                                ? "Explore public doubts"
+                                : "Be the first to ask"
+                    }
+                    onAction={
+                        searchQuery
+                            ? () => setSearchVal("")
+                            : filter === "Bookmarked"
+                                ? () => setFilter("All")
+                                : () => setIsAskModalOpen(true)
+                    }
+                    secondaryLabel="Anonymous · No login needed"
+                />
             )}
 
             {isAskModalOpen && (
