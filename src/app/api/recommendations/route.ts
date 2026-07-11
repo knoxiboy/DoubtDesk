@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/configs/db";
 import {
@@ -52,19 +52,26 @@ export async function GET() {
         );
 
         // 4. Fetch all candidate classrooms
-const classrooms = await db
-    .select()
-    .from(classroomsTable)
-    .where(
-        joinedIds.length
-            ? sql`${classroomsTable.id} NOT IN (${sql.join(
-                  joinedIds.map((id: any) => sql`${id}`),
-                  sql`, `
-              )})`
-            : sql`true`
-    );
+        const classrooms = await db
+            .select()
+            .from(classroomsTable)
+            .where(
+                and(
+                    isNull(classroomsTable.organizationId),
+                    joinedIds.length
+                        ? sql`${classroomsTable.id} NOT IN (${sql.join(
+                              joinedIds.map((id: any) => sql`${id}`),
+                              sql`, `
+                          )})`
+                        : sql`true`
+                )
+            );
 
-        if (!classrooms.length) {
+        const visibleClassrooms = classrooms.filter(
+            (classroom: any) => classroom.organizationId === null
+        );
+
+        if (!visibleClassrooms.length) {
             return NextResponse.json({
                 recommendations: [],
             });
@@ -104,7 +111,7 @@ const classrooms = await db
         );
 
         // 7. Generate recommendations
-        const recommendations = classrooms
+        const recommendations = visibleClassrooms
             .map((classroom: any) => {
                 const score = calculateRecommendationScore({
                     universityMatch:
