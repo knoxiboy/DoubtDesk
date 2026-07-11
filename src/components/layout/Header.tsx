@@ -76,8 +76,9 @@ export default function Header() {
       <div className="max-w-7xl mx-auto h-16 sm:h-20 flex items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
         {showBackButton && (
           <button
+            type="button"
             onClick={handleBackClick}
-            className={`hidden md:flex items-center justify-center p-2 rounded-xl transition-all duration-300 flex-shrink-0 ${
+            className={`hidden md:flex items-center justify-center p-2 rounded-xl transition-all duration-300 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
               canGoBack
                 ? "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
                 : "text-slate-400 dark:text-zinc-600 opacity-50 cursor-default"
@@ -93,7 +94,7 @@ export default function Header() {
         {/* Logo and Brand */}
         <Link
           href="/"
-          className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity shrink-0 group relative z-50"
+          className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity shrink-0 group relative z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl"
         >
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
             <img
@@ -117,7 +118,8 @@ export default function Header() {
               <button
                 key={link.href}
                 onClick={() => handleScrollNavigation(scrollId)}
-                className="text-sm font-medium text-slate-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-white transition-colors duration-300 cursor-pointer bg-transparent border-0"
+                type="button"
+                className="text-sm font-medium text-slate-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-white transition-colors duration-300 cursor-pointer bg-transparent border-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-md px-1"
               >
                 {link.label}
               </button>
@@ -125,7 +127,7 @@ export default function Header() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-slate-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-white transition-colors duration-300"
+                className="text-sm font-medium text-slate-700 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-white transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-md px-1"
               >
                 {link.label}
               </Link>
@@ -139,12 +141,18 @@ export default function Header() {
 
           <SignedOut>
             <Link href="/sign-in">
-              <button className="px-4 py-2 bg-white dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-200 rounded-xl text-sm font-semibold border border-slate-200 dark:border-zinc-800 transition-all duration-300 hover:shadow-sm">
+              <button
+                type="button"
+                className="px-4 py-2 bg-white dark:bg-zinc-900 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-200 rounded-xl text-sm font-semibold border border-slate-200 dark:border-zinc-800 transition-all duration-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
                 Sign In
               </button>
             </Link>
             <Link href="/sign-up">
-              <button className="px-4 py-2 bg-blue-600 dark:bg-[#5E8CFF] hover:bg-blue-700 dark:hover:bg-[#8BB8FF] text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/10 dark:shadow-[#5E8CFF]/10 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]">
+              <button
+                type="button"
+                className="px-4 py-2 bg-blue-600 dark:bg-[#5E8CFF] hover:bg-blue-700 dark:hover:bg-[#8BB8FF] text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/10 dark:shadow-[#5E8CFF]/10 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
                 Join DoubtDesk
               </button>
             </Link>
@@ -192,8 +200,9 @@ export default function Header() {
         <div className="flex lg:hidden items-center gap-3 relative z-50 ml-auto">
           <ThemeToggle />
           <button
+            type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className="p-2 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 rounded-xl transition-colors outline-none"
+            className="p-2 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 rounded-xl transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             aria-label="Toggle navigation menu"
           >
             {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -218,11 +227,12 @@ export default function Header() {
         {showBackButton && (
           <div className="flex items-center gap-3 -mt-6">
             <button
+              type="button"
               onClick={() => {
                 handleBackClick();
                 setIsOpen(false);
               }}
-              className={`flex items-center justify-center p-2 rounded-xl transition-all duration-300 ${
+              className={`flex items-center justify-center p-2 rounded-xl transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 canGoBack
                   ? "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
                   : "text-slate-400 dark:text-zinc-600 opacity-50 cursor-default"
@@ -249,8 +259,9 @@ export default function Header() {
             return scrollId ? (
               <button
                 key={link.href}
+                type="button"
                 onClick={() => handleScrollNavigation(scrollId)}
-                className="flex items-center justify-between w-full py-4 text-base font-semibold text-slate-800 dark:text-zinc-200 border-b border-slate-100 dark:border-zinc-900/60 bg-transparent border-l-0 border-r-0 border-t-0 hover:bg-slate-50 dark:hover:bg-zinc-900/30 rounded-lg px-2 transition-colors duration-300"
+                className="flex items-center justify-between w-full py-4 text-base font-semibold text-slate-800 dark:text-zinc-200 border-b border-slate-100 dark:border-zinc-900/60 bg-transparent border-l-0 border-r-0 border-t-0 hover:bg-slate-50 dark:hover:bg-zinc-900/30 rounded-lg px-2 transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <span>{link.label}</span>
                 <ChevronRight className="h-4 w-4 text-slate-400" />
@@ -305,7 +316,10 @@ export default function Header() {
               onClick={() => setIsOpen(false)}
               className="w-full"
             >
-              <button className="w-full py-3.5 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 font-bold bg-transparent rounded-2xl transition-all text-sm">
+              <button
+                type="button"
+                className="w-full py-3.5 border border-slate-200 dark:border-zinc-800 text-slate-800 dark:text-zinc-200 font-bold bg-transparent rounded-2xl transition-all text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
                 Sign In
               </button>
             </Link>
@@ -314,7 +328,10 @@ export default function Header() {
               onClick={() => setIsOpen(false)}
               className="w-full"
             >
-              <button className="w-full py-3.5 bg-blue-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-500/10 text-sm">
+              <button
+                type="button"
+                className="w-full py-3.5 bg-blue-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-500/10 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
                 Join DoubtDesk
               </button>
             </Link>
