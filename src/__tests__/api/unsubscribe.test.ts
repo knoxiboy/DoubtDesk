@@ -6,6 +6,17 @@ jest.mock('@clerk/nextjs/server', () => ({
     currentUser: () => currentUserMock(),
 }));
 
+jest.mock('@/lib/ratelimit/ratelimit', () => {
+    const mockGeneralLimiter = {
+        limit: jest.fn(),
+    };
+
+    return {
+        generalLimiter: mockGeneralLimiter,
+        __mockGeneralLimiter: mockGeneralLimiter,
+    };
+});
+
 import { GET, POST } from '@/app/api/unsubscribe/route';
 
 jest.mock('@/configs/db', () => {
@@ -25,6 +36,7 @@ jest.mock('@/configs/db', () => {
 });
 
 const { mockUpdate, mockSet, mockWhere } = require('@/configs/db')._mocks;
+const generalLimiterMock = require('@/lib/ratelimit/ratelimit').__mockGeneralLimiter;
 
 jest.mock('@/configs/schema', () => ({
     usersTable: {
@@ -96,6 +108,17 @@ describe('Unsubscribe API Endpoint', () => {
         process.env.UNSUBSCRIBE_SECRET = 'test-unsubscribe-secret';
         jest.clearAllMocks();
         currentUserMock.mockResolvedValue(null);
+        let requestCount = 0;
+        generalLimiterMock.limit.mockImplementation(async () => {
+            requestCount += 1;
+            const limit = 30;
+            return {
+                success: requestCount <= limit,
+                limit,
+                remaining: Math.max(0, limit - requestCount),
+                reset: Date.now() + 60_000,
+            };
+        });
     });
 
     it('emits a CSRF nonce cookie and embeds the same nonce in the form', async () => {
@@ -177,7 +200,7 @@ describe('Unsubscribe API Endpoint', () => {
     it('rate limits repeated unsubscribe attempts from the same IP', async () => {
         let res: Response | undefined;
 
-        for (let i = 0; i < 11; i += 1) {
+        for (let i = 0; i < 31; i += 1) {
             res = await POST(makeUnsignedRequest('POST', '127.0.0.3'));
         }
 
