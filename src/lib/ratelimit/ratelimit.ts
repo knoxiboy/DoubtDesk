@@ -24,6 +24,7 @@ interface MockLimiter {
 
 interface MockRedis {
     setnx(key: string, value: unknown): Promise<number>;
+    get(key: string): Promise<string | null>;
     set(
       key: string,
       value: unknown,
@@ -97,6 +98,7 @@ if (isRedisConfigured) {
   // Simple in-memory fallback for local development
   // Note: This won't be perfectly accurate in distributed environments but works for local testing
   const memoryMap = new Map<string, { count: number; reset: number }>();
+  const valueMap = new Map<string, { value: string; reset: number }>();
 
   const createMockLimiter = (limit: number, windowMs: number) => ({
     limit: async (identifier: string) => {
@@ -134,6 +136,15 @@ if (isRedisConfigured) {
       memoryMap.set(key, { count: 1, reset: Date.now() + 5 * 60 * 1000 });
       return 1;
     },
+    get: async (key: string) => {
+      const record = valueMap.get(key);
+      if (!record) return null;
+      if (record.reset <= Date.now()) {
+        valueMap.delete(key);
+        return null;
+      }
+      return record.value;
+    },
     set: async (
       key: string,
       value: unknown,
@@ -141,11 +152,12 @@ if (isRedisConfigured) {
     ): Promise<"OK" | null> => {
       if (opts?.nx && memoryMap.has(key)) return null;
       const ttlMs = opts?.ex ? opts.ex * 1000 : 5 * 60 * 1000;
-      memoryMap.set(key, { count: 1, reset: Date.now() + ttlMs });
+      valueMap.set(key, { value: String(value), reset: Date.now() + ttlMs });
       return "OK";
     },
     del: async (key: string) => {
       memoryMap.delete(key);
+      valueMap.delete(key);
       return 1;
     },
     expire: async (key: string, seconds: number) => {

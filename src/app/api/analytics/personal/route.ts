@@ -3,12 +3,14 @@ import { db } from '@/configs/db';
 import { doubtsTable } from '@/configs/schema';
 import { and, eq, desc, isNull } from 'drizzle-orm';
 import Groq from 'groq-sdk';
+import { createHash } from 'crypto';
 import { buildErrorResponse } from '@/lib/errors/error-handler';
 import {
     parseClassroomId,
     requireAuth,
     requireMembership,
 } from '@/lib/auth/membership-guard';
+import { redisClient } from '@/lib/ratelimit/ratelimit';
 
 const groq = new Groq({
     apiKey: process.env.GROQ_API_KEY || 'dummy_key',
@@ -50,6 +52,24 @@ export async function GET(req: Request) {
             });
         }
 
+        const snapshot = userDoubts.map((d: any) => ({
+            content: d.content,
+            subject: d.subject,
+            createdAt: d.createdAt,
+        }));
+        const snapshotHash = createHash("sha256")
+            .update(JSON.stringify(snapshot))
+            .digest("hex");
+        const cacheKey = `personal-analytics:${email}:${classroomId}:${snapshotHash}`;
+        const cachedResponse = await (redisClient as any).get?.(cacheKey);
+        if (cachedResponse) {
+            try {
+                return NextResponse.json(JSON.parse(cachedResponse));
+            } catch {
+                // Fall through to regenerate if the cached payload is malformed.
+            }
+        }
+
         // Prepare doubt summaries for AI analysis
         const doubtContext = userDoubts.map((d: any) => `- [${d.subject}]: ${d.content}`).join('\n');
 
@@ -78,11 +98,14 @@ export async function GET(req: Request) {
         });
 
         const result = JSON.parse(response.choices[0].message.content || "{}");
-
-        return NextResponse.json({
+        const payload = {
             isEngaged: true,
             ...result
-        });
+        };
+
+        await (redisClient as any).set?.(cacheKey, JSON.stringify(payload), { ex: 60 * 60 });
+
+        return NextResponse.json(payload);
 
     } catch (error: unknown) {
         const { status, body } = buildErrorResponse(error);
