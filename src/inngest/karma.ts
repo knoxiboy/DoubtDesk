@@ -240,15 +240,13 @@ export const dailyStreakProcessor = inngest.createFunction(
                     await checkAndAwardBadges(user.email);
                     processed++;
 
-                } else if (daysDiff >= 2) {
+                } else if (daysDiff >= 1) {
+                    // Any full-day gap breaks the streak under the midnight cron schedule.
                     await db
                         .update(usersTable)
                         .set({ currentStreak: 0 })
                         .where(eq(usersTable.email, user.email));
                     processed++;
-                } else if (daysDiff === 1) {
-                    // Valid trailing active window path (Contributed yesterday, hasn't contributed today yet)
-                    skippedNoOp++;
                 }
                 
             } catch (err) {
