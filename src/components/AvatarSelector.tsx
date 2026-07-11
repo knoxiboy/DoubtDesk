@@ -25,8 +25,10 @@ export default function AvatarSelector({ selected, onSelect }: AvatarSelectorPro
       <div className="grid grid-cols-4 gap-3">
         {AVATARS.map((avatar) => (
           <button
-            key={avatar.id}
-            onClick={() => onSelect(avatar.id)}
+  key={avatar.id}
+  onClick={() => onSelect(avatar.id)}
+  aria-pressed={selected === avatar.id}
+  aria-label={`Select ${avatar.label} avatar`}
             className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all duration-200
               ${selected === avatar.id
                 ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"

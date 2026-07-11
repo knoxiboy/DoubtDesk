@@ -23,22 +23,36 @@ const BANNER_GRADIENTS: Record<string, string> = {
   fire: "bg-gradient-to-r from-red-500 to-orange-500",
 };
 
+const AVATAR_EMOJI: Record<string, string> = {
+  default: "",
+  student: "📚",
+  teacher: "🎓",
+  coder: "💻",
+  scientist: "🔬",
+  artist: "🎨",
+  gamer: "🎮",
+  ninja: "🥷",
+};
+
 function ProfileSkeleton() {
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-5xl mt-16 animate-pulse bg-white dark:bg-black min-h-screen transition-colors duration-500">
       <div className="h-5 w-24 bg-slate-200 dark:bg-zinc-800 rounded-lg mb-6" />
-      <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-8 bg-slate-50 dark:bg-zinc-950/40 rounded-xl border border-slate-200 dark:border-zinc-900 p-6">
-        <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-zinc-800 shrink-0" />
-        <div className="flex-1 space-y-3 w-full text-center md:text-left">
-          <div className="h-8 w-48 bg-slate-200 dark:bg-zinc-800 rounded-xl mx-auto md:mx-0" />
-          <div className="h-4 w-36 bg-slate-200 dark:bg-zinc-800 rounded-lg mx-auto md:mx-0" />
-          <div className="flex gap-2 pt-2 justify-center md:justify-start">
-            <div className="h-6 w-16 bg-slate-200 dark:bg-zinc-800 rounded-lg" />
-            <div className="h-6 w-28 bg-slate-200 dark:bg-zinc-800 rounded-lg" />
-            <div className="h-6 w-20 bg-slate-200 dark:bg-zinc-800 rounded-lg" />
+      <div className="mb-8 rounded-xl border border-slate-200 dark:border-zinc-900 overflow-hidden">
+        <div className="w-full h-28 bg-slate-200 dark:bg-zinc-800" />
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-6 bg-slate-50 dark:bg-zinc-950/40 p-6">
+          <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-zinc-800 shrink-0 -mt-12 md:-mt-14" />
+          <div className="flex-1 space-y-3 w-full text-center md:text-left">
+            <div className="h-8 w-48 bg-slate-200 dark:bg-zinc-800 rounded-xl mx-auto md:mx-0" />
+            <div className="h-4 w-36 bg-slate-200 dark:bg-zinc-800 rounded-lg mx-auto md:mx-0" />
+            <div className="flex gap-2 pt-2 justify-center md:justify-start">
+              <div className="h-6 w-16 bg-slate-200 dark:bg-zinc-800 rounded-lg" />
+              <div className="h-6 w-28 bg-slate-200 dark:bg-zinc-800 rounded-lg" />
+              <div className="h-6 w-20 bg-slate-200 dark:bg-zinc-800 rounded-lg" />
+            </div>
           </div>
+          <div className="h-24 w-full md:w-[380px] bg-slate-100 dark:bg-zinc-900/40 rounded-xl border border-slate-200 dark:border-zinc-900 shrink-0" />
         </div>
-        <div className="h-24 w-full md:w-[380px] bg-slate-100 dark:bg-zinc-900/40 rounded-xl border border-slate-200 dark:border-zinc-900 shrink-0" />
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
         {Array.from({ length: 8 }).map((_, i) => (
@@ -94,7 +108,7 @@ function ErrorState({ message, onRetry }: ErrorStateProps) {
       <button
         onClick={onRetry}
         className="inline-flex items-center gap-2 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 shadow-sm transition-all duration-200 hover:bg-slate-50 dark:hover:bg-zinc-800 active:scale-[0.98]"
-        aria-label="Interactive button">
+        aria-label="Retry loading profile">
         <RefreshCw className="h-4 w-4" />
         Retry Sync Connection
       </button>
@@ -143,7 +157,7 @@ export default function ProfilePage() {
   const handleSavePersonalization = async () => {
     setIsSavingPersonalization(true);
     try {
-      const res = await fetch("/api/profile/preferences", {
+      const res = await fetch("/api/profile/preference", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ avatarPreference, bannerPreference }),
@@ -173,12 +187,18 @@ export default function ProfilePage() {
         if (!res.ok) throw new Error(`Failed to load stats (${res.status})`);
         return res.json();
       }),
+      fetch("/api/profile/preference").then((res) => {
+        if (!res.ok) return { preferences: {} };
+        return res.json();
+      }),
     ])
-      .then(([profileRes, statsRes]: [ProfileData, { success: boolean; stats: ActivityStats }]) => {
+      .then(([profileRes, statsRes, prefRes]: [ProfileData, { success: boolean; stats: ActivityStats }, { preferences: { avatarPreference?: string; bannerPreference?: string } }]) => {
         if (profileRes.user && statsRes.success) {
           setProfileData(profileRes);
           setActivityStats(statsRes.stats);
           setEmailNotificationsEnabled(profileRes.user.emailNotificationsEnabled ?? true);
+          if (prefRes.preferences?.avatarPreference) setAvatarPreference(prefRes.preferences.avatarPreference);
+          if (prefRes.preferences?.bannerPreference) setBannerPreference(prefRes.preferences.bannerPreference);
         } else {
           setError("Profile data is unavailable. Please try again.");
         }
@@ -224,6 +244,7 @@ export default function ProfilePage() {
   }
 
   const { user, stats, activities } = profileData;
+  const avatarEmoji = AVATAR_EMOJI[avatarPreference] ?? "";
 
   return (
     <div className="container mx-auto p-4 md:p-8 max-w-5xl mt-16 text-slate-900 dark:text-zinc-100 bg-white dark:bg-black transition-colors duration-500">
@@ -243,10 +264,18 @@ export default function ProfilePage() {
         {/* User Info */}
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6 bg-slate-50 dark:bg-zinc-950/40 p-6 backdrop-blur-md">
           <Avatar className="w-24 h-24 border-4 border-slate-200 dark:border-zinc-900 shadow-sm -mt-12 md:-mt-14 ring-4 ring-white dark:ring-black">
-            <AvatarImage src={user.imageUrl} />
-            <AvatarFallback className="text-3xl bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200">
-              {user.name.charAt(0)}
-            </AvatarFallback>
+            {avatarEmoji ? (
+              <AvatarFallback className="text-4xl bg-white dark:bg-zinc-800">
+                {avatarEmoji}
+              </AvatarFallback>
+            ) : (
+              <>
+                <AvatarImage src={user.imageUrl} />
+                <AvatarFallback className="text-3xl bg-white dark:bg-zinc-800 text-slate-800 dark:text-zinc-200">
+                  {user.name.charAt(0)}
+                </AvatarFallback>
+              </>
+            )}
           </Avatar>
 
           <div className="flex-1 text-center md:text-left space-y-1.5">
@@ -486,7 +515,7 @@ export default function ProfilePage() {
                 <div className={`w-full h-20 transition-all duration-500 ${BANNER_GRADIENTS[bannerPreference] ?? BANNER_GRADIENTS.none}`} />
                 <div className="bg-slate-50 dark:bg-zinc-900 px-4 pb-4 flex items-center gap-3">
                   <div className="w-14 h-14 rounded-full bg-white dark:bg-zinc-800 border-4 border-white dark:border-zinc-900 -mt-7 flex items-center justify-center text-2xl shadow">
-                    {user.name.charAt(0)}
+                    {avatarEmoji || user.name.charAt(0)}
                   </div>
                   <div className="mt-1">
                     <p className="font-bold text-slate-900 dark:text-white text-sm">{user.name}</p>

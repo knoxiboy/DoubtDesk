@@ -31,7 +31,7 @@ export default function BannerSelector({ selected, onSelect }: BannerSelectorPro
                 : "border-slate-200 dark:border-zinc-700 hover:border-blue-300"
               }`}
           >
-            <span className="absolute bottom-1 left-2 text-xs font-bold text-white drop-shadow">
+            <span className={`absolute bottom-1 left-2 text-xs font-bold drop-shadow ${banner.id === "none" ? "text-slate-700 dark:text-zinc-300" : "text-white"}`}>
               {banner.label}
             </span>
           </button>
