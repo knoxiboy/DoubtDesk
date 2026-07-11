@@ -578,7 +578,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                             className="mt-2 rounded-2xl overflow-hidden border border-slate-200 dark:border-white/5 group/img relative cursor-zoom-in active:scale-[0.98] transition-all w-full"
                                             aria-label="View image fullscreen"
                                         >
-                                            <img src={reply.imageUrl} alt="Solution" className="w-full h-auto object-cover max-h-[32rem]" />
+                                            <img src={reply.imageUrl} alt="Solution" loading="lazy" decoding="async" className="w-full h-auto object-cover max-h-[32rem]" />
                                             <div className="absolute inset-0 bg-white/0 group-hover/img:bg-slate-100 dark:group-hover/img:bg-white/5 flex items-center justify-center transition-all">
                                                 <ZoomIn className="w-8 h-8 text-slate-900 dark:text-white opacity-0 group-hover/img:opacity-100 scale-50 group-hover/img:scale-100 transition-all" />
                                             </div>
@@ -876,7 +876,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                         </div>
                                     ) : (
                                         <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-500/20 bg-white dark:bg-slate-950 shadow-2xl group/img">
-                                            <img src={solutionImage} alt="" className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500" />
+                                            <img src={solutionImage} alt="" loading="lazy" decoding="async" className="w-full sm:w-64 h-36 object-cover opacity-80 group-hover/img:opacity-100 transition-all duration-500" />
 
                                             {/* Image Overlay */}
                                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent flex flex-col justify-end p-3 translate-y-2 group-hover/img:translate-y-0 transition-transform">

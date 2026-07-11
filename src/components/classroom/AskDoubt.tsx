@@ -629,7 +629,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                     ) : (
                                         <div className="flex flex-col items-center gap-3 px-6 text-center z-20">
                                             <div className="relative max-h-40 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-xl bg-white dark:bg-slate-950 animate-in zoom-in-95">
-                                                <img src={imageUrl} alt="Preview" className="max-h-40 object-contain" />
+                                                <img src={imageUrl} alt="Preview" loading="lazy" decoding="async" className="max-h-40 object-contain" />
                                             </div>
                                             <div>
                                                 <p className="text-xs text-slate-900 dark:text-white font-bold max-w-xs truncate">{fileName}</p>
