@@ -6,6 +6,7 @@ import { redisClient, videoLimiter } from "@/lib/ratelimit/ratelimit";
 import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { generateVideoSchema } from "@/lib/validations/video";
+import { validateVideoImageUrl } from "@/lib/video/image-validation";
 import { db } from "@/configs/db";
 import { videoJobsTable } from "@/configs/schema";
 import { inngest } from "@/inngest/client";
@@ -41,6 +42,19 @@ export async function POST(req: Request) {
 
   const { errorResponse, data } = await parseAndValidateRequest(req, generateVideoSchema);
   if (errorResponse) return errorResponse;
+
+  if (data.imageUrl) {
+    const imageValidation = await validateVideoImageUrl(data.imageUrl);
+    if (!imageValidation.ok) {
+      return NextResponse.json(
+        {
+          error: imageValidation.error,
+          code: imageValidation.code,
+        },
+        { status: imageValidation.status },
+      );
+    }
+  }
 
   // One active generation per user. The background job releases this lock when it
   // finishes (success or failure); a 5-minute TTL guards against leaked locks.
