@@ -45,21 +45,39 @@ export async function GET(req: Request) {
 
     classroomFilter = eq(doubtsTable.classroomId, classroomId);
   } else {
-    // Get all classrooms user is a member of
-    const userMemberships = await db
-      .select({ classroomId: membershipsTable.classroomId })
-      .from(membershipsTable)
-      .where(eq(membershipsTable.userEmail, email));
+    const teacherRoles = ["teacher", "owner", "admin"] as const;
 
-    const userClassroomIds = userMemberships.map((m: any) => m.classroomId);
+    const [teacherMemberships, ownedClassrooms] = await Promise.all([
+      db
+        .select({ classroomId: membershipsTable.classroomId })
+        .from(membershipsTable)
+        .where(
+          and(
+            eq(membershipsTable.userEmail, email),
+            inArray(membershipsTable.role, teacherRoles as unknown as string[]),
+          ),
+        ),
+      db
+        .select({ classroomId: classroomsTable.id })
+        .from(classroomsTable)
+        .where(eq(classroomsTable.teacherEmail, email)),
+    ]);
 
-    if (userClassroomIds.length === 0) {
-      return NextResponse.json({
-        message: "Export route working",
-      });
+    const classroomIds = [
+      ...new Set([
+        ...teacherMemberships.map((membership: any) => membership.classroomId),
+        ...ownedClassrooms.map((classroom: any) => classroom.classroomId),
+      ]),
+    ];
+
+    if (classroomIds.length === 0) {
+      return NextResponse.json(
+        { error: "Forbidden: teacher access required" },
+        { status: 403 },
+      );
     }
 
-    classroomFilter = inArray(doubtsTable.classroomId, userClassroomIds);
+    classroomFilter = inArray(doubtsTable.classroomId, classroomIds);
   }
 
   try {
