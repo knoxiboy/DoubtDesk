@@ -6,6 +6,7 @@ import {
   repliesTable,
   membershipsTable,
   classroomsTable,
+  usersTable,
 } from "@/configs/schema";
 import {
   desc,
@@ -28,6 +29,14 @@ export async function GET(req: Request) {
   }
 
   const email = user.primaryEmailAddress.emailAddress;
+  const [dbUser] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
+
+  if (!dbUser || !["teacher", "admin"].includes(dbUser.role)) {
+    return NextResponse.json({ error: "Forbidden: teacher access required" }, { status: 403 });
+  }
 
   // Check if user is blocked
   const { isBlocked, errorResponse } = await checkUserBlock(email);
@@ -37,26 +46,29 @@ export async function GET(req: Request) {
   const classroomIdStr = searchParams.get("classroomId");
   const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
 
-  let classroomFilter;
+  let classroomFilter: any;
 
   if (classroomId) {
     // Verify the user is a member of this classroom
     await requireTeacher(email, classroomId);
 
     classroomFilter = eq(doubtsTable.classroomId, classroomId);
+  } else if (dbUser.role === "admin") {
+    classroomFilter = sql`true`;
   } else {
-    // Get all classrooms user is a member of
-    const userMemberships = await db
+    // Get only the classrooms the user teaches or owns
+    const teacherMemberships = await db
       .select({ classroomId: membershipsTable.classroomId })
       .from(membershipsTable)
-      .where(eq(membershipsTable.userEmail, email));
+      .where(and(
+        eq(membershipsTable.userEmail, email),
+        inArray(membershipsTable.role, ["teacher", "owner", "admin"]),
+      ));
 
-    const userClassroomIds = userMemberships.map((m: any) => m.classroomId);
+    const userClassroomIds = teacherMemberships.map((m: any) => m.classroomId);
 
     if (userClassroomIds.length === 0) {
-      return NextResponse.json({
-        message: "Export route working",
-      });
+      return NextResponse.json({ error: "Forbidden: teacher access required" }, { status: 403 });
     }
 
     classroomFilter = inArray(doubtsTable.classroomId, userClassroomIds);
