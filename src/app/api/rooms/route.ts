@@ -1,3 +1,4 @@
+import { randomBytes } from 'crypto';
 import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { classroomsTable, membershipsTable, usersTable, organizationsTable, organizationMembershipsTable } from '@/configs/schema';
@@ -130,7 +131,7 @@ export async function POST(req: Request) {
             }
         }
 
-        const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const inviteCode = randomBytes(4).toString('hex').toUpperCase();
 
         // Transactional insert: create room and then add teacher as member atomically
         const newRoom = await db.transaction(async (tx) => {
