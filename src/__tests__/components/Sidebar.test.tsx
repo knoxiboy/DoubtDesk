@@ -43,6 +43,7 @@ jest.mock('@/components/layout/KeyboardShortcutsProvider', () => ({
 }));
 
 import Sidebar from '@/components/layout/Sidebar';
+import { usePathname } from 'next/navigation';
 
 describe('Sidebar Component', () => {
     it('renders platform title', () => {
@@ -57,5 +58,16 @@ describe('Sidebar Component', () => {
         expect(screen.getByText('Bookmarks')).toBeInTheDocument();
         expect(screen.getByText('Public Doubts')).toBeInTheDocument();
         expect(screen.getByText('Ask AI Solver')).toBeInTheDocument();
+    });
+
+    it('links Classroom Chat to the current room community tab when inside a room', () => {
+        (usePathname as jest.Mock).mockReturnValue('/rooms/42');
+
+        render(<Sidebar isOpen={true} onClose={jest.fn()} />);
+
+        expect(screen.getByText('Classroom Chat').closest('a')).toHaveAttribute(
+            'href',
+            '/rooms/42?tab=community',
+        );
     });
 });

@@ -43,7 +43,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     const { appUser } = useAppUser()
 
     const chatSystemUrl = process.env.NEXT_PUBLIC_CHAT_SYSTEM_URL?.replace(/\/$/, "")
-    const classroomChatHref = chatSystemUrl ? `${chatSystemUrl}/chat` : '/chat'
+    const roomMatch = pathname.match(/^\/rooms\/(\d+)/)
+    const currentRoomId = roomMatch?.[1]
+    const classroomChatHref = currentRoomId
+        ? `/rooms/${currentRoomId}?tab=community`
+        : chatSystemUrl
+            ? `${chatSystemUrl}/chat`
+            : '/rooms'
     const peerToPeerHref = chatSystemUrl ? `${chatSystemUrl}/chat/peer-to-peer` : '/chat/peer-to-peer'
 
     const linkClasses = (isActive: boolean) =>
@@ -161,7 +167,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                             <Link
                                                 href={classroomChatHref}
                                                 onClick={onClose}
-                                                className={linkClasses(pathname === '/chat')}
+                                                className={linkClasses(
+                                                    pathname.startsWith('/rooms/') || pathname === '/chat'
+                                                )}
                                             >
                                                 <div className="p-1 rounded-md bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/40 dark:border-zinc-800/40">
                                                     <MessageSquare className="w-3.5 h-3.5 text-cyan-400" />
