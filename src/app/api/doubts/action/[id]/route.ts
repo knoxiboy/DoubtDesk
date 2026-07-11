@@ -327,6 +327,10 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     try {
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
+
+        if (!email) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
         
         const { id } = await params;
         const doubtId = parseInt(id);
