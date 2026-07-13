@@ -106,9 +106,10 @@ export async function GET(req: Request) {
       // NOTE: we deliberately do NOT match on userEmail. Matching the author's
       // email here would let a caller probe email fragments and infer which
       // anonymized posts belong to a given author from result presence/counts.
+      const safeSearch = search.replace(/[%_\\]/g, "\\$&");
       const searchCondition = or(
-        ilike(doubtsTable.content, `%${search}%`),
-        ilike(doubtsTable.subject, `%${search}%`),
+        ilike(doubtsTable.content, `%${safeSearch}%`),
+        ilike(doubtsTable.subject, `%${safeSearch}%`),
       );
       if (searchCondition) conditions.push(searchCondition);
     }
