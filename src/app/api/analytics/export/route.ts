@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/configs/db";
-import { requireTeacher } from "@/lib/auth/membership-guard";
+import { requireTeacher, TEACHER_ROLES } from "@/lib/auth/membership-guard";
 import {
   doubtsTable,
   repliesTable,
@@ -45,18 +45,31 @@ export async function GET(req: Request) {
 
     classroomFilter = eq(doubtsTable.classroomId, classroomId);
   } else {
-    // Get all classrooms user is a member of
+    // Only include classrooms where the caller is a teacher/owner/admin.
+    // Previously this branch pulled EVERY membership regardless of role, so
+    // a student who joined any classroom could omit the `?classroomId=`
+    // query param and receive the full teacher-only CSV aggregated across
+    // every classroom they were in (issue #885). The role filter mirrors
+    // the TEACHER_ROLES set used by `requireTeacher` so the two branches
+    // stay in sync — the sibling `/api/analytics` endpoint is intentionally
+    // student-visible; only `/export` needs the tighter gate.
     const userMemberships = await db
-      .select({ classroomId: membershipsTable.classroomId })
+      .select({
+        classroomId: membershipsTable.classroomId,
+        role: membershipsTable.role,
+      })
       .from(membershipsTable)
       .where(eq(membershipsTable.userEmail, email));
 
-    const userClassroomIds = userMemberships.map((m: any) => m.classroomId);
+    const userClassroomIds = userMemberships
+      .filter((m) => TEACHER_ROLES.has(m.role))
+      .map((m) => m.classroomId);
 
     if (userClassroomIds.length === 0) {
-      return NextResponse.json({
-        message: "Export route working",
-      });
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
     }
 
     classroomFilter = inArray(doubtsTable.classroomId, userClassroomIds);
