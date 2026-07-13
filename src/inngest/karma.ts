@@ -240,15 +240,25 @@ export const dailyStreakProcessor = inngest.createFunction(
                     await checkAndAwardBadges(user.email);
                     processed++;
 
-                } else if (daysDiff >= 2) {
+                } else if (daysDiff >= 1) {
+                    // Any positive daysDiff at the midnight cron means the
+                    // user missed at least one full calendar day. Trace: cron
+                    // runs at Wed 00:00 → todayMidnight = Wed 00:00. If the
+                    // user last contributed Mon at 12:00, activeTimestamp is
+                    // 36h before todayMidnight, so daysDiff floors to 1 —
+                    // but Tuesday was entirely skipped, so the streak must
+                    // reset. Contributing yesterday (e.g. Tue 08:00) yields
+                    // daysDiff === 0 (16h < 24h), which is the streak-award
+                    // branch above. The old `daysDiff === 1` no-op branch
+                    // was therefore inverted and let anyone maintain a
+                    // streak while contributing only every other day,
+                    // corrupting the currentStreak field that gates
+                    // streak_days badges. See issue #886.
                     await db
                         .update(usersTable)
                         .set({ currentStreak: 0 })
                         .where(eq(usersTable.email, user.email));
                     processed++;
-                } else if (daysDiff === 1) {
-                    // Valid trailing active window path (Contributed yesterday, hasn't contributed today yet)
-                    skippedNoOp++;
                 }
                 
             } catch (err) {
