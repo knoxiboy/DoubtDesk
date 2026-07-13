@@ -6,7 +6,7 @@ import { db } from "@/configs/db";
 import { membershipsTable, usersTable, aiSessionsTable } from "@/configs/schema";
 import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
 import { aiLimiter } from "@/lib/ratelimit/ratelimit";
-import { AI_REQUEST_MAX_BYTES } from "@/lib/ai/ai-image-validation";
+import { AI_REQUEST_MAX_BYTES, validateAiImageDataUrl, type AiImageValidationResult } from "@/lib/ai/ai-image-validation";
 import { buildSystemMessages } from "@/lib/ai/socratic-prompt";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import type { AIMode } from "@/types/ai-chat";
@@ -65,15 +65,12 @@ export async function POST(req: Request): Promise<NextResponse> {
         : "";
 
   if (body.imageBase64 !== undefined) {
-    const img = body.imageBase64 as string;
-    const validMime = /^data:image\/(png|jpe?g|webp);base64,/.test(img);
-    if (!validMime) {
+    const result = await validateAiImageDataUrl(body.imageBase64);
+    if (!result.ok) {
+      const err = result as Extract<AiImageValidationResult, { ok: false }>;
       return NextResponse.json(
-        {
-          error: "Please upload a valid PNG, JPG, or WEBP image.",
-          code: "INVALID_IMAGE_PAYLOAD",
-        },
-        { status: 422 }
+        { error: err.error, code: err.code },
+        { status: err.status }
       );
     }
   }
