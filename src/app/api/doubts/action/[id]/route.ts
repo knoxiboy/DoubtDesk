@@ -13,13 +13,16 @@ import { canTeach } from "@/lib/auth/membership-guard";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
+        const user = await currentUser();
+        const email = user?.primaryEmailAddress?.emailAddress;
+        if (!email) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const { errorResponse, data } = await parseAndValidateRequest(req, updateDoubtActionSchema);
         if (errorResponse) return errorResponse;
 
         const { action, content, subject, imageUrl, replyId, tags = [], status } = data;
-
-        const user = await currentUser();
-        const email = user?.primaryEmailAddress?.emailAddress;
         
         const { id } = await params;
         const doubtId = parseInt(id);
@@ -327,6 +330,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     try {
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
+        if (!email) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
         
         const { id } = await params;
         const doubtId = parseInt(id);
