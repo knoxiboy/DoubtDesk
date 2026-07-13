@@ -4,13 +4,33 @@ import { videoJobsTable } from "@/configs/schema";
 import { eq } from "drizzle-orm";
 import { getVideoSignedUrl } from "@/lib/video/storage";
 
-// Always run dynamically; an SSE stream must never be cached.
 export const dynamic = "force-dynamic";
 
-const POLL_INTERVAL_MS = 1500;
-// Cap the stream so it can't outlive the serverless function budget. Clients
-// should reconnect (EventSource does so automatically) if they hit this.
+/**
+ * ── Constants ────────────────────────────────────────────────────────
+ */
+
+/** Initial database poll interval (ms). */
+const BASE_POLL_MS = 1500;
+
+/** Maximum poll interval (ms) after exponential backoff. */
+const MAX_POLL_MS = 15_000;
+
+/** Backoff multiplier applied each time the row hasn't changed. */
+const BACKOFF_FACTOR = 2;
+
+/** SSE comment heartbeat interval (ms) — keeps proxies from closing idle connections. */
+const HEARTBEAT_MS = 20_000;
+
+/**
+ * Hard cap on stream lifetime (ms).
+ * Serverless functions have a finite budget; clients should reconnect if needed.
+ */
 const MAX_STREAM_MS = 4 * 60 * 1000;
+
+/**
+ * ── Helpers ──────────────────────────────────────────────────────────
+ */
 
 interface JobSnapshot {
   jobId: string;
@@ -22,71 +42,98 @@ interface JobSnapshot {
   error: string | null;
 }
 
+function unauthorized(): Response {
+  return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    status: 401,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function badRequest(msg: string): Response {
+  return new Response(JSON.stringify({ error: msg }), {
+    status: 400,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function notFound(): Response {
+  return new Response(JSON.stringify({ error: "Job not found" }), {
+    status: 404,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 /**
- * Stream video generation progress (issue #321) as Server-Sent Events.
+ * ── SSE Handler ──────────────────────────────────────────────────────
  *
- * GET /api/video/status?jobId=… emits a `data:` event whenever the job's
- * status/progress changes and closes the stream once the job is `completed` or
- * `failed`. Only the job's owner may read it.
+ * GET /api/video/status?jobId=…
+ *
+ * Streams the job's status/progress to the client using Server-Sent Events.
+ * Uses **exponential backoff** on the database poll interval when the row
+ * hasn't changed, and sends SSE heartbeat comments every 20 s to prevent
+ * proxy timeouts.
  */
 export async function GET(req: Request) {
+  // ── Auth & validation (before allocating the stream) ───────────────
   const user = await currentUser();
   const email = user?.primaryEmailAddress?.emailAddress;
-  if (!email) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  if (!email) return unauthorized();
 
   const jobId = new URL(req.url).searchParams.get("jobId");
-  if (!jobId) {
-    return new Response(JSON.stringify({ error: "jobId is required" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  if (!jobId) return badRequest("jobId is required");
 
-  // Verify the job exists and belongs to this user before opening the stream.
   const [job] = await db
-    .select()
+    .select({ userEmail: videoJobsTable.userEmail })
     .from(videoJobsTable)
     .where(eq(videoJobsTable.id, jobId));
-  if (!job || job.userEmail !== email) {
-    return new Response(JSON.stringify({ error: "Job not found" }), {
-      status: 404,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  if (!job || job.userEmail !== email) return notFound();
 
+  // ── Stream setup ───────────────────────────────────────────────────
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let closed = false;
-      let lastSerialized = "";
-      let interval: ReturnType<typeof setInterval> | null = null;
-      let timeout: ReturnType<typeof setTimeout> | null = null;
+      let lastSnapshotSerialized = "";
+      let lastUpdatedAt: Date | null = null;
+      let currentPollMs = BASE_POLL_MS;
+      let pollTimer: ReturnType<typeof setTimeout> | null = null;
+      let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+      let streamTimeout: ReturnType<typeof setTimeout> | null = null;
 
+      // ── Cleanup ────────────────────────────────────────────────────
       const cleanup = () => {
-        if (interval) clearInterval(interval);
-        if (timeout) clearTimeout(timeout);
+        if (pollTimer) clearTimeout(pollTimer);
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
+        if (streamTimeout) clearTimeout(streamTimeout);
         if (!closed) {
           closed = true;
           try {
             controller.close();
           } catch {
-            // already closed
+            /* already closed */
           }
         }
       };
 
-      const send = (event: object) => {
+      const send = (data: string) => {
         if (closed) return;
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        controller.enqueue(encoder.encode(data));
       };
 
-      // Returns true once a terminal state has been emitted and the stream closed.
+      const sendEvent = (event: object) => {
+        send(`data: ${JSON.stringify(event)}\n\n`);
+      };
+
+      // ── Heartbeat ──────────────────────────────────────────────────
+      const startHeartbeat = () => {
+        heartbeatTimer = setInterval(() => {
+          send(": heartbeat\n\n");
+        }, HEARTBEAT_MS);
+      };
+
+      // ── Single poll cycle ──────────────────────────────────────────
+      // Returns true when a terminal state has been processed.
       const poll = async (): Promise<boolean> => {
         const [row] = await db
           .select()
@@ -94,11 +141,12 @@ export async function GET(req: Request) {
           .where(eq(videoJobsTable.id, jobId));
 
         if (!row) {
-          send({ status: "failed", error: "Job not found" });
+          sendEvent({ status: "failed", error: "Job not found" });
           cleanup();
           return true;
         }
 
+        // Build the current snapshot.
         const snapshot: JobSnapshot = {
           jobId: row.id,
           status: row.status,
@@ -114,38 +162,64 @@ export async function GET(req: Request) {
             snapshot.videoUrl = await getVideoSignedUrl(snapshot.videoUrl);
           } catch (err) {
             console.error("Failed to sign video URL:", err);
-            // keep stored object key; client will see a broken link rather than no status
           }
         }
 
         const serialized = JSON.stringify(snapshot);
-        if (serialized !== lastSerialized) {
-          send(snapshot);
-          lastSerialized = serialized;
+
+        // ── Change detection ─────────────────────────────────────────
+        const rowUpdatedAt = row.updatedAt ? new Date(row.updatedAt) : null;
+        const changed =
+          serialized !== lastSnapshotSerialized ||
+          (rowUpdatedAt &&
+            lastUpdatedAt &&
+            rowUpdatedAt.getTime() !== lastUpdatedAt.getTime());
+
+        if (changed) {
+          sendEvent(snapshot);
+          lastSnapshotSerialized = serialized;
+          lastUpdatedAt = rowUpdatedAt;
+          currentPollMs = BASE_POLL_MS; // reset backoff on change
+        } else {
+          // Exponential backoff: double the interval, but cap it.
+          currentPollMs = Math.min(currentPollMs * BACKOFF_FACTOR, MAX_POLL_MS);
         }
 
+        // Terminal states — close the stream.
         if (row.status === "completed" || row.status === "failed") {
           cleanup();
           return true;
         }
+
         return false;
       };
 
-      // Close the stream if the client disconnects.
+      // ── Orchestration loop (recursive setTimeout) ──────────────────
+      const scheduleNext = () => {
+        if (closed) return;
+        pollTimer = setTimeout(async () => {
+          try {
+            const done = await poll();
+            if (!done) scheduleNext();
+          } catch {
+            sendEvent({ status: "failed", error: "Status stream error" });
+            cleanup();
+          }
+        }, currentPollMs);
+      };
+
+      // ── Wire it up ─────────────────────────────────────────────────
       req.signal?.addEventListener?.("abort", cleanup);
 
-      // Emit the current state immediately; stop if it's already terminal.
+      // Emit the current state immediately; stop if already terminal.
       if (await poll()) return;
 
-      interval = setInterval(() => {
-        poll().catch(() => {
-          send({ status: "failed", error: "Status stream error" });
-          cleanup();
-        });
-      }, POLL_INTERVAL_MS);
+      startHeartbeat();
+      scheduleNext();
 
-      timeout = setTimeout(() => {
-        send({ type: "timeout", message: "Status stream closed; reconnect to continue." });
+      // Hard cap: close the stream after MAX_STREAM_MS.
+      streamTimeout = setTimeout(() => {
+        sendEvent({ type: "timeout", message: "Status stream closed; reconnect to continue." });
         cleanup();
       }, MAX_STREAM_MS);
     },
