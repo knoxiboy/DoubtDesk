@@ -4,7 +4,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
 import { usersTable } from "@/configs/schema";
 import { verifyUnsubscribeToken } from "@/lib/email/email";
-import { generalLimiter } from "@/lib/ratelimit";
+import { generalLimiter } from "@/lib/ratelimit/ratelimit";
 import { randomBytes } from "crypto";
 
 const CSRF_COOKIE =
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
         }
 
         const normalizedEmail = email.trim().toLowerCase();
-        const rateLimitResult = await generalLimiter.limit(`general:${normalizedEmail}`);
+        const rateLimitResult = await generalLimiter.limit(`unsubscribe:${normalizedEmail}`);
         if (!rateLimitResult.success) {
             return redirectWithError(req, "Too many unsubscribe attempts. Please try again later.");
         }
