@@ -80,7 +80,8 @@ export default clerkMiddleware(async (auth, req) => {
             path.startsWith('/api/ai-career-chat-agent') ||
             path.startsWith('/api/doubts/check-similarity') ||
             path.startsWith('/api/roadmap') ||
-            (path.startsWith('/api/doubts') && (req.method === 'POST' || path.includes('/practice')));
+            path.startsWith('/api/doubts/practice') ||
+            path.includes('/practice');
         const isVideoRoute = path.startsWith('/api/video/generate');
         const limiter = isVideoRoute ? videoLimiter : (isAiRoute ? aiLimiter : generalLimiter);
 
@@ -94,7 +95,7 @@ export default clerkMiddleware(async (auth, req) => {
                         message: isVideoRoute
                             ? "Video generation limit reached (max 3 per hour)."
                             : (isAiRoute
-                                ? "AI Solver is currently rate limited to protect resources."
+                                ? "AI request limit reached. Please try again later."
                                 : "You've reached the rate limit for this action.")
                     }),
                     {

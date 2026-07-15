@@ -1,6 +1,7 @@
 import { GET, POST } from '@/app/api/doubts/route';
 import { db } from '@/configs/db';
 import { currentUser } from '@clerk/nextjs/server';
+import { buildSearchCondition, buildRankOrder } from '@/lib/search/search';
 
 jest.mock('@/lib/search/search', () => ({
     buildSearchCondition: jest.fn().mockReturnValue(null),
@@ -206,6 +207,8 @@ describe('Doubts API Endpoints', () => {
             primaryEmailAddress: { emailAddress: 'student@example.com' },
             fullName: 'Test Student'
         });
+        (buildSearchCondition as jest.Mock).mockReset().mockReturnValue(null);
+        (buildRankOrder as jest.Mock).mockReset().mockReturnValue(null);
     });
 
     it('GET allows anonymous community doubt reads', async () => {
@@ -340,6 +343,38 @@ describe('Doubts API Endpoints', () => {
         expect(res?.status).toBe(200);
         expect(json.id).toBe(2);
         expect(json.subject).toBe('Physics');
+    });
+
+    it('GET should call buildSearchCondition and buildRankOrder when search param is provided', async () => {
+        const req = new Request('http://localhost/api/doubts?search=physics');
+        await GET(req);
+
+        expect(buildSearchCondition).toHaveBeenCalledWith('physics');
+        expect(buildRankOrder).toHaveBeenCalledWith('physics');
+    });
+
+    it('GET should not invoke search helpers when search param is absent', async () => {
+        const req = new Request('http://localhost/api/doubts?subject=Physics');
+        await GET(req);
+
+        expect(buildSearchCondition).not.toHaveBeenCalled();
+        expect(buildRankOrder).not.toHaveBeenCalled();
+    });
+
+    it('GET returns empty doubts and correct metadata when full-text search finds nothing', async () => {
+        (buildSearchCondition as jest.Mock).mockReturnValueOnce({ sql: 'search_vector @@ query' });
+        (db.select as jest.Mock)
+            .mockImplementationOnce(() => createChainWithData([{ count: 0 }]))
+            .mockImplementationOnce(() => createChainWithData([]));
+
+        const req = new Request('http://localhost/api/doubts?search=xyznoresults');
+        const res = await GET(req);
+        const json = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(json.doubts).toHaveLength(0);
+        expect(json.totalCount).toBe(0);
+        expect(json.hasMore).toBe(false);
     });
 });
 

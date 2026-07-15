@@ -1,6 +1,19 @@
 import { jsPDF } from "jspdf";
 
 /**
+ * Helper function to load an image asynchronously before adding it to jsPDF.
+ */
+const loadImage = (url: string): Promise<HTMLImageElement> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = (err) => reject(err);
+        img.src = url;
+    });
+};
+
+/**
  * Doubt type matching the doubtsTable schema from configs/schema.ts
  * with the additional replyCount field appended by the API.
  */
@@ -23,11 +36,12 @@ export interface ExportDoubt {
 
 /**
  * Generates and downloads a PDF report of classroom doubts.
+ * Now asynchronous to handle image loading.
  *
  * @param classroomName - Name of the classroom
  * @param doubts - Array of doubts to include in the PDF
  */
-export function exportDoubtsPDF(classroomName: string, doubts: ExportDoubt[]): void {
+export async function exportDoubtsPDF(classroomName: string, doubts: ExportDoubt[]): Promise<void> {
     const doc = new jsPDF("p", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -93,7 +107,10 @@ export function exportDoubtsPDF(classroomName: string, doubts: ExportDoubt[]): v
         doc.text("No doubts found matching the selected filters.", marginLeft, y);
     }
 
-    doubts.forEach((doubt, index) => {
+    // Using a for...of loop instead of .forEach() to allow awaiting image loads
+    for (let index = 0; index < doubts.length; index++) {
+        const doubt = doubts[index];
+
         // Estimate space needed for this doubt block (minimum ~35mm)
         checkPageOverflow(45);
 
@@ -126,6 +143,52 @@ export function exportDoubtsPDF(classroomName: string, doubts: ExportDoubt[]): v
                 y += 5;
             }
             y += 2;
+        }
+
+        // ── Image Handling ─────────────────────────────────────
+        // Ensure we don't try to render embedded PDF documents as images
+        if (doubt.imageUrl && !doubt.imageUrl.startsWith("data:application/pdf")) {
+            try {
+                const img = await loadImage(doubt.imageUrl);
+                
+                // Set constraints so the image doesn't blow out the PDF page
+                const maxImgWidth = contentWidth;
+                const maxImgHeight = 80; // Bound to 80mm maximum height
+                
+                let renderWidth = img.width;
+                let renderHeight = img.height;
+                const ratio = renderWidth / renderHeight;
+
+                // Scale down based on width
+                if (renderWidth > maxImgWidth) {
+                    renderWidth = maxImgWidth;
+                    renderHeight = renderWidth / ratio;
+                }
+                
+                // Scale down based on height
+                if (renderHeight > maxImgHeight) {
+                    renderHeight = maxImgHeight;
+                    renderWidth = renderHeight * ratio;
+                }
+
+                // Check if the image will push us off the bottom of the page
+                checkPageOverflow(renderHeight + 10);
+                
+                // Try extracting format from URL, default to PNG to be safe
+                const fileExtMatch = doubt.imageUrl.match(/\.(jpeg|jpg|gif|png|webp)/i);
+                let format = fileExtMatch ? fileExtMatch[1].toUpperCase() : 'PNG';
+                if (format === 'JPG') format = 'JPEG';
+
+                doc.addImage(img, format, marginLeft, y, renderWidth, renderHeight);
+                y += renderHeight + 5;
+            } catch (error) {
+                console.warn(`Failed to embed image for doubt #${index + 1}`, error);
+                checkPageOverflow(6);
+                doc.setFontSize(9);
+                doc.setTextColor(239, 68, 68); // Red-500
+                doc.text("[Image attachment failed to load]", marginLeft, y);
+                y += 6;
+            }
         }
 
         // Metadata row
@@ -172,7 +235,7 @@ export function exportDoubtsPDF(classroomName: string, doubts: ExportDoubt[]): v
             doc.line(marginLeft, y, pageWidth - marginRight, y);
             y += 8;
         }
-    });
+    }
 
     // ── Footer on last page ─────────────────────────────────
     doc.setFontSize(8);

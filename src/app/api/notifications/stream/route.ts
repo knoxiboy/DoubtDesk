@@ -2,6 +2,9 @@ import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { subscribeToNotifications } from "@/lib/notifications/realtime";
 
+const MAX_DURATION_MS = 5 * 60 * 1000;
+const HEARTBEAT_INTERVAL_MS = 30_000;
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -15,19 +18,51 @@ export async function GET(req: Request) {
     const encoder = new TextEncoder();
     let cleanup = () => { };
 
+    let heartbeat: ReturnType<typeof setInterval> | undefined;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+
     const stream = new ReadableStream<Uint8Array>({
         start(controller) {
             cleanup = subscribeToNotifications(userEmail, controller);
-            controller.enqueue(encoder.encode(`: connected\n\n`));
+
+            heartbeat = setInterval(() => {
+                try {
+                    controller.enqueue(encoder.encode(`: heartbeat\n\n`));
+                } catch {
+                    clearTimers();
+                    cleanup();
+                }
+            }, HEARTBEAT_INTERVAL_MS);
+
+            timeout = setTimeout(() => {
+                clearTimers();
+                cleanup();
+                controller.close();
+            }, MAX_DURATION_MS);
 
             req.signal.addEventListener("abort", () => {
+                clearTimers();
                 cleanup();
-            });
+            }, { once: true });
+
+            controller.enqueue(encoder.encode(`: connected\n\n`));
         },
         cancel() {
+            clearTimers();
             cleanup();
         },
     });
+
+    function clearTimers() {
+        if (heartbeat !== undefined) {
+            clearInterval(heartbeat);
+            heartbeat = undefined;
+        }
+        if (timeout !== undefined) {
+            clearTimeout(timeout);
+            timeout = undefined;
+        }
+    }
 
     return new Response(stream, {
         headers: {

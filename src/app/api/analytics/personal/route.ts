@@ -2,17 +2,13 @@ import { NextResponse } from 'next/server';
 import { db } from '@/configs/db';
 import { doubtsTable } from '@/configs/schema';
 import { and, eq, desc, isNull } from 'drizzle-orm';
-import Groq from 'groq-sdk';
+import { groq } from '@/lib/ai/groq-client';
 import { buildErrorResponse } from '@/lib/errors/error-handler';
 import {
     parseClassroomId,
     requireAuth,
     requireMembership,
 } from '@/lib/auth/membership-guard';
-
-const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY || 'dummy_key',
-});
 
 export async function GET(req: Request) {
     try {

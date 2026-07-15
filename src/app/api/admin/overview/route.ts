@@ -33,112 +33,135 @@ export async function GET(request: Request) {
         const limit = Math.min(parsePositiveInt(limitStr, 50), 100);
         const offset = parsePositiveInt(offsetStr, 0);
 
-        // 2. Platform-level KPIs
-        const totalUsersResult = await db.select({ value: count() }).from(usersTable);
-        const totalUsers = totalUsersResult[0]?.value || 0;
-
-        const totalClassroomsResult = await db.select({ value: count() }).from(classroomsTable);
-        const totalClassrooms = totalClassroomsResult[0]?.value || 0;
-
-        const totalDoubtsResult = await db.select({ value: count() }).from(doubtsTable).where(isNull(doubtsTable.deletedAt));
-        const totalDoubts = totalDoubtsResult[0]?.value || 0;
-
-        const totalAiCallsResult = await db.select({ value: count() }).from(doubtsTable).where(
-            and(eq(doubtsTable.type, "ai"), isNull(doubtsTable.deletedAt))
-        );
-        const totalAiCalls = totalAiCallsResult[0]?.value || 0;
-
-        const activeConfusionAlertsResult = await db.select({ value: count() }).from(confusionAlertsTable).where(eq(confusionAlertsTable.status, "active"));
-        const activeConfusionAlerts = activeConfusionAlertsResult[0]?.value || 0;
-
-        // 3. User roles breakdown
-        const rolesBreakdown = await db.select({
-            role: usersTable.role,
-            count: count(),
-        })
-        .from(usersTable)
-        .groupBy(usersTable.role);
-
-        // 4. Active classrooms count (classroom with at least 1 doubt in the last 30 days)
+        // 2. Run all independent queries in parallel
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        const activeClassroomsResult = await db.selectDistinct({ id: doubtsTable.classroomId })
+
+        const [
+            totalUsersResult,
+            totalClassroomsResult,
+            totalDoubtsResult,
+            totalAiCallsResult,
+            activeConfusionAlertsResult,
+            rolesBreakdown,
+            activeClassroomsResult,
+            subjectVolume,
+            classrooms,
+            studentCounts,
+            doubtStats,
+            pedagogyStats,
+            activeAlertsPerClassroom,
+            resolutionTimes,
+            confusionAlerts,
+            pendingFlagsResult,
+            totalFlagsResult,
+        ] = await Promise.all([
+            db.select({ value: count() }).from(usersTable),
+            db.select({ value: count() }).from(classroomsTable),
+            db.select({ value: count() }).from(doubtsTable).where(isNull(doubtsTable.deletedAt)),
+            db.select({ value: count() }).from(doubtsTable).where(
+                and(eq(doubtsTable.type, "ai"), isNull(doubtsTable.deletedAt))
+            ),
+            db.select({ value: count() }).from(confusionAlertsTable).where(eq(confusionAlertsTable.status, "active")),
+            db.select({
+                role: usersTable.role,
+                count: count(),
+            })
+            .from(usersTable)
+            .groupBy(usersTable.role),
+            db.selectDistinct({ id: doubtsTable.classroomId })
+                .from(doubtsTable)
+                .where(
+                    and(
+                        isNotNull(doubtsTable.classroomId),
+                        gte(doubtsTable.createdAt, thirtyDaysAgo),
+                        isNull(doubtsTable.deletedAt)
+                    )
+                ),
+            db.select({
+                subject: doubtsTable.subject,
+                count: count(),
+            })
             .from(doubtsTable)
-            .where(
-                and(
-                    isNotNull(doubtsTable.classroomId),
-                    gte(doubtsTable.createdAt, thirtyDaysAgo),
-                    isNull(doubtsTable.deletedAt)
-                )
-            );
+            .where(isNull(doubtsTable.deletedAt))
+            .groupBy(doubtsTable.subject),
+            db.select({
+                id: classroomsTable.id,
+                name: classroomsTable.name,
+                university: classroomsTable.university,
+                year: classroomsTable.year,
+                teacherEmail: classroomsTable.teacherEmail,
+                teacherName: usersTable.name,
+            })
+            .from(classroomsTable)
+            .leftJoin(usersTable, eq(classroomsTable.teacherEmail, usersTable.email))
+            .limit(limit)
+            .offset(offset),
+            db.select({
+                classroomId: membershipsTable.classroomId,
+                count: count(),
+            })
+            .from(membershipsTable)
+            .where(eq(membershipsTable.role, "student"))
+            .groupBy(membershipsTable.classroomId),
+            db.select({
+                classroomId: doubtsTable.classroomId,
+                total: count(),
+                solved: sql<number>`sum(case when ${doubtsTable.isSolved} = 'solved' then 1 else 0 end)::int`,
+            })
+            .from(doubtsTable)
+            .where(isNull(doubtsTable.deletedAt))
+            .groupBy(doubtsTable.classroomId),
+            db.select({
+                classroomId: doubtsTable.classroomId,
+                totalReplies: count(repliesTable.id),
+                driftedReplies: sql<number>`sum(case when ${repliesTable.pedagogyDrifted} = true then 1 else 0 end)::int`,
+            })
+            .from(repliesTable)
+            .innerJoin(doubtsTable, eq(repliesTable.doubtId, doubtsTable.id))
+            .groupBy(doubtsTable.classroomId),
+            db.select({
+                classroomId: confusionAlertsTable.classroomId,
+                count: count(),
+            })
+            .from(confusionAlertsTable)
+            .where(eq(confusionAlertsTable.status, "active"))
+            .groupBy(confusionAlertsTable.classroomId),
+            db.select({
+                classroomId: doubtsTable.classroomId,
+                avgTimeMins: sql<number>`avg(extract(epoch from (${repliesTable.createdAt} - ${doubtsTable.createdAt})) / 60)::int`,
+            })
+            .from(doubtsTable)
+            .innerJoin(repliesTable, eq(doubtsTable.solvedReplyId, repliesTable.id))
+            .where(isNull(doubtsTable.deletedAt))
+            .groupBy(doubtsTable.classroomId),
+            db.select({
+                id: confusionAlertsTable.id,
+                classroomId: confusionAlertsTable.classroomId,
+                classroomName: classroomsTable.name,
+                topic: confusionAlertsTable.topic,
+                summary: confusionAlertsTable.summary,
+                suggestedAction: confusionAlertsTable.suggestedAction,
+                confidence: confusionAlertsTable.confidence,
+                doubtCount: confusionAlertsTable.doubtCount,
+                createdAt: confusionAlertsTable.createdAt,
+            })
+            .from(confusionAlertsTable)
+            .innerJoin(classroomsTable, eq(confusionAlertsTable.classroomId, classroomsTable.id))
+            .where(eq(confusionAlertsTable.status, "active"))
+            .orderBy(desc(confusionAlertsTable.createdAt)),
+            db.select({ value: count() }).from(moderationLogsTable).where(eq(moderationLogsTable.status, "pending")),
+            db.select({ value: count() }).from(moderationLogsTable),
+        ]);
+
+        const totalUsers = totalUsersResult[0]?.value || 0;
+        const totalClassrooms = totalClassroomsResult[0]?.value || 0;
+        const totalDoubts = totalDoubtsResult[0]?.value || 0;
+        const totalAiCalls = totalAiCallsResult[0]?.value || 0;
+        const activeConfusionAlerts = activeConfusionAlertsResult[0]?.value || 0;
         const activeClassrooms = activeClassroomsResult.length;
         const inactiveClassrooms = Math.max(0, totalClassrooms - activeClassrooms);
-
-        // 5. Subject popularity breakdown
-        const subjectVolume = await db.select({
-            subject: doubtsTable.subject,
-            count: count(),
-        })
-        .from(doubtsTable)
-        .where(isNull(doubtsTable.deletedAt))
-        .groupBy(doubtsTable.subject);
-
-        // 6. Detailed classroom health stats
-        const classrooms = await db.select({
-            id: classroomsTable.id,
-            name: classroomsTable.name,
-            university: classroomsTable.university,
-            year: classroomsTable.year,
-            teacherEmail: classroomsTable.teacherEmail,
-            teacherName: usersTable.name,
-        })
-        .from(classroomsTable)
-        .leftJoin(usersTable, eq(classroomsTable.teacherEmail, usersTable.email))
-        .limit(limit)
-        .offset(offset);
-
-        // Sub-queries/Aggregates mapped in JS to stay highly optimized
-        const studentCounts = await db.select({
-            classroomId: membershipsTable.classroomId,
-            count: count(),
-        })
-        .from(membershipsTable)
-        .where(eq(membershipsTable.role, "student"))
-        .groupBy(membershipsTable.classroomId);
-
-        const doubtStats = await db.select({
-            classroomId: doubtsTable.classroomId,
-            total: count(),
-            solved: sql<number>`sum(case when ${doubtsTable.isSolved} = 'solved' then 1 else 0 end)::int`,
-        })
-        .from(doubtsTable)
-        .where(isNull(doubtsTable.deletedAt))
-        .groupBy(doubtsTable.classroomId);
-
-        const pedagogyStats = await db.select({
-            classroomId: doubtsTable.classroomId,
-            totalReplies: count(repliesTable.id),
-            driftedReplies: sql<number>`sum(case when ${repliesTable.pedagogyDrifted} = true then 1 else 0 end)::int`,
-        })
-        .from(repliesTable)
-        .innerJoin(doubtsTable, eq(repliesTable.doubtId, doubtsTable.id))
-        .groupBy(doubtsTable.classroomId);
-
-        const activeAlertsPerClassroom = await db.select({
-            classroomId: confusionAlertsTable.classroomId,
-            count: count(),
-        })
-        .from(confusionAlertsTable)
-        .where(eq(confusionAlertsTable.status, "active"))
-        .groupBy(confusionAlertsTable.classroomId);
-
-        const resolutionTimes = await db.select({
-            classroomId: doubtsTable.classroomId,
-            avgTimeMins: sql<number>`avg(extract(epoch from (${repliesTable.createdAt} - ${doubtsTable.createdAt})) / 60)::int`,
-        })
-        .from(doubtsTable)
-        .innerJoin(repliesTable, eq(doubtsTable.solvedReplyId, repliesTable.id))
-        .where(isNull(doubtsTable.deletedAt))
-        .groupBy(doubtsTable.classroomId);
+        const pendingFlags = pendingFlagsResult[0]?.value || 0;
+        const totalFlags = totalFlagsResult[0]?.value || 0;
 
         // Build mapping helpers
         const studentCountMap = new Map(studentCounts.map((c: any) => [c.classroomId, c.count]));
@@ -179,30 +202,6 @@ export async function GET(request: Request) {
                 alertsCount
             };
         });
-
-        // 7. Active confusion alerts details
-        const confusionAlerts = await db.select({
-            id: confusionAlertsTable.id,
-            classroomId: confusionAlertsTable.classroomId,
-            classroomName: classroomsTable.name,
-            topic: confusionAlertsTable.topic,
-            summary: confusionAlertsTable.summary,
-            suggestedAction: confusionAlertsTable.suggestedAction,
-            confidence: confusionAlertsTable.confidence,
-            doubtCount: confusionAlertsTable.doubtCount,
-            createdAt: confusionAlertsTable.createdAt,
-        })
-        .from(confusionAlertsTable)
-        .innerJoin(classroomsTable, eq(confusionAlertsTable.classroomId, classroomsTable.id))
-        .where(eq(confusionAlertsTable.status, "active"))
-        .orderBy(desc(confusionAlertsTable.createdAt));
-
-        // 8. Moderation overview
-        const pendingFlagsResult = await db.select({ value: count() }).from(moderationLogsTable).where(eq(moderationLogsTable.status, "pending"));
-        const pendingFlags = pendingFlagsResult[0]?.value || 0;
-
-        const totalFlagsResult = await db.select({ value: count() }).from(moderationLogsTable);
-        const totalFlags = totalFlagsResult[0]?.value || 0;
 
         // return compiled JSON response
         return successResponse({
