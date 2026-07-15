@@ -85,8 +85,36 @@ jobs:
             const linkedIssues = Array.from(linkedIssuesSet);
 
             if (linkedIssues.length === 0) {
-              console.log('No linked issues found. Skipping assignment check.');
-              core.setOutput('valid', 'true');
+              console.log('No linked issues found. Closing PR.');
+              core.setOutput('valid', 'false');
+
+              const comment = "We are closing this pr as it has no linking issue to it. If your is actually related to a isssue assigned to u then create a new pr and link the issue in discription.";
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: comment,
+              });
+
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  labels: ['invalid'],
+                });
+              } catch (e) {
+                console.log(`Failed to add invalid label: ${e.message}`);
+              }
+
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                state: 'closed',
+              });
+
               return;
             }
 

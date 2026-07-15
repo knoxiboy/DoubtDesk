@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import Groq from "groq-sdk";
+import { groq } from "@/lib/ai/groq-client";
 import { and, eq } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
@@ -11,7 +11,6 @@ import { buildSystemMessages } from "@/lib/ai/socratic-prompt";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import type { AIMode } from "@/types/ai-chat";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_build_key" });
 const MODEL = "llama-3.3-70b-versatile";
 
 export async function POST(req: Request): Promise<NextResponse> {

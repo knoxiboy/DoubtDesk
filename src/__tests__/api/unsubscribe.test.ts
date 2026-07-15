@@ -96,6 +96,8 @@ describe('Unsubscribe API Endpoint', () => {
         process.env.UNSUBSCRIBE_SECRET = 'test-unsubscribe-secret';
         jest.clearAllMocks();
         currentUserMock.mockResolvedValue(null);
+        const { resetMemoryMap } = require('@/lib/ratelimit/ratelimit');
+        resetMemoryMap();
     });
 
     it('emits a CSRF nonce cookie and embeds the same nonce in the form', async () => {
@@ -177,7 +179,7 @@ describe('Unsubscribe API Endpoint', () => {
     it('rate limits repeated unsubscribe attempts from the same IP', async () => {
         let res: Response | undefined;
 
-        for (let i = 0; i < 11; i += 1) {
+        for (let i = 0; i < 31; i += 1) {
             res = await POST(makeUnsignedRequest('POST', '127.0.0.3'));
         }
 

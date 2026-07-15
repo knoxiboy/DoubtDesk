@@ -1,11 +1,7 @@
-import Groq from "groq-sdk";
+import { groq } from "@/lib/ai/groq-client";
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable } from "@/configs/schema";
 import { and, eq, isNull, desc, inArray, SQL, sql } from "drizzle-orm";
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || "dummy_key",
-});
 
 const EMBEDDING_DIMENSIONS = 1536;
 const DEFAULT_SIMILARITY_THRESHOLD = 80; // 0..100 scale, matching similarity expression output

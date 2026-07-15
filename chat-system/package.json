@@ -10,21 +10,26 @@
     "start": "next start"
   },
   "dependencies": {
+    "@clerk/backend": "^3.11.4",
+    "@clerk/nextjs": "^7.5.17",
     "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
     "lucide-react": "^1.16.0",
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "socket.io-client": "latest",
+    "next": "^16.2.6",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.0",
+    "@types/node": "26.1.1",
+    "@types/react": "19.2.17",
     "autoprefixer": "^10.5.0",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.0",
-    "typescript": "latest"
+    "typescript": "^6.0.3"
   }
 }

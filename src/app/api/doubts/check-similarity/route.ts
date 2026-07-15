@@ -2,7 +2,7 @@ import { db } from "@/configs/db";
 import { doubtsTable, repliesTable } from "@/configs/schema";
 import { and, eq, isNull, desc, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import Groq from "groq-sdk";
+import { groq } from "@/lib/ai/groq-client";
 import { findSemanticDuplicates } from "@/lib/ai/embeddings";
 import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
@@ -18,10 +18,6 @@ import {
   requireAuth,
   requireMembership,
 } from "@/lib/auth/membership-guard";
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || "dummy_key",
-});
 
 export interface SimilarDoubt {
   id: number;

@@ -4,20 +4,9 @@ import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
 import { usersTable } from "@/configs/schema";
 import { verifyUnsubscribeToken } from "@/lib/email/email";
+import { generalLimiter } from "@/lib/ratelimit/ratelimit";
 import { randomBytes } from "crypto";
 
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const RATE_LIMIT_MAX_REQUESTS = 10;
-const unsubscribeAttempts = new Map<string, { count: number; resetAt: number }>();
-
-/**
- * CSRF protection cookie name.
- *
- * The `__Host-` prefix is a browser security feature: it forces the browser
- * to only send this cookie to the exact origin that set it, with Path=/,
- * and only over HTTPS. This prevents subdomain-injection attacks.
- * In development (HTTP) the prefix is dropped gracefully.
- */
 const CSRF_COOKIE =
     process.env.NODE_ENV === "production" ? "__Host-csrf_unsub" : "csrf_unsub";
 
@@ -30,19 +19,6 @@ function getClientIp(req: NextRequest) {
         req.headers.get("x-real-ip") ||
         "unknown"
     );
-}
-
-function isRateLimited(ip: string) {
-    const now = Date.now();
-    const current = unsubscribeAttempts.get(ip);
-
-    if (!current || current.resetAt <= now) {
-        unsubscribeAttempts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-        return false;
-    }
-
-    current.count += 1;
-    return current.count > RATE_LIMIT_MAX_REQUESTS;
 }
 
 function getParams(req: NextRequest) {
@@ -137,12 +113,19 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         const ip = getClientIp(req);
-        if (isRateLimited(ip)) {
+
+        const { email, expires, token } = getParams(req);
+        if (!email) {
+            return redirectWithError(req, "Invalid or expired unsubscribe link");
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+        const rateLimitResult = await generalLimiter.limit(`unsubscribe:${normalizedEmail}`);
+        if (!rateLimitResult.success) {
             return redirectWithError(req, "Too many unsubscribe attempts. Please try again later.");
         }
 
-        const { email, expires, token } = getParams(req);
-        if (!email || !isValidRequest(email, expires, token)) {
+        if (!isValidRequest(email, expires, token)) {
             return redirectWithError(req, "Invalid or expired unsubscribe link");
         }
 
@@ -173,8 +156,6 @@ export async function POST(req: NextRequest) {
             return redirectWithError(req, "Invalid form submission. Please try the unsubscribe link again.");
         }
         // ─────────────────────────────────────────────────────────────────────
-
-        const normalizedEmail = email.trim().toLowerCase();
 
         // If a Clerk session is attached, require it to match the email in the
         // unsubscribe token. The signed token alone is enough to authenticate

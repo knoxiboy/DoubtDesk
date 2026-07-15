@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/configs/db";
-import { requireTeacher } from "@/lib/auth/membership-guard";
+import { requireTeacher, TEACHER_ROLES } from "@/lib/auth/membership-guard";
 import {
   doubtsTable,
   repliesTable,
@@ -45,18 +45,45 @@ export async function GET(req: Request) {
 
     classroomFilter = eq(doubtsTable.classroomId, classroomId);
   } else {
-    // Get all classrooms user is a member of
-    const userMemberships = await db
-      .select({ classroomId: membershipsTable.classroomId })
-      .from(membershipsTable)
-      .where(eq(membershipsTable.userEmail, email));
+    // Only include classrooms where the caller is teacher/owner/admin.
+    // Two authorization paths, mirroring what requireTeacher/requireMembership
+    // accepts in the ?classroomId= branch so a legitimate owner doesn't get
+    // 403'd here just because their membership row is missing (see codeant
+    // review on #885):
+    //   1. membershipsTable row with role in TEACHER_ROLES
+    //   2. classroomsTable.teacherEmail matches (owner fallback used inside
+    //      requireMembership when no membership row exists)
+    // Role filter is pushed into SQL to avoid a JS-side re-filter
+    // (per coderabbit review).
+    const [teacherMemberships, ownedClassrooms] = await Promise.all([
+      db
+        .select({ classroomId: membershipsTable.classroomId })
+        .from(membershipsTable)
+        .where(
+          and(
+            eq(membershipsTable.userEmail, email),
+            inArray(membershipsTable.role, [...TEACHER_ROLES]),
+          ),
+        ),
+      db
+        .select({ id: classroomsTable.id })
+        .from(classroomsTable)
+        .where(eq(classroomsTable.teacherEmail, email)),
+    ]);
 
-    const userClassroomIds = userMemberships.map((m: any) => m.classroomId);
+    // Dedupe — a teacher will usually appear in both queries.
+    const userClassroomIds = Array.from(
+      new Set<number>([
+        ...teacherMemberships.map((m) => m.classroomId),
+        ...ownedClassrooms.map((c) => c.id),
+      ]),
+    );
 
     if (userClassroomIds.length === 0) {
-      return NextResponse.json({
-        message: "Export route working",
-      });
+      return NextResponse.json(
+        { error: "Forbidden" },
+        { status: 403 }
+      );
     }
 
     classroomFilter = inArray(doubtsTable.classroomId, userClassroomIds);

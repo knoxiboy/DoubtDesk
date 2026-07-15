@@ -1,5 +1,6 @@
-// configs/schema.ts
-import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique, vector } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique, vector, pgEnum } from "drizzle-orm/pg-core";
+
+export const userRoleEnum = pgEnum("user_role", ["student", "teacher", "admin"]);
 
 export const usersTable = pgTable("users", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -8,7 +9,8 @@ export const usersTable = pgTable("users", {
     university: varchar({ length: 255 }),
     year: varchar({ length: 50 }),
     collegeEmail: varchar({ length: 255 }),
-    role: varchar({ length: 20 }),
+    role: userRoleEnum("role").default("student").notNull(),
+    requestedRole: userRoleEnum("requested_role"),
     onboarded: boolean().default(false),
     violationCount: integer().default(0).notNull(),
     isBlocked: boolean().default(false).notNull(),
@@ -510,4 +512,33 @@ export const organizationMembershipsTable = pgTable("organization_memberships", 
     userEmail: varchar({ length: 255 }).notNull(),
     role: varchar({ length: 20 }).notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-});
+});
+
+export const coverLettersTable = pgTable("cover_letters", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userEmail: varchar({ length: 255 }).notNull(),
+    jobDescription: text().notNull(),
+    userDetails: text().notNull(),
+    coverLetter: text().notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    userIdFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+}));
+
+export const resumeAnalysisTable = pgTable("resume_analysis", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    userEmail: varchar({ length: 255 }).notNull(),
+    resumeText: text().notNull(),
+    jobDescription: text(),
+    analysisData: text().notNull(),
+    resumeName: varchar({ length: 255 }),
+    createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    userIdFk: foreignKey({
+        columns: [table.userEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+}));
