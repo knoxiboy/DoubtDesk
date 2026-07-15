@@ -32,8 +32,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
         // Security: Verify doubt visibility/classroom membership
+        let membership: typeof membershipsTable.$inferSelect | undefined;
         if (doubt.classroomId && email) {
-            const [membership] = await db.select().from(membershipsTable).where(
+            [membership] = await db.select().from(membershipsTable).where(
                 and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, doubt.classroomId))
             );
             if (!membership) {
@@ -45,21 +46,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
         // Permission check for sensitive actions
         const isOwner = email && doubt.userEmail === email;
-        let isTeacher = false;
-
-        if (doubt.classroomId && email) {
-            const [membership] = await db
-            .select()
-            .from(membershipsTable)
-            .where(
-                and(
-                    eq(membershipsTable.userEmail, email),
-                    eq(membershipsTable.classroomId, doubt.classroomId)
-                )
-            );
-
-            isTeacher = !!(membership && canTeach(membership.role));    
-        }
+        const isTeacher = !!(membership && canTeach(membership.role));
 
         if (action === "like") {
             if (!email) {
