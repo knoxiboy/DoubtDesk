@@ -2,8 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
 import ResourceShare from './ResourceShare';
 import { Send } from 'lucide-react';
-
-const socket = io(); // Will be configured for server later
+import { useAuth, useUser } from '@clerk/nextjs';
 
 interface Message {
   user: string;
@@ -13,19 +12,42 @@ interface Message {
 export default function ChatWindow({ room }: { room: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [user] = useState('User' + Math.floor(Math.random() * 1000));
+  const [socket, setSocket] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const { getToken } = useAuth();
+  const { user: clerkUser, isLoaded, isSignedIn } = useUser();
+  
+  const user = clerkUser?.firstName || clerkUser?.username || clerkUser?.primaryEmailAddress?.emailAddress || 'User';
+
   useEffect(() => {
-    socket.emit('join', room);
-    socket.on('message', (msg: Message) => {
-      setMessages((prev) => [...prev, msg]);
-    });
+    let activeSocket: any;
+
+    async function connectSocket() {
+      const token = await getToken();
+      if (!token) return;
+
+      activeSocket = io({ auth: { token } });
+      setSocket(activeSocket);
+
+      activeSocket.emit('join', room);
+      activeSocket.on('message', (msg: Message) => {
+        setMessages((prev) => [...prev, msg]);
+      });
+    }
+
+    if (isSignedIn) {
+      connectSocket();
+    }
+
     return () => {
-      socket.off('message');
-      socket.emit('leave', room);
+      if (activeSocket) {
+        activeSocket.off('message');
+        activeSocket.emit('leave', room);
+        activeSocket.disconnect();
+      }
     };
-  }, [room]);
+  }, [room, getToken, isSignedIn]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -33,12 +55,15 @@ export default function ChatWindow({ room }: { room: string }) {
 
   const sendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || !socket) return;
     const msg = { user, text: input };
     socket.emit('message', { ...msg, room });
     setMessages((prev) => [...prev, msg]);
     setInput('');
   };
+
+  if (!isLoaded) return <div className="flex h-full items-center justify-center text-white">Loading...</div>;
+  if (!isSignedIn) return <div className="flex h-full items-center justify-center text-white">Please sign in to chat.</div>;
 
   return (
     <div className="flex h-full min-h-[620px] flex-col">
