@@ -33,7 +33,10 @@ export default function ExportButton({ classroomId, classroomName, isTeacher }: 
             }
 
             const data: ExportAPIResponse = await res.json();
-            exportDoubtsPDF(data.classroomName, data.doubts);
+            
+            // Added the 'await' keyword here!
+            await exportDoubtsPDF(data.classroomName, data.doubts);
+            
             toast.success("PDF exported successfully!");
         } catch (error: unknown) {
             console.error("Export error:", error);

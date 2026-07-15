@@ -119,7 +119,7 @@ export async function POST(
       FROM slot_claim
       ON CONFLICT (user_email, classroom_id) DO NOTHING
       RETURNING id AS membership_id
-    `);
+    `) as unknown as { rows: { membership_id: number }[] };
 
     if (joinResult.rows.length > 0) {
       // The CTE claimed a slot and inserted the membership atomically.

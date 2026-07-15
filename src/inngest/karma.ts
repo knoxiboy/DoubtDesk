@@ -1,7 +1,7 @@
 // inngest/karma.ts
 import { inngest } from "./client"; 
 import { db } from "@/configs/db";
-import { usersTable, karmaTransactionsTable } from "@/configs/schema";
+import { usersTable, karmaTransactionsTable, doubtsTable, repliesTable } from "@/configs/schema";
 import { eq, sql, isNotNull, and } from "drizzle-orm"; 
 import { checkAndAwardBadges } from "@/lib/karma/karma-utils";
 
@@ -112,15 +112,60 @@ export const onAnswerAccepted = inngest.createFunction(
             doubtId: number;
         };
 
+        // Defense in depth: don't trust event payload fields at face value.
+        // Re-derive the reply's author and its parent doubt from the DB so a
+        // forged event that pairs a valid replyId with an unrelated doubtId
+        // (or lies about replyAuthorEmail) can't sneak past the self-accept
+        // guard. Same reasoning as the route handler — we never award karma
+        // without a DB-authoritative match.
+        const [reply] = await db
+            .select({
+                userEmail: repliesTable.userEmail,
+                doubtId: repliesTable.doubtId,
+            })
+            .from(repliesTable)
+            .where(eq(repliesTable.id, replyId))
+            .limit(1);
+
+        if (!reply || reply.doubtId !== doubtId) {
+            console.warn(
+                `[karma-answer-accepted] Rejecting karma event: reply ${replyId} does not belong to doubt ${doubtId}`
+            );
+            return { success: false, skipped: "reply_doubt_mismatch", userEmail: replyAuthorEmail };
+        }
+
+        const [doubt] = await db
+            .select({ userEmail: doubtsTable.userEmail })
+            .from(doubtsTable)
+            .where(eq(doubtsTable.id, doubtId))
+            .limit(1);
+
+        if (!doubt) {
+            console.warn(
+                `[karma-answer-accepted] Rejecting karma event: doubt ${doubtId} not found`
+            );
+            return { success: false, skipped: "doubt_not_found", userEmail: replyAuthorEmail };
+        }
+
+        if (reply.userEmail && doubt.userEmail && reply.userEmail === doubt.userEmail) {
+            console.warn(
+                `[karma-answer-accepted] Refusing self-accept karma award for ${reply.userEmail} on doubt ${doubtId}`
+            );
+            return { success: false, skipped: "self_accept", userEmail: reply.userEmail };
+        }
+
+        // Attribute the ledger row to the DB-derived author, not the event payload.
+        const authoritativeAuthor = reply.userEmail || replyAuthorEmail;
+
         await executeKarmaTransaction({
-            userEmail: replyAuthorEmail,
+            userEmail: authoritativeAuthor,
             eventType: "answer_accepted",
             replyId,
             doubtId,
             note: "Answer marked as accepted solution",
         });
 
-        return { success: true, userEmail: replyAuthorEmail };
+        return { success: true, userEmail: authoritativeAuthor };
     }
 );
 
@@ -170,6 +215,11 @@ export const dailyStreakProcessor = inngest.createFunction(
         const now = new Date();
         const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         const oneDayMs = 24 * 60 * 60 * 1000;
+        // Calendar-day boundary for "yesterday". Used to guard the exact-24h
+        // edge case where a user contributed at yesterday's midnight — that
+        // legitimately counts as a contribution on the previous calendar day
+        // and must not reset the streak. See codeant review on #886.
+        const yesterdayMidnight = todayMidnight - oneDayMs;
 
         for (const user of users) {
             try {
@@ -240,15 +290,30 @@ export const dailyStreakProcessor = inngest.createFunction(
                     await checkAndAwardBadges(user.email);
                     processed++;
 
-                } else if (daysDiff >= 2) {
+                } else if (activeTimestamp >= yesterdayMidnight) {
+                    // Exact-24h boundary case: contribution was at (or after)
+                    // yesterday's midnight — that's still a valid contribution
+                    // for the previous calendar day. daysDiff would be 1 here
+                    // but the user did contribute yesterday. Do nothing;
+                    // today's contribution (if any) will award the bonus
+                    // through the daysDiff === 0 branch above. See codeant
+                    // review on #886.
+                    skippedNoOp++;
+                } else {
+                    // activeTimestamp < yesterdayMidnight → the user did NOT
+                    // contribute on the previous calendar day and missed at
+                    // least one full day. Trace: cron runs at Wed 00:00, user
+                    // last contributed Mon at 12:00 (before Tue 00:00 =
+                    // yesterdayMidnight), so Tuesday was entirely skipped and
+                    // the streak must reset. The old `daysDiff === 1` no-op
+                    // branch let anyone maintain a streak while contributing
+                    // only every other day, corrupting the currentStreak
+                    // field that gates streak_days badges. See issue #886.
                     await db
                         .update(usersTable)
                         .set({ currentStreak: 0 })
                         .where(eq(usersTable.email, user.email));
                     processed++;
-                } else if (daysDiff === 1) {
-                    // Valid trailing active window path (Contributed yesterday, hasn't contributed today yet)
-                    skippedNoOp++;
                 }
                 
             } catch (err) {

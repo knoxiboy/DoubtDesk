@@ -133,7 +133,7 @@ export async function checkAndAwardBadges(userEmail: string): Promise<string[]> 
                 })
                 .returning({ id: userBadgesTable.id });
 
-            if (insertedRow || !earnedIds.has(badge.id)) {
+            if (insertedRow) {
                 newlyAwarded.push(badge.slug);
             }
         }

@@ -32,7 +32,10 @@ import { db } from "@/configs/db";
 import { classroomsTable, membershipsTable } from "@/configs/schema";
 import { ApiError } from "@/lib/errors/error-handler";
 
-const TEACHER_ROLES = new Set(["teacher", "owner", "admin"]);
+// Exported so route handlers building their own membership queries can
+// filter to teacher-scoped rows (see /api/analytics/export global branch,
+// issue #885).
+export const TEACHER_ROLES = new Set(["teacher", "owner", "admin"]);
 
 export type AuthenticatedUser = NonNullable<
     Awaited<ReturnType<typeof currentUser>>

@@ -55,3 +55,8 @@ next-env.d.ts
 
 /scratch
 
+# Playwright
+/playwright-report/
+/test-results/
+/tests/e2e/.auth/
+

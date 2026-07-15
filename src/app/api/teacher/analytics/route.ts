@@ -11,6 +11,7 @@ import {
     requireTeacher,
 } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
+import { requireAdmin } from "@/lib/auth/requireAdmin";
 
 export async function GET(req: NextRequest) {
     try {
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Forbidden: Teachers or admins only" }, { status: 403 });
         }
 
-        const role = dbUser?.role || "teacher";
+        const role = dbUser?.role;
 
         // 3. Parse query parameters
         const { searchParams } = new URL(req.url);
@@ -50,6 +51,10 @@ export async function GET(req: NextRequest) {
         const classroomId = classroomIdStr === "all"
             ? null
             : parseOptionalClassroomId(classroomIdStr);
+        
+        if (classroomIdStr === "all") {
+            await requireAdmin();
+        }
         
         const startDateStr = searchParams.get("startDate");
         const endDateStr = searchParams.get("endDate");
@@ -278,6 +283,9 @@ export async function GET(req: NextRequest) {
             classroomsList
         });
     } catch (error: unknown) {
+        if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
+            throw error;
+        }
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });
     }

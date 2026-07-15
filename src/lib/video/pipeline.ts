@@ -2,7 +2,7 @@ import { renderMedia, selectComposition } from "@remotion/renderer";
 import path from "path";
 import fs from "fs";
 import os from "os";
-import Groq from "groq-sdk";
+import { groq } from "@/lib/ai/groq-client";
 import axios from "axios";
 import Tesseract from "tesseract.js";
 import { uploadVideo } from "./storage";
@@ -35,16 +35,30 @@ export interface VideoProgress {
 
 export type ProgressReporter = (update: VideoProgress) => Promise<void> | void;
 
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "image/svg+xml", "image/tiff"];
+
+async function validateImageUrl(url: string): Promise<void> {
+  try {
+    const response = await axios.head(url, { timeout: 5000 });
+    const contentType = String(response.headers["content-type"] || "").toLowerCase();
+
+    if (!ALLOWED_IMAGE_TYPES.some(type => contentType.includes(type))) {
+      throw new Error(`Invalid file type: ${contentType || "unknown"}. Only image files are allowed.`);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Invalid file type")) {
+      throw error;
+    }
+    throw new Error("Failed to validate image file: unable to fetch file headers");
+  }
+}
+
 export async function cleanupVideoArtifacts(tempDir: string, outputLocation: string): Promise<void> {
   await Promise.all([
     fs.promises.unlink(outputLocation).catch(() => {}),
     fs.promises.rm(tempDir, { recursive: true, force: true }).catch(() => {}),
   ]);
 }
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || "dummy_key",
-});
 
 function splitTextIntoChunks(text: string, maxLen: number = 200): string[] {
   const rawWords = text.split(/\s+/);
@@ -109,6 +123,7 @@ export async function runVideoPipeline(
   // 1. OCR if an image is provided and no text content was supplied.
   if (imageUrl && !content) {
     await onProgress({ progress: 10, step: "Reading image (OCR)…" });
+    await validateImageUrl(imageUrl);
     const {
       data: { text },
     } = await Tesseract.recognize(imageUrl, "eng");
