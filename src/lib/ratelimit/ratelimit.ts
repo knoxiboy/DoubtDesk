@@ -123,7 +123,7 @@ if (isRedisConfigured) {
     }
 
     return entry.value as T;
-  }
+  };
 
   const createMockLimiter = (limit: number, windowMs: number) => ({
     limit: async (identifier: string) => {
