@@ -24,7 +24,7 @@ interface MockLimiter {
 
 interface MockRedisValue {
   value: unknown;
-  expiresAt: number;
+  expiresAt?: number;
 }
 
 interface MockRedis {
@@ -110,19 +110,19 @@ if (isRedisConfigured) {
   const redisStore = new Map<string, MockRedisValue>();
 
   // Retrieves a value from the mock Redis store and performs lazy expiration.
-  const getRedisValue = <T>(key: string): T | null => {
+  const getRedisEntry = (key: string): MockRedisValue | null => {
     const entry = redisStore.get(key);
 
     if (!entry) {
       return null;
     }
 
-    if (entry.expiresAt <= Date.now()) {
+    if (entry.expiresAt !== undefined && entry.expiresAt <= Date.now()) {
       redisStore.delete(key);
       return null;
     }
 
-    return entry.value as T;
+    return entry;
   };
 
   const createMockLimiter = (limit: number, windowMs: number) => ({
@@ -157,13 +157,16 @@ if (isRedisConfigured) {
   // Provide a mock redis client for locks
   redisClient = {
     get: async <T = unknown>(key: string): Promise<T | null> => {
-      return getRedisValue<T>(key);
+      const entry = getRedisEntry(key);
+      return entry ? entry.value as T : null;
     },
     setnx: async (key: string, value: unknown) => {
-      const cachedValue = getRedisValue(key);
-      if (cachedValue !== null) return 0;
+      const entry = getRedisEntry(key);
+      if (entry) {
+        return 0;
+      }
 
-      redisStore.set(key, { value, expiresAt: Date.now() + DEFAULT_TTL_MS });
+      redisStore.set(key, { value, expiresAt: undefined });
       return 1;
     },
     set: async (
@@ -171,28 +174,29 @@ if (isRedisConfigured) {
       value: unknown,
       opts?: { nx?: boolean; ex?: number },
     ): Promise<"OK" | null> => {
-      const cachedValue = getRedisValue(key);
+      const entry = getRedisEntry(key);
       
-      if (opts?.nx && cachedValue !== null) return null;
+      if (opts?.nx && entry) return null;
 
-      const ttlMs = opts?.ex ? opts.ex * 1000 : DEFAULT_TTL_MS;
-      redisStore.set(key, {value, expiresAt: Date.now() + ttlMs});
+      const expiresAt = 
+        opts?.ex !== undefined 
+          ? Date.now() + opts.ex * 1000 
+          : undefined;
+          
+      redisStore.set(key, {value, expiresAt});
 
       return "OK";
     },
     del: async (key: string) => {
-      redisStore.delete(key);
-      return 1;
+      return redisStore.delete(key) ? 1 : 0;
     },
     expire: async (key: string, seconds: number) => {
-      const cachedValue = getRedisValue(key);
-      if (cachedValue === null) return 0;
-
-      const entry = redisStore.get(key);
-      if (!entry) return 0;
+      const entry = getRedisEntry(key);
+      if (!entry) {
+        return 0;
+      }
 
       entry.expiresAt = Date.now() + seconds * 1000;
-
       return 1;
     }
   };
