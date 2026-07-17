@@ -327,6 +327,8 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                             <img
                                 src={doubt.imageUrl}
                                 alt={`Doubt image for ${doubt.subject} by ${doubt.author || 'Anonymous'}`}
+                                loading="lazy"
+                                decoding="async"
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                             />
                             <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
@@ -549,6 +551,8 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                         <img
                             src={doubt.imageUrl ?? undefined}
                             alt={`Full view of doubt image for ${doubt.subject} by ${doubt.author || 'Anonymous'}`}
+                            loading="lazy"
+                            decoding="async"
                             className="max-w-full max-h-full object-contain rounded-xl shadow-2xl border border-slate-200 dark:border-white/10"
                         />
                     </div>
