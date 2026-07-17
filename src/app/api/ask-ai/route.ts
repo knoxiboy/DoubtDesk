@@ -14,6 +14,22 @@ import type { AIMode } from "@/types/ai-chat";
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_build_key" });
 const MODEL = "llama-3.3-70b-versatile";
 
+type ChatMsg = { role: "user" | "assistant"; content: string };
+
+function sanitizeHistory(raw: unknown): ChatMsg[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (m): m is ChatMsg =>
+        !!m &&
+        typeof m === "object" &&
+        (m.role === "user" || m.role === "assistant") &&
+        typeof m.content === "string" &&
+        m.content.length <= 4000
+    )
+    .slice(-20);
+}
+
 export async function POST(req: Request): Promise<NextResponse> {
   const { userId } = await auth();
   if (!userId) {
@@ -121,9 +137,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
 
   const mode: AIMode = body.mode === "mentor" ? "mentor" : "direct";
-  const history = Array.isArray(body.history)
-    ? (body.history as any[]).slice(-20)
-    : [];
+  const history = sanitizeHistory(body.history);
 
   const systemMessages = buildSystemMessages(mode);
   const messages = [
