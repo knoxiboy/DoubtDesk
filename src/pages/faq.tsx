@@ -107,39 +107,39 @@ export default function FAQPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-white dark:bg-black text-slate-900 dark:text-zinc-100 transition-colors duration-500">
-      
+    <div className="relative min-h-screen bg-background text-foreground transition-colors duration-500">
+
       {/* Immersive Background Ambient Lighting */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute -top-[200px] left-1/2 -translate-x-1/2 h-[500px] w-full max-w-7xl bg-gradient-to-b from-blue-500/10 dark:from-blue-500/[0.03] to-transparent blur-3xl" />
+        <div className="absolute -top-[200px] left-1/2 -translate-x-1/2 h-[500px] w-full max-w-7xl bg-gradient-to-b from-primary/10 dark:from-primary/[0.05] to-transparent blur-3xl" />
       </div>
 
       <div className="relative z-10 mx-auto max-w-3xl px-4 sm:px-6 py-16 md:py-24 flex flex-col gap-16">
         {/* Hero Headers Section */}
         <div className="text-center space-y-4 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/5 dark:bg-blue-500/10 px-3.5 py-1 text-xs font-semibold tracking-wider uppercase text-blue-600 dark:text-blue-400">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-accent px-3.5 py-1 text-xs font-semibold tracking-wider uppercase text-accent-foreground">
             <HelpCircle className="h-3.5 w-3.5" />
             Help Center
           </div>
-          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 dark:text-white">
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-foreground">
             Frequently Asked{" "}
-            <span className="bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-500 dark:from-blue-400 dark:via-cyan-300 dark:to-indigo-400 bg-clip-text text-transparent">
+            <span className="text-primary">
               Questions
             </span>
           </h1>
-          <p className="text-sm sm:text-base text-slate-500 dark:text-zinc-400 leading-relaxed">
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
             Find quick answers regarding virtual classrooms, smart analytics dashboards, and AI tools across your workspace.
           </p>
         </div>
         <div className="max-w-xl w-full mx-auto relative z-20 animate-in fade-in scale-in duration-500">
           <div className="relative flex items-center group">
-            <Search className="absolute left-4 h-5 w-5 text-slate-400 dark:text-zinc-600 transition-colors duration-300 group-focus-within:text-blue-500" />
+            <Search className="absolute left-4 h-5 w-5 text-muted-foreground transition-colors duration-300 group-focus-within:text-primary" />
             <input
               type="text"
               placeholder="Search parameters or questions..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 dark:border-zinc-900 bg-slate-50 dark:bg-zinc-950/30 pl-12 pr-4 py-3.5 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 outline-none transition-all duration-300 focus:border-blue-500/40 dark:focus:border-blue-500/20 focus:bg-white dark:focus:bg-black"
+              className="w-full rounded-xl border border-border bg-secondary pl-12 pr-4 py-3.5 text-foreground placeholder:text-muted-foreground outline-none transition-all duration-300 focus:border-primary/40 focus:bg-background"
             />
           </div>
         </div>
@@ -156,17 +156,17 @@ export default function FAQPage() {
 
             return (
               <div key={sectionIndex} className="space-y-4">
-                
+
                 {/* Structural Section Header Title */}
-                <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100 dark:border-zinc-900">
-                  <SectionIcon className="h-4 w-4 text-blue-600 dark:text-blue-400/80" />
-                  <h2 className="text-base font-bold tracking-wide uppercase text-slate-800 dark:text-zinc-400">
+                <div className="flex items-center gap-2.5 pb-2 border-b border-border">
+                  <SectionIcon className="h-4 w-4 text-primary" />
+                  <h2 className="text-base font-bold tracking-wide uppercase text-foreground">
                     {section.category}
                   </h2>
                 </div>
 
                 {/* Clean Borderless FAQ List Wrapper */}
-                <div className="divide-y divide-slate-100 dark:divide-zinc-900/60">
+                <div className="divide-y divide-border">
                   {filteredFaqs.map((faq, faqIndex) => {
                     const id = `${sectionIndex}-${faqIndex}`;
                     const isOpen = openIndex === id;
@@ -177,10 +177,10 @@ export default function FAQPage() {
                           onClick={() => toggleFAQ(id)}
                           className="flex w-full items-center justify-between gap-4 py-4 text-left outline-none"
                         >
-                          <span className="text-[15px] sm:text-[16px] font-medium text-slate-800 dark:text-zinc-200 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200">
+                          <span className="text-[15px] sm:text-[16px] font-medium text-foreground group-hover:text-primary transition-colors duration-200">
                             {faq.question}
                           </span>
-                          <ChevronDown className={`h-4 w-4 text-slate-400 dark:text-zinc-600 transition-transform duration-300 shrink-0 ${isOpen ? "rotate-180 text-blue-500 dark:text-blue-400" : ""}`} />
+                          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-300 shrink-0 ${isOpen ? "rotate-180 text-primary" : ""}`} />
                         </button>
 
                         {/* Dropdown Answer Block */}
@@ -190,7 +190,7 @@ export default function FAQPage() {
                           }`}
                         >
                           <div className="overflow-hidden">
-                            <p className="text-[14px] sm:text-[15px] text-slate-500 dark:text-zinc-400 leading-relaxed pr-6">
+                            <p className="text-[14px] sm:text-[15px] text-muted-foreground leading-relaxed pr-6">
                               {faq.answer}
                             </p>
                           </div>
@@ -207,12 +207,12 @@ export default function FAQPage() {
         </div>
 
         {/* Minimal Bottom CTA Panel Card */}
-        <div className="mt-4 rounded-2xl border border-slate-100 dark:border-zinc-900 bg-slate-50/50 dark:bg-zinc-950/20 p-8 text-center backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <MessageCircleQuestion className="h-6 w-6 text-blue-500 dark:text-blue-400 mx-auto mb-3" />
-          <h3 className="mb-1 text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+        <div className="mt-4 rounded-2xl border border-border bg-card p-8 text-center backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <MessageCircleQuestion className="h-6 w-6 text-primary mx-auto mb-3" />
+          <h3 className="mb-1 text-lg font-bold text-foreground tracking-tight">
             Still need assistance?
           </h3>
-          <p className="mx-auto max-w-lg text-xs sm:text-sm text-slate-500 dark:text-zinc-400 leading-relaxed">
+          <p className="mx-auto max-w-lg text-xs sm:text-sm text-muted-foreground leading-relaxed">
             If your question isn&apos;t addressed here, submit your query directly to the live classroom streams or launch an instant AI query session.
           </p>
         </div>
