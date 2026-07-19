@@ -325,7 +325,7 @@ DoubtDesk/
 
 ## Contributing
 
-Contributions are welcome from developers of all experience levels. Whether you are fixing a typo, improving the UI, or building a new feature, your work is valued.
+Contributions are welcome from developers of all experience levels. Whether you are fixing a typo, improving the UI, or building a new feature, your contributions are valued.
 
 **Before submitting a pull request, please read the full [Contributing Guide](CONTRIBUTING.md).**
 
