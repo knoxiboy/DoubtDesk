@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 import { db } from "@/configs/db";
 import { classroomsTable, membershipsTable, notificationsTable } from "@/configs/schema";
 import { publishNotification, type NotificationRecord } from "@/lib/notifications/realtime";
@@ -98,4 +98,40 @@ export async function createReplyNotification(params: {
             type: "doubt_reply",
         },
     ]);
+}
+// ── Urgent classroom alerts (issue #540) ──────────────────────────────────
+// Notifies a classroom's teacher of urgent conditions (unresolved spike,
+// stale doubt, auto-hidden flagged content), with a cooldown per
+// classroom+type so repeated cron runs don't spam the same alert.
+export async function createUrgentClassroomAlert(params: {
+    teacherEmail: string;
+    classroomId: number;
+    type: string;
+    title: string;
+    message: string;
+    link: string;
+    cooldownMs: number;
+}): Promise<boolean> {
+    const { teacherEmail, type, title, message, link, cooldownMs } = params;
+    const cutoff = new Date(Date.now() - cooldownMs);
+
+    const [recent] = await db
+        .select({ id: notificationsTable.id })
+        .from(notificationsTable)
+        .where(
+            and(
+                eq(notificationsTable.userEmail, teacherEmail),
+                eq(notificationsTable.type, type),
+                eq(notificationsTable.link, link),
+                gte(notificationsTable.createdAt, cutoff),
+            ),
+        )
+        .limit(1);
+
+    if (recent) {
+        return false;
+    }
+
+    await createNotifications([{ userEmail: teacherEmail, title, message, link, type }]);
+    return true;
 }

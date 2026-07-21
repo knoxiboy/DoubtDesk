@@ -9,7 +9,9 @@ import {
     sendWeeklyDigest,
     detectConfusionSpikes,
     generateVideo,
-    cleanupStaleVideoJobs
+    cleanupStaleVideoJobs,
+    checkUrgentClassroomActivity,
+    notifyFlaggedContentHidden
 } from "../../../inngest/functions";
 
 // Serve your registered background processes safely
@@ -23,6 +25,8 @@ export const { GET, POST, PUT } = serve({
         sendWeeklyDigest,
         detectConfusionSpikes,
         generateVideo,
-        cleanupStaleVideoJobs
+        cleanupStaleVideoJobs,
+        checkUrgentClassroomActivity,
+        notifyFlaggedContentHidden
     ],
 });

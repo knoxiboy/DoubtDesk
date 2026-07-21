@@ -1,3 +1,4 @@
+import { inngest } from "@/inngest/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { contentFlagsTable, doubtsTable } from "@/configs/schema";
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
         }
 
         const [doubt] = await db
-            .select({ id: doubtsTable.id })
+            .select({ id: doubtsTable.id, classroomId: doubtsTable.classroomId })
             .from(doubtsTable)
             .where(eq(doubtsTable.id, doubtId));
 
@@ -64,6 +65,13 @@ export async function POST(req: NextRequest) {
         if (recentFlagCount >= AUTO_HIDE_FLAG_THRESHOLD) {
             await db.update(doubtsTable).set({ isHidden: true }).where(eq(doubtsTable.id, doubtId));
             autoHidden = true;
+
+            if (doubt.classroomId) {
+                await inngest.send({
+                    name: "doubt/auto-hidden",
+                    data: { doubtId, classroomId: doubt.classroomId },
+                });
+            }
         }
 
         return NextResponse.json({

@@ -334,6 +334,7 @@ export const sendWeeklyDigest = inngest.createFunction(
 );
 
 export { detectConfusionSpikes } from "../app/api/inngest/ConfusionSpikeDetector";
+export { checkUrgentClassroomActivity, notifyFlaggedContentHidden } from "../app/api/inngest/UrgentActivityDetector";
 // ── Async video generation (issue #321) ──────────────────────────────────────
 // Runs the OCR -> AI script -> TTS -> Remotion render pipeline off the request
 // path, persisting progress to the video_jobs row so clients can stream it.

@@ -245,10 +245,10 @@ export default function NotificationBell() {
                                             markAsRead(notification.id)
                                         }
                                     }}
-                                    className={`relative flex flex-col gap-1 p-4 border-b border-border/20 last:border-0 hover:bg-accent/50 cursor-pointer transition-colors ${!notification.isRead ? 'bg-accent/20' : ''}`}
+                                    className={`relative flex flex-col gap-1 p-4 border-b border-border/20 last:border-0 hover:bg-accent/50 cursor-pointer transition-colors ${!notification.isRead ? 'bg-accent/20' : ''} ${notification.type.startsWith('urgent_') ? 'border-l-2 border-l-red-500' : ''}`}
                                 >
                                     {!notification.isRead && (
-                                        <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                        <div className={`absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full ${notification.type.startsWith('urgent_') ? 'bg-red-500' : 'bg-blue-500'}`} />
                                     )}
                                     <div className="flex items-start justify-between gap-2 pl-2">
                                         <div className="flex flex-col gap-1">
