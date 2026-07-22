@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { contentFlagsTable, doubtsTable } from "@/configs/schema";
-import { and, count, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { requireTeacher, parseClassroomId } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
@@ -48,23 +48,34 @@ export async function POST(req: NextRequest) {
             throw error;
         }
 
-        const windowStart = new Date(Date.now() - AUTO_HIDE_WINDOW_MS);
-        const [{ value: recentFlagCount }] = await db
-            .select({ value: count() })
-            .from(contentFlagsTable)
-            .where(
-                and(
-                    eq(contentFlagsTable.doubtId, doubtId),
-                    eq(contentFlagsTable.status, "open"),
-                    gte(contentFlagsTable.createdAt, windowStart),
-                ),
+        // Atomic count-and-hide with row lock so concurrent flag requests are
+        // serialized, preventing a TOCTOU race where multiple requests all read
+        // the count below the threshold before any of them hides the doubt.
+        let autoHidden = false;
+        await db.transaction(async (tx: any) => {
+            const locked = await tx.execute(
+                sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} FOR UPDATE`,
             );
 
-        let autoHidden = false;
-        if (recentFlagCount >= AUTO_HIDE_FLAG_THRESHOLD) {
-            await db.update(doubtsTable).set({ isHidden: true }).where(eq(doubtsTable.id, doubtId));
-            autoHidden = true;
-        }
+            if (!locked.rows?.length) return;
+
+            const windowStart = new Date(Date.now() - AUTO_HIDE_WINDOW_MS);
+            const [{ value: recentFlagCount }] = await tx
+                .select({ value: count() })
+                .from(contentFlagsTable)
+                .where(
+                    and(
+                        eq(contentFlagsTable.doubtId, doubtId),
+                        eq(contentFlagsTable.status, "open"),
+                        gte(contentFlagsTable.createdAt, windowStart),
+                    ),
+                );
+
+            if (recentFlagCount >= AUTO_HIDE_FLAG_THRESHOLD) {
+                await tx.update(doubtsTable).set({ isHidden: true }).where(eq(doubtsTable.id, doubtId));
+                autoHidden = true;
+            }
+        });
 
         return NextResponse.json({
             success: true,
