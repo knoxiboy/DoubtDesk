@@ -8,7 +8,7 @@
 import { inngest } from "@/inngest/client";
 import { db } from "@/configs/db";
 import { classroomsTable, doubtsTable } from "@/configs/schema";
-import { and, eq, isNull, ne, asc, count, lt } from "drizzle-orm";
+import { and, eq, isNull, ne, or, asc, count, lt, sql } from "drizzle-orm";
 import { createUrgentClassroomAlert } from "@/lib/notifications/service";
 
 const UNRESOLVED_THRESHOLD = 10;
@@ -32,6 +32,45 @@ export const checkUrgentClassroomActivity = inngest.createFunction(
                 .from(classroomsTable);
         });
 
+        // ── Batch fetch both signals in 2 queries total instead of 2 per classroom ──
+        const staleCutoff = new Date(Date.now() - STALE_MS);
+
+        const { unresolvedCounts, staleDoubts } = await step.run("fetch-activity-signals", async () => {
+            const unresolvedRows = await db
+                .select({ classroomId: doubtsTable.classroomId, value: count() })
+                .from(doubtsTable)
+                .where(
+                    and(
+                        or(ne(doubtsTable.isSolved, "solved"), isNull(doubtsTable.isSolved)),
+                        eq(doubtsTable.isHidden, false),
+                        isNull(doubtsTable.deletedAt),
+                    ),
+                )
+                .groupBy(doubtsTable.classroomId);
+
+            const staleResult = await db.execute<{ classroomId: number; id: number; subject: string | null; createdAt: string }>(sql`
+                select distinct on (${doubtsTable.classroomId})
+                    ${doubtsTable.classroomId} as "classroomId",
+                    ${doubtsTable.id} as "id",
+                    ${doubtsTable.subject} as "subject",
+                    ${doubtsTable.createdAt} as "createdAt"
+                from ${doubtsTable}
+                where (${doubtsTable.isSolved} is distinct from 'solved')
+                    and ${doubtsTable.isHidden} = false
+                    and ${doubtsTable.deletedAt} is null
+                    and ${doubtsTable.createdAt} < ${staleCutoff}
+                order by ${doubtsTable.classroomId}, ${doubtsTable.createdAt} asc
+            `);
+
+            return {
+                unresolvedCounts: unresolvedRows.map((row) => [row.classroomId, row.value] as const),
+                staleDoubts: staleResult.rows.map((row) => [row.classroomId, row] as const),
+            };
+        });
+
+        const unresolvedByClassroom = new Map(unresolvedCounts);
+        const staleByClassroom = new Map(staleDoubts);
+
         let alertsCreated = 0;
 
         for (const classroom of classrooms) {
@@ -41,18 +80,7 @@ export const checkUrgentClassroomActivity = inngest.createFunction(
                 let created = 0;
 
                 // ── Condition 1: too many unresolved doubts ──────────────────
-                const [unresolvedRow] = await db
-                    .select({ value: count() })
-                    .from(doubtsTable)
-                    .where(
-                        and(
-                            eq(doubtsTable.classroomId, classroom.id),
-                            ne(doubtsTable.isSolved, "solved"),
-                            eq(doubtsTable.isHidden, false),
-                            isNull(doubtsTable.deletedAt),
-                        ),
-                    );
-                const unresolvedCount = unresolvedRow?.value ?? 0;
+                const unresolvedCount = unresolvedByClassroom.get(classroom.id) ?? 0;
 
                 if (unresolvedCount > UNRESOLVED_THRESHOLD) {
                     const sent = await createUrgentClassroomAlert({
@@ -68,21 +96,7 @@ export const checkUrgentClassroomActivity = inngest.createFunction(
                 }
 
                 // ── Condition 2: a doubt has gone stale ───────────────────────
-                const staleCutoff = new Date(Date.now() - STALE_MS);
-                const [staleDoubt] = await db
-                    .select({ id: doubtsTable.id, subject: doubtsTable.subject, createdAt: doubtsTable.createdAt })
-                    .from(doubtsTable)
-                    .where(
-                        and(
-                            eq(doubtsTable.classroomId, classroom.id),
-                            ne(doubtsTable.isSolved, "solved"),
-                            eq(doubtsTable.isHidden, false),
-                            isNull(doubtsTable.deletedAt),
-                            lt(doubtsTable.createdAt, staleCutoff),
-                        ),
-                    )
-                    .orderBy(asc(doubtsTable.createdAt))
-                    .limit(1);
+                const staleDoubt = staleByClassroom.get(classroom.id);
 
                 if (staleDoubt) {
                     const sent = await createUrgentClassroomAlert({
@@ -91,7 +105,7 @@ export const checkUrgentClassroomActivity = inngest.createFunction(
                         type: "urgent_stale_doubt",
                         title: `A doubt in ${classroom.name} has waited 72h+`,
                         message: `A ${staleDoubt.subject || "student"} doubt has been unresolved for over 3 days.`,
-                        link: `/doubts/${staleDoubt.id}`,
+                        link: `/dashboard/teacher?classroomId=${classroom.id}`,
                         cooldownMs: ALERT_COOLDOWN_MS,
                     });
                     if (sent) created++;
@@ -133,7 +147,7 @@ export const notifyFlaggedContentHidden = inngest.createFunction(
                 type: "urgent_flagged_content",
                 title: `Content auto-hidden in ${classroom.name}`,
                 message: "A doubt was automatically hidden after multiple flags and needs review.",
-                link: `/doubts/${doubtId}`,
+                link: `/dashboard/teacher?classroomId=${classroomId}`,
                 cooldownMs: ALERT_COOLDOWN_MS,
             });
 

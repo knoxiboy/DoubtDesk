@@ -67,10 +67,17 @@ export async function POST(req: NextRequest) {
             autoHidden = true;
 
             if (doubt.classroomId) {
-                await inngest.send({
-                    name: "doubt/auto-hidden",
-                    data: { doubtId, classroomId: doubt.classroomId },
-                });
+                // Best-effort: the flag insert and auto-hide update have already
+                // committed above, so a notification-dispatch failure shouldn't
+                // turn this into an error response for the client.
+                try {
+                    await inngest.send({
+                        name: "doubt/auto-hidden",
+                        data: { doubtId, classroomId: doubt.classroomId },
+                    });
+                } catch (error) {
+                    console.error("Failed to send doubt/auto-hidden event", error);
+                }
             }
         }
 

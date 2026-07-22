@@ -1,4 +1,4 @@
-import { eq, and, gte } from "drizzle-orm";
+import { eq, and, gte, sql } from "drizzle-orm";
 import { db } from "@/configs/db";
 import { classroomsTable, membershipsTable, notificationsTable } from "@/configs/schema";
 import { publishNotification, type NotificationRecord } from "@/lib/notifications/realtime";
@@ -115,23 +115,32 @@ export async function createUrgentClassroomAlert(params: {
     const { teacherEmail, type, title, message, link, cooldownMs } = params;
     const cutoff = new Date(Date.now() - cooldownMs);
 
-    const [recent] = await db
-        .select({ id: notificationsTable.id })
-        .from(notificationsTable)
-        .where(
-            and(
-                eq(notificationsTable.userEmail, teacherEmail),
-                eq(notificationsTable.type, type),
-                eq(notificationsTable.link, link),
-                gte(notificationsTable.createdAt, cutoff),
-            ),
-        )
-        .limit(1);
+    return db.transaction(async (tx) => {
+        // Serialize concurrent calls for the same (teacherEmail, type, link) so
+        // overlapping cron runs can't both pass the cooldown check before either
+        // inserts (TOCTOU race).
+        await tx.execute(
+            sql`select pg_advisory_xact_lock(hashtext(${teacherEmail} || ${type} || ${link}))`,
+        );
 
-    if (recent) {
-        return false;
-    }
+        const [recent] = await tx
+            .select({ id: notificationsTable.id })
+            .from(notificationsTable)
+            .where(
+                and(
+                    eq(notificationsTable.userEmail, teacherEmail),
+                    eq(notificationsTable.type, type),
+                    eq(notificationsTable.link, link),
+                    gte(notificationsTable.createdAt, cutoff),
+                ),
+            )
+            .limit(1);
 
-    await createNotifications([{ userEmail: teacherEmail, title, message, link, type }]);
-    return true;
+        if (recent) {
+            return false;
+        }
+
+        await tx.insert(notificationsTable).values({ userEmail: teacherEmail, title, message, link, type });
+        return true;
+    });
 }
