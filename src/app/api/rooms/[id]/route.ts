@@ -93,6 +93,18 @@ export async function PATCH(
             }
         }
         if (body.allowedEmailDomains !== undefined) {
+            if (!Array.isArray(body.allowedEmailDomains)) {
+                return NextResponse.json({ error: 'allowedEmailDomains must be an array' }, { status: 400 });
+            }
+            if (body.allowedEmailDomains.length === 0) {
+                return NextResponse.json({ error: 'allowedEmailDomains must not be empty' }, { status: 400 });
+            }
+            const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/;
+            for (const domain of body.allowedEmailDomains) {
+                if (typeof domain !== 'string' || !domainRegex.test(domain)) {
+                    return NextResponse.json({ error: `Invalid domain: ${domain}` }, { status: 400 });
+                }
+            }
             updateData.allowedEmailDomains = body.allowedEmailDomains;
         }
         if (body.regenerateInviteCode) {
