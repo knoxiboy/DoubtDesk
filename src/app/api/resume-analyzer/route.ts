@@ -182,7 +182,7 @@ ${resumeText}
             }
         );
 
-        const aiOutput = JSON.parse(response.data.choices[0].message.content);
+        const aiOutput = JSON.parse(response.data.choices[0]?.message?.content ?? "{}");
 
         if (userEmail) {
             const displayTitle = jobDescription

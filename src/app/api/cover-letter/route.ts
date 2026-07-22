@@ -77,7 +77,7 @@ Write a professional cover letter based on these details.
             }
         );
 
-        const coverLetter = response.data.choices[0].message.content;
+        const coverLetter = response.data.choices[0]?.message?.content ?? "";
 
         if (userEmail) {
             await db.insert(coverLettersTable).values({

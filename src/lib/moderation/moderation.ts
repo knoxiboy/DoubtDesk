@@ -240,8 +240,7 @@ export async function moderateContent(
                 });
 
             const rawResult = JSON.parse(
-                response.choices[0].message
-                    .content || "{}"
+                response.choices[0]?.message?.content || "{}"
             );
 
             const ModerationResultSchema = z.object({
