@@ -193,20 +193,6 @@ export async function POST(req: Request) {
       }
     }
 
-    let parsedCreatedAt: Date | undefined = undefined;
-    if (data.createdAt) {
-      const d = new Date(data.createdAt);
-      if (isNaN(d.getTime())) {
-        return errorResponse("Invalid createdAt date format", 400);
-      }
-      const now = new Date();
-      const age = now.getTime() - d.getTime();
-      const maxOfflineDuration = 30 * 24 * 60 * 60 * 1000;
-      if (age >= -300000 && age <= maxOfflineDuration) {
-        parsedCreatedAt = d;
-      }
-    }
-
     const newReply = await db
       .insert(repliesTable)
       .values({
@@ -215,7 +201,6 @@ export async function POST(req: Request) {
         type,
         content: content || null,
         imageUrl: imageUrl || null,
-        createdAt: parsedCreatedAt,
       })
       .returning();
 
