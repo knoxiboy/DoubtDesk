@@ -1,6 +1,6 @@
 import { groq } from "@/lib/ai/groq-client";
 import { db } from "@/configs/db";
-import { usersTable, moderationLogsTable } from "@/configs/schema";
+import { usersTable, moderationLogsTable, systemConfigTable } from "@/configs/schema";
 import { eq, sql } from "drizzle-orm";
 import { sendWarningEmail, sendBlockEmail } from "@/lib/email/email";
 import { z } from "zod";
@@ -10,8 +10,7 @@ import { z } from "zod";
  */
 const MAX_MODERATION_RETRIES = 2;
 const MODERATION_COOLDOWN_MS = 30000;
-
-let moderationProviderCooldownUntil = 0;
+const COOLDOWN_DB_KEY = "moderation_provider_cooldown_until";
 
 /**
  * Lightweight heuristic filters used during moderation degradation/failures.
@@ -81,20 +80,43 @@ function shouldRetryModeration(error: unknown): boolean {
 
 /**
  * Checks whether moderation provider is in cooldown mode.
+ * Uses the database so the cooldown state is shared across all
+ * serverless instances (unlike a module-level variable).
  */
-function isModerationCoolingDown(): boolean {
-    return (
-        Date.now() <
-        moderationProviderCooldownUntil
-    );
+async function isModerationCoolingDown(): Promise<boolean> {
+    try {
+        const [row] = await db
+            .select({ value: systemConfigTable.value })
+            .from(systemConfigTable)
+            .where(eq(systemConfigTable.key, COOLDOWN_DB_KEY))
+            .limit(1);
+
+        if (!row) return false;
+        const cooldownUntil = parseInt(row.value, 10);
+        return Date.now() < cooldownUntil;
+    } catch {
+        return false;
+    }
 }
 
 /**
  * Marks moderation provider as temporarily unstable.
+ * Persists the cooldown timestamp to the database so all
+ * serverless instances respect the cooldown window.
  */
-function markModerationFailure() {
-    moderationProviderCooldownUntil =
-        Date.now() + MODERATION_COOLDOWN_MS;
+async function markModerationFailure() {
+    const cooldownUntil = String(Date.now() + MODERATION_COOLDOWN_MS);
+    try {
+        await db
+            .insert(systemConfigTable)
+            .values({ key: COOLDOWN_DB_KEY, value: cooldownUntil })
+            .onConflictDoUpdate({
+                target: systemConfigTable.key,
+                set: { value: cooldownUntil },
+            });
+    } catch (err) {
+        console.error("[MODERATION] Failed to persist cooldown state:", err);
+    }
 }
 
 function containsHighRiskContent(content: string): boolean {
@@ -194,7 +216,7 @@ export async function moderateContent(
     /**
      * Prevent repeated provider hammering during outages.
      */
-    if (isModerationCoolingDown()) {
+    if (await isModerationCoolingDown()) {
         logModeration('warn', 'Cooldown active', 'Using heuristic moderation');
 
         return applyHeuristicModeration(content);
@@ -286,7 +308,7 @@ export async function moderateContent(
             lastError = err;
 
             if (shouldRetryModeration(error)) {
-                markModerationFailure();
+                await markModerationFailure();
                 
                 // Exponential backoff
                 if (attempt < MAX_MODERATION_RETRIES - 1) {
