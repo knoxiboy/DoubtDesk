@@ -4,11 +4,15 @@ import { doubtsTable } from '@/configs/schema';
 import { and, eq, desc, isNull } from 'drizzle-orm';
 import { groq } from '@/lib/ai/groq-client';
 import { buildErrorResponse } from '@/lib/errors/error-handler';
+import { enforceApiRateLimit } from '@/lib/ratelimit/api-rate-limit';
+import { aiLimiter } from '@/lib/ratelimit/ratelimit';
 import {
     parseClassroomId,
     requireAuth,
     requireMembership,
 } from '@/lib/auth/membership-guard';
+
+const GROQ_TIMEOUT_MS = 15_000;
 
 export async function GET(req: Request) {
     try {
@@ -20,6 +24,10 @@ export async function GET(req: Request) {
         }
         const classroomId = parseClassroomId(classroomIdStr);
         await requireMembership(email, classroomId);
+
+        // Rate limit: this endpoint makes an expensive LLM call per request.
+        const rateLimitResponse = await enforceApiRateLimit(aiLimiter, email, "ai");
+        if (rateLimitResponse) return rateLimitResponse;
 
         // Fetch user's doubts in this classroom
         const userDoubts = await db.select({
@@ -64,14 +72,18 @@ export async function GET(req: Request) {
             }
         }`;
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), GROQ_TIMEOUT_MS);
+
         const response = await groq.chat.completions.create({
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: `Analyze these doubts asked by the student in this classroom:\n\n${doubtContext}` }
             ],
             model: "llama-3.3-70b-versatile",
-            response_format: { type: "json_object" }
-        });
+            response_format: { type: "json_object" },
+            signal: controller.signal,
+        }).finally(() => clearTimeout(timeoutId));
 
         const result = JSON.parse(response.choices[0].message.content || "{}");
 
