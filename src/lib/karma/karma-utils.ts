@@ -153,7 +153,11 @@ export async function updateStreak(userEmail: string): Promise<void> {
         .where(eq(usersTable.email, userEmail))
         .limit(1);
 
-    if (!user || !user.lastActiveDate) return;
+    if (!user) return;
+    if (!user.lastActiveDate) {
+        await db.update(usersTable).set({ currentStreak: 1, lastActiveDate: new Date() }).where(eq(usersTable.email, userEmail));
+        return;
+    }
 
     const now = new Date();
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();

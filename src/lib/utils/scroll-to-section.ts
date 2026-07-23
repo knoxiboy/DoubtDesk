@@ -1,7 +1,6 @@
 export function getScrollBehavior(): ScrollBehavior {
-  const prefersReducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)"
-  ).matches;
+  if (typeof window === "undefined") return "smooth";
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   return prefersReducedMotion ? "auto" : "smooth";
 }
 
