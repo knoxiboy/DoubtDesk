@@ -3,6 +3,7 @@ import { db } from "@/configs/db";
 import { doubtsTable, classroomsTable, repliesTable } from "@/configs/schema";
 import { and, eq, desc, gte, lte, sql, isNull, inArray } from "drizzle-orm";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
+import { toPublicDoubt } from "@/lib/anonymity/anonymity";
 import {
     parseClassroomId,
     requireAuth,
@@ -82,10 +83,9 @@ export async function GET(
             replyCounts.map((r: any) => [r.doubtId, r.count])
         );
 
-        const doubtsWithReplies = doubts.map((doubt: any) => ({
-            ...doubt,
-            replyCount: countsMap[doubt.id] || 0,
-        }));
+        const doubtsWithReplies = doubts.map((doubt: any) =>
+            toPublicDoubt({ ...doubt, replyCount: countsMap[doubt.id] || 0 }, email)
+        );
 
         return NextResponse.json({
             classroomName: classroom.name,
