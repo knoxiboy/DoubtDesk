@@ -8,8 +8,8 @@ import {
   // (Next/font modules are safe to instantiate per component.)
 } from "next/font/google";
 
-import ScrollToTopButton from "@/components/ScrollToTopButton";
-import { scrollToSection } from "@/lib/scroll-to-section";
+import ScrollToTopButton from "@/components/layout/ScrollToTopButton";
+import { scrollToSection } from "@/lib/utils/scroll-to-section";
 
 import SignOutDialog from "@/components/landing/SignOutDialog";
 import HeroSection from "@/components/landing/HeroSection";
