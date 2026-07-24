@@ -428,7 +428,7 @@ export default function AskAIPage() {
                                         </button>
                                     ) : (
                                         <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-black">
-                                            <img src={imageBase64} alt="Uploaded question" className="w-full max-h-64 object-contain" />
+                                            <img src={imageBase64} alt="Uploaded question" loading="lazy" decoding="async" className="w-full max-h-64 object-contain" />
                                             <button
                                                 onClick={() => { setImageBase64(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                                                 className="absolute top-3 right-3 w-8 h-8 bg-red-500/90 hover:bg-red-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
