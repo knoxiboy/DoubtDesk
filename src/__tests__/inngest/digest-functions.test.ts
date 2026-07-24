@@ -11,7 +11,7 @@ jest.mock("@/configs/db", () => ({
   },
 }));
 
-jest.mock("@/lib/email", () => ({
+jest.mock("@/lib/email/email", () => ({
   sendDigestEmail: jest.fn(),
 }));
 
