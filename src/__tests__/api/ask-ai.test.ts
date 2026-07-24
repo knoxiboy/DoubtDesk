@@ -113,18 +113,21 @@ describe('Ask AI API Endpoint', () => {
             })
         );
 
+        selectResultsQueue.push([{ blockedUntil: null }], [{ id: 1 }]);
+
         const req = new Request('http://localhost/api/ask-ai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 prompt: 'What is the speed of light?',
-                type: 'standard'
+                type: 'standard',
+                classroomId: 1
             })
         });
 
         const res = await POST(req);
         const json = await res.json();
-        
+
         expect(res.status).toBe(200);
         expect(json.subject).toBe('Physics');
         expect(json.reply).toContain('Light travels at approximately');
@@ -162,7 +165,8 @@ describe('Ask AI API Endpoint', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 prompt: 'What is the speed of light?',
-                type: 'standard'
+                type: 'standard',
+                classroomId: 1
             })
         });
 
@@ -185,6 +189,7 @@ describe('Ask AI API Endpoint', () => {
             body: JSON.stringify({
                 prompt: '',
                 imageBase64: 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBA==',
+                classroomId: 1
             }),
         });
 
@@ -213,7 +218,7 @@ describe('Ask AI API Endpoint', () => {
 
         expect(res.status).toBe(422);
         expect(json).toEqual({
-            error: 'Invalid classroomId.',
+            error: 'classroomId is required and must be a valid integer.',
             code: 'INVALID_CLASSROOM_ID',
         });
     });
@@ -224,6 +229,7 @@ describe('Ask AI API Endpoint', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 prompt: 'x'.repeat(AI_REQUEST_MAX_BYTES),
+                classroomId: 1
             }),
         });
 

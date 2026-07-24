@@ -6,8 +6,10 @@ import {
   Users,
   GitPullRequest,
   ArrowRight,
+  MessageCircle,
 } from "lucide-react";
 import { GitHubContributor } from "@/types";
+import { DISCORD_INVITE_URL } from "@/lib/constants/constants";
 
 async function getContributors() {
   const res = await fetch(
@@ -185,16 +187,28 @@ export default async function ContributorsPage() {
                 features, fix bugs, and become part of the growing DoubtDesk
                 open-source community.
               </p>
+               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Link
+                  href="https://github.com/knoxiboy/DoubtDesk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-7 py-4 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:scale-105 transition-all duration-300 font-semibold text-white shadow-lg shadow-blue-500/20"
+                >
+                  Start Contributing
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
 
-              <Link
-                href="https://github.com/knoxiboy/DoubtDesk"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-7 py-4 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-500 hover:scale-105 transition-all duration-300 font-semibold text-white shadow-lg shadow-blue-500/20"
-              >
-                Start Contributing
-                <ArrowRight className="w-5 h-5" />
-              </Link>
+                <Link
+                  href={DISCORD_INVITE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-7 py-4 rounded-xl border border-blue-500/30 dark:border-cyan-400/30 bg-white/60 dark:bg-white/5 backdrop-blur-xl hover:scale-105 hover:border-blue-500/50 dark:hover:border-cyan-400/60 transition-all duration-300 font-semibold text-blue-700 dark:text-cyan-300"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  Join Community
+                </Link>
+              </div>
+              
             </div>
           </div>
         </section>

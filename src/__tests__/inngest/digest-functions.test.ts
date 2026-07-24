@@ -15,9 +15,10 @@ jest.mock("@/lib/email/email", () => ({
   sendDigestEmail: jest.fn(),
 }));
 
+// Mock inngest client
 jest.mock("@/inngest/client", () => ({
   inngest: {
-    createFunction: jest.fn((config: unknown, handler: unknown) => handler),
+    createFunction: jest.fn((config, handler) => handler),
   },
 }));
 
@@ -67,6 +68,15 @@ function makeStep() {
   };
 }
 
+// Inngest's createFunction returns a function object whose handler is stored on
+// `.fn`; invoke that directly to unit-test the handler with a mock step.
+function runHandler(
+  fn: unknown,
+  step: ReturnType<typeof makeStep>,
+): Promise<unknown> {
+  return (fn as { fn: (ctx: { step: unknown }) => Promise<unknown> }).fn({ step });
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("sendDailyDigest — per-user step isolation", () => {
@@ -114,15 +124,14 @@ describe("sendDailyDigest — per-user step isolation", () => {
     // Alice succeeds, Bob throws
     mockSendDigestEmail
       .mockResolvedValueOnce({ success: true })            // alice: ok
-      .mockResolvedValueOnce({ success: false, error: "SMTP timeout" }); // bob: fail
+      .mockResolvedValueOnce({ success: false, error: "SMTP timeout" }); // bob: failmockSendDigestEmail
       
     // Import the function under test after mocks are set.
     // We simulate the Inngest function invocation directly.
     const { sendDailyDigest } = await import("@/inngest/functions");
 
     const step = makeStep();
-    // @ts-expect-error — internal test invocation bypasses Inngest runtime types
-    await expect(sendDailyDigest({ step })).rejects.toThrow("SMTP timeout");
+    await expect(runHandler(sendDailyDigest, step)).rejects.toThrow("SMTP timeout");
 
     // Alice's row MUST have been deleted (email succeeded).
     expect(dbMock.delete).toHaveBeenCalledTimes(1);
@@ -158,13 +167,11 @@ describe("sendDailyDigest — per-user step isolation", () => {
 
     // First run — completes successfully.
     const step = makeStep();
-    // @ts-expect-error
-    await sendDailyDigest({ step });
+    await runHandler(sendDailyDigest, step);
     expect(mockSendDigestEmail).toHaveBeenCalledTimes(1);
 
     // Simulate Inngest retry: same step shim (memoised results) → per-user step is a no-op.
-    // @ts-expect-error
-    await sendDailyDigest({ step });
+    await runHandler(sendDailyDigest, step);
     // sendDigestEmail must NOT be called again.
     expect(mockSendDigestEmail).toHaveBeenCalledTimes(1);
   });

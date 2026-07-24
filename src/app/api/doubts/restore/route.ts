@@ -1,9 +1,9 @@
 import { db } from "@/configs/db";
-import { doubtsTable } from "@/configs/schema";
+import { doubtsTable, membershipsTable } from "@/configs/schema";
 import { and, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { classroomsTable } from "@/configs/schema";
+import { canTeach } from "@/lib/auth/membership-guard";
 
 export async function POST(req: Request) {
     try {
@@ -26,10 +26,18 @@ export async function POST(req: Request) {
         const isOwner = doubt.userEmail === email;
         let isTeacher = false;
 
-        if (doubt.classroomId) {
-            const [room] = await db.select().from(classroomsTable)
-                .where(eq(classroomsTable.id, doubt.classroomId));
-            isTeacher = !!(room && room.teacherEmail === email);
+        if (doubt.classroomId && email) {
+            const [membership] = await db
+                .select()
+                .from(membershipsTable)
+                .where(
+                    and(
+                        eq(membershipsTable.userEmail, email),
+                        eq(membershipsTable.classroomId, doubt.classroomId),
+                    ),
+                );
+
+            isTeacher = !!(membership && canTeach(membership.role));
         }
 
         if (!isOwner && !isTeacher) {

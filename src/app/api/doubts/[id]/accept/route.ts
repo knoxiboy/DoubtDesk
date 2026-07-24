@@ -74,6 +74,13 @@ export async function POST(
             );
         }
 
+        if (reply.userEmail === loggedInUserEmail) {
+            return NextResponse.json(
+                { error: "Forbidden! You cannot accept your own reply." },
+                { status: 403 }
+            );
+        }
+
         // ── 4. ATOMIC IDEMPOTENT UPDATE ───────────────────────────────────────
         const [updatedDoubt] = await db
             .update(doubtsTable)

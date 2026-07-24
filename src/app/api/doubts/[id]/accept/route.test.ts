@@ -21,7 +21,10 @@ let mockReply: {
 
 let mockUpdatedDoubt: { id: number } | null = { id: 1 };
 
+// jest.mock factories are hoisted, and the hoist guard only permits references to
+// out-of-scope variables whose names match /^mock/i: hence these names.
 const mockInngestSend = jest.fn();
+let mockSelectCallCount = 0;
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 jest.mock("@clerk/nextjs/server", () => ({
@@ -34,7 +37,6 @@ jest.mock("@/inngest/client", () => ({
     inngest: { send: mockInngestSend },
 }));
 
-let mockSelectCallCount = 0;
 
 jest.mock("@/configs/db", () => {
     const makeSelectChain = (result: unknown[]) => ({
@@ -97,7 +99,7 @@ async function callPost(replyId = 42) {
     const { POST } = await import("./route");
     return POST(makeRequest(replyId), {
         params: Promise.resolve({ id: "1" }),
-    } as any);
+    } as unknown as { params: Promise<{ id: string }> });
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -161,10 +163,24 @@ describe("POST /api/doubts/[id]/accept — idempotency (issue #687)", () => {
         expect(mockInngestSend).not.toHaveBeenCalled();
     });
 
+    it("returns 403 and does NOT emit karma when the reply author is the doubt owner (self-accept, issue #816)", async () => {
+        // Both doubt and reply are owned by the caller — the self-accept guard
+        // must reject the request before any state transition or event emit.
+        mockDoubt = { userEmail: "asker@test.com", isSolved: "unsolved", solvedReplyId: null };
+        mockReply = { userEmail: "asker@test.com", doubtId: 1 };
+
+        const res = await callPost(42);
+        const body = await res.json();
+
+        expect(res.status).toBe(403);
+        expect(body.error).toBe("Forbidden! You cannot accept your own reply.");
+        expect(mockInngestSend).not.toHaveBeenCalled();
+    });
+
     it("returns 500 with a generic message and does not leak error details", async () => {
         // Make the DB throw to exercise the catch block
         const { db } = await import("@/configs/db");
-        jest.mocked(db.select).mockImplementationOnce(() => {
+        (db.select as jest.Mock).mockImplementationOnce(() => {
             throw new Error("relation \"doubts\" does not exist");
         });
 

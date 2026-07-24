@@ -87,25 +87,43 @@ jest.mock("react-hotkeys-hook", () => ({
 }));
 
 jest.mock("@/lib/ratelimit/ratelimit", () => {
-    const createLimiter = () => ({
-        limit: jest.fn().mockResolvedValue({
-            success: true,
-            limit: 100,
-            remaining: 99,
-            reset: Date.now() + 60_000,
+    const memoryMap = new Map<string, { count: number; reset: number }>();
+
+    const createLimiter = (limit: number, windowMs: number) => ({
+        limit: jest.fn().mockImplementation(async (identifier: string) => {
+            const now = Date.now();
+            const record = memoryMap.get(identifier) || { count: 0, reset: now + windowMs };
+
+            if (now > record.reset) {
+                record.count = 0;
+                record.reset = now + windowMs;
+            }
+
+            record.count++;
+            memoryMap.set(identifier, record);
+
+            return {
+                success: record.count <= limit,
+                limit,
+                remaining: Math.max(0, limit - record.count),
+                reset: record.reset,
+            };
         }),
     });
 
+    const resetMemoryMap = () => memoryMap.clear();
+
     return {
-        aiLimiter: createLimiter(),
-        generalLimiter: createLimiter(),
-        emailNotificationLimiter: createLimiter(),
-        videoLimiter: createLimiter(),
-        inviteCodeLimiter: createLimiter(),
+        aiLimiter: createLimiter(10, 60 * 1000),
+        generalLimiter: createLimiter(30, 60 * 1000),
+        emailNotificationLimiter: createLimiter(1, 5 * 60 * 1000),
+        videoLimiter: createLimiter(3, 60 * 60 * 1000),
+        inviteCodeLimiter: createLimiter(5, 60 * 1000),
         redisClient: {
             setnx: jest.fn().mockResolvedValue(1),
             del: jest.fn().mockResolvedValue(1),
             expire: jest.fn().mockResolvedValue(1),
         },
+        resetMemoryMap,
     };
 });

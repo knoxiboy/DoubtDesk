@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import Groq from "groq-sdk";
+import { groq } from "@/lib/ai/groq-client";
 import { and, eq } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
@@ -11,8 +11,23 @@ import { buildSystemMessages } from "@/lib/ai/socratic-prompt";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import type { AIMode } from "@/types/ai-chat";
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_build_key" });
 const MODEL = "llama-3.3-70b-versatile";
+
+type ChatMsg = { role: "user" | "assistant"; content: string };
+
+function sanitizeHistory(raw: unknown): ChatMsg[] {
+  if (!Array.isArray(raw)) return [];
+return raw
+  .slice(-20)
+  .filter(
+    (m): m is ChatMsg =>
+      !!m &&
+      typeof m === "object" &&
+      (m.role === "user" || m.role === "assistant") &&
+      typeof m.content === "string" &&
+      m.content.length <= 4000
+  );
+}
 
 export async function POST(req: Request): Promise<NextResponse> {
   const { userId } = await auth();
@@ -83,24 +98,26 @@ export async function POST(req: Request): Promise<NextResponse> {
     const raw = body.classroomId;
     if (typeof raw !== "number" || !Number.isInteger(raw)) {
       return NextResponse.json(
-        { error: "Invalid classroomId.", code: "INVALID_CLASSROOM_ID" },
+        { error: "classroomId is required and must be a valid integer.", code: "INVALID_CLASSROOM_ID" },
         { status: 422 }
       );
     }
     classroomId = raw;
   }
 
+  // Check user block status
+  const [userRow] = await db
+    .select({ blockedUntil: usersTable.blockedUntil })
+    .from(usersTable)
+    .where(eq(usersTable.email, email))
+    .limit(1);
+
+  if (userRow?.blockedUntil && new Date(userRow.blockedUntil) > new Date()) {
+    return NextResponse.json({ error: "Account suspended" }, { status: 403 });
+  }
+
+  // Enforce classroom membership when classroomId is provided
   if (classroomId !== undefined) {
-    const [userRow] = await db
-      .select({ blockedUntil: usersTable.blockedUntil })
-      .from(usersTable)
-      .where(eq(usersTable.email, email))
-      .limit(1);
-
-    if (userRow?.blockedUntil && new Date(userRow.blockedUntil) > new Date()) {
-      return NextResponse.json({ error: "Account suspended" }, { status: 403 });
-    }
-
     const [member] = await db
       .select({ id: membershipsTable.id })
       .from(membershipsTable)
@@ -121,9 +138,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
 
   const mode: AIMode = body.mode === "mentor" ? "mentor" : "direct";
-  const history = Array.isArray(body.history)
-    ? (body.history as any[]).slice(-20)
-    : [];
+  const history = sanitizeHistory(body.history);
 
   const systemMessages = buildSystemMessages(mode);
   const messages = [

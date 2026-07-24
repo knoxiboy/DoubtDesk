@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, sql, isNull,notInArray } from "drizzle-orm";
 
 import { db } from "@/configs/db";
 import {
@@ -52,17 +52,14 @@ export async function GET() {
         );
 
         // 4. Fetch all candidate classrooms
-const classrooms = await db
-    .select()
-    .from(classroomsTable)
-    .where(
-        joinedIds.length
-            ? sql`${classroomsTable.id} NOT IN (${sql.join(
-                  joinedIds.map((id: any) => sql`${id}`),
-                  sql`, `
-              )})`
-            : sql`true`
-    );
+        const classroomConditions = [isNull(classroomsTable.organizationId)];
+        if (joinedIds.length) {
+            classroomConditions.push(notInArray(classroomsTable.id, joinedIds));
+        }
+        const classrooms = await db
+        .select()
+        .from(classroomsTable)
+        .where(and(...classroomConditions));
 
         if (!classrooms.length) {
             return NextResponse.json({

@@ -1,13 +1,9 @@
-import { Groq } from "groq-sdk";
+import { groq } from "@/lib/ai/groq-client";
 import { db } from "@/configs/db";
 import { usersTable, moderationLogsTable } from "@/configs/schema";
 import { eq, sql } from "drizzle-orm";
 import { sendWarningEmail, sendBlockEmail } from "@/lib/email/email";
 import { z } from "zod";
-
-const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY || 'dummy_key',
-});
 
 /**
  * Moderation Reliability & Security Protection

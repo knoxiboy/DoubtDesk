@@ -6,19 +6,25 @@ import { NextResponse } from "next/server";
 import { sendWarningEmail, sendBlockEmail } from "@/lib/email/email";
 import { auditLog, AUDIT_ACTIONS } from "@/lib/audit/audit";
 import { currentUser } from "@clerk/nextjs/server";
+import { z } from "zod";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
 
-export async function POST(request: Request) {
+const moderationActionSchema = z.object({
+  logId: z.number().int().positive(),
+  userEmail: z.string().email(),
+  action: z.enum(["dismiss", "warn", "block"]),
+});
+
+export async function POST(req: Request) {
     try {
         const adminUser = await currentUser();
         const adminEmail = adminUser?.primaryEmailAddress?.emailAddress || "admin";
         await requireAdmin();
 
-        const body = await request.json();
-        const { logId, userEmail, action } = body;
+        const { errorResponse, data } = await parseAndValidateRequest(req, moderationActionSchema);
+        if (errorResponse) return errorResponse;
 
-        if (!logId || !userEmail || !action) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-        }
+        const { logId, userEmail, action } = data;
 
         const [user] = await db.select().from(usersTable).where(eq(usersTable.email, userEmail));
         if (!user) {

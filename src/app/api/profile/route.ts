@@ -7,6 +7,8 @@ import { doubtsTable, repliesTable, membershipsTable, classroomsTable, usersTabl
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import type { ProfileClassroom } from "@/types/profile";
+import { toPublicDoubt } from "@/lib/anonymity/anonymity";
+import { toPublicReply } from "@/lib/anonymity/anonymity";
 
 export async function GET(req: Request) {
     try {
@@ -79,8 +81,8 @@ export async function GET(req: Request) {
                 classroomsCount: memberships?.length || 0,
             },
             activities: {
-                doubts: doubts || [],
-                replies: replies || [],
+                doubts: (doubts || []).map((doubt: any) => toPublicDoubt(doubt, email)),
+                replies: (replies || []).map((reply: any) => toPublicReply(reply, email)),
                 classrooms: classrooms || [],
             },
         });
