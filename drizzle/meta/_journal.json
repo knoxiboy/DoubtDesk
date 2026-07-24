@@ -18,6 +18,8 @@
     { "idx": 13, "version": "7", "when": 1781300000000, "tag": "0013_identity_system_update", "breakpoints": true },
     { "idx": 14, "version": "7", "when": 1781340000000, "tag": "0014_practice_attempts", "breakpoints": true },
     { "idx": 15, "version": "7", "when": 1781354492608, "tag": "0015_add_onboarding_fields", "breakpoints": true },
-    { "idx": 16, "version": "7", "when": 1781400000000, "tag": "0016_video_jobs", "breakpoints": true }
+    { "idx": 16, "version": "7", "when": 1781400000000, "tag": "0016_video_jobs", "breakpoints": true },
+    { "idx": 17, "version": "7", "when": 1783052444378, "tag": "0017_mushy_virginia_dare", "breakpoints": true },
+    { "idx": 18, "version": "7", "when": 1783200000000, "tag": "0018_add_content_flags", "breakpoints": true }
   ]
 }

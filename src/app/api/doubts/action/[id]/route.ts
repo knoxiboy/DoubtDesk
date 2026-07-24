@@ -3,11 +3,11 @@ import { doubtTagsTable, doubtsTable, likesTable, classroomsTable, repliesTable,
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { moderateContent, handleModerationViolation } from "@/lib/moderation";
+import { moderateContent, handleModerationViolation } from "@/lib/moderation/moderation";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { updateDoubtActionSchema } from "@/lib/validations/doubt";
-import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubtStatus";
-import { auditLog, AUDIT_ACTIONS } from "@/lib/audit";
+import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubts/doubtStatus";
+import { auditLog, AUDIT_ACTIONS } from "@/lib/audit/audit";
 import type { Tag } from "@/types";
 import { canTeach } from "@/lib/auth/membership-guard";
 
@@ -32,8 +32,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
         // Security: Verify doubt visibility/classroom membership
+        let membership: typeof membershipsTable.$inferSelect | undefined;
         if (doubt.classroomId && email) {
-            const [membership] = await db.select().from(membershipsTable).where(
+            [membership] = await db.select().from(membershipsTable).where(
                 and(eq(membershipsTable.userEmail, email), eq(membershipsTable.classroomId, doubt.classroomId))
             );
             if (!membership) {
@@ -45,21 +46,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
         // Permission check for sensitive actions
         const isOwner = email && doubt.userEmail === email;
-        let isTeacher = false;
-
-        if (doubt.classroomId && email) {
-            const [membership] = await db
-            .select()
-            .from(membershipsTable)
-            .where(
-                and(
-                    eq(membershipsTable.userEmail, email),
-                    eq(membershipsTable.classroomId, doubt.classroomId)
-                )
-            );
-
-            isTeacher = !!(membership && canTeach(membership.role));    
-        }
+        const isTeacher = !!(membership && canTeach(membership.role));
 
         if (action === "like") {
             if (!email) {
@@ -68,7 +55,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
             const secureUserIdentifier = email;
 
-            const result = await db.transaction(async (tx: typeof db) => {
+            const result = await db.transaction(async (tx: any) => {
 
                 const locked = await tx.execute(
                     sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} FOR UPDATE`
@@ -327,14 +314,18 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     try {
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
-        
+
+        if (!email) {                                                    
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); 
+        }                                                               
+
         const { id } = await params;
         const doubtId = parseInt(id);
 
         const [doubt] = await db.select().from(doubtsTable).where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
-        const isOwner = email && doubt.userEmail === email;
+        const isOwner = doubt.userEmail === email;   //simplified, email is guaranteed defined now
         let isTeacher = false;
 
         if (doubt.classroomId && email) {

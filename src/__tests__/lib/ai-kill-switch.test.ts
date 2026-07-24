@@ -4,9 +4,9 @@ import {
   buildAiProviderErrorResponse,
   enforceAiAvailability,
 } from "@/lib/ai/kill-switch";
-import { aiDailyLimiter } from "@/lib/ratelimit";
+import { aiDailyLimiter } from "@/lib/ratelimit/ratelimit";
 
-jest.mock("@/lib/ratelimit", () => ({
+jest.mock("@/lib/ratelimit/ratelimit", () => ({
   aiDailyLimiter: {
     limit: jest.fn(),
   },

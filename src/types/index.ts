@@ -1,5 +1,5 @@
 // Roadmap Types
-import type { PublicAuthored } from "@/lib/anonymity";
+import type { PublicAuthored } from "@/lib/anonymity/anonymity";
 
 export interface Milestone {
     week: string;
@@ -100,60 +100,7 @@ export interface Education {
     description?: string;
 }
 
-export interface Experience {
-    company: string;
-    role: string;
-    location: string;
-    startDate: string;
-    endDate: string;
-    description: string;
-}
 
-export interface Skill {
-    category: string;
-    skills: string[];
-}
-
-export interface Project {
-    title: string;
-    link?: string;
-    description: string;
-    technologies: string[];
-}
-
-export interface CustomSubItem {
-    title?: string;
-    subtitle?: string;
-    date?: string;
-    location?: string;
-    description: string;
-}
-
-export interface CustomSection {
-    id: string;
-    title: string;
-    items: CustomSubItem[];
-}
-
-export interface ResumeData {
-    personalInfo: PersonalInfo;
-    education: Education[];
-    experience: Experience[];
-    skills: Skill[];
-    projects: Project[];
-    honors?: string[];
-    customSections?: CustomSection[];
-    template: string;
-}
-
-export interface ResumeItem {
-    id: number;
-    userEmail: string;
-    resumeName: string;
-    resumeData: ResumeData;
-    createdAt: string;
-    updatedAt: string;
-}
 
 // Core Database Entity Types
 

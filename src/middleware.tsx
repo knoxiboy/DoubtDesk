@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { aiLimiter, generalLimiter, videoLimiter } from '@/lib/ratelimit';
+import { aiLimiter, generalLimiter, videoLimiter } from '@/lib/ratelimit/ratelimit';
 import { db } from '@/configs/db';
 import { usersTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';
@@ -39,6 +39,24 @@ function usesRouteLevelLimit(path: string, method: string) {
     );
 }
 
+/**
+ * Name of the short-lived HttpOnly cookie used to cache the onboarding status.
+ *
+ * After the first successful database check confirming the user is onboarded,
+ * the cookie is set so subsequent page navigations skip the DB query entirely
+ * for the duration of the TTL. The cookie is HttpOnly, Secure (in production),
+ * and SameSite=Strict to prevent client-side tampering or CSRF abuse.
+ *
+ * Worst-case staleness: if a user's `onboarded` flag is flipped to false in
+ * the database, they will continue to access protected pages until the cookie
+ * expires (at most 5 minutes). This trade-off is acceptable because the
+ * onboarding flag is only ever set to true (never reverted after completion).
+ */
+const ONBOARDED_COOKIE = 'dd_onboarded';
+
+/** How long (seconds) the onboarding cache cookie is valid before re-checking. */
+const ONBOARDED_COOKIE_TTL_SECONDS = 5 * 60; // 5 minutes
+
 export default clerkMiddleware(async (auth, req) => {
     const path = req.nextUrl.pathname;
 
@@ -62,7 +80,8 @@ export default clerkMiddleware(async (auth, req) => {
             path.startsWith('/api/ai-career-chat-agent') ||
             path.startsWith('/api/doubts/check-similarity') ||
             path.startsWith('/api/roadmap') ||
-            (path.startsWith('/api/doubts') && (req.method === 'POST' || path.includes('/practice')));
+            path.startsWith('/api/doubts/practice') ||
+            path.includes('/practice');
         const isVideoRoute = path.startsWith('/api/video/generate');
         const limiter = isVideoRoute ? videoLimiter : (isAiRoute ? aiLimiter : generalLimiter);
 
@@ -76,7 +95,7 @@ export default clerkMiddleware(async (auth, req) => {
                         message: isVideoRoute
                             ? "Video generation limit reached (max 3 per hour)."
                             : (isAiRoute
-                                ? "AI Solver is currently rate limited to protect resources."
+                                ? "AI request limit reached. Please try again later."
                                 : "You've reached the rate limit for this action.")
                     }),
                     {
@@ -116,6 +135,17 @@ export default clerkMiddleware(async (auth, req) => {
     }
 
     if (userId && !isApi && !isPublic) {
+        // ── Fast path ────────────────────────────────────────────────────────────
+        // If the onboarding cache cookie is present the user was confirmed as
+        // onboarded within the last TTL window — skip the database query entirely.
+        const cachedOnboarded = req.cookies.get(ONBOARDED_COOKIE)?.value === '1';
+        if (cachedOnboarded) {
+            return;
+        }
+
+        // ── Slow path ─────────────────────────────────────────────────────────────
+        // Resolve the user's email (from session claims first, Clerk API as fallback)
+        // then hit the database once to check onboarding status.
         let email = sessionClaims?.email as string | undefined;
         if (!email) {
             try {
@@ -141,6 +171,19 @@ export default clerkMiddleware(async (auth, req) => {
                     const onboardingUrl = new URL('/onboarding', req.url);
                     return NextResponse.redirect(onboardingUrl);
                 }
+
+                // User is confirmed onboarded — cache the result in a short-lived
+                // HttpOnly cookie so the next TTL window of page navigations all
+                // hit this fast path instead.
+                const res = NextResponse.next();
+                res.cookies.set(ONBOARDED_COOKIE, '1', {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: 'strict',
+                    maxAge: ONBOARDED_COOKIE_TTL_SECONDS,
+                    path: '/',
+                });
+                return res;
             } catch (err) {
                 console.error("Middleware onboarding check error:", err);
             }

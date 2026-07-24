@@ -6,7 +6,7 @@ import { SignUp } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import { dark } from "@clerk/themes";
 import { ArrowLeft } from "lucide-react";
-import { BACK_TO_HOME_LABEL } from "@/lib/constants";
+import { BACK_TO_HOME_LABEL } from "@/lib/constants/constants";
 
 /**
  * Renders the Sign Up page for user authentication.

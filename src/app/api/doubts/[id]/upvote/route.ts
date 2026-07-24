@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { repliesTable, replyLikesTable } from "@/configs/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { inngest } from "@/inngest/client";
 import { currentUser } from "@clerk/nextjs/server";
 

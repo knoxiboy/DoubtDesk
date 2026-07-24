@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { doubtsTable, classroomsTable, repliesTable } from "@/configs/schema";
-import { and, eq, desc, gte, lte, sql, isNull } from "drizzle-orm";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { and, eq, desc, gte, lte, sql, isNull, inArray } from "drizzle-orm";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 import {
     parseClassroomId,
     requireAuth,
@@ -66,13 +66,17 @@ export async function GET(
             .orderBy(desc(doubtsTable.createdAt));
 
         // 7. Fetch reply counts for these doubts
-        const replyCounts = await db
-            .select({
-                doubtId: repliesTable.doubtId,
-                count: sql<number>`count(*)`.mapWith(Number),
-            })
-            .from(repliesTable)
-            .groupBy(repliesTable.doubtId);
+        const doubtIds = doubts.map((d: any) => d.id);
+        const replyCounts = doubtIds.length > 0
+            ? await db
+                .select({
+                    doubtId: repliesTable.doubtId,
+                    count: sql<number>`count(*)`.mapWith(Number),
+                })
+                .from(repliesTable)
+                .where(inArray(repliesTable.doubtId, doubtIds))
+                .groupBy(repliesTable.doubtId)
+            : [];
 
         const countsMap = Object.fromEntries(
             replyCounts.map((r: any) => [r.doubtId, r.count])

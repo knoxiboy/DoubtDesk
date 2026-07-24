@@ -5,7 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import DoubtPermalinkClient from "./DoubtPermalinkClient";
 import type { Metadata } from "next";
-import { toPublicDoubt } from "@/lib/anonymity";
+import { toPublicDoubt } from "@/lib/anonymity/anonymity";
 
 export async function generateMetadata(
     { params }: { params: Promise<{ id: string }> }

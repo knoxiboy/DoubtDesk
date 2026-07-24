@@ -1,8 +1,5 @@
-import Groq from 'groq-sdk';
-
-const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY || 'dummy_key',
-});
+import type Groq from 'groq-sdk';
+import { groq } from '@/lib/ai/groq-client';
 
 /**
  * Automatically categorizes a doubt into a specific sub-topic based on its content and subject.

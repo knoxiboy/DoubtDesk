@@ -3,8 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { usersTable, karmaTransactionsTable, userBadgesTable, badgeDefinitionsTable } from "@/configs/schema";
 import { eq, desc, sql } from "drizzle-orm";
-import { buildErrorResponse } from "@/lib/error-handler";
-import { checkAndAwardBadges } from "@/lib/karma-utils";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
+import { checkAndAwardBadges } from "@/lib/karma/karma-utils";
 import { currentUser } from "@clerk/nextjs/server";
 
 // ── KARMA LEVEL THRESHOLDS ────────────────────────────────────────────────────

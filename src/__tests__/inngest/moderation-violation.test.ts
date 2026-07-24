@@ -1,5 +1,5 @@
 import { db } from "@/configs/db";
-import { sendWarningEmail, sendBlockEmail } from "@/lib/email";
+import { sendWarningEmail, sendBlockEmail } from "@/lib/email/email";
 
 jest.mock("@/configs/db", () => ({
   db: {
@@ -7,7 +7,7 @@ jest.mock("@/configs/db", () => ({
   },
 }));
 
-jest.mock("@/lib/email", () => ({
+jest.mock("@/lib/email/email", () => ({
   sendWarningEmail: jest.fn().mockResolvedValue(undefined),
   sendBlockEmail: jest.fn().mockResolvedValue(undefined),
 }));
@@ -45,7 +45,7 @@ describe("handleModerationViolation — atomic counter", () => {
   beforeEach(() => jest.clearAllMocks());
 
   it("returns null immediately when content is allowed", async () => {
-    const { handleModerationViolation } = await import("@/lib/moderation");
+    const { handleModerationViolation } = await import("@/lib/moderation/moderation");
     const result = await handleModerationViolation("u@test.com", "fine content", { isAllowed: true, reason: "OK" });
     expect(result).toBeNull();
     expect(mockTransaction).not.toHaveBeenCalled();
@@ -57,7 +57,7 @@ describe("handleModerationViolation — atomic counter", () => {
       return fn(tx);
     });
 
-    const { handleModerationViolation } = await import("@/lib/moderation");
+    const { handleModerationViolation } = await import("@/lib/moderation/moderation");
     await handleModerationViolation("u@test.com", "bad content", ALLOWED_RESULT);
     expect(mockTransaction).toHaveBeenCalledTimes(1);
   });
@@ -68,7 +68,7 @@ describe("handleModerationViolation — atomic counter", () => {
         const tx = makeTxChain([{ violationCount: count, blockCount: 0, blockedUntil: null }]);
         return fn(tx);
       });
-      const { handleModerationViolation } = await import("@/lib/moderation");
+      const { handleModerationViolation } = await import("@/lib/moderation/moderation");
       await handleModerationViolation("u@test.com", "bad", ALLOWED_RESULT);
       expect(mockSendBlockEmail).not.toHaveBeenCalled();
     }
@@ -82,7 +82,7 @@ describe("handleModerationViolation — atomic counter", () => {
       return fn(tx);
     });
 
-    const { handleModerationViolation } = await import("@/lib/moderation");
+    const { handleModerationViolation } = await import("@/lib/moderation/moderation");
     const msg = await handleModerationViolation("u@test.com", "bad", ALLOWED_RESULT);
 
     expect(mockSendBlockEmail).toHaveBeenCalledTimes(1);
@@ -99,7 +99,7 @@ describe("handleModerationViolation — atomic counter", () => {
       return fn(tx);
     });
 
-    const { handleModerationViolation } = await import("@/lib/moderation");
+    const { handleModerationViolation } = await import("@/lib/moderation/moderation");
     await Promise.all([
       handleModerationViolation("u@test.com", "bad1", ALLOWED_RESULT),
       handleModerationViolation("u@test.com", "bad2", ALLOWED_RESULT),
@@ -119,7 +119,7 @@ describe("handleModerationViolation — atomic counter", () => {
       return fn(tx);
     });
 
-    const { handleModerationViolation } = await import("@/lib/moderation");
+    const { handleModerationViolation } = await import("@/lib/moderation/moderation");
     const result = await handleModerationViolation("ghost@test.com", "bad", ALLOWED_RESULT);
     expect(result).toBeNull();
     expect(mockSendWarningEmail).not.toHaveBeenCalled();

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
-import { aiDailyLimiter } from "@/lib/ratelimit";
+import { aiDailyLimiter } from "@/lib/ratelimit/ratelimit";
 
 const TRANSIENT_PROVIDER_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 const TRANSIENT_PROVIDER_CODES = new Set([

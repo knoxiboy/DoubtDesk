@@ -1,19 +1,19 @@
 import { db } from "@/configs/db";
 import { repliesTable, doubtsTable, replyLikesTable, usersTable, membershipsTable } from "@/configs/schema";
-import { eq, asc, and, isNull } from "drizzle-orm";
+import { eq, asc, and, isNull, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
-import { moderateContent, handleModerationViolation } from "@/lib/moderation";
-import { buildErrorResponse, errorResponse } from "@/lib/error-handler";
+import { moderateContent, handleModerationViolation } from "@/lib/moderation/moderation";
+import { buildErrorResponse, errorResponse } from "@/lib/errors/error-handler";
 import { inngest } from "@/inngest/client";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createReplySchema } from "@/lib/validations/reply";
-import { DOUBT_STATUS } from "@/lib/doubtStatus";
+import { DOUBT_STATUS } from "@/lib/doubts/doubtStatus";
 import { createReplyNotification } from "@/lib/notifications/service";
-import { enforceApiRateLimit } from "@/lib/api-rate-limit";
-import { generalLimiter } from "@/lib/ratelimit";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
+import { generalLimiter } from "@/lib/ratelimit/ratelimit";
 import { canTeach } from "@/lib/auth/membership-guard";
-import { toPublicReply } from "@/lib/anonymity";
+import { toPublicReply } from "@/lib/anonymity/anonymity";
 
 export async function GET(req: Request) {
   try {
@@ -88,10 +88,20 @@ export async function GET(req: Request) {
 
     let repliesWithVotes = data;
     if (email) {
-      const userUpvotes = await db
-        .select()
-        .from(replyLikesTable)
-        .where(eq(replyLikesTable.userEmail, email));
+      // Only fetch the current user's likes for this doubt's replies, not
+      // every like they have ever made across the entire app.
+      const replyIds = data.map((r: any) => r.id);
+      const userUpvotes = replyIds.length > 0
+        ? await db
+            .select()
+            .from(replyLikesTable)
+            .where(
+              and(
+                eq(replyLikesTable.userEmail, email),
+                inArray(replyLikesTable.replyId, replyIds),
+              ),
+            )
+        : [];
       const upvotedReplyIds = new Set(userUpvotes.map((v: any) => v.replyId));
       repliesWithVotes = data.map((reply: any) => ({
         ...reply,

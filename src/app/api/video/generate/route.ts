@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { currentUser } from "@clerk/nextjs/server";
-import { checkUserBlock } from "@/lib/auth-utils";
-import { redisClient, videoLimiter } from "@/lib/ratelimit";
-import { enforceApiRateLimit } from "@/lib/api-rate-limit";
+import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { redisClient, videoLimiter } from "@/lib/ratelimit/ratelimit";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { generateVideoSchema } from "@/lib/validations/video";
 import { db } from "@/configs/db";
@@ -61,14 +61,6 @@ export async function POST(req: Request) {
   try {
     const { content, imageUrl } = data;
 
-    // Use a configured, allowlisted origin — never request headers. Host and
-    // x-forwarded-proto are attacker-controlled here and would otherwise let a
-    // request choose the origin the background pipeline fetches assets from.
-    const baseUrl = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL;
-    if (!baseUrl) {
-      throw new Error("APP_URL is not configured");
-    }
-
     const jobId = randomUUID();
     await db.insert(videoJobsTable).values({
       id: jobId,
@@ -85,7 +77,6 @@ export async function POST(req: Request) {
         email,
         content: content ?? null,
         imageUrl: imageUrl ?? null,
-        baseUrl,
         lockKey,
       },
     });

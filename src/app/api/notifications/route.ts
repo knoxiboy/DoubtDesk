@@ -3,7 +3,7 @@ import { db } from "@/configs/db";
 import { notificationsTable } from "@/configs/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { parsePositiveInt } from "@/lib/utils";
+import { parsePositiveInt } from "@/lib/utils/utils";
 
 export async function GET(req: Request) {
     try {

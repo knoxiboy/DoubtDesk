@@ -1,31 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import axios from "axios";
 import { db } from "@/configs/db";
 import { coverLettersTable } from "@/configs/schema";
 import { currentUser } from "@clerk/nextjs/server";
-import { checkUserBlock } from "@/lib/auth-utils";
-import { buildErrorResponse } from "@/lib/error-handler";
+import { checkUserBlock } from "@/lib/auth/auth-utils";
+
+const MAX_LENGTH = 10_000;
+
+const coverLetterSchema = z.object({
+    jobDescription: z.string().min(1, "Job description is required").max(MAX_LENGTH, `Job description must not exceed ${MAX_LENGTH} characters`),
+    userDetails: z.string().min(1, "User details are required").max(MAX_LENGTH, `User details must not exceed ${MAX_LENGTH} characters`),
+});
 
 export async function POST(req: NextRequest) {
     try {
         const user = await currentUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const userEmail = user?.primaryEmailAddress?.emailAddress;
+
+        if (userEmail) {
+            const { isBlocked, errorResponse } = await checkUserBlock(userEmail);
+            if (isBlocked) return errorResponse;
         }
 
-        const userEmail = user.primaryEmailAddress?.emailAddress;
-        if (!userEmail) {
-            return NextResponse.json({ error: "User email not found" }, { status: 400 });
+        const body = await req.json();
+        const parsed = coverLetterSchema.safeParse(body);
+
+        if (!parsed.success) {
+            return NextResponse.json({
+                error: parsed.error.errors[0]?.message || "Invalid input",
+            }, { status: 400 });
         }
 
-        const { errorResponse } = await checkUserBlock(userEmail);
-        if (errorResponse) return errorResponse;
-
-        const { jobDescription, userDetails } = await req.json();
-
-        if (!jobDescription || !userDetails) {
-            return NextResponse.json({ error: "Job description and user details are required" }, { status: 400 });
-        }
+        const { jobDescription, userDetails } = parsed.data;
 
         const systemPrompt = `
 You are an expert Career Coach and Professional Resume/Cover Letter Writer.
@@ -72,18 +79,20 @@ Write a professional cover letter based on these details.
 
         const coverLetter = response.data.choices[0].message.content;
 
-        await db.insert(coverLettersTable).values({
-            userEmail,
-            jobDescription,
-            userDetails,
-            coverLetter
-        });
+        if (userEmail) {
+            await db.insert(coverLettersTable).values({
+                userEmail,
+                jobDescription,
+                userDetails,
+                coverLetter
+            });
+        }
 
         return NextResponse.json({ coverLetter });
 
     } catch (error: unknown) {
-        console.error("Cover Letter Generation Error:", error);
-        const { status, body } = buildErrorResponse(error);
-        return NextResponse.json(body, { status });
+        const message = error instanceof Error ? error.message : "Failed to generate cover letter";
+        console.error("Cover Letter Generation Error:", message);
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

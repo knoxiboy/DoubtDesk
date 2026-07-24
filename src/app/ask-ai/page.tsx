@@ -9,7 +9,7 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
-import Sidebar from '@/components/Sidebar';
+import Sidebar from '@/components/layout/Sidebar';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -20,7 +20,7 @@ import {
     AI_IMAGE_MAX_BYTES,
     AI_IMAGE_MAX_SIZE_LABEL,
     isAllowedAiImageMimeType,
-} from '@/lib/ai-image-validation';
+} from '@/lib/ai/ai-image-validation';
 import 'katex/dist/katex.min.css';
 
 type InputMode = 'text' | 'image';
@@ -428,7 +428,7 @@ export default function AskAIPage() {
                                         </button>
                                     ) : (
                                         <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-white dark:bg-black">
-                                            <img src={imageBase64} alt="Uploaded question" className="w-full max-h-64 object-contain" />
+                                            <img src={imageBase64} alt="Uploaded question" loading="lazy" decoding="async" className="w-full max-h-64 object-contain" />
                                             <button
                                                 onClick={() => { setImageBase64(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                                                 className="absolute top-3 right-3 w-8 h-8 bg-red-500/90 hover:bg-red-500 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"

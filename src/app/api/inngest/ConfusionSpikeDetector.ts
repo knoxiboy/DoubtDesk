@@ -3,9 +3,7 @@ import { inngest } from "@/inngest/client";
 import { db } from "@/configs/db";
 import { doubtsTable, confusionAlertsTable } from "@/configs/schema";
 import { and, gte, eq, desc } from "drizzle-orm";
-import Groq from "groq-sdk";
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "dummy_key" });
+import { groq } from "@/lib/ai/groq-client";
 
 const LOOKBACK_MS = 30 * 60 * 1000; // 30 minutes
 const COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes per topic

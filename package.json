@@ -8,6 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest --watchAll=false --forceExit",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "prepare": "husky"
   },
   "dependencies": {
@@ -97,6 +99,7 @@
     "zod": "3.23.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@remotion/bundler": "^4.0.435",
     "@remotion/cli": "^4.0.435",
     "@remotion/renderer": "^4.0.435",

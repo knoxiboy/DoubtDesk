@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import Groq from 'groq-sdk';
+import { groq } from '@/lib/ai/groq-client';
 import { currentUser } from '@clerk/nextjs/server';
-import { enforceApiRateLimit } from '@/lib/api-rate-limit';
-import { videoLimiter } from '@/lib/ratelimit';
+import { enforceApiRateLimit } from '@/lib/ratelimit/api-rate-limit';
+import { videoLimiter } from '@/lib/ratelimit/ratelimit';
 
 export async function POST(req: Request) {
     try {
@@ -18,10 +18,6 @@ export async function POST(req: Request) {
 
         const rateLimitResponse = await enforceApiRateLimit(videoLimiter, email, 'video');
         if (rateLimitResponse) return rateLimitResponse;
-
-        const groq = new Groq({
-            apiKey: process.env.GROQ_API_KEY || 'dummy_key',
-        });
 
         const { content } = await req.json();
         if (!content) {

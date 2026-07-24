@@ -13,7 +13,7 @@
  * `db.update(...).set(...)` call shape.
  */
 
-import { DOUBT_STATUS, isValidDoubtStatus, isOpen, DoubtStatus } from "@/lib/doubtStatus";
+import { DOUBT_STATUS, isValidDoubtStatus, isOpen, DoubtStatus } from "@/lib/doubts/doubtStatus";
 
 // --- Mocks ---------------------------------------------------------------
 
@@ -73,12 +73,12 @@ jest.mock("@clerk/nextjs/server", () => ({
     auth: jest.fn(),
 }));
 
-jest.mock("@/lib/moderation", () => ({
+jest.mock("@/lib/moderation/moderation", () => ({
     moderateContent: jest.fn().mockResolvedValue({ ok: true }),
     handleModerationViolation: jest.fn().mockResolvedValue(null),
 }));
 
-jest.mock("@/lib/error-handler", () => ({
+jest.mock("@/lib/errors/error-handler", () => ({
     buildErrorResponse: (err: Error) => ({
         status: 500,
         body: { error: err.message },

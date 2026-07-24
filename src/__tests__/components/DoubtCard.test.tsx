@@ -11,7 +11,7 @@ jest.mock('next/navigation', () => ({
     }),
 }));
 
-import DoubtCard from '@/components/DoubtCard';
+import DoubtCard from '@/components/classroom/DoubtCard';
 
 global.fetch = jest.fn(() =>
     Promise.resolve({

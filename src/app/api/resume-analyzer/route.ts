@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import axios from "axios";
 import { createRequire } from "module";
 import { db } from "@/configs/db";
 import { resumeAnalysisTable } from "@/configs/schema";
 import { currentUser } from "@clerk/nextjs/server";
-import { checkUserBlock } from "@/lib/auth-utils";
+import { checkUserBlock } from "@/lib/auth/auth-utils";
 
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse-fork");
 
 const MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024;
 const SUPPORTED_RESUME_MIME_TYPES = new Set(["application/pdf"]);
+const MAX_TEXT_LENGTH = 10_000;
+
+const textFieldSchema = z.string().max(MAX_TEXT_LENGTH, `Field must not exceed ${MAX_TEXT_LENGTH} characters`);
 
 function isUploadedFile(value: FormDataEntryValue | null): value is File {
     return (
@@ -41,24 +45,26 @@ function validateResumeFile(file: File) {
 
 export async function POST(req: NextRequest) {
     try {
-        const user = await currentUser();
-        if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
-
-        const userEmail = user.primaryEmailAddress?.emailAddress;
-        if (!userEmail) {
-            return NextResponse.json({ error: "User email not found" }, { status: 400 });
-        }
-
-        const { errorResponse } = await checkUserBlock(userEmail);
-        if (errorResponse) return errorResponse;
-
         const formData = await req.formData();
         const file = formData.get("resume");
-        const jobDescription = formData.get("jobDescription") as string || "";
-        const fieldOfInterest = formData.get("fieldOfInterest") as string || "";
-        const targetRole = formData.get("targetRole") as string || "";
+        const jobDescription = (formData.get("jobDescription") as string || "").trim();
+        const fieldOfInterest = (formData.get("fieldOfInterest") as string || "").trim();
+        const targetRole = (formData.get("targetRole") as string || "").trim();
+
+        const jdResult = textFieldSchema.safeParse(jobDescription);
+        if (!jdResult.success) {
+            return NextResponse.json({ error: jdResult.error.errors[0]?.message || "Invalid job description" }, { status: 400 });
+        }
+
+        const foiResult = textFieldSchema.safeParse(fieldOfInterest);
+        if (!foiResult.success) {
+            return NextResponse.json({ error: foiResult.error.errors[0]?.message || "Invalid field of interest" }, { status: 400 });
+        }
+
+        const trResult = textFieldSchema.safeParse(targetRole);
+        if (!trResult.success) {
+            return NextResponse.json({ error: trResult.error.errors[0]?.message || "Invalid target role" }, { status: 400 });
+        }
 
         if (!isUploadedFile(file)) {
             return NextResponse.json({ error: "Resume file is required" }, { status: 400 });
@@ -69,7 +75,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: validationError }, { status: 400 });
         }
 
-        // 1. Extract text from PDF using pdf-parse-fork (Robust, no worker issues)
+        const user = await currentUser();
+        const userEmail = user?.primaryEmailAddress?.emailAddress;
+
+        if (userEmail) {
+            const { isBlocked, errorResponse } = await checkUserBlock(userEmail);
+            if (isBlocked) return errorResponse;
+        }
+
         const buffer = Buffer.from(await file.arrayBuffer());
         let resumeText = "";
 
@@ -77,8 +90,7 @@ export async function POST(req: NextRequest) {
             const data = await pdf(buffer);
             resumeText = data.text;
         } catch (parseError: unknown) {
-            const error = parseError as { message?: string };
-            console.error("PDF Parsing Error:", error);
+            console.error("PDF Parsing Error:", parseError);
             return NextResponse.json({
                 error: "Unable to read the uploaded PDF. Please upload a valid text-based PDF resume."
             }, { status: 400 });
@@ -88,9 +100,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Failed to extract text from the PDF" }, { status: 400 });
         }
 
-        // 3. AI Analysis using Groq
-        const hasJD = !!jobDescription.trim();
-        const hasIntent = !!(fieldOfInterest.trim() || targetRole.trim());
+        const hasJD = !!jobDescription;
+        const hasIntent = !!(fieldOfInterest || targetRole);
 
         let mode = "general";
         if (hasJD) mode = "strict_jd";
@@ -173,34 +184,27 @@ ${resumeText}
 
         const aiOutput = JSON.parse(response.data.choices[0].message.content);
 
-        const trimmedJD = jobDescription.trim();
-        const trimmedField = fieldOfInterest.trim();
-        const trimmedRole = targetRole.trim();
-        const displayTitle = trimmedJD
-            ? trimmedJD
-            : (trimmedField || trimmedRole)
-                ? `${trimmedField}${trimmedField && trimmedRole ? ' - ' : ''}${trimmedRole}`
-                : "General Analysis";
+        if (userEmail) {
+            const displayTitle = jobDescription
+                ? jobDescription
+                : (fieldOfInterest || targetRole)
+                    ? `${fieldOfInterest}${fieldOfInterest && targetRole ? ' - ' : ''}${targetRole}`.trim()
+                    : "General Analysis";
 
-        await db.insert(resumeAnalysisTable).values({
-            userEmail,
-            resumeText,
-            resumeName: file.name,
-            jobDescription: displayTitle,
-            analysisData: JSON.stringify(aiOutput)
-        });
+            await db.insert(resumeAnalysisTable).values({
+                userEmail,
+                resumeText,
+                resumeName: file.name,
+                jobDescription: displayTitle,
+                analysisData: JSON.stringify(aiOutput)
+            });
+        }
 
         return NextResponse.json(aiOutput);
+
     } catch (error: unknown) {
-        const err = error as {
-            message?: string;
-            stack?: string;
-            response?: { data?: unknown };
-        };
         console.error("Resume Analysis Error Detail:", {
-            message: err.message,
-            stack: err.stack,
-            response: err.response?.data,
+            message: error instanceof Error ? error.message : String(error),
         });
         return NextResponse.json({
             error: "Failed to analyze resume. Please try again later."

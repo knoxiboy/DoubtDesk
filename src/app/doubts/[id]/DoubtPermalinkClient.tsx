@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import DoubtCard from "@/components/DoubtCard";
-import DoubtRepliesModal from "@/components/DoubtRepliesModal";
+import DoubtCard from "@/components/classroom/DoubtCard";
+import DoubtRepliesModal from "@/components/classroom/DoubtRepliesModal";
 import type { Doubt } from "@/types";
 
 interface DoubtPermalinkClientProps {

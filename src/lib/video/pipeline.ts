@@ -1,7 +1,8 @@
 import { renderMedia, selectComposition } from "@remotion/renderer";
 import path from "path";
 import fs from "fs";
-import Groq from "groq-sdk";
+import os from "os";
+import { groq } from "@/lib/ai/groq-client";
 import axios from "axios";
 import Tesseract from "tesseract.js";
 import { uploadVideo } from "./storage";
@@ -20,8 +21,6 @@ export interface EnrichedScene extends SceneData {
 export interface VideoPipelineInput {
   content?: string | null;
   imageUrl?: string | null;
-  /** Absolute base URL (e.g. https://host) used to reference generated audio assets. */
-  baseUrl: string;
 }
 
 export interface VideoPipelineResult {
@@ -36,9 +35,30 @@ export interface VideoProgress {
 
 export type ProgressReporter = (update: VideoProgress) => Promise<void> | void;
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY || "dummy_key",
-});
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp", "image/svg+xml", "image/tiff"];
+
+async function validateImageUrl(url: string): Promise<void> {
+  try {
+    const response = await axios.head(url, { timeout: 5000 });
+    const contentType = String(response.headers["content-type"] || "").toLowerCase();
+
+    if (!ALLOWED_IMAGE_TYPES.some(type => contentType.includes(type))) {
+      throw new Error(`Invalid file type: ${contentType || "unknown"}. Only image files are allowed.`);
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Invalid file type")) {
+      throw error;
+    }
+    throw new Error("Failed to validate image file: unable to fetch file headers");
+  }
+}
+
+export async function cleanupVideoArtifacts(tempDir: string, outputLocation: string): Promise<void> {
+  await Promise.all([
+    fs.promises.unlink(outputLocation).catch(() => {}),
+    fs.promises.rm(tempDir, { recursive: true, force: true }).catch(() => {}),
+  ]);
+}
 
 function splitTextIntoChunks(text: string, maxLen: number = 200): string[] {
   const rawWords = text.split(/\s+/);
@@ -98,11 +118,12 @@ export async function runVideoPipeline(
   onProgress: ProgressReporter = () => {},
 ): Promise<VideoPipelineResult> {
   let content = input.content ?? undefined;
-  const { imageUrl, baseUrl } = input;
+  const { imageUrl } = input;
 
   // 1. OCR if an image is provided and no text content was supplied.
   if (imageUrl && !content) {
     await onProgress({ progress: 10, step: "Reading image (OCR)…" });
+    await validateImageUrl(imageUrl);
     const {
       data: { text },
     } = await Tesseract.recognize(imageUrl, "eng");
@@ -178,8 +199,7 @@ Return ONLY a JSON object with a "scenes" array.`;
 
   // 4. Generate audio (free Google TTS).
   await onProgress({ progress: 65, step: "Generating audio…" });
-  const tempDir = path.resolve("./public/temp-assets");
-  if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "doubtdesk-audio-"));
 
   const scenes: EnrichedScene[] = await Promise.all(
     rawScenes.map(async (scene: SceneData, i: number): Promise<EnrichedScene> => {
@@ -201,66 +221,39 @@ Return ONLY a JSON object with a "scenes" array.`;
       const combinedBuffer = Buffer.concat(audioBuffers);
       await fs.promises.writeFile(audioPath, combinedBuffer);
 
-      return { ...scene, audioUrl: `${baseUrl}/temp-assets/${path.basename(audioPath)}` };
+      return { ...scene, audioUrl: `file://${audioPath}` };
     }),
   );
 
   // 5. Render the video with Remotion.
   await onProgress({ progress: 90, step: "Rendering video…" });
   const entryPoint = path.resolve(process.cwd(), "src/lib/video/remotion/index.tsx");
-  const outputLocation = path.resolve(`./public/videos/video-${Date.now()}.mp4`);
-  if (!fs.existsSync(path.resolve("./public/videos"))) {
-    fs.mkdirSync(path.resolve("./public/videos"), { recursive: true });
+  const outputLocation = path.join(os.tmpdir(), `video-${Date.now()}.mp4`);
+
+  try {
+    const { bundle } = await import("@remotion/bundler");
+    const bundleLocation = await bundle({ entryPoint });
+
+    const compositionId = "DoubtVideo";
+    const inputProps = { type: videoType, scenes };
+
+    const composition = await selectComposition({
+      serveUrl: bundleLocation,
+      id: compositionId,
+      inputProps,
+    });
+    await renderMedia({
+      composition,
+      serveUrl: bundleLocation,
+      codec: "h264",
+      outputLocation,
+      inputProps,
+    });
+
+    const objectName = `renders/${path.basename(outputLocation)}`;
+    const videoUrl = await uploadVideo(outputLocation, objectName);
+    return { videoUrl, videoType };
+  } finally {
+    await cleanupVideoArtifacts(tempDir, outputLocation);
   }
-
-  const { bundle } = await import("@remotion/bundler");
-  const bundleLocation = await bundle({ entryPoint });
-
-  const compositionId = "DoubtVideo";
-  const inputProps = { type: videoType, scenes };
-
-  const composition = await selectComposition({
-    serveUrl: bundleLocation,
-    id: compositionId,
-    inputProps,
-  });
-  await renderMedia({
-    composition,
-    serveUrl: bundleLocation,
-    codec: "h264",
-    outputLocation,
-    inputProps,
-  });
-
-  // Clean up temporary audio files after a successful render.
-  await Promise.all(
-    scenes.map(async (scene: EnrichedScene) => {
-      try {
-        const fileName = path.basename(scene.audioUrl);
-        const localPath = path.join(tempDir, fileName);
-        if (fs.existsSync(localPath)) await fs.promises.unlink(localPath);
-      } catch (err) {
-        console.error("Failed to delete temp audio file:", err);
-      }
-    }),
-  ).catch((err) => console.error("Error during temp audio cleanup:", err));
-
-  // Persist the render to durable object storage (issue #321). The local
-  // public/videos path is ephemeral in serverless/Inngest execution and isn't
-  // guaranteed to be served by the instance handling playback, so upload to
-  // Supabase Storage and return that URL. Falls back to the local path only when
-  // storage is not configured (e.g. local dev).
-  const objectName = `renders/${path.basename(outputLocation)}`;
-  const uploadedUrl = await uploadVideo(outputLocation, objectName);
-  if (uploadedUrl) {
-    await fs.promises.unlink(outputLocation).catch(() => {});
-    return { videoUrl: uploadedUrl, videoType };
-  }
-
-  console.warn(
-    "[video] durable storage not configured; returning ephemeral local path. Set " +
-      "NEXT_PUBLIC_SUPABASE_URL and a Supabase key (SUPABASE_SERVICE_ROLE_KEY " +
-      "recommended) to persist renders in production.",
-  );
-  return { videoUrl: `/videos/${path.basename(outputLocation)}`, videoType };
 }
