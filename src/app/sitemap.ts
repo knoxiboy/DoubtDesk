@@ -16,14 +16,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = getSiteUrl();
 
   return [
-    { url: baseUrl, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
-    { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.8 },
-    { url: `${baseUrl}/faq`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.7 },
-    { url: `${baseUrl}/contributors`, lastModified: new Date(), changeFrequency: "weekly", priority: 0.6 },
-    { url: `${baseUrl}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
-    { url: `${baseUrl}/discussions`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
-    { url: `${baseUrl}/public-rooms`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${baseUrl}/terms-of-service`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
-    { url: `${baseUrl}/privacy-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    { url: baseUrl, changeFrequency: "weekly", priority: 1 },
+    { url: `${baseUrl}/about`, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${baseUrl}/faq`, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${baseUrl}/contributors`, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${baseUrl}/contact`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${baseUrl}/discussions`, changeFrequency: "daily", priority: 0.8 },
+    { url: `${baseUrl}/roadmaps`, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${baseUrl}/public-rooms`, changeFrequency: "daily", priority: 0.9 },
+    { url: `${baseUrl}/terms-of-service`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${baseUrl}/privacy-policy`, changeFrequency: "yearly", priority: 0.3 },
   ];
 }
