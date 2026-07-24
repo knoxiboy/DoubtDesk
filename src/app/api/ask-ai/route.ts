@@ -18,16 +18,16 @@ type ChatMsg = { role: "user" | "assistant"; content: string };
 
 function sanitizeHistory(raw: unknown): ChatMsg[] {
   if (!Array.isArray(raw)) return [];
-  return raw
-    .filter(
-      (m): m is ChatMsg =>
-        !!m &&
-        typeof m === "object" &&
-        (m.role === "user" || m.role === "assistant") &&
-        typeof m.content === "string" &&
-        m.content.length <= 4000
-    )
-    .slice(-20);
+return raw
+  .slice(-20)
+  .filter(
+    (m): m is ChatMsg =>
+      !!m &&
+      typeof m === "object" &&
+      (m.role === "user" || m.role === "assistant") &&
+      typeof m.content === "string" &&
+      m.content.length <= 4000
+  );
 }
 
 export async function POST(req: Request): Promise<NextResponse> {
