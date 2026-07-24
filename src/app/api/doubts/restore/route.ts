@@ -4,12 +4,16 @@ import { and, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { canTeach } from "@/lib/auth/membership-guard";
+import { checkUserBlock } from "@/lib/auth/auth-utils";
 
 export async function POST(req: Request) {
     try {
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
         if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+        const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
+        if (isBlocked) return blockResponse;
 
         const { doubtId } = await req.json();
         if (!doubtId) return NextResponse.json({ error: "Doubt ID required" }, { status: 400 });

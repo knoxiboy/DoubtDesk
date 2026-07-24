@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
@@ -31,6 +31,31 @@ export default function Header() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [pathname]);
 
+  // Lock body scroll while the mobile menu is open
+  useEffect(() => {
+    if (isOpen) {
+      const previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = previousOverflow;
+      };
+    }
+  }, [isOpen]);
+
+  // Close mobile menu on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Close mobile menu automatically on route change
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
   // Scroll Progress Bar
   useEffect(() => {
     const updateScrollProgress = () => {
@@ -55,7 +80,13 @@ export default function Header() {
     { href: "/public-rooms", label: "Public Rooms" },
     { href: "/faq", label: "FAQ" },
     { href: "/contact", label: "Contact" },
+    { href: "/about", label: "About" },
   ];
+
+  const isActive = useCallback(
+    (href: string) => !href.startsWith("#") && pathname === href,
+    [pathname]
+  );
 
   const handleScrollNavigation = (targetId: string) => {
     setIsOpen(false);
@@ -77,7 +108,7 @@ export default function Header() {
         {showBackButton && (
           <button
             onClick={handleBackClick}
-            className={`hidden md:flex items-center justify-center p-2 rounded-xl transition-all duration-300 flex-shrink-0 ${
+            className={`hidden md:flex items-center justify-center p-2 rounded-xl transition-all duration-300 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 ${
               canGoBack
                 ? "text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
                 : "text-slate-400 dark:text-zinc-600 opacity-50 cursor-default"
@@ -93,9 +124,9 @@ export default function Header() {
         {/* Logo and Brand */}
         <Link
           href="/"
-          className="flex items-center gap-2 sm:gap-3 hover:opacity-90 transition-opacity shrink-0 group relative z-50"
+          className="flex items-center gap-2 sm:gap-3 shrink-0 group relative z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 rounded-xl"
         >
-          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
+          <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105 bg-gradient-to-br from-blue-600/10 to-blue-400/5 dark:from-[#5E8CFF]/15 dark:to-[#5E8CFF]/5 ring-1 ring-blue-600/10 dark:ring-[#5E8CFF]/20">
             <img
               src="/logo.png"
               alt="DoubtDesk logo"

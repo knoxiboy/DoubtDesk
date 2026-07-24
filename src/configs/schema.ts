@@ -139,6 +139,18 @@ export const doubtsTable = pgTable("doubts", {
             table.userEmail,
             table.classroomId,
         ),
+        classroomCreatedIndex: index("idx_doubts_classroom_created").on(
+            table.classroomId,
+            table.createdAt,
+        ),
+        classroomTypeIndex: index("idx_doubts_classroom_type").on(
+            table.classroomId,
+            table.type,
+        ),
+        classroomSolvedIndex: index("idx_doubts_classroom_solved").on(
+            table.classroomId,
+            table.isSolved,
+        ),
         userEmailFk: foreignKey({
             columns: [table.userEmail],
             foreignColumns: [usersTable.email],
@@ -267,6 +279,11 @@ export const moderationLogsTable = pgTable("moderation_logs", {
         foreignColumns: [usersTable.email],
     }).onDelete("set null"),
 }));
+
+export const systemConfigTable = pgTable("system_config", {
+    key: varchar({ length: 255 }).primaryKey(),
+    value: text().notNull(),
+});
 
 export const contentFlagsTable = pgTable("content_flags", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),

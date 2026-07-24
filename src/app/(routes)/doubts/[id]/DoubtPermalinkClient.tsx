@@ -5,7 +5,6 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import DoubtCard from "@/components/classroom/DoubtCard";
 import DoubtRepliesModal from "@/components/classroom/DoubtRepliesModal";
-import type { Doubt } from "@/types";
 
 interface DoubtPermalinkClientProps {
     initialDoubt: any;
@@ -22,7 +21,9 @@ export default function DoubtPermalinkClient({ initialDoubt }: DoubtPermalinkCli
 
     const fetchDoubt = async () => {
         try {
-            const res = await fetch(`/api/doubts/${initialDoubt.id}`);
+            const userName = localStorage.getItem("anonymous_user");
+            const url = `/api/doubts/${initialDoubt.id}` + (userName ? `?userName=${encodeURIComponent(userName)}` : "");
+            const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
                 setDoubt(data);

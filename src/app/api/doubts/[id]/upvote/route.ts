@@ -1,7 +1,7 @@
 // app/api/doubts/[id]/upvote/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
-import { repliesTable, replyLikesTable } from "@/configs/schema";
+import { repliesTable, replyLikesTable, doubtsTable, membershipsTable } from "@/configs/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { inngest } from "@/inngest/client";
@@ -63,7 +63,35 @@ export async function POST(
             return NextResponse.json({ error: "Forbidden: You cannot upvote your own answer." }, { status: 403 });
         }
 
-        // ── 4 & 5. ATOMIC TRANSACTION: INSERT LIKE & INCREMENT COUNTER ───────
+        // ── 4. CLASSROOM MEMBERSHIP GUARD ─────────────────────────────────────
+        const [doubt] = await db
+            .select({ classroomId: doubtsTable.classroomId })
+            .from(doubtsTable)
+            .where(eq(doubtsTable.id, doubtId))
+            .limit(1);
+
+        if (!doubt) {
+            return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
+
+        if (doubt.classroomId) {
+            const [membership] = await db
+                .select()
+                .from(membershipsTable)
+                .where(
+                    and(
+                        eq(membershipsTable.userEmail, stableUserIdentifier),
+                        eq(membershipsTable.classroomId, doubt.classroomId),
+                    ),
+                )
+                .limit(1);
+
+            if (!membership) {
+                return NextResponse.json({ error: "Access denied to this classroom's doubt" }, { status: 403 });
+            }
+        }
+
+        // ── 5 & 6. ATOMIC TRANSACTION: INSERT LIKE & INCREMENT COUNTER ───────
         let updatedReply;
 
         try {
@@ -118,7 +146,7 @@ export async function POST(
             }, { status: 400 });
         }
 
-        // ── 6. DISPATCH BACKGROUND SYSTEM EVENT VIA INNGEST ─────────────────
+        // ── 7. DISPATCH BACKGROUND SYSTEM EVENT VIA INNGEST ─────────────────
         if (updatedReply.userEmail) {
             await inngest.send({
                 name: "karma/answer.upvoted",

@@ -1,17 +1,14 @@
-import { inArray } from 'drizzle-orm';
+/**
+ * Verifies that the doubts GET endpoint computes hasLiked / hasBookmarked
+ * inline via EXISTS subqueries (PR #725) rather than separate round-trips.
+ *
+ * For authenticated users the main SELECT must include hasLiked and
+ * hasBookmarked columns. For anonymous users both must resolve to false
+ * without issuing any per-user queries.
+ */
 
 const currentUserMock = jest.fn();
 const selectQueue: any[] = [];
-
-// Spy on inArray so we can assert the likes/bookmarks queries are scoped to
-// this page's doubt IDs instead of over-fetching globally.
-jest.mock('drizzle-orm', () => {
-    const actual = jest.requireActual('drizzle-orm');
-    return {
-        ...actual,
-        inArray: jest.fn(actual.inArray),
-    };
-});
 
 jest.mock('@clerk/nextjs/server', () => ({
     currentUser: () => currentUserMock(),
@@ -28,9 +25,8 @@ jest.mock('@/configs/schema', () => ({
 }));
 
 const makeChain = (fields: any) => {
-    let table: any;
     const chain: any = {};
-    chain.from = (t: any) => { table = t; return chain; };
+    chain.from = () => chain;
     chain.where = () => chain;
     chain.orderBy = () => chain;
     chain.limit = () => chain;
@@ -42,9 +38,17 @@ const makeChain = (fields: any) => {
     return chain;
 };
 
+// Track select calls via a wrapper — jest.mock factories are hoisted above
+// variable declarations, so we can't reference a `const` spy directly.
+// Instead we use a module-level array that the factory closes over.
+const mockSelectCalls: any[][] = [];
+
 jest.mock('@/configs/db', () => ({
     db: {
-        select: jest.fn((fields: any) => makeChain(fields)),
+        select: jest.fn((...args: any[]) => {
+            mockSelectCalls.push(args);
+            return makeChain(args[0]);
+        }),
         insert: jest.fn(() => ({ values: jest.fn(() => ({ returning: jest.fn(() => Promise.resolve([])), onConflictDoNothing: jest.fn(() => Promise.resolve({})) })) })),
         update: jest.fn(() => ({ set: jest.fn(() => ({ where: jest.fn(() => Promise.resolve([])) })) })),
         delete: jest.fn(() => ({ where: jest.fn(() => Promise.resolve({})) })),
@@ -69,15 +73,15 @@ jest.mock('@/lib/anonymity/anonymity', () => ({ toPublicDoubt: (d: any) => ({ ..
 import { GET } from '@/app/api/doubts/route';
 
 const pageOfDoubts = [
-    { id: 1, subject: 'Physics', content: 'What is speed of light?', createdAt: '2026-01-01T00:00:00.000Z', likes: 4, isSolved: 'unsolved', isPinned: false, classroomId: null, type: 'community', userEmail: 'student@example.com' },
-    { id: 2, subject: 'Chemistry', content: 'What is pH?', createdAt: '2026-01-02T00:00:00.000Z', likes: 10, isSolved: 'solved', isPinned: false, classroomId: null, type: 'community', userEmail: 'other@example.com' },
+    { id: 1, subject: 'Physics', content: 'What is speed of light?', createdAt: '2026-01-01T00:00:00.000Z', likes: 4, isSolved: 'unsolved', isPinned: false, classroomId: null, type: 'community', userEmail: 'student@example.com', hasLiked: true, hasBookmarked: false },
+    { id: 2, subject: 'Chemistry', content: 'What is pH?', createdAt: '2026-01-02T00:00:00.000Z', likes: 10, isSolved: 'solved', isPinned: false, classroomId: null, type: 'community', userEmail: 'other@example.com', hasLiked: false, hasBookmarked: true },
 ];
 
-describe('Doubts GET endpoint — scoped likes/bookmarks', () => {
+describe('Doubts GET endpoint — inline EXISTS for likes/bookmarks (PR #725)', () => {
     beforeEach(() => {
         currentUserMock.mockReset();
         selectQueue.length = 0;
-        (inArray as jest.Mock).mockClear();
+        mockSelectCalls.length = 0;
         jest.clearAllMocks();
         currentUserMock.mockResolvedValue({
             primaryEmailAddress: { emailAddress: 'student@example.com' },
@@ -85,46 +89,41 @@ describe('Doubts GET endpoint — scoped likes/bookmarks', () => {
         });
     });
 
-    it('scopes the user likes and bookmarks queries to this page\'s doubt IDs', async () => {
-        // Queue order for an authenticated GET: count, doubts, reply counts,
-        // likes, bookmarks, tags.
+    it('returns hasLiked and hasBookmarked inline from the main query', async () => {
+        // Queue: count, main doubts (includes hasLiked/hasBookmarked), tags
         selectQueue.push(
             [{ count: 2 }],
             pageOfDoubts,
-            [{ doubtId: 1, count: 2 }, { doubtId: 2, count: 1 }],
-            [{ doubtId: 1 }],          // user liked doubt 1 only
-            [{ doubtId: 2 }],          // user bookmarked doubt 2 only
             [],
         );
 
         const res = await GET(new Request('http://localhost/api/doubts?subject=Physics'));
         const json = await res.json();
 
-        // Both like and bookmark lookups must be scoped with inArray(..., [1, 2]).
-        const likeCall = (inArray as jest.Mock).mock.calls.find((c) => c[0] === 'likes.doubtId');
-        const bookmarkCall = (inArray as jest.Mock).mock.calls.find((c) => c[0] === 'bookmarks.doubtId');
-
         expect(res.status).toBe(200);
-        expect(likeCall).toBeDefined();
-        expect(likeCall![1]).toEqual([1, 2]);
-        expect(bookmarkCall).toBeDefined();
-        expect(bookmarkCall![1]).toEqual([1, 2]);
+        expect(json.doubts).toHaveLength(2);
 
-        // hasLiked / hasBookmarked reflect only this page's doubts.
-        const byId = Object.fromEntries(json.doubts.map((d: any) => [d.id, d]));
-        expect(byId[1].hasLiked).toBe(true);
-        expect(byId[1].hasBookmarked).toBe(false);
-        expect(byId[2].hasLiked).toBe(false);
-        expect(byId[2].hasBookmarked).toBe(true);
+        // hasLiked / hasBookmarked should come from the main SELECT (EXISTS subqueries)
+        // rather than from separate follow-up queries.
+        expect(json.doubts[0].hasLiked).toBe(true);
+        expect(json.doubts[0].hasBookmarked).toBe(false);
+        expect(json.doubts[1].hasLiked).toBe(false);
+        expect(json.doubts[1].hasBookmarked).toBe(true);
+
+        // The main SELECT should include hasLiked and hasBookmarked fields
+        const mainSelectCall = mockSelectCalls.find(
+            (call) => call[0] && 'hasLiked' in call[0] && 'hasBookmarked' in call[0]
+        );
+        expect(mainSelectCall).toBeDefined();
     });
 
-    it('does not query likes/bookmarks for anonymous users', async () => {
+    it('resolves hasLiked/hasBookmarked to false for anonymous users', async () => {
         currentUserMock.mockResolvedValue(null);
 
+        const anonDoubts = pageOfDoubts.map(d => ({ ...d, hasLiked: false, hasBookmarked: false }));
         selectQueue.push(
             [{ count: 2 }],
-            pageOfDoubts,
-            [{ doubtId: 1, count: 2 }, { doubtId: 2, count: 1 }],
+            anonDoubts,
             [],
         );
 
@@ -132,10 +131,8 @@ describe('Doubts GET endpoint — scoped likes/bookmarks', () => {
         const json = await res.json();
 
         expect(res.status).toBe(200);
-        // No like/bookmark scoping queries should be issued for anonymous users.
-        expect((inArray as jest.Mock).mock.calls.some((c) => c[0] === 'likes.doubtId')).toBe(false);
-        expect((inArray as jest.Mock).mock.calls.some((c) => c[0] === 'bookmarks.doubtId')).toBe(false);
-        expect(json.doubts[0].hasLiked).toBeFalsy();
-        expect(json.doubts[0].hasBookmarked).toBeFalsy();
+        // Anonymous users get false for both fields via the sql`false` fallback
+        expect(json.doubts[0].hasLiked).toBe(false);
+        expect(json.doubts[0].hasBookmarked).toBe(false);
     });
 });

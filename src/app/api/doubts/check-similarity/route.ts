@@ -14,10 +14,11 @@ import { aiLimiter } from "@/lib/ratelimit/ratelimit";
 import { getAnonymousQuotaIdentifier } from "@/lib/auth/request-identity";
 import { getSafeErrorDetails } from "@/lib/errors/safe-error-details";
 import {
-  parseOptionalClassroomId,
   requireAuth,
   requireMembership,
 } from "@/lib/auth/membership-guard";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { checkSimilaritySchema } from "@/lib/validations/sim";
 
 export interface SimilarDoubt {
   id: number;
@@ -30,12 +31,13 @@ export interface SimilarDoubt {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { content, classroomId: rawClassroomId } = body as {
-      content: string;
-      classroomId?: unknown;
-    };
-    const classroomId = parseOptionalClassroomId(rawClassroomId);
+    const { errorResponse, data } = await parseAndValidateRequest(
+      req,
+      checkSimilaritySchema,
+    );
+    if (errorResponse) return errorResponse;
+
+    const { content, classroomId } = data;
     let aiQuotaIdentifier = getAnonymousQuotaIdentifier(req);
 
     const anonymousRateLimitResponse = await enforceApiRateLimit(
@@ -55,14 +57,17 @@ export async function POST(req: Request) {
       if (userRateLimitResponse) return userRateLimitResponse;
       await requireMembership(email, classroomId);
       aiQuotaIdentifier = email;
-    }
-
-    if (
-      typeof content !== "string" ||
-      content.trim().length < 10 ||
-      content.length > 2000
-    ) {
-      return NextResponse.json({ similarDoubts: [] });
+      const rateLimit = await aiLimiter.limit(email);
+      if (!rateLimit.success) {
+        const retryAfter = Math.max(
+          1,
+          Math.ceil((rateLimit.reset - Date.now()) / 1000),
+        );
+        return NextResponse.json(
+          { error: "Too many similarity check requests. Please try again shortly." },
+          { status: 429, headers: { "Retry-After": String(retryAfter) } },
+        );
+      }
     }
 
     try {

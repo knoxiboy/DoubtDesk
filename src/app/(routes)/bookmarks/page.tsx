@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bookmark, Loader2, ArrowLeft, RefreshCw } from "lucide-react";
+import { Bookmark, Loader2, ArrowLeft, RefreshCw, Search, X } from "lucide-react";
 import DoubtCard from "@/components/classroom/DoubtCard";
 import { useRouter } from "next/navigation";
 import { useAppUser } from "@/app/provider";
@@ -21,6 +21,7 @@ export default function BookmarksPage() {
   const [bookmarks, setBookmarks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const { appUser } = useAppUser();
   const { isLoaded, isSignedIn } = useAuth();
@@ -54,6 +55,15 @@ export default function BookmarksPage() {
     fetchBookmarks();
   }, [isLoaded, isSignedIn]);
 
+  const filteredBookmarks = bookmarks.filter((doubt) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      doubt.subject?.toLowerCase().includes(q) ||
+      doubt.content?.toLowerCase().includes(q)
+    );
+  });
+
   return (
     <>
       <SignedIn>
@@ -86,6 +96,28 @@ export default function BookmarksPage() {
               </div>
             </header>
 
+            {!loading && !error && bookmarks.length > 0 && (
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-zinc-500 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search bookmarks by subject or content..."
+                  className="w-full pl-11 pr-10 py-3 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/40 transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            )}
+
             {loading ? (
               <div className="flex flex-col items-center justify-center py-24 space-y-4">
                 <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
@@ -112,9 +144,9 @@ export default function BookmarksPage() {
                   {UI_TEXT.RETRY_BUTTON}
                 </button>
               </div>
-            ) : bookmarks.length > 0 ? (
+            ) : filteredBookmarks.length > 0 ? (
               <div className="flex flex-col gap-6 lg:gap-8">
-                {bookmarks.map((doubt) => (
+                {filteredBookmarks.map((doubt) => (
                   <DoubtCard
                     key={doubt.id}
                     doubt={doubt}

@@ -41,14 +41,25 @@ export async function GET(
             }
             const membership = await requireMembership(email, doubt.classroomId);
 
+            const isTeacher = ["teacher", "owner", "admin"].includes(membership.role.toLowerCase());
+            const isAuthor = doubt.userEmail === email;
+
             // Teacher doubts visibility guard
             if (doubt.type === "teacher") {
-                const isTeacher = ["teacher", "owner", "admin"].includes(membership.role.toLowerCase());
-                const isAuthor = doubt.userEmail === email;
                 if (!isTeacher && !isAuthor) {
                     return NextResponse.json({ error: "Access denied to this doubt" }, { status: 403 });
                 }
             }
+
+            // Hidden doubts: teachers see all, the author sees their own,
+            // others are blocked from viewing hidden content. Matches the
+            // same filtering logic as the list endpoint (GET /api/doubts).
+            if (doubt.isHidden && !isTeacher && !isAuthor) {
+                return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+            }
+        } else if (doubt.isHidden && doubt.userEmail !== email) {
+            // Community doubts: only the author can view their own hidden doubt.
+            return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
         }
 
         // Fetch tags

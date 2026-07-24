@@ -39,56 +39,55 @@ export async function GET(req: Request) {
 
   let classroomFilter;
 
-  if (classroomId) {
-    // Verify the user is a member of this classroom
-    await requireTeacher(email, classroomId);
+if (classroomId) {
+  // Verify the user is a member of this classroom
+  await requireTeacher(email, classroomId);
 
-    classroomFilter = eq(doubtsTable.classroomId, classroomId);
-  } else {
-    // Only include classrooms where the caller is teacher/owner/admin.
-    // Two authorization paths, mirroring what requireTeacher/requireMembership
-    // accepts in the ?classroomId= branch so a legitimate owner doesn't get
-    // 403'd here just because their membership row is missing (see codeant
-    // review on #885):
-    //   1. membershipsTable row with role in TEACHER_ROLES
-    //   2. classroomsTable.teacherEmail matches (owner fallback used inside
-    //      requireMembership when no membership row exists)
-    // Role filter is pushed into SQL to avoid a JS-side re-filter
-    // (per coderabbit review).
-    const [teacherMemberships, ownedClassrooms] = await Promise.all([
-      db
-        .select({ classroomId: membershipsTable.classroomId })
-        .from(membershipsTable)
-        .where(
-          and(
-            eq(membershipsTable.userEmail, email),
-            inArray(membershipsTable.role, [...TEACHER_ROLES]),
-          ),
+  classroomFilter = and(
+    eq(doubtsTable.classroomId, classroomId),
+    isNull(doubtsTable.deletedAt),
+  );
+} else {
+  // Only include classrooms where the caller is teacher/owner/admin.
+  // Two authorization paths, mirroring what requireTeacher/requireMembership
+  // accepts in the ?classroomId= branch so a legitimate owner doesn't get
+  // 403'd here just because their membership row is missing.
+  const [teacherMemberships, ownedClassrooms] = await Promise.all([
+    db
+      .select({ classroomId: membershipsTable.classroomId })
+      .from(membershipsTable)
+      .where(
+        and(
+          eq(membershipsTable.userEmail, email),
+          inArray(membershipsTable.role, [...TEACHER_ROLES]),
         ),
-      db
-        .select({ id: classroomsTable.id })
-        .from(classroomsTable)
-        .where(eq(classroomsTable.teacherEmail, email)),
-    ]);
+      ),
+    db
+      .select({ id: classroomsTable.id })
+      .from(classroomsTable)
+      .where(eq(classroomsTable.teacherEmail, email)),
+  ]);
 
-    // Dedupe — a teacher will usually appear in both queries.
-    const userClassroomIds = Array.from(
-      new Set<number>([
-        ...teacherMemberships.map((m) => m.classroomId),
-        ...ownedClassrooms.map((c) => c.id),
-      ]),
+  // Dedupe — a teacher will usually appear in both queries.
+  const userClassroomIds = Array.from(
+    new Set<number>([
+      ...teacherMemberships.map((m) => m.classroomId),
+      ...ownedClassrooms.map((c) => c.id),
+    ]),
+  );
+
+  if (userClassroomIds.length === 0) {
+    return NextResponse.json(
+      { error: "Forbidden" },
+      { status: 403 },
     );
-
-    if (userClassroomIds.length === 0) {
-      return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 }
-      );
-    }
-
-    classroomFilter = inArray(doubtsTable.classroomId, userClassroomIds);
   }
 
+  classroomFilter = and(
+    inArray(doubtsTable.classroomId, userClassroomIds),
+    isNull(doubtsTable.deletedAt),
+  );
+}
   try {
     // Run all queries in parallel to eliminate sequential query latency
     const [

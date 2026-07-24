@@ -14,6 +14,7 @@ import { safeGenerateEmbedding } from "@/lib/ai/embeddings";
 import {
   and,
   eq,
+  lt,
   inArray,
   isNull,
   or,
@@ -33,12 +34,13 @@ import { createDoubtSchema } from "@/lib/validations/doubt";
 import { createClassroomDoubtNotifications } from "@/lib/notifications/service";
 import { inngest } from "@/inngest/client";
 import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
-import { aiLimiter, generalLimiter } from "@/lib/ratelimit/ratelimit";
-import { buildSearchCondition, buildRankOrder } from "@/lib/search/search";
+import { generalLimiter } from "@/lib/ratelimit/ratelimit";
+import { buildRankOrder } from "@/lib/search/search";
 import { canTeach } from "@/lib/auth/membership-guard";
 import { currentUser } from "@clerk/nextjs/server";
-import { parsePositiveInt, escapeLike } from "@/lib/utils/utils";
+import { parsePositiveInt } from "@/lib/utils/utils";
 import { toPublicDoubt } from "@/lib/anonymity/anonymity";
+import { decodeCursor, encodeCursor } from "@/lib/pagination";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -96,14 +98,6 @@ export async function GET(req: Request) {
         ? or(not(eq(doubtsTable.type, "teacher")), eq(doubtsTable.userEmail, email))
         : not(eq(doubtsTable.type, "teacher"));
       if (teacherCondition) conditions.push(teacherCondition);
-
-      // Doubts auto-hidden or hidden by moderation stay visible to teachers
-      // for review, but are excluded from the student-facing feed. The
-      // original poster can still see their own hidden doubt.
-      const hiddenCondition = email
-        ? or(eq(doubtsTable.isHidden, false), eq(doubtsTable.userEmail, email))
-        : eq(doubtsTable.isHidden, false);
-      if (hiddenCondition) conditions.push(hiddenCondition);
     }
 
     if (subject && subject !== "All") {
@@ -111,7 +105,14 @@ export async function GET(req: Request) {
     }
 
     if (search) {
-      conditions.push(buildSearchCondition(search) ?? sql`false`);
+      // NOTE: we deliberately do NOT match on userEmail. Matching the author's
+      // email here would let a caller probe email fragments and infer which
+      // anonymized posts belong to a given author from result presence/counts.
+      const searchCondition = or(
+        ilike(doubtsTable.content, `%${search}%`),
+        ilike(doubtsTable.subject, `%${search}%`),
+      );
+      if (searchCondition) conditions.push(searchCondition);
     }
 
     if (type && type !== "All") {
@@ -145,6 +146,19 @@ export async function GET(req: Request) {
         : 0;
     const page = Math.floor(offset / limit) + 1;
 
+    // Cursor-based pagination (issue #319): opt-in via the `cursor` query param
+    // (present even when empty, for the first page). Cursor mode uses pure
+    // (createdAt, id) keyset ordering end-to-end, so `nextCursor` is only ever
+    // issued from an already-cursor-ordered response: never from a pinned-first
+    // offset page, which could otherwise skip newer unpinned doubts. Only honored
+    // for the default recency sort with no search. The keyset predicate is applied
+    // once a cursor token is actually present.
+    const cursorRequested = searchParams.has("cursor");
+    const decodedCursor = decodeCursor(searchParams.get("cursor"));
+    const cursorCreatedAt = decodedCursor?.createdAt ?? null;
+    const cursorId = decodedCursor?.id ?? null;
+    const useCursor = cursorRequested && sort === "newest" && !search;
+
     if (tag && tag !== "All") {
       const normalizedTag = tag.trim().replace(/\s+/g, " ").toLowerCase();
       conditions.push(
@@ -163,6 +177,25 @@ export async function GET(req: Request) {
       conditions.push(eq(doubtsTable.isSolved, "unsolved"));
     }
 
+    const replyCountSql =
+      sql<number>`coalesce((SELECT count(*) FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`.mapWith(
+        Number,
+      );
+
+    // EXISTS subqueries (issue #319): fold per-user like/bookmark status into the
+    // main query instead of two extra full-scan round-trips. Anonymous viewers
+    // resolve to false.
+    const hasLikedSql = (
+      email
+        ? sql<boolean>`EXISTS (SELECT 1 FROM ${likesTable} WHERE ${likesTable.doubtId} = ${doubtsTable.id} AND ${likesTable.userEmail} = ${email})`
+        : sql<boolean>`false`
+    ).mapWith(Boolean);
+    const hasBookmarkedSql = (
+      email
+        ? sql<boolean>`EXISTS (SELECT 1 FROM ${bookmarksTable} WHERE ${bookmarksTable.doubtId} = ${doubtsTable.id} AND ${bookmarksTable.userEmail} = ${email})`
+        : sql<boolean>`false`
+    ).mapWith(Boolean);
+
     const [totalCountRow] = await db
       .select({ count: count() })
       .from(doubtsTable)
@@ -172,99 +205,69 @@ export async function GET(req: Request) {
     const query = db
       .select({
         ...getTableColumns(doubtsTable),
+        replyCount: replyCountSql,
+        hasLiked: hasLikedSql,
+        hasBookmarked: hasBookmarkedSql,
       })
       .from(doubtsTable);
 
-    const orderByFields: SQL[] = [desc(doubtsTable.isPinned)];
+    // Cursor mode orders purely by (createdAt, id) for a stable keyset; offset mode
+    // keeps pinned-first plus rank/popular/most-replied ordering.
+    const orderByFields: SQL[] = useCursor
+      ? [desc(doubtsTable.createdAt), desc(doubtsTable.id)]
+      : [desc(doubtsTable.isPinned)];
 
-    if (search) {
-      const rankOrder = buildRankOrder(search);
-      if (rankOrder) orderByFields.push(rankOrder);
+    if (!useCursor) {
+      if (search) {
+        const rankOrder = buildRankOrder(search);
+        if (rankOrder) orderByFields.push(rankOrder);
+      }
+
+      if (sort === "popular") {
+        orderByFields.push(desc(doubtsTable.likes));
+      } else if (sort === "most-replied") {
+        orderByFields.push(desc(replyCountSql));
+      }
+      orderByFields.push(desc(doubtsTable.createdAt));
     }
 
-    if (sort === "popular") {
-      orderByFields.push(desc(doubtsTable.likes));
-    } else if (sort === "most-replied") {
-      // Needed here only to sort correctly at the DB level before paging.
-      // Not selected as a column, so it costs nothing for any other sort mode.
-      const replyCountOrderSql = sql`coalesce((SELECT count(*) FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`;
-      orderByFields.push(desc(replyCountOrderSql));
-    }
-    orderByFields.push(desc(doubtsTable.createdAt));
+    // Apply the keyset predicate only once a cursor token is present (the first
+    // cursor-mode page has none and just returns the newest rows in keyset order).
+    const cursorKeyset =
+      cursorCreatedAt !== null && cursorId !== null
+        ? or(
+            lt(doubtsTable.createdAt, cursorCreatedAt),
+            and(
+              eq(doubtsTable.createdAt, cursorCreatedAt),
+              lt(doubtsTable.id, cursorId),
+            ),
+          )
+        : undefined;
 
-    let doubts = await query
-      .where(and(...conditions))
-      .orderBy(...orderByFields)
-      .limit(limit)
-      .offset(offset);
+    // Cursor mode over-fetches one sentinel row so `hasMore` is exact (avoids a
+    // false positive + dead cursor when the remaining rows are exactly `limit`).
+    let doubts = useCursor
+      ? await query
+          .where(cursorKeyset ? and(...conditions, cursorKeyset) : and(...conditions))
+          .orderBy(...orderByFields)
+          .limit(limit + 1)
+      : await query
+          .where(and(...conditions))
+          .orderBy(...orderByFields)
+          .limit(limit)
+          .offset(offset);
 
-    // Batch-fetch reply counts for just the returned page (max `limit` ids)
-    // instead of running a correlated subquery per row in the SELECT.
-    if (doubts.length > 0) {
-      const replyCountRows = await db
-        .select({ doubtId: repliesTable.doubtId, count: count() })
-        .from(repliesTable)
-        .where(inArray(repliesTable.doubtId, doubts.map((d: any) => d.id)))
-        .groupBy(repliesTable.doubtId);
+    // hasLiked / hasBookmarked are now resolved inline via EXISTS subqueries above.
 
-      const replyCountMap = new Map(
-        replyCountRows.map((r: any) => [r.doubtId, Number(r.count)]),
-      );
-
-      doubts = doubts.map((doubt: any) => ({
-        ...doubt,
-        replyCount: replyCountMap.get(doubt.id) ?? 0,
-      }));
-    }
-
-    // Only fetch the current user's likes/bookmarks for this page's doubts,
-    // not every like/bookmark they have ever made across the entire app.
-    const pageDoubtIds = doubts.map((d: any) => d.id);
-
-    if (email && doubts.length > 0) {
-      const userLikes =
-        pageDoubtIds.length > 0
-          ? await db
-              .select({ doubtId: likesTable.doubtId })
-              .from(likesTable)
-              .where(
-                and(
-                  eq(likesTable.userEmail, email),
-                  inArray(likesTable.doubtId, pageDoubtIds),
-                ),
-              )
-          : [];
-
-      const likedIds = new Set(userLikes.map((l: any) => l.doubtId));
-      doubts = doubts.map((doubt: any) => ({
-        ...doubt,
-        hasLiked: likedIds.has(doubt.id),
-      }));
-    }
-
-    if (doubts.length > 0 && email) {
-      const userBookmarks =
-        pageDoubtIds.length > 0
-          ? await db
-              .select({ doubtId: bookmarksTable.doubtId })
-              .from(bookmarksTable)
-              .where(
-                and(
-                  eq(bookmarksTable.userEmail, email),
-                  inArray(bookmarksTable.doubtId, pageDoubtIds),
-                ),
-              )
-          : [];
-
-      const bookmarkedIds = new Set(userBookmarks.map((b: any) => b.doubtId));
-      doubts = doubts.map((doubt: any) => ({
-        ...doubt,
-        hasBookmarked: bookmarkedIds.has(doubt.id),
-      }));
+    const hasMore = useCursor
+      ? doubts.length > limit
+      : offset + doubts.length < totalCount;
+    if (useCursor && hasMore) {
+      doubts = doubts.slice(0, limit); // drop the sentinel before enrichment
     }
 
     if (doubts.length > 0) {
-      const tagRows: { doubtId: number; id: number; name: string; normalizedName: string }[] = await db
+      const tagRows = await db
         .select({
           doubtId: doubtTagsTable.doubtId,
           id: tagsTable.id,
@@ -273,20 +276,19 @@ export async function GET(req: Request) {
         })
         .from(doubtTagsTable)
         .innerJoin(tagsTable, eq(doubtTagsTable.tagId, tagsTable.id))
-        .where(inArray(doubtTagsTable.doubtId, doubts.map((d: any) => d.id)));
+        .where(inArray(doubtTagsTable.doubtId, doubts.map((d: any) => d.id))) as Array<{ doubtId: number; id: number; name: string; normalizedName: string }>;
 
-      const tagsByDoubt = tagRows.reduce(
-        (acc: Record<number, { id: number; name: string; normalizedName: string }[]>, row: typeof tagRows[number]) => {
-          acc[row.doubtId] = acc[row.doubtId] || [];
-          acc[row.doubtId].push({
-            id: row.id,
-            name: row.name,
-            normalizedName: row.normalizedName,
-          });
-          return acc;
-        },
-        {},
-      );
+      const tagsByDoubt = tagRows.reduce<
+        Record<number, { id: number; name: string; normalizedName: string }[]>
+      >((acc, row: { doubtId: number; id: number; name: string; normalizedName: string }) => {
+        acc[row.doubtId] = acc[row.doubtId] || [];
+        acc[row.doubtId].push({
+          id: row.id,
+          name: row.name,
+          normalizedName: row.normalizedName,
+        });
+        return acc;
+      }, {});
 
       doubts = doubts.map((doubt: any) => ({
         ...doubt,
@@ -294,7 +296,15 @@ export async function GET(req: Request) {
       }));
     }
 
-    const hasMore = offset + doubts.length < totalCount;
+    // Only emit a cursor from an already-cursor-ordered response (see useCursor),
+    // so clients never resume keyset paging from a pinned-first offset page.
+    const nextCursor =
+      useCursor && hasMore
+        ? encodeCursor(
+            doubts[doubts.length - 1].createdAt,
+            doubts[doubts.length - 1].id,
+          )
+        : null;
 
     // Strip author identifiers (userEmail), the internal embedding vector and
     // soft-delete marker before returning. Only the anonymized handle and a
@@ -307,6 +317,7 @@ export async function GET(req: Request) {
       totalCount,
       page,
       limit,
+      nextCursor,
     });
   } catch (error) {
     const { status, body } = buildErrorResponse(error);
@@ -362,9 +373,6 @@ export async function POST(req: Request) {
         return errorResponse(violationError, 400);
       }
     }
-
-    const aiRateLimitResponse = await enforceApiRateLimit(aiLimiter, email, "ai");
-    if (aiRateLimitResponse) return aiRateLimitResponse;
 
     const subTopic = await categorizeDoubt(content || "", subject, imageUrl);
 
@@ -440,7 +448,7 @@ export async function POST(req: Request) {
     const savedTags: (typeof tagsTable.$inferSelect)[] = [];
 
     if (normalizedTags.length > 0) {
-      const existingClassroomTags = await db
+      const existingClassroomTags = (await db
         .select()
         .from(tagsTable)
         .where(
@@ -450,15 +458,15 @@ export async function POST(req: Request) {
               ? eq(tagsTable.classroomId, parsedClassroomId)
               : isNull(tagsTable.classroomId),
           ),
-        );
+        )) as Array<typeof tagsTable.$inferSelect>;
 
-      const existingTagsMap = new Map(existingClassroomTags.map((t: typeof tagsTable.$inferSelect) => [t.normalizedName, t]));
+      const existingTagsMap = new Map(existingClassroomTags.map((t) => [t.normalizedName, t]));
       const tagsToInsert: (typeof tagsTable.$inferInsert)[] = [];
 
       for (const name of normalizedTags) {
-        const match = existingTagsMap.get(name) as typeof tagsTable.$inferInsert | undefined;
+        const match = existingTagsMap.get(name);
         if (match) {
-          savedTags.push(match as typeof tagsTable.$inferSelect);
+          savedTags.push(match);
         } else {
           tagsToInsert.push({
             name: name.replace(/\b\w/g, (char) => char.toUpperCase()),
