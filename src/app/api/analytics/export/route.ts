@@ -39,28 +39,34 @@ export async function GET(req: Request) {
 
   let classroomFilter;
 
-  if (classroomId) {
+if (classroomId) {
     // Verify the user is a member of this classroom
     await requireTeacher(email, classroomId);
 
-    classroomFilter = eq(doubtsTable.classroomId, classroomId);
-  } else {
+    classroomFilter = and(
+        eq(doubtsTable.classroomId, classroomId),
+        isNull(doubtsTable.deletedAt)
+    );
+} else {
     // Get all classrooms user is a member of
     const userMemberships = await db
-      .select({ classroomId: membershipsTable.classroomId })
-      .from(membershipsTable)
-      .where(eq(membershipsTable.userEmail, email));
+        .select({ classroomId: membershipsTable.classroomId })
+        .from(membershipsTable)
+        .where(eq(membershipsTable.userEmail, email));
 
     const userClassroomIds = userMemberships.map((m: any) => m.classroomId);
 
     if (userClassroomIds.length === 0) {
-      return NextResponse.json({
-        message: "Export route working",
-      });
+        return NextResponse.json({
+            message: "Export route working",
+        });
     }
 
-    classroomFilter = inArray(doubtsTable.classroomId, userClassroomIds);
-  }
+    classroomFilter = and(
+        inArray(doubtsTable.classroomId, userClassroomIds),
+        isNull(doubtsTable.deletedAt)
+    );
+}
 
   try {
     // Run all queries in parallel to eliminate sequential query latency
