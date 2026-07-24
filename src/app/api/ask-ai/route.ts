@@ -77,26 +77,31 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
   }
 
-  const raw = body.classroomId;
-  if (typeof raw !== "number" || !Number.isInteger(raw)) {
-    return NextResponse.json(
-      { error: "classroomId is required and must be a valid integer.", code: "INVALID_CLASSROOM_ID" },
-      { status: 422 }
-    );
-  }
-  const classroomId = raw;
-
-  {
-    const [userRow] = await db
-      .select({ blockedUntil: usersTable.blockedUntil })
-      .from(usersTable)
-      .where(eq(usersTable.email, email))
-      .limit(1);
-
-    if (userRow?.blockedUntil && new Date(userRow.blockedUntil) > new Date()) {
-      return NextResponse.json({ error: "Account suspended" }, { status: 403 });
+  let classroomId: number | undefined;
+  if (body.classroomId !== undefined && body.classroomId !== null) {
+    const raw = body.classroomId;
+    if (typeof raw !== "number" || !Number.isInteger(raw)) {
+      return NextResponse.json(
+        { error: "classroomId is required and must be a valid integer.", code: "INVALID_CLASSROOM_ID" },
+        { status: 422 }
+      );
     }
+    classroomId = raw;
+  }
 
+  // Check user block status
+  const [userRow] = await db
+    .select({ blockedUntil: usersTable.blockedUntil })
+    .from(usersTable)
+    .where(eq(usersTable.email, email))
+    .limit(1);
+
+  if (userRow?.blockedUntil && new Date(userRow.blockedUntil) > new Date()) {
+    return NextResponse.json({ error: "Account suspended" }, { status: 403 });
+  }
+
+  // Enforce classroom membership when classroomId is provided
+  if (classroomId !== undefined) {
     const [member] = await db
       .select({ id: membershipsTable.id })
       .from(membershipsTable)
