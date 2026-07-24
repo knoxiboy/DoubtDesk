@@ -92,22 +92,32 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
         setIsLoading(true);
         try {
           const res = await fetch(`/api/replies?doubtId=${initialDoubt.id}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data) && data.length > 0) {
-              const solution = data.find(
-                (r: any) =>
-                  r.type === "solution" || r.userName === "DoubtDesk AI"
-              );
-              if (solution) {
-                const assistantMsg: DisplayMessage = {
-                  id: "initial-assistant-" + initialDoubt.id,
-                  role: "assistant",
-                  content: solution.content,
-                  isCelebration: mode === "mentor" && isCelebrationMessage(solution.content),
-                };
-                setMessages([initialUserMsg, assistantMsg]);
-              }
+          if (!res.ok) {
+            console.error("Could not retrieve the solution.");
+            return;
+          }
+
+          let data;
+          try {
+            data = await res.json();
+          } catch (error) {
+            console.error("Failed to parse replies response:", error);
+            return;
+          }
+
+          if (Array.isArray(data) && data.length > 0) {
+            const solution = data.find(
+              (r: any) =>
+                r.type === "solution" || r.userName === "DoubtDesk AI"
+            );
+            if (solution) {
+              const assistantMsg: DisplayMessage = {
+                id: "initial-assistant-" + initialDoubt.id,
+                role: "assistant",
+                content: solution.content,
+                isCelebration: mode === "mentor" && isCelebrationMessage(solution.content),
+              };
+              setMessages([initialUserMsg, assistantMsg]);
             }
           }
         } catch (err) {
@@ -164,10 +174,14 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
       });
 
       if (!res.ok) {
-        throw new Error(`API error ${res.status}`);
+        throw new Error(res.statusText || "Something went wrong");
       }
-
-      const data = (await res.json()) as { reply: string };
+      let data;
+      try {
+        data = (await res.json()) as { reply: string };
+      } catch (error) {
+        throw new Error("Invalid server response format");
+      }
       const replyText = data.reply ?? "Sorry, something went wrong.";
 
       const assistantMsg: DisplayMessage = {

@@ -512,7 +512,15 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                             <span className="text-green-400 font-semibold">Looks good!</span>
                                         )}
                                         {charCount === 0 && (
-                                            <span className="text-slate-500">Min {minLength} · Max {maxLength} characters</span>
+                                         <span className={`font-medium tabular-nums ${
+                                            charCount > maxLength
+                                                ? "text-red-500 dark:text-red-400"
+                                                : charCount >= maxLength * 0.9
+                                                ? "text-amber-500 dark:text-amber-400"
+                                                : "text-slate-500 dark:text-slate-400"
+                                        }`}>
+                                            {charCount}/{maxLength}
+                                        </span>
                                         )}
                                     </div>
                                     <span className={`text-xs font-semibold ${colorClass}`}>
@@ -629,7 +637,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                     ) : (
                                         <div className="flex flex-col items-center gap-3 px-6 text-center z-20">
                                             <div className="relative max-h-40 rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-xl bg-white dark:bg-slate-950 animate-in zoom-in-95">
-                                                <img src={imageUrl} alt="Preview" className="max-h-40 object-contain" />
+                                                <img src={imageUrl} alt="Preview" loading="lazy" decoding="async" className="max-h-40 object-contain" />
                                             </div>
                                             <div>
                                                 <p className="text-xs text-slate-900 dark:text-white font-bold max-w-xs truncate">{fileName}</p>

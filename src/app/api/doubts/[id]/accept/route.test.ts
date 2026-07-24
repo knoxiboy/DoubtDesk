@@ -21,7 +21,10 @@ let mockReply: {
 
 let mockUpdatedDoubt: { id: number } | null = { id: 1 };
 
+// jest.mock factories are hoisted, and the hoist guard only permits references to
+// out-of-scope variables whose names match /^mock/i: hence these names.
 const mockInngestSend = jest.fn();
+let mockSelectCallCount = 0;
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 jest.mock("@clerk/nextjs/server", () => ({
@@ -34,7 +37,6 @@ jest.mock("@/inngest/client", () => ({
     inngest: { send: mockInngestSend },
 }));
 
-let mockSelectCallCount = 0;
 
 jest.mock("@/configs/db", () => {
     const makeSelectChain = (result: unknown[]) => ({
@@ -97,7 +99,7 @@ async function callPost(replyId = 42) {
     const { POST } = await import("./route");
     return POST(makeRequest(replyId), {
         params: Promise.resolve({ id: "1" }),
-    } as any);
+    } as unknown as { params: Promise<{ id: string }> });
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -178,7 +180,7 @@ describe("POST /api/doubts/[id]/accept — idempotency (issue #687)", () => {
     it("returns 500 with a generic message and does not leak error details", async () => {
         // Make the DB throw to exercise the catch block
         const { db } = await import("@/configs/db");
-        jest.mocked(db.select).mockImplementationOnce(() => {
+        (db.select as jest.Mock).mockImplementationOnce(() => {
             throw new Error("relation \"doubts\" does not exist");
         });
 

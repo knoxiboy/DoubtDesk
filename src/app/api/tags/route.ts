@@ -14,6 +14,14 @@ import { escapeLike } from "@/lib/utils/utils";
 
 const normalizeTagName = (name: string) => name.trim().replace(/\s+/g, " ").toLowerCase();
 
+const publicTagSelection = {
+    id: tagsTable.id,
+    name: tagsTable.name,
+    normalizedName: tagsTable.normalizedName,
+    classroomId: tagsTable.classroomId,
+    createdAt: tagsTable.createdAt,
+};
+
 export async function GET(req: Request) {
     try {
         const { email } = await requireAuth();
@@ -30,14 +38,7 @@ export async function GET(req: Request) {
 
         if (subject) {
             // Query to return top 5 tags ordered by frequency under the selected subject
-            const popularTags = await db.select({
-                id: tagsTable.id,
-                name: tagsTable.name,
-                normalizedName: tagsTable.normalizedName,
-                classroomId: tagsTable.classroomId,
-                createdByEmail: tagsTable.createdByEmail,
-                createdAt: tagsTable.createdAt
-            })
+            const popularTags = await db.select(publicTagSelection)
             .from(tagsTable)
             .innerJoin(doubtTagsTable, eq(tagsTable.id, doubtTagsTable.tagId))
             .innerJoin(doubtsTable, eq(doubtTagsTable.doubtId, doubtsTable.id))
@@ -58,14 +59,7 @@ export async function GET(req: Request) {
             }
 
             // Fallback: overall most popular tags across the entire platform
-            const fallbackTags = await db.select({
-                id: tagsTable.id,
-                name: tagsTable.name,
-                normalizedName: tagsTable.normalizedName,
-                classroomId: tagsTable.classroomId,
-                createdByEmail: tagsTable.createdByEmail,
-                createdAt: tagsTable.createdAt
-            })
+            const fallbackTags = await db.select(publicTagSelection)
             .from(tagsTable)
             .innerJoin(doubtTagsTable, eq(tagsTable.id, doubtTagsTable.tagId))
             .where(
@@ -82,7 +76,7 @@ export async function GET(req: Request) {
             }
 
             // Fallback 2: if there are no popular tags at all (e.g. fresh DB), get the 5 most recently created tags
-            const recentTags = await db.select()
+            const recentTags = await db.select(publicTagSelection)
                 .from(tagsTable)
                 .where(
                     classroomId
@@ -105,7 +99,7 @@ export async function GET(req: Request) {
             conditions.push(ilike(tagsTable.name, `%${escapeLike(query)}%`));
         }
 
-        const tags = await db.select().from(tagsTable)
+        const tags = await db.select(publicTagSelection).from(tagsTable)
             .where(and(...conditions))
             .orderBy(desc(tagsTable.createdAt));
 
@@ -135,7 +129,7 @@ export async function POST(req: Request) {
             await requireMembership(email, classroomId);
         }
 
-        const [existing] = await db.select().from(tagsTable).where(
+        const [existing] = await db.select(publicTagSelection).from(tagsTable).where(
             and(
                 eq(tagsTable.normalizedName, normalizedName),
                 classroomId ? eq(tagsTable.classroomId, classroomId) : isNull(tagsTable.classroomId)
@@ -149,7 +143,7 @@ export async function POST(req: Request) {
             normalizedName,
             classroomId,
             createdByEmail: email,
-        }).returning();
+        }).returning(publicTagSelection);
 
         return NextResponse.json(tag, { status: 201 });
     } catch (error: unknown) {
