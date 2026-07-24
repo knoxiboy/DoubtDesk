@@ -121,10 +121,18 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
         try {
             const url = `/api/replies?doubtId=${doubt.id}`;
             const res = await fetch(url);
-            if (res.ok) {
-                const data = await res.json();
-                setReplies(data);
+            if (!res.ok) {
+                console.error(`Replies API failed with status ${res.status}`);
+                return;
             }
+            let data;
+            try {
+                data = await res.json();
+            } catch (err) {
+                console.error("Failed to parse replies response:", err);
+                return;
+            }
+            setReplies(data);
         } catch (error) {
             console.error("Failed to fetch replies:", error);
         } finally {
