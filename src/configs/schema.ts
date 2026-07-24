@@ -280,6 +280,11 @@ export const moderationLogsTable = pgTable("moderation_logs", {
     }).onDelete("set null"),
 }));
 
+export const systemConfigTable = pgTable("system_config", {
+    key: varchar({ length: 255 }).primaryKey(),
+    value: text().notNull(),
+});
+
 export const contentFlagsTable = pgTable("content_flags", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     doubtId: integer("doubt_id").notNull(),
