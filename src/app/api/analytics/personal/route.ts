@@ -11,6 +11,10 @@ import {
     requireAuth,
     requireMembership,
 } from '@/lib/auth/membership-guard';
+import {
+    readAnalyticsCache,
+    writeAnalyticsCache,
+} from '@/lib/cache/analytics-cache';
 
 const GROQ_TIMEOUT_MS = 15_000;
 
@@ -54,6 +58,12 @@ export async function GET(req: Request) {
             });
         }
 
+        const cacheKey = `analytics:personal:${email}:${classroomId}`;
+        const cached = await readAnalyticsCache<Record<string, unknown>>(cacheKey);
+        if (cached.status === 'fresh' || cached.status === 'stale') {
+            return NextResponse.json({ isEngaged: true, ...cached.data });
+        }
+
         // Prepare doubt summaries for AI analysis
         const doubtContext = userDoubts.map((d: any) => `- [${d.subject}]: ${d.content}`).join('\n');
 
@@ -86,6 +96,8 @@ export async function GET(req: Request) {
         }).finally(() => clearTimeout(timeoutId));
 
         const result = JSON.parse(response.choices[0].message.content || "{}");
+
+        await writeAnalyticsCache(cacheKey, result);
 
         return NextResponse.json({
             isEngaged: true,

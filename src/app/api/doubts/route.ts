@@ -34,7 +34,7 @@ import { createDoubtSchema } from "@/lib/validations/doubt";
 import { createClassroomDoubtNotifications } from "@/lib/notifications/service";
 import { inngest } from "@/inngest/client";
 import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
-import { generalLimiter } from "@/lib/ratelimit/ratelimit";
+import { generalLimiter, redisClient } from "@/lib/ratelimit/ratelimit";
 import { buildRankOrder } from "@/lib/search/search";
 import { canTeach } from "@/lib/auth/membership-guard";
 import { currentUser } from "@clerk/nextjs/server";
@@ -433,6 +433,10 @@ export async function POST(req: Request) {
         authorName: user.fullName || email,
         doubtType,
       }).catch((err) => console.error("Notification trigger async failure:", err));
+
+      redisClient.del(`analytics:personal:${email}:${parsedClassroomId}`).catch((err) =>
+        console.error("Failed to invalidate personal analytics cache:", err)
+      );
     }
 
     const normalizedTags: string[] = Array.from(
