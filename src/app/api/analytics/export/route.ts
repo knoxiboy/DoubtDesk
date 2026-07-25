@@ -288,6 +288,17 @@ if (classroomId) {
       mostAskedTopics: weakTopics,
     };
 
+    // Escape CSV cells to prevent formula injection (=, +, -, @)
+    const escapeCsv = (value: string): string => {
+      if (/^[=+\-@]/.test(value)) {
+        return `'${value}`;
+      }
+      if (/,|"|\n/.test(value)) {
+        return `"${value.replace(/"/g, '""')}"`;
+      }
+      return value;
+    };
+
     // Generate CSV
     let csv = "Metric,Value\n";
 
@@ -313,12 +324,12 @@ if (classroomId) {
 
     csv += "\nContributor Name,Reply Count\n";
     analyticsData.topContributors.forEach((contributor: any) => {
-      csv += `${contributor.name},${contributor.replyCount}\n`;
+      csv += `${escapeCsv(contributor.name)},${contributor.replyCount}\n`;
     });
 
     csv += "\nWeak Topic,Doubt Count,Severity\n";
     analyticsData.weakTopics.forEach((topic: any) => {
-      csv += `${topic.subject},${topic.count},${topic.severity}\n`;
+      csv += `${escapeCsv(topic.subject)},${topic.count},${topic.severity}\n`;
     });
 
     // Return CSV file
