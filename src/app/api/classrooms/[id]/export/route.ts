@@ -59,14 +59,22 @@ export async function GET(
             }
         }
 
-        // 6. Query doubts
+        // 6. Parse optional pagination
+        const limitParam = searchParams.get("limit");
+        const exportLimit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10) || 1000, 1), 5000) : 1000;
+
+        // 7. Query doubts with limit to prevent unbounded memory/time usage
         const doubts = await db
             .select()
             .from(doubtsTable)
             .where(and(...conditions))
-            .orderBy(desc(doubtsTable.createdAt));
+            .orderBy(desc(doubtsTable.createdAt))
+            .limit(exportLimit + 1);
 
-        // 7. Fetch reply counts for these doubts
+        const hasMore = doubts.length > exportLimit;
+        if (hasMore) doubts.pop();
+
+        // 8. Fetch reply counts for these doubts
         const doubtIds = doubts.map((d: any) => d.id);
         const replyCounts = doubtIds.length > 0
             ? await db
@@ -90,6 +98,7 @@ export async function GET(
         return NextResponse.json({
             classroomName: classroom.name,
             doubts: doubtsWithReplies,
+            hasMore,
         });
     } catch (error: unknown) {
         const { status, body } = buildErrorResponse(error);
