@@ -100,6 +100,13 @@ if (isRedisConfigured) {
 
   redisClient = redis;
 } else {
+  console.warn(
+    "\x1b[33m%s\x1b[0m",
+    "⚠️  WARNING: Redis (UPSTASH_REDIS) is not configured. Rate limiting is degraded to an in-memory mock.\n" +
+    "    - Rate limits reset on every server restart.\n" +
+    "    - In serverless environments, each instance has its own counter, bypassing limits.\n" +
+    "    - Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for production use."
+  );
   // Simple in-memory fallback for local development
   // Note: This won't be perfectly accurate in distributed environments but works for local testing
   const memoryMap = new Map<string, { count: number; reset: number }>();
