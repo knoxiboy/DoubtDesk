@@ -228,7 +228,12 @@ export function subscribeToNotifications(
     );
 
     subscribeToRedisChannel(userEmail).then((unsub) => {
-        subscriber.redisUnsubscribe = unsub;
+        const bucket = notificationSubscribers.get(userEmail);
+        if (!bucket?.has(subscriber)) {
+            void unsub().catch(() => {});
+        } else {
+            subscriber.redisUnsubscribe = unsub;
+        }
     });
 
     return () => removeSubscriber(userEmail, subscriber);
