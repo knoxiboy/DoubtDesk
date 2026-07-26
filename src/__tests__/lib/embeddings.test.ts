@@ -12,17 +12,6 @@ jest.mock("@/lib/ai/groq-client", () => ({
   },
 }));
 
-const createDbMock = () => {
-  const mock: any = {
-    select: jest.fn().mockReturnThis(),
-    from: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockResolvedValue([]),
-  };
-  return mock;
-};
-
 jest.mock("@/configs/db", () => ({
   db: {
     select: jest.fn(() => ({

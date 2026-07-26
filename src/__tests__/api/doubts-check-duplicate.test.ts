@@ -2,6 +2,7 @@ process.env.GROQ_API_KEY = "mock-groq-key";
 
 import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { requireMembership } from "@/lib/auth/membership-guard";
 
 jest.mock("@/lib/ai/groq-client", () => ({
   groq: {
@@ -25,6 +26,14 @@ import { getSafeErrorDetails } from "@/lib/errors/safe-error-details";
 jest.mock("@clerk/nextjs/server", () => ({
   currentUser: jest.fn(),
 }));
+
+jest.mock("@/lib/auth/membership-guard", () => {
+  const actual = jest.requireActual("@/lib/auth/membership-guard");
+  return {
+    ...actual,
+    requireMembership: jest.fn(),
+  };
+});
 
 jest.mock("@/lib/ratelimit/api-rate-limit", () => ({
   enforceApiRateLimit: jest.fn(),
@@ -57,16 +66,7 @@ jest.mock("@/configs/db", () => ({
   },
 }));
 
-jest.mock("groq-sdk", () => ({
-  __esModule: true,
-  default: jest.fn(() => ({
-    chat: {
-      completions: {
-        create: jest.fn(),
-      },
-    },
-  })),
-}));
+
 
 describe("Doubt check-duplicate API endpoint", () => {
   const currentUserMock = currentUser as jest.MockedFunction<typeof currentUser>;
@@ -131,5 +131,33 @@ describe("Doubt check-duplicate API endpoint", () => {
 
     expect(res.status).toBe(401);
     await expect(res.json()).resolves.toMatchObject({ error: "Unauthorized" });
+  });
+
+  it("succeeds for authenticated classroom duplicate checks", async () => {
+    const requireMembershipMock = requireMembership as jest.MockedFunction<typeof requireMembership>;
+    requireMembershipMock.mockResolvedValue({ role: "student" });
+    currentUserMock.mockResolvedValue({
+      primaryEmailAddress: { emailAddress: "student@example.com" }
+    } as any);
+
+    const req = new Request("http://localhost/api/doubts/check-duplicate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: "How does photosynthesis convert light into energy?",
+        classroomId: 7,
+      }),
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ similarDoubts: [] });
+    expect(enforceApiRateLimitMock).toHaveBeenCalledWith(
+      expect.anything(),
+      "student@example.com",
+      "ai"
+    );
+    expect(requireMembershipMock).toHaveBeenCalledWith("student@example.com", 7);
   });
 });

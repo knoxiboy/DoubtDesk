@@ -57,25 +57,17 @@ export async function POST(req: Request) {
       if (userRateLimitResponse) return userRateLimitResponse;
       await requireMembership(email, classroomId);
       aiQuotaIdentifier = email;
-      const rateLimit = await aiLimiter.limit(email);
-      if (!rateLimit.success) {
-        const retryAfter = Math.max(
-          1,
-          Math.ceil((rateLimit.reset - Date.now()) / 1000),
-        );
-        return NextResponse.json(
-          { error: "Too many similarity check requests. Please try again shortly." },
-          { status: 429, headers: { "Retry-After": String(retryAfter) } },
-        );
-      }
     }
+
+    const availabilityResponse = await enforceAiAvailability(aiQuotaIdentifier);
+    if (availabilityResponse) return availabilityResponse;
 
     try {
       const similarDoubts = await findSemanticDuplicates({
         content,
         classroomId: classroomId ?? null,
         type: "community",
-        similarityThreshold: 80,
+        similarityThreshold: 90,
         topK: 5,
       });
 
@@ -111,9 +103,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ similarDoubts: [] });
     }
 
-    const availabilityResponse = await enforceAiAvailability(aiQuotaIdentifier);
-    if (availabilityResponse) return availabilityResponse;
-
     const doubtList = recentDoubts
       .map(
         (d, i) =>
@@ -125,7 +114,7 @@ export async function POST(req: Request) {
 Given a NEW question and a numbered list of EXISTING questions, identify which existing questions 
 are semantically similar or duplicate (same intent, even if worded differently).
 Return ONLY a JSON array of objects: [{"index": <number>, "similarity": <0-100>}]
-Only include entries with similarity >= 60. Return [] if none match.
+Only include entries with similarity >= 90. Return [] if none match.
 Do not include any explanation or markdown.`;
 
     const userMessage = `NEW QUESTION:\n${content.trim()}\n\nEXISTING QUESTIONS:\n${doubtList}`;
@@ -166,7 +155,7 @@ Do not include any explanation or markdown.`;
       return NextResponse.json({ similarDoubts: [] });
     }
 
-    const highMatches = matches.filter((m) => m.similarity >= 80).slice(0, 5);
+    const highMatches = matches.filter((m) => m.similarity >= 90).slice(0, 5);
     const similarDoubts: SimilarDoubt[] = [];
 
     const solvedReplyIds = highMatches

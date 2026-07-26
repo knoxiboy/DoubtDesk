@@ -23,14 +23,7 @@ const fetcher = async (url: string) => {
     return res.json();
 };
 
-interface SimilarDoubt {
-    id: number;
-    subject: string;
-    content: string | null;
-    isSolved: string | null;
-    similarity: number;
-    solvedAnswer?: string | null;
-}
+import type { SimilarDoubt } from "@/app/api/doubts/check-duplicate/route";
 
 interface AskDoubtProps {
     defaultSubject?: string;
@@ -132,6 +125,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
     const [similarDoubts, setSimilarDoubts] = useState<SimilarDoubt[]>([]);
     const [isCheckingSimilarity, setIsCheckingSimilarity] = useState(false);
     const [similarityChecked, setSimilarityChecked] = useState(false);
+    const [similarityCheckError, setSimilarityCheckError] = useState(false);
     const [expandedSolvedId, setExpandedSolvedId] = useState<number | null>(null);
     const similarityDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -139,9 +133,11 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
         if (doubtToEdit || text.trim().length < 20) {
             setSimilarDoubts([]);
             setSimilarityChecked(false);
+            setSimilarityCheckError(false);
             return;
         }
         setIsCheckingSimilarity(true);
+        setSimilarityCheckError(false);
         try {
             const res = await fetch("/api/doubts/check-duplicate", {
                 method: "POST",
@@ -152,9 +148,16 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                 const data = await res.json();
                 setSimilarDoubts(data.similarDoubts || []);
                 setSimilarityChecked(true);
+            } else {
+                setSimilarDoubts([]);
+                setSimilarityChecked(false);
+                setSimilarityCheckError(true);
             }
         } catch (err) {
             console.error("Similarity check failed:", err);
+            setSimilarDoubts([]);
+            setSimilarityChecked(false);
+            setSimilarityCheckError(true);
         } finally {
             setIsCheckingSimilarity(false);
         }
@@ -678,6 +681,13 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                 <div className="flex items-center gap-2 px-4 py-3 bg-blue-500/10 border border-blue-500/20 rounded-2xl text-blue-400 text-xs font-bold">
                                     <Search className="w-3.5 h-3.5 animate-pulse" />
                                     Checking for similar questions…
+                                </div>
+                            )}
+
+                            {similarityCheckError && (
+                                <div className="flex items-center gap-2 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-xs font-bold">
+                                    <AlertCircle className="w-3.5 h-3.5" />
+                                    Failed to check for similar doubts. Please try again or continue.
                                 </div>
                             )}
 
