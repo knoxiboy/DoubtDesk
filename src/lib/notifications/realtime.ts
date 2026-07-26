@@ -223,9 +223,14 @@ export function subscribeToNotifications(
 
     startHeartbeat();
 
-    controller.enqueue(
-        subscriber.encoder.encode(formatEvent("connected", { userEmail })),
-    );
+    try {
+        controller.enqueue(
+            subscriber.encoder.encode(formatEvent("connected", { userEmail })),
+        );
+    } catch (error) {
+        removeSubscriber(userEmail, subscriber);
+        throw error;
+    }
 
     subscribeToRedisChannel(userEmail).then((unsub) => {
         const bucket = notificationSubscribers.get(userEmail);
@@ -234,7 +239,7 @@ export function subscribeToNotifications(
         } else {
             subscriber.redisUnsubscribe = unsub;
         }
-    });
+    }).catch(() => {});
 
     return () => removeSubscriber(userEmail, subscriber);
 }
@@ -247,8 +252,11 @@ export function publishNotification(notification: NotificationRecord) {
                 getRedisChannel(notification.userEmail),
                 JSON.stringify(notification),
             )
-            .catch(() => {
-                // Redis publish failed; local subscribers still receive the notification
+            .catch((error) => {
+                console.error(
+                    "Failed to publish notification to Redis",
+                    error,
+                );
             });
     }
 
