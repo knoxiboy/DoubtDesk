@@ -91,26 +91,41 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
       const fetchSolution = async () => {
         setIsLoading(true);
         try {
-          const res = await fetch(`/api/replies?doubtId=${initialDoubt.id}`);
-          if (!res.ok) {
-            console.error("Could not retrieve the solution.");
-            return;
-          }
+          let cursor: string | null = null;
+          let hasMore = false;
+          let solution = null;
 
-          let data;
-          try {
-            data = await res.json();
-          } catch (error) {
-            console.error("Failed to parse replies response:", error);
-            return;
-          }
+          do {
+            const params = new URLSearchParams({ doubtId: String(initialDoubt.id) });
+            params.set("limit", "100");
+            if (cursor) params.set("cursor", cursor);
 
-          if (Array.isArray(data) && data.length > 0) {
-            const solution = data.find(
-              (r: any) =>
-                r.type === "solution" || r.userName === "DoubtDesk AI"
-            );
-            if (solution) {
+            const res = await fetch(`/api/replies?${params}`);
+            if (!res.ok) {
+              console.error("Could not retrieve the solution.");
+              return;
+            }
+
+            let data;
+            try {
+              data = await res.json();
+            } catch (error) {
+              console.error("Failed to parse replies response:", error);
+              return;
+            }
+
+            if (data.replies && data.replies.length > 0) {
+              solution = data.replies.find(
+                (r: any) =>
+                  r.type === "solution" || r.userName === "DoubtDesk AI"
+              );
+            }
+
+            cursor = data.nextCursor;
+            hasMore = data.hasMore;
+          } while (!solution && hasMore);
+
+          if (solution) {
               const assistantMsg: DisplayMessage = {
                 id: "initial-assistant-" + initialDoubt.id,
                 role: "assistant",
@@ -119,7 +134,6 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
               };
               setMessages([initialUserMsg, assistantMsg]);
             }
-          }
         } catch (err) {
           console.error("Error fetching solution for initial doubt:", err);
         } finally {

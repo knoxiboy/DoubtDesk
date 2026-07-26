@@ -119,20 +119,33 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
     const fetchReplies = async () => {
         try {
-            const url = `/api/replies?doubtId=${doubt.id}`;
-            const res = await fetch(url);
-            if (!res.ok) {
-                console.error(`Replies API failed with status ${res.status}`);
-                return;
-            }
-            let data;
-            try {
-                data = await res.json();
-            } catch (err) {
-                console.error("Failed to parse replies response:", err);
-                return;
-            }
-            setReplies(data);
+            let allReplies: Reply[] = [];
+            let cursor: string | null = null;
+            let hasMore = false;
+
+            do {
+                const params = new URLSearchParams({ doubtId: String(doubt.id) });
+                params.set("limit", "100");
+                if (cursor) params.set("cursor", cursor);
+
+                const res = await fetch(`/api/replies?${params}`);
+                if (!res.ok) {
+                    console.error(`Replies API failed with status ${res.status}`);
+                    return;
+                }
+                let json;
+                try {
+                    json = await res.json();
+                } catch (err) {
+                    console.error("Failed to parse replies response:", err);
+                    return;
+                }
+                allReplies = allReplies.concat(json.replies);
+                cursor = json.nextCursor;
+                hasMore = json.hasMore;
+            } while (hasMore);
+
+            setReplies(allReplies);
         } catch (error) {
             console.error("Failed to fetch replies:", error);
         } finally {
