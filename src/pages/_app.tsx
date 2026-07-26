@@ -31,6 +31,7 @@ export default function App({ Component, pageProps }: AppProps) {
         defaultTheme="system"
         enableSystem
         storageKey="doubtdesk-theme"
+        themes={["light", "dark", "midnight", "cyberpunk", "emerald", "system"]}
       >
         <Provider>
           <KeyboardShortcutsProvider>

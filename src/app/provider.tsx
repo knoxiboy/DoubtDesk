@@ -192,7 +192,7 @@ export function Provider({ children }: { children: React.ReactNode }) {
 
     return (
         <UserContext.Provider value={{ appUser, setAppUser, loading, refresh }}>
-            <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="doubtdesk-theme">
+            <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="doubtdesk-theme" themes={["light", "dark", "midnight", "cyberpunk", "emerald", "system"]}>
                 <Suspense fallback={null}>
                     <NavigationEvents onChange={() => setIsNavigating(false)} />
                 </Suspense>

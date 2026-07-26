@@ -63,6 +63,96 @@
     --auth-link-hover: 217 100% 77%;
     color-scheme: dark;
   }
+
+  .midnight {
+    --background: 224 71% 4%;
+    --foreground: 213 100% 96%;
+    --card: 224 60% 8%;
+    --card-foreground: 213 100% 96%;
+    --popover: 224 60% 8%;
+    --popover-foreground: 213 100% 96%;
+    --primary: 225 100% 67%;
+    --primary-foreground: 224 71% 4%;
+    --secondary: 224 50% 15%;
+    --secondary-foreground: 213 100% 96%;
+    --muted: 224 40% 16%;
+    --muted-foreground: 215 60% 75%;
+    --accent: 225 80% 20%;
+    --accent-foreground: 213 100% 96%;
+    --destructive: 0 62.8% 40%;
+    --destructive-foreground: 213 100% 96%;
+    --border: 224 45% 18%;
+    --input: 224 45% 18%;
+    --ring: 225 100% 67%;
+    --chart-1: 225 100% 67%;
+    --chart-2: 215 80% 60%;
+    --chart-3: 200 90% 55%;
+    --chart-4: 250 85% 65%;
+    --chart-5: 230 90% 70%;
+    --auth-link: 225 100% 70%;
+    --auth-link-hover: 225 100% 80%;
+    color-scheme: dark;
+  }
+
+  .cyberpunk {
+    --background: 270 50% 5%;
+    --foreground: 60 100% 95%;
+    --card: 270 40% 10%;
+    --card-foreground: 60 100% 95%;
+    --popover: 270 40% 10%;
+    --popover-foreground: 60 100% 95%;
+    --primary: 320 100% 60%;
+    --primary-foreground: 270 50% 5%;
+    --secondary: 275 60% 18%;
+    --secondary-foreground: 60 100% 95%;
+    --muted: 270 35% 16%;
+    --muted-foreground: 180 100% 75%;
+    --accent: 185 100% 50%;
+    --accent-foreground: 270 50% 5%;
+    --destructive: 345 100% 55%;
+    --destructive-foreground: 60 100% 95%;
+    --border: 275 70% 25%;
+    --input: 275 70% 25%;
+    --ring: 320 100% 60%;
+    --chart-1: 320 100% 60%;
+    --chart-2: 185 100% 50%;
+    --chart-3: 60 100% 60%;
+    --chart-4: 280 100% 70%;
+    --chart-5: 45 100% 65%;
+    --auth-link: 320 100% 70%;
+    --auth-link-hover: 185 100% 70%;
+    color-scheme: dark;
+  }
+
+  .emerald {
+    --background: 160 50% 5%;
+    --foreground: 150 60% 96%;
+    --card: 160 40% 9%;
+    --card-foreground: 150 60% 96%;
+    --popover: 160 40% 9%;
+    --popover-foreground: 150 60% 96%;
+    --primary: 155 85% 46%;
+    --primary-foreground: 160 50% 5%;
+    --secondary: 160 35% 15%;
+    --secondary-foreground: 150 60% 96%;
+    --muted: 160 30% 14%;
+    --muted-foreground: 155 45% 70%;
+    --accent: 160 60% 18%;
+    --accent-foreground: 150 60% 96%;
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 150 60% 96%;
+    --border: 160 35% 18%;
+    --input: 160 35% 18%;
+    --ring: 155 85% 46%;
+    --chart-1: 155 85% 46%;
+    --chart-2: 170 75% 45%;
+    --chart-3: 140 70% 50%;
+    --chart-4: 180 80% 40%;
+    --chart-5: 150 90% 60%;
+    --auth-link: 155 85% 55%;
+    --auth-link-hover: 155 85% 65%;
+    color-scheme: dark;
+  }
 }
 
 @layer base {

@@ -32,7 +32,7 @@ export function useKeyboardShortcuts() {
 
 export function KeyboardShortcutsProvider({ children }: { children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false)
-    const { setTheme, resolvedTheme } = useTheme()
+    const { theme, setTheme, resolvedTheme } = useTheme()
     const { isSignedIn } = useUser()
 
     const toggleOpen = () => setIsOpen((prev) => !prev)
@@ -68,7 +68,9 @@ export function KeyboardShortcutsProvider({ children }: { children: React.ReactN
 
     useHotkeys("t", (e) => {
         e.preventDefault()
-        const nextTheme = resolvedTheme === "dark" ? "light" : "dark"
+        const themeSequence = ["light", "dark", "midnight", "cyberpunk", "emerald"]
+        const currentIndex = themeSequence.indexOf(theme || resolvedTheme || "light")
+        const nextTheme = themeSequence[(currentIndex + 1) % themeSequence.length]
         setTheme(nextTheme)
         if (isSignedIn) {
             fetch("/api/user/preferences", {

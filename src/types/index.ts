@@ -120,7 +120,7 @@ export interface User {
     blockCount: number;
     emailNotificationsEnabled: boolean;
     notificationPreference: "instant" | "daily" | "weekly" | "none";
-    themePreference: "light" | "dark" | "system";
+    themePreference: "light" | "dark" | "midnight" | "cyberpunk" | "emerald" | "system";
     interests?: string | null;
     learningGoals?: string | null;
     subjects?: string | null;

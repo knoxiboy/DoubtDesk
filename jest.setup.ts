@@ -63,6 +63,15 @@ global.ResizeObserver = class ResizeObserver {
     unobserve() {}
 };
 
+// Mock PointerEvent and PointerCapture for Radix UI components
+if (typeof global.PointerEvent === 'undefined') {
+    class PointerEvent extends MouseEvent {}
+    global.PointerEvent = PointerEvent as any;
+}
+Element.prototype.hasPointerCapture = () => false;
+Element.prototype.setPointerCapture = () => {};
+Element.prototype.releasePointerCapture = () => {};
+
 // Mock scrollIntoView
 Element.prototype.scrollIntoView = jest.fn();
 

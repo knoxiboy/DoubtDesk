@@ -18,7 +18,7 @@ export const usersTable = pgTable("users", {
     blockCount: integer().default(0).notNull(),
     emailNotificationsEnabled: boolean().default(true).notNull(),
     notificationPreference: varchar({ length: 50 }).default("instant").notNull(),
-    themePreference: varchar({ length: 10 }).default("system").notNull(),
+    themePreference: varchar({ length: 20 }).default("system").notNull(),
     interests: text(),
     learningGoals: text(),
     subjects: text(),
