@@ -143,7 +143,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
         }
         setIsCheckingSimilarity(true);
         try {
-            const res = await fetch("/api/doubts/check-similarity", {
+            const res = await fetch("/api/doubts/check-duplicate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ content: text, classroomId }),

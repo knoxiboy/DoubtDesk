@@ -82,8 +82,7 @@ export async function GET(req: Request) {
             ],
             model: "llama-3.3-70b-versatile",
             response_format: { type: "json_object" },
-            signal: controller.signal,
-        }).finally(() => clearTimeout(timeoutId));
+        }, { signal: controller.signal }).finally(() => clearTimeout(timeoutId));
 
         const result = JSON.parse(response.choices[0].message.content || "{}");
 
