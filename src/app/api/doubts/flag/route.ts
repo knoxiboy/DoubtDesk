@@ -53,33 +53,40 @@ export async function POST(req: NextRequest) {
         // serialized, preventing a TOCTOU race where multiple requests all read
         // the count below the threshold before any of them hides the doubt.
         let autoHidden = false;
-        const cutoff = new Date(Date.now() - AUTO_HIDE_WINDOW_MS);
-        const [{ count: recentFlagCount }] = await db
-            .select({ count: count(contentFlagsTable.id) })
-            .from(contentFlagsTable)
-            .where(
-                and(
-                    eq(contentFlagsTable.doubtId, doubtId),
-                    gte(contentFlagsTable.createdAt, cutoff),
-                    eq(contentFlagsTable.status, "open"),
-                ),
+        await db.transaction(async (tx: any) => {
+            const locked = await tx.execute(
+                sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} FOR UPDATE`,
             );
+            if (!locked.rows?.length) return;
 
-        if (recentFlagCount >= AUTO_HIDE_FLAG_THRESHOLD) {
-            await db.update(doubtsTable).set({ isHidden: true }).where(eq(doubtsTable.id, doubtId));
-            autoHidden = true;
+            const windowStart = new Date(Date.now() - AUTO_HIDE_WINDOW_MS);
+            const [{ value: recentFlagCount }] = await tx
+                .select({ value: count() })
+                .from(contentFlagsTable)
+                .where(
+                    and(
+                        eq(contentFlagsTable.doubtId, doubtId),
+                        eq(contentFlagsTable.status, "open"),
+                        gte(contentFlagsTable.createdAt, windowStart),
+                    ),
+                );
 
-            if (doubt.classroomId) {
-                try {
-                    await inngest.send({
-                        name: "doubt/auto-hidden",
-                        data: { doubtId, classroomId: doubt.classroomId },
-                    });
-                } catch (error) {
-                    console.error("Failed to send doubt/auto-hidden event", error);
+            if (recentFlagCount >= AUTO_HIDE_FLAG_THRESHOLD) {
+                await tx.update(doubtsTable).set({ isHidden: true }).where(eq(doubtsTable.id, doubtId));
+                autoHidden = true;
+
+                if (doubt.classroomId) {
+                    try {
+                        await inngest.send({
+                            name: "doubt/auto-hidden",
+                            data: { doubtId, classroomId: doubt.classroomId },
+                        });
+                    } catch (error) {
+                        console.error("Failed to send doubt/auto-hidden event", error);
+                    }
                 }
             }
-        }
+        });
 
         return NextResponse.json({
             success: true,

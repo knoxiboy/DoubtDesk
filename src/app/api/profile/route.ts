@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { eq, or, inArray, isNull, and } from "drizzle-orm";
+import { eq, or, inArray, isNull, and, desc, sql } from "drizzle-orm";
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, membershipsTable, classroomsTable, usersTable } from "@/configs/schema";
 import { auth, currentUser } from "@clerk/nextjs/server";
@@ -25,10 +25,18 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: "No email found" }, { status: 400 });
         }
 
-        const [dbUserResults, doubts, replies, memberships] = await Promise.all([
+        const { searchParams } = new URL(req.url);
+        const limitParam = searchParams.get("limit");
+        const activityLimit = limitParam
+            ? Math.min(Math.max(parseInt(limitParam, 10) || 20, 1), 100)
+            : 20;
+
+        const [dbUserResults, totalDoubtsResult, totalRepliesResult, doubts, replies, memberships] = await Promise.all([
             db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1),
-            db.select().from(doubtsTable).where(eq(doubtsTable.userEmail, email)),
-            db.select().from(repliesTable).where(eq(repliesTable.userEmail, email)),
+            db.select({ value: sql<number>`count(*)` }).from(doubtsTable).where(eq(doubtsTable.userEmail, email)),
+            db.select({ value: sql<number>`count(*)` }).from(repliesTable).where(eq(repliesTable.userEmail, email)),
+            db.select().from(doubtsTable).where(eq(doubtsTable.userEmail, email)).orderBy(desc(doubtsTable.createdAt)).limit(activityLimit),
+            db.select().from(repliesTable).where(eq(repliesTable.userEmail, email)).orderBy(desc(repliesTable.createdAt)).limit(activityLimit),
             db.select().from(membershipsTable).where(eq(membershipsTable.userEmail, email))
         ]);
 
@@ -46,8 +54,8 @@ export async function GET(req: Request) {
                 .where(inArray(classroomsTable.id, classroomIds));
         }
 
-        const totalDoubts = doubts?.length || 0;
-        const totalReplies = replies?.length || 0;
+        const totalDoubts = totalDoubtsResult[0]?.value ?? 0;
+        const totalReplies = totalRepliesResult[0]?.value ?? 0;
         const helpfulVotes = doubts ? doubts.reduce((acc, doubt) => acc + (doubt.likes || 0), 0) : 0;
 
         const rawJoinDate = dbUser?.createdAt || (clerkUser?.createdAt ? new Date(clerkUser.createdAt) : new Date());

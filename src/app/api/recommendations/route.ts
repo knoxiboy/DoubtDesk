@@ -59,7 +59,8 @@ export async function GET() {
         const classrooms = await db
         .select()
         .from(classroomsTable)
-        .where(and(...classroomConditions));
+        .where(and(...classroomConditions))
+        .limit(100);
 
         if (!classrooms.length) {
             return NextResponse.json({

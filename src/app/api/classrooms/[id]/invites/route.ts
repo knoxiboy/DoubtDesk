@@ -13,6 +13,8 @@ import { checkUserBlock } from "@/lib/auth/auth-utils";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { createClassroomInviteSchema } from "@/lib/validations/classroom";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
+import { generalLimiter } from "@/lib/ratelimit/ratelimit";
 import {
   generateInviteToken,
   getInviteExpiry,
@@ -40,6 +42,9 @@ export async function POST(
     const { isBlocked, errorResponse: blockErrorResponse } =
       await checkUserBlock(email);
     if (isBlocked) return blockErrorResponse;
+
+    const rateLimitResponse = await enforceApiRateLimit(generalLimiter, email, "general");
+    if (rateLimitResponse) return rateLimitResponse;
 
     const { id } = await params;
     const classroomId = parseInt(id, 10);

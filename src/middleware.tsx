@@ -143,7 +143,7 @@ export default clerkMiddleware(async (auth, req) => {
         STATE_CHANGING_METHODS.has(req.method)
     ) {
         const origin = req.headers.get('origin');
-        if (origin && !origin.startsWith(APP_ORIGIN)) {
+        if (origin && origin !== APP_ORIGIN) {
             return new NextResponse(
                 JSON.stringify({ error: 'CSRF validation failed' }),
                 { status: 403, headers: { 'Content-Type': 'application/json' } },

@@ -75,14 +75,17 @@ export async function GET(req: Request) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), GROQ_TIMEOUT_MS);
 
-        const response = await groq.chat.completions.create({
-            messages: [
-                { role: "system", content: systemPrompt },
-                { role: "user", content: `Analyze these doubts asked by the student in this classroom:\n\n${doubtContext}` }
-            ],
-            model: "llama-3.3-70b-versatile",
-            response_format: { type: "json_object" },
-        }, { signal: controller.signal }).finally(() => clearTimeout(timeoutId));
+        const response = await groq.chat.completions.create(
+            {
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: `Analyze these doubts asked by the student in this classroom:\n\n${doubtContext}` }
+                ],
+                model: "llama-3.3-70b-versatile",
+                response_format: { type: "json_object" },
+            },
+            { signal: controller.signal }
+        ).finally(() => clearTimeout(timeoutId));
 
         const result = JSON.parse(response.choices[0].message.content || "{}");
 
