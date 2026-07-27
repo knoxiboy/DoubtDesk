@@ -290,13 +290,14 @@ if (classroomId) {
 
     // Escape CSV cells to prevent formula injection (=, +, -, @)
     const escapeCsv = (value: string): string => {
-      if (/^[=+\-@]/.test(value)) {
-        return `'${value}`;
+      let escaped = value;
+      if (/^[=+\-@]/.test(escaped)) {
+        escaped = `'${escaped}`;
       }
-      if (/,|"|\n/.test(value)) {
-        return `"${value.replace(/"/g, '""')}"`;
+      if (/[",\n\r]/.test(escaped)) {
+        escaped = `"${escaped.replace(/"/g, '""')}"`;
       }
-      return value;
+      return escaped;
     };
 
     // Generate CSV
