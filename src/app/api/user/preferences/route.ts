@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/configs/db";
 import { usersTable } from "@/configs/schema";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 
 const VALID_THEMES = ["light", "dark", "system"] as const;
 type Theme = (typeof VALID_THEMES)[number];
@@ -53,6 +54,9 @@ export async function PATCH(req: NextRequest) {
         if (!email) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
+
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
 
         const body = await req.json();
         const { themePreference } = body;

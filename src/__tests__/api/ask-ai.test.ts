@@ -238,7 +238,7 @@ describe('Ask AI API Endpoint', () => {
 
         expect(res.status).toBe(413);
         expect(json).toEqual({
-            error: 'Requests must be 4MB or smaller.',
+            error: 'Request body too large',
             code: 'REQUEST_TOO_LARGE',
         });
     });

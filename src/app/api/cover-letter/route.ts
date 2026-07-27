@@ -5,6 +5,7 @@ import { db } from "@/configs/db";
 import { coverLettersTable } from "@/configs/schema";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 
 const MAX_LENGTH = 10_000;
 
@@ -22,6 +23,9 @@ export async function POST(req: NextRequest) {
             const { isBlocked, errorResponse } = await checkUserBlock(userEmail);
             if (isBlocked) return errorResponse;
         }
+
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
 
         const body = await req.json();
         const parsed = coverLetterSchema.safeParse(body);

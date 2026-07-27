@@ -5,6 +5,7 @@ import { usersTable, karmaTransactionsTable, userBadgesTable, badgeDefinitionsTa
 import { eq, desc, sql } from "drizzle-orm";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { checkAndAwardBadges } from "@/lib/karma/karma-utils";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 import { currentUser } from "@clerk/nextjs/server";
 
 // ── KARMA LEVEL THRESHOLDS ────────────────────────────────────────────────────
@@ -94,6 +95,9 @@ export async function GET() {
 // ── POST /api/karma ───────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
     try {
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
+
         const body = await req.json();
         const { userEmail, eventType, replyId, doubtId, note } = body;
 

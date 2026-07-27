@@ -6,9 +6,9 @@ import { db } from "@/configs/db";
 import { membershipsTable, usersTable, aiSessionsTable } from "@/configs/schema";
 import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
 import { aiLimiter } from "@/lib/ratelimit/ratelimit";
-import { AI_REQUEST_MAX_BYTES } from "@/lib/ai/ai-image-validation";
 import { buildSystemMessages } from "@/lib/ai/socratic-prompt";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 import type { AIMode } from "@/types/ai-chat";
 
 const MODEL = "llama-3.3-70b-versatile";
@@ -46,28 +46,12 @@ export async function POST(req: Request): Promise<NextResponse> {
     return rateLimitResponse;
   }
 
-  const declaredLength = Number.parseInt(
-    req.headers.get("content-length") ?? "",
-    10
-  );
-  if (Number.isFinite(declaredLength) && declaredLength > AI_REQUEST_MAX_BYTES) {
-    return NextResponse.json(
-      { error: "Requests must be 4MB or smaller.", code: "REQUEST_TOO_LARGE" },
-      { status: 413 }
-    );
-  }
-
-  const rawText = await req.text();
-  if (rawText.length > AI_REQUEST_MAX_BYTES) {
-    return NextResponse.json(
-      { error: "Requests must be 4MB or smaller.", code: "REQUEST_TOO_LARGE" },
-      { status: 413 }
-    );
-  }
+  const sizeError = await limitRequestBodySize(req);
+  if (sizeError) return sizeError;
 
   let body: Record<string, unknown>;
   try {
-    body = JSON.parse(rawText);
+    body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }

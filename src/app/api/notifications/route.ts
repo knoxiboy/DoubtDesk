@@ -4,6 +4,7 @@ import { notificationsTable } from "@/configs/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { parsePositiveInt } from "@/lib/utils/utils";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 
 export async function GET(req: Request) {
     try {
@@ -81,6 +82,9 @@ export async function PATCH(req: Request) {
 
         const userEmail = user.primaryEmailAddress.emailAddress;
         
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
+
         const body = await req.json();
         const { notificationId, markAllRead } = body;
 

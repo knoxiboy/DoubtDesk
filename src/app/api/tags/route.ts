@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
 import { generalLimiter } from "@/lib/ratelimit/ratelimit";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 import {
     parseOptionalClassroomId,
     requireAuth,
@@ -116,6 +117,9 @@ export async function POST(req: Request) {
 
         const rateLimitResponse = await enforceApiRateLimit(generalLimiter, email, "general");
         if (rateLimitResponse) return rateLimitResponse;
+
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
 
         const { name, classroomId: rawClassroomId } = await req.json();
         const normalizedName = normalizeTagName(name || "");

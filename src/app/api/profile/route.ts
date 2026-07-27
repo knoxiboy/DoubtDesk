@@ -6,6 +6,7 @@ import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, membershipsTable, classroomsTable, usersTable } from "@/configs/schema";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 import type { ProfileClassroom } from "@/types/profile";
 import { toPublicDoubt } from "@/lib/anonymity/anonymity";
 import { toPublicReply } from "@/lib/anonymity/anonymity";
@@ -116,6 +117,9 @@ export async function POST(req: NextRequest) {
         }
 
         const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email)).limit(1);
+
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
 
         const body = await req.json();
         const { emailNotificationsEnabled, notificationPreference } = body;

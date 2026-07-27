@@ -5,6 +5,7 @@ import { practiceAttemptsTable } from "@/configs/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 
 export async function POST(
     req: Request,
@@ -25,6 +26,9 @@ export async function POST(
             return NextResponse.json({ error: "Invalid doubt ID" }, { status: 400 });
         }
         const doubtId = parseInt(id, 10);
+
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
 
         const body = await req.json();
         const { attemptId, answer } = body;

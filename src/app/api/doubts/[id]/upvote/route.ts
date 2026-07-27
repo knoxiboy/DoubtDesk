@@ -5,6 +5,7 @@ import { repliesTable, replyLikesTable, doubtsTable, membershipsTable } from "@/
 import { eq, and, sql } from "drizzle-orm";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { inngest } from "@/inngest/client";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 import { currentUser } from "@clerk/nextjs/server";
 
 export async function POST(
@@ -31,6 +32,9 @@ export async function POST(
         if (isNaN(doubtId)) {
             return NextResponse.json({ error: "Invalid doubt id" }, { status: 400 });
         }
+
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
 
         const body = await req.json();
         const { replyId } = body as { replyId: number };
