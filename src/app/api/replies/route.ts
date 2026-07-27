@@ -106,7 +106,7 @@ export async function GET(req: Request) {
       .select()
       .from(repliesTable)
       .where(and(...whereConditions))
-      .orderBy(asc(repliesTable.createdAt))
+      .orderBy(asc(repliesTable.createdAt), asc(repliesTable.id))
       .limit(limit + 1);
 
     const hasMore = data.length > limit;

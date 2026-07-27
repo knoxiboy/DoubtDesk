@@ -131,14 +131,16 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 const res = await fetch(`/api/replies?${params}`);
                 if (!res.ok) {
                     console.error(`Replies API failed with status ${res.status}`);
-                    return;
+                    toast.error("Failed to load some replies.");
+                    break;
                 }
                 let json;
                 try {
                     json = await res.json();
                 } catch (err) {
                     console.error("Failed to parse replies response:", err);
-                    return;
+                    toast.error("Failed to load some replies.");
+                    break;
                 }
                 allReplies = allReplies.concat(json.replies);
                 cursor = json.nextCursor;
@@ -148,6 +150,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
             setReplies(allReplies);
         } catch (error) {
             console.error("Failed to fetch replies:", error);
+            toast.error("Failed to load replies.");
         } finally {
             setIsLoading(false);
         }

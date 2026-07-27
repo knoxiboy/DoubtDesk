@@ -78,6 +78,8 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
   }, [mode]);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (initialDoubt) {
       const doubtText = initialDoubt.content === "Visual Inquiry" ? "" : (initialDoubt.content ?? "");
       const initialUserMsg: DisplayMessage = {
@@ -102,7 +104,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
 
             const res = await fetch(`/api/replies?${params}`);
             if (!res.ok) {
-              console.error("Could not retrieve the solution.");
+              if (!cancelled) console.error("Could not retrieve the solution.");
               return;
             }
 
@@ -110,7 +112,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
             try {
               data = await res.json();
             } catch (error) {
-              console.error("Failed to parse replies response:", error);
+              if (!cancelled) console.error("Failed to parse replies response:", error);
               return;
             }
 
@@ -125,7 +127,7 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
             hasMore = data.hasMore;
           } while (!solution && hasMore);
 
-          if (solution) {
+          if (solution && !cancelled) {
               const assistantMsg: DisplayMessage = {
                 id: "initial-assistant-" + initialDoubt.id,
                 role: "assistant",
@@ -135,14 +137,18 @@ export default function AskAIView({ classroomId = null, onSuccess, initialDoubt 
               setMessages([initialUserMsg, assistantMsg]);
             }
         } catch (err) {
-          console.error("Error fetching solution for initial doubt:", err);
+          if (!cancelled) console.error("Error fetching solution for initial doubt:", err);
         } finally {
-          setIsLoading(false);
+          if (!cancelled) setIsLoading(false);
         }
       };
 
       void fetchSolution();
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [initialDoubt]); 
 
   function handleModeChange(newMode: AIMode) {
