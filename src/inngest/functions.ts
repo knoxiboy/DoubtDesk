@@ -125,7 +125,7 @@ export const sendReplyNotification = inngest.createFunction(
     }
 
     // 4. Rate-limiting check: Prevents spamming emails for rapid replies
-    const rateLimitKey = `email_notify:${doubtId}`;
+    const rateLimitKey = `email_notify:${doubtId}:${replierEmail}`;
     const limitResult = await step.run("check-rate-limit", async () => {
       const result = await emailNotificationLimiter.limit(rateLimitKey);
       return {
