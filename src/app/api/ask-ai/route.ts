@@ -46,11 +46,10 @@ export async function POST(req: Request): Promise<NextResponse> {
     return rateLimitResponse;
   }
 
-  const sizeError = await limitRequestBodySize(req);
-  if (sizeError) return sizeError;
-
   let body: Record<string, unknown>;
   try {
+    const sizeError = await limitRequestBodySize(req);
+    if (sizeError) return sizeError;
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });

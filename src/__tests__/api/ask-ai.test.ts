@@ -1,6 +1,15 @@
+import { NextResponse } from "next/server";
 import { POST } from '@/app/api/ask-ai/route';
 import { aiLimiter } from '@/lib/ratelimit/ratelimit';
-import { AI_REQUEST_MAX_BYTES } from '@/lib/ai/ai-image-validation';
+import { limitRequestBodySize } from '@/lib/validations/validate';
+
+jest.mock('@/lib/validations/validate', () => {
+    const actual = jest.requireActual('@/lib/validations/validate');
+    return {
+        ...actual,
+        limitRequestBodySize: jest.fn().mockResolvedValue(null),
+    };
+});
 
 jest.mock('@/lib/ratelimit/ratelimit', () => ({
     aiLimiter: {
@@ -224,13 +233,17 @@ describe('Ask AI API Endpoint', () => {
     });
 
     it('POST should reject request bodies larger than the configured limit', async () => {
+        (limitRequestBodySize as jest.Mock).mockResolvedValueOnce(
+            NextResponse.json(
+                { error: 'Request body too large', code: 'REQUEST_TOO_LARGE' },
+                { status: 413 }
+            )
+        );
+
         const req = new Request('http://localhost/api/ask-ai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: 'x'.repeat(AI_REQUEST_MAX_BYTES),
-                classroomId: 1
-            }),
+            body: JSON.stringify({ prompt: 'small body', classroomId: 1 }),
         });
 
         const res = await POST(req);
