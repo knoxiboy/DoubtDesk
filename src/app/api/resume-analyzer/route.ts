@@ -6,6 +6,8 @@ import { db } from "@/configs/db";
 import { resumeAnalysisTable } from "@/configs/schema";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { enforceAiAvailability} from "@/lib/ai/kill-switch";
+import { getAnonymousQuotaIdentifier } from "@/lib/auth/request-identity";
 
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse-fork");
@@ -82,10 +84,14 @@ export async function POST(req: NextRequest) {
             const { isBlocked, errorResponse } = await checkUserBlock(userEmail);
             if (isBlocked) return errorResponse;
         }
+        
+        const aiQuotaIdentifier = userEmail ?? getAnonymousQuotaIdentifier(req);
+        const availabilityResponse = await enforceAiAvailability(aiQuotaIdentifier);
+        if (availabilityResponse) return availabilityResponse;
 
         const buffer = Buffer.from(await file.arrayBuffer());
         let resumeText = "";
-
+        
         try {
             const data = await pdf(buffer);
             resumeText = data.text;
@@ -164,6 +170,7 @@ RESUME TEXT:
 ${resumeText}
 `;
 
+        
         const response = await axios.post(
             "https://api.groq.com/openai/v1/chat/completions",
             {
