@@ -8,11 +8,16 @@ import { groq } from '@/lib/ai/groq-client';
 function normalizeCategory(raw: string): string {
     return raw
         .trim()
-        .replace(/[.,;:!?"'`]+$/g, "")   // strip trailing punctuation
-        .replace(/\s+/g, " ")            // collapse internal whitespace
-        .split(" ")
+        .split(/\s+/)
+        .map(w => w.replace(/^[\p{P}\p{S}]+|[\p{P}\p{S}]+$/gu, ""))
         .filter(Boolean)
-        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .map(w => {
+            // Preserve likely acronyms (all-caps, 2+ letters) as-is
+            if (w.length > 1 && w === w.toUpperCase() && /[A-Z]/.test(w)) {
+                return w;
+            }
+            return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+        })
         .join(" ");
 }
 /**

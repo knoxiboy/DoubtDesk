@@ -26,6 +26,21 @@ jest.mock('groq-sdk', () => {
                         if (userMsg.includes('empty-test')) {
                             return { choices: [{ message: { content: '' } }] };
                         }
+                        if (userMsg.includes('quoted-test')) {
+                            return { choices: [{ message: { content: '"Recursion"' } }] };
+                        }
+                        if (userMsg.includes('ellipsis-test')) {
+                            return { choices: [{ message: { content: 'Recursion…' } }] };
+                        }
+                        if (userMsg.includes('trailing-junk-test')) {
+                            return { choices: [{ message: { content: 'Recursion) . .' } }] };
+                        }
+                        if (userMsg.includes('sql-test')) {
+                            return { choices: [{ message: { content: 'SQL' } }] };
+                        }
+                        if (userMsg.includes('api-design-test')) {
+                            return { choices: [{ message: { content: 'API Design' } }] };
+                        }
                         return { choices: [{ message: { content: 'General' } }] };
                     })
                 }
@@ -69,6 +84,31 @@ describe('AI Categorizer Service', () => {
         it('should fallback to General when the model returns an empty string', async () => {
             const category = await categorizeDoubt('empty-test', 'Other');
             expect(category).toBe('General');
+        });
+
+        it('should strip leading and trailing quotes', async () => {
+            const category = await categorizeDoubt('quoted-test', 'Programming');
+            expect(category).toBe('Recursion');
+        });
+
+        it('should strip non-ASCII trailing punctuation like ellipsis', async () => {
+            const category = await categorizeDoubt('ellipsis-test', 'Programming');
+            expect(category).toBe('Recursion');
+        });
+
+        it('should strip trailing parenthesis and spaced periods', async () => {
+            const category = await categorizeDoubt('trailing-junk-test', 'Programming');
+            expect(category).toBe('Recursion');
+        });
+
+        it('should preserve known acronyms instead of lowercasing them', async () => {
+            const category = await categorizeDoubt('sql-test', 'Databases');
+            expect(category).toBe('SQL');
+        });
+
+        it('should preserve acronym casing within multi-word responses', async () => {
+            const category = await categorizeDoubt('api-design-test', 'Programming');
+            expect(category).toBe('API Design');
         });
     });
 });
