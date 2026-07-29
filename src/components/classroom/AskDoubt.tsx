@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Loader2, Upload, File, Eye, EyeOff, Bold, Italic, Code, List, Tags, Sparkles, FileText, ExternalLink, AlertCircle, CheckCircle2, Search } from "lucide-react";
+import { X, Loader2, Upload, File, Eye, EyeOff, Bold, Italic, Code, List, Tags, Sparkles, FileText, ExternalLink, AlertCircle, CheckCircle2, Search, PenTool } from "lucide-react";
 import { toast } from "sonner";
 import useSWR from "swr";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import type { Doubt, Tag } from "@/types";
 import { OFFLINE_DOUBT_QUEUED } from "@/lib/constants/copy-constants";
+import WhiteboardInput from "./WhiteboardInput";
 
 const fetcher = async (url: string) => {
     const res = await fetch(url);
@@ -121,6 +122,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
     const [suggestedSubject, setSuggestedSubject] = useState("");
     const [isDragging, setIsDragging] = useState(false);
     const [isPreviewMode, setIsPreviewMode] = useState(false);
+    const [showWhiteboard, setShowWhiteboard] = useState(false);
     const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
     const [similarDoubts, setSimilarDoubts] = useState<SimilarDoubt[]>([]);
     const [isCheckingSimilarity, setIsCheckingSimilarity] = useState(false);
@@ -460,6 +462,15 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                 <div className="w-px h-3 bg-slate-200 dark:bg-white/10 mx-1" />
                                 <button
                                     type="button"
+                                    onClick={() => setShowWhiteboard(!showWhiteboard)}
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded text-[9px] font-black uppercase transition-all ${showWhiteboard ? 'bg-indigo-600 text-white' : 'hover:bg-white/10 text-indigo-400'}`}
+                                    title="Open Math Whiteboard"
+                                >
+                                    <PenTool className="w-3 h-3" />
+                                    Draw Math
+                                </button>
+                                <button
+                                    type="button"
                                     onClick={() => setIsPreviewMode(!isPreviewMode)}
                                     className={`flex items-center gap-1.5 px-2 py-1 rounded text-[9px] font-black uppercase transition-all ${isPreviewMode ? 'bg-blue-500 text-white' : 'hover:bg-white/10 text-slate-400'}`}
                                 >
@@ -468,6 +479,19 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                 </button>
                             </div>
                         </div>
+
+                        {showWhiteboard && (
+                            <div className="mt-3">
+                                <WhiteboardInput
+                                    onInsertLatex={(latexStr) => {
+                                        setContent((prev) => (prev ? `${prev}\n\n${latexStr}` : latexStr));
+                                        setShowWhiteboard(false);
+                                        toast.success("Math equation inserted into doubt!");
+                                    }}
+                                    onClose={() => setShowWhiteboard(false)}
+                                />
+                            </div>
+                        )}
                         {isPreviewMode ? (
                             <div className="w-full h-32 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white text-sm overflow-y-auto">
                                 <MarkdownRenderer content={content || "*Nothing to preview*"} />
