@@ -5,6 +5,7 @@ import { classroomsTable } from '@/configs/schema';
 import { eq } from 'drizzle-orm';
 import { checkUserBlock } from '@/lib/auth/auth-utils';
 import { buildErrorResponse } from '@/lib/errors/error-handler';
+import { limitRequestBodySize } from '@/lib/validations/validate';
 import {
     parseClassroomId,
     requireAuth,
@@ -67,6 +68,9 @@ export async function PATCH(
         const { id } = await params;
         const roomId = parseClassroomId(id);
         await requireTeacher(email, roomId);
+
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
 
         const body = await req.json();
         const updateData: Record<string, unknown> = {};

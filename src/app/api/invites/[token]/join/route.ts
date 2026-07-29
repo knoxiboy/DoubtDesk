@@ -49,6 +49,7 @@ export async function POST(
         classroomName: classroomsTable.name,
         university: classroomsTable.university,
         year: classroomsTable.year,
+        allowedEmailDomains: classroomsTable.allowedEmailDomains,
       })
       .from(classroomInvitesTable)
       .innerJoin(
@@ -76,6 +77,16 @@ export async function POST(
         { error: "This invite link has expired" },
         { status: 410 },
       );
+    }
+
+    // 2b. Check email domain restrictions if set (mirrors rooms/join/route.ts)
+    if (inviteData.allowedEmailDomains && inviteData.allowedEmailDomains.length > 0) {
+      const emailDomain = email.split('@')[1]?.toLowerCase();
+      if (!emailDomain || !inviteData.allowedEmailDomains.some(d => emailDomain === d.toLowerCase())) {
+        return NextResponse.json({
+          error: `Only email addresses from ${inviteData.allowedEmailDomains.join(', ')} domains can join this classroom`
+        }, { status: 403 });
+      }
     }
 
     // IMPORTANT: the neon-http driver Drizzle is configured with (see

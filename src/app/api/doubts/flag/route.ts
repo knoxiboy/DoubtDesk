@@ -6,6 +6,7 @@ import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { requireTeacher, parseClassroomId } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 
 const AUTO_HIDE_FLAG_THRESHOLD = 3;
 const AUTO_HIDE_WINDOW_MS = 10 * 60 * 1000;
@@ -17,6 +18,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
         const reporterEmail = user.primaryEmailAddress.emailAddress;
+
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
 
         const body = await req.json();
         const { doubtId, reason } = body as { doubtId: number; reason: "spam" | "inappropriate" | "off_topic" };
@@ -153,6 +157,9 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
         const email = user.primaryEmailAddress.emailAddress;
+
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
 
         const body = await req.json();
         const { doubtId, action } = body as { doubtId: number; action: "dismiss" | "reshow" };

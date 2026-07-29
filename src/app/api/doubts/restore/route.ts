@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { canTeach } from "@/lib/auth/membership-guard";
 import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 
 export async function POST(req: Request) {
     try {
@@ -14,6 +15,9 @@ export async function POST(req: Request) {
 
         const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
         if (isBlocked) return blockResponse;
+
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
 
         const { doubtId } = await req.json();
         if (!doubtId) return NextResponse.json({ error: "Doubt ID required" }, { status: 400 });

@@ -5,6 +5,7 @@ import { eq, and } from 'drizzle-orm';
 import { currentUser } from '@clerk/nextjs/server';
 import { errorResponse, buildErrorResponse } from '@/lib/errors/error-handler';
 import { checkUserBlock } from '@/lib/auth/auth-utils';
+import { limitRequestBodySize } from '@/lib/validations/validate';
 import { z } from 'zod';
 
 // FIXED: Tightened schema validation to match db varchar(255) constraints
@@ -65,6 +66,9 @@ export async function POST(req: Request) {
     if (!dbUser) {
       return errorResponse('User profile not found', 403);
     }
+
+    const sizeError = await limitRequestBodySize(req);
+    if (sizeError) return sizeError;
 
     const jsonBody = await req.json();
     const parsed = createOrgSchema.safeParse(jsonBody);

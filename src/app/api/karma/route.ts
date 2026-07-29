@@ -5,6 +5,7 @@ import { usersTable, karmaTransactionsTable, userBadgesTable, badgeDefinitionsTa
 import { eq, desc, sql } from "drizzle-orm";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { checkAndAwardBadges } from "@/lib/karma/karma-utils";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 import { currentUser } from "@clerk/nextjs/server";
 
 // ── KARMA LEVEL THRESHOLDS ────────────────────────────────────────────────────
@@ -94,6 +95,22 @@ export async function GET() {
 // ── POST /api/karma ───────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
     try {
+        // ── 1. SECURE PRIVILEGE BOUNDARY VERIFICATION ────────────────────────
+        // Check authorization before reading any body to reject unauthorised
+        // requests without consuming resources.
+        const authHeader = req.headers.get("authorization");
+        const systemToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
+        const isInternalServiceCall = systemToken === process.env.CRON_SECRET && process.env.CRON_SECRET !== undefined;
+
+        if (!isInternalServiceCall) {
+            return NextResponse.json({ 
+                error: "Forbidden: Client-side score adjustments are completely disabled to prevent system exploitation." 
+            }, { status: 403 });
+        }
+
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
+
         const body = await req.json();
         const { userEmail, eventType, replyId, doubtId, note } = body;
 
@@ -104,17 +121,6 @@ export async function POST(req: NextRequest) {
         const points = KARMA_POINTS[eventType];
         if (points === undefined) {
             return NextResponse.json({ error: `Unknown eventType context: ${eventType}` }, { status: 400 });
-        }
-
-        // ── 1. SECURE PRIVILEGE BOUNDARY VERIFICATION ────────────────────────
-        const authHeader = req.headers.get("authorization");
-        const systemToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
-        const isInternalServiceCall = systemToken === process.env.CRON_SECRET && process.env.CRON_SECRET !== undefined;
-
-        if (!isInternalServiceCall) {
-            return NextResponse.json({ 
-                error: "Forbidden: Client-side score adjustments are completely disabled to prevent system exploitation." 
-            }, { status: 403 });
         }
 
         if (!userEmail) {

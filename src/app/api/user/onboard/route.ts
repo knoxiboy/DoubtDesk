@@ -5,6 +5,7 @@ import { and, eq, or, isNull } from 'drizzle-orm';
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { z } from 'zod';
+import { limitRequestBodySize } from '@/lib/validations/validate';
 
 const onboardingSchema = z.object({
     role: z.enum(['student', 'teacher']),
@@ -60,6 +61,9 @@ export async function POST(req: Request) {
         if (dbUser && dbUser.onboarded) {
             return NextResponse.json({ error: 'User is already onboarded' }, { status: 400 });
         }
+
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
 
         const body = await req.json();
         const parsed = onboardingSchema.safeParse(body);

@@ -3,8 +3,9 @@ import { eq } from "drizzle-orm";
 import { db } from "@/configs/db";
 import { usersTable } from "@/configs/schema";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 
-const VALID_THEMES = ["light", "dark", "system"] as const;
+const VALID_THEMES = ["light", "dark", "midnight", "cyberpunk", "emerald", "system"] as const;
 type Theme = (typeof VALID_THEMES)[number];
 
 export async function GET() {
@@ -54,12 +55,15 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        const sizeError = await limitRequestBodySize(req);
+        if (sizeError) return sizeError;
+
         const body = await req.json();
         const { themePreference } = body;
 
         if (!VALID_THEMES.includes(themePreference)) {
             return NextResponse.json(
-                { error: "Invalid theme. Must be 'light', 'dark', or 'system'" },
+                { error: `Invalid theme. Must be one of: ${VALID_THEMES.join(", ")}` },
                 { status: 400 }
             );
         }

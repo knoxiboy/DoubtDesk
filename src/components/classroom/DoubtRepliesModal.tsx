@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { DeleteConfirmationDialog } from "@/components/common/DeleteConfirmationDialog";
 import { PublicDoubt } from "@/types";
+import { useUser } from "@clerk/nextjs";
+import { usePresence } from "@/hooks/usePresence";
 
 import { OFFLINE_REPLY_QUEUED } from "@/lib/constants/copy-constants";
 interface Reply {
@@ -32,6 +34,12 @@ interface DoubtRepliesModalProps {
 }
 
 export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChange, isTeacher = false, inline = false }: DoubtRepliesModalProps) {
+    const { user } = useUser();
+    const { typingUsers, setTyping } = usePresence(
+        doubt.id, 
+        user?.firstName || user?.username || undefined, 
+        user?.firstName?.charAt(0) || user?.username?.charAt(0) || "?"
+    );
     const [replies, setReplies] = useState<Reply[]>([]);
     const [pendingReplies, setPendingReplies] = useState<any[]>([]);
     const [pendingRepliesError, setPendingRepliesError] = useState<any>(null);
@@ -855,6 +863,8 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     ref={solutionTextareaRef}
                                     value={solutionContent}
                                     onChange={(e) => setSolutionContent(e.target.value)}
+                                    onFocus={() => setTyping(true)}
+                                    onBlur={() => setTyping(false)}
                                     placeholder="Explain your solution clearly and step-by-step..."
                                     className="w-full h-40 bg-white/50 dark:bg-slate-950/50 border border-slate-200 dark:border-white/10 rounded-[1.5rem] p-5 text-slate-900 dark:text-white text-sm focus:outline-none focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none font-medium leading-relaxed placeholder:text-slate-600 shadow-inner"
                                 />
@@ -970,6 +980,8 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                             type="text"
                                             value={chatText}
                                             onChange={(e) => setChatText(e.target.value)}
+                                            onFocus={() => setTyping(true)}
+                                            onBlur={() => setTyping(false)}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
                                                     handlePost('comment');
@@ -1005,6 +1017,21 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                     </button>
                                 )}
                             </div>
+                            </div>
+                        )}
+                        {/* Typing Indicator */}
+                        {typingUsers && typingUsers.length > 0 && (
+                            <div className="flex items-center gap-2 mt-2 px-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="flex -space-x-2">
+                                    {typingUsers.map((tu, idx) => (
+                                        <div key={idx} className="w-6 h-6 rounded-full bg-blue-500 text-[9px] font-bold text-white flex items-center justify-center border-2 border-white dark:border-slate-900 z-10 animate-bounce" title={tu.username}>
+                                            {tu.initial}
+                                        </div>
+                                    ))}
+                                </div>
+                                <span className="text-xs text-slate-500 font-medium italic bg-white/50 dark:bg-slate-900/50 px-3 py-1 rounded-full border border-slate-200 dark:border-white/5">
+                                    {typingUsers.length === 1 ? `${typingUsers[0].username} is typing...` : `${typingUsers.length} people are typing...`}
+                                </span>
                             </div>
                         )}
                     </div>

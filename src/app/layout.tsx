@@ -116,7 +116,7 @@ export default function RootLayout({
         <body
           className={`${AppFont.className} min-h-screen flex flex-col scroll-smooth bg-white dark:bg-black text-slate-900 dark:text-slate-50 transition-colors duration-500`}
         >
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="doubtdesk-theme">
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="doubtdesk-theme" themes={["light", "dark", "midnight", "cyberpunk", "emerald", "system"]}>
             <Provider>
               <Header />
               <main className="flex-1">
