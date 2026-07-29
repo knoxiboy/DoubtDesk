@@ -37,6 +37,9 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [pendingRepliesError, setPendingRepliesError] = useState<any>(null);
     const [isPendingRepliesLoading, setIsPendingRepliesLoading] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [chatText, setChatText] = useState("");
     const [isPosting, setIsPosting] = useState(false);
     const [showSolutionForm, setShowSolutionForm] = useState(false);
@@ -119,40 +122,69 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
 
     const fetchReplies = async () => {
         try {
-            let allReplies: Reply[] = [];
-            let cursor: string | null = null;
-            let hasMore = false;
+            setIsLoading(true);
+            setReplies([]);
+            setNextCursor(null);
+            setHasMore(false);
 
-            do {
-                const params = new URLSearchParams({ doubtId: String(doubt.id) });
-                params.set("limit", "100");
-                if (cursor) params.set("cursor", cursor);
+            const params = new URLSearchParams({ doubtId: String(doubt.id) });
+            params.set("limit", "20");
 
-                const res = await fetch(`/api/replies?${params}`);
-                if (!res.ok) {
-                    console.error(`Replies API failed with status ${res.status}`);
-                    toast.error("Failed to load some replies.");
-                    break;
-                }
-                let json;
-                try {
-                    json = await res.json();
-                } catch (err) {
-                    console.error("Failed to parse replies response:", err);
-                    toast.error("Failed to load some replies.");
-                    break;
-                }
-                allReplies = allReplies.concat(json.replies);
-                cursor = json.nextCursor;
-                hasMore = json.hasMore;
-            } while (hasMore);
-
-            setReplies(allReplies);
+            const res = await fetch(`/api/replies?${params}`);
+            if (!res.ok) {
+                console.error(`Replies API failed with status ${res.status}`);
+                toast.error("Failed to load some replies.");
+                return;
+            }
+            let json;
+            try {
+                json = await res.json();
+            } catch (err) {
+                console.error("Failed to parse replies response:", err);
+                toast.error("Failed to load some replies.");
+                return;
+            }
+            setReplies(json.replies);
+            setNextCursor(json.nextCursor ?? null);
+            setHasMore(json.hasMore);
         } catch (error) {
             console.error("Failed to fetch replies:", error);
             toast.error("Failed to load replies.");
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const loadMoreReplies = async () => {
+        if (loadingMore || !hasMore) return;
+        try {
+            setLoadingMore(true);
+            const params = new URLSearchParams({ doubtId: String(doubt.id) });
+            params.set("limit", "20");
+            if (nextCursor) params.set("cursor", nextCursor);
+
+            const res = await fetch(`/api/replies?${params}`);
+            if (!res.ok) {
+                console.error(`Replies API failed with status ${res.status}`);
+                toast.error("Failed to load more replies.");
+                return;
+            }
+            let json;
+            try {
+                json = await res.json();
+            } catch (err) {
+                console.error("Failed to parse replies response:", err);
+                toast.error("Failed to load more replies.");
+                return;
+            }
+            setReplies(prev => [...prev, ...json.replies]);
+            setNextCursor(json.nextCursor ?? null);
+            setHasMore(json.hasMore);
+        } catch (error) {
+            console.error("Failed to load more replies:", error);
+            toast.error("Failed to load more replies.");
+        } finally {
+            setLoadingMore(false);
         }
     };
 
@@ -735,78 +767,94 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             <p className="text-[10px] uppercase font-black tracking-widest text-slate-600 mt-2">Be the first to help out!</p>
                         </div>
                     ) : (
-                        <div className="space-y-6">
-                            {(() => {
-                                const allReplies = [...replies, ...pendingReplies].sort((a, b) => {
-                                    const timeA = new Date(a.createdAt).getTime() || 0;
-                                    const timeB = new Date(b.createdAt).getTime() || 0;
-                                    if (timeA !== timeB) {
-                                        return timeA - timeB;
-                                    }
-                                    const isPendingA = a.isPendingSync ? 1 : 0;
-                                    const isPendingB = b.isPendingSync ? 1 : 0;
-                                    if (isPendingA !== isPendingB) {
-                                        return isPendingA - isPendingB;
-                                    }
-                                    return String(a.id).localeCompare(String(b.id));
-                                });
-                                const filteredReplies = activeTab === 'all'
-                                    ? allReplies
-                                    : activeTab === 'chat'
-                                        ? allReplies.filter(r => r.type === 'comment')
-                                        : allReplies.filter(r => r.type === 'solution');
-
-                                if (filteredReplies.length === 0) {
-                                    return (
-                                        <div className="h-40 flex flex-col items-center justify-center text-center opacity-40">
-                                            <p className="text-sm font-bold text-slate-600 dark:text-slate-400">
-                                                {activeTab === 'chat' ? "No general chat messages yet." : "No solutions posted yet."}
-                                            </p>
-                                        </div>
-                                    );
-                                }
-
-                                let lastDate = "";
-                                return filteredReplies.map((reply, index) => {
-                                    const replyDate = new Date(reply.createdAt).toLocaleDateString([], {
-                                        day: 'numeric',
-                                        month: 'long',
-                                        year: 'numeric'
+                        <>
+                            <div className="space-y-6">
+                                {(() => {
+                                    const allReplies = [...replies, ...pendingReplies].sort((a, b) => {
+                                        const timeA = new Date(a.createdAt).getTime() || 0;
+                                        const timeB = new Date(b.createdAt).getTime() || 0;
+                                        if (timeA !== timeB) {
+                                            return timeA - timeB;
+                                        }
+                                        const isPendingA = a.isPendingSync ? 1 : 0;
+                                        const isPendingB = b.isPendingSync ? 1 : 0;
+                                        if (isPendingA !== isPendingB) {
+                                            return isPendingA - isPendingB;
+                                        }
+                                        return String(a.id).localeCompare(String(b.id));
                                     });
+                                    const filteredReplies = activeTab === 'all'
+                                        ? allReplies
+                                        : activeTab === 'chat'
+                                            ? allReplies.filter(r => r.type === 'comment')
+                                            : allReplies.filter(r => r.type === 'solution');
 
-                                    let dateSeparator = null;
-                                    if (replyDate !== lastDate) {
-                                        lastDate = replyDate;
-
-                                        // WhatsApp style: Today, Yesterday, or Date
-                                        const now = new Date();
-                                        const today = now.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
-                                        const yesterday = new Date(now.setDate(now.getDate() - 1)).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
-
-                                        let displayDate = replyDate;
-                                        if (replyDate === today) displayDate = "Today";
-                                        else if (replyDate === yesterday) displayDate = "Yesterday";
-
-                                        dateSeparator = (
-                                            <div key={`date-${reply.id}`} className="flex justify-center mt-2 mb-1">
-                                                <div className="px-3 py-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
-                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-500">
-                                                        {displayDate}
-                                                    </span>
-                                                </div>
+                                    if (filteredReplies.length === 0) {
+                                        return (
+                                            <div className="h-40 flex flex-col items-center justify-center text-center opacity-40">
+                                                <p className="text-sm font-bold text-slate-600 dark:text-slate-400">
+                                                    {activeTab === 'chat' ? "No general chat messages yet." : "No solutions posted yet."}
+                                                </p>
                                             </div>
                                         );
                                     }
 
-                                    return (
-                                        <div key={reply.id} className="space-y-2">
-                                            {dateSeparator}
-                                            <ReplyBubble reply={reply} />
-                                        </div>
-                                    );
-                                });
-                            })()}
-                        </div>
+                                    let lastDate = "";
+                                    return filteredReplies.map((reply, index) => {
+                                        const replyDate = new Date(reply.createdAt).toLocaleDateString([], {
+                                            day: 'numeric',
+                                            month: 'long',
+                                            year: 'numeric'
+                                        });
+
+                                        let dateSeparator = null;
+                                        if (replyDate !== lastDate) {
+                                            lastDate = replyDate;
+
+                                            // WhatsApp style: Today, Yesterday, or Date
+                                            const now = new Date();
+                                            const today = now.toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
+                                            const yesterday = new Date(now.setDate(now.getDate() - 1)).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' });
+
+                                            let displayDate = replyDate;
+                                            if (replyDate === today) displayDate = "Today";
+                                            else if (replyDate === yesterday) displayDate = "Yesterday";
+
+                                            dateSeparator = (
+                                                <div key={`date-${reply.id}`} className="flex justify-center mt-2 mb-1">
+                                                    <div className="px-3 py-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-full">
+                                                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-500">
+                                                            {displayDate}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <div key={reply.id} className="space-y-2">
+                                                {dateSeparator}
+                                                <ReplyBubble reply={reply} />
+                                            </div>
+                                        );
+                                    });
+                                })()}
+                            </div>
+                            {hasMore && (
+                                <div className="flex justify-center pt-2">
+                                    <button
+                                        onClick={loadMoreReplies}
+                                        disabled={loadingMore}
+                                        className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-500/30 text-slate-400 hover:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {loadingMore ? (
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        ) : null}
+                                        {loadingMore ? "Loading..." : "Load More Replies"}
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
                     <div ref={chatEndRef} />
                 </div>
