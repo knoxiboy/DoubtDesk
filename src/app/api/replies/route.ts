@@ -1,6 +1,6 @@
 import { db } from "@/configs/db";
 import { repliesTable, doubtsTable, replyLikesTable, usersTable, membershipsTable } from "@/configs/schema";
-import { eq, asc, and, gt, or, isNull, inArray } from "drizzle-orm";
+import { eq, asc, and, gt, or, isNull, inArray, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation/moderation";
@@ -93,9 +93,9 @@ export async function GET(req: Request) {
     if (cursor) {
       whereConditions.push(
         or(
-          gt(repliesTable.createdAt, cursor.createdAt),
+          gt(sql`date_trunc('milliseconds', ${repliesTable.createdAt})`, cursor.createdAt),
           and(
-            eq(repliesTable.createdAt, cursor.createdAt),
+            eq(sql`date_trunc('milliseconds', ${repliesTable.createdAt})`, cursor.createdAt),
             gt(repliesTable.id, cursor.id),
           ),
         ),
