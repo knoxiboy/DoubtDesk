@@ -99,9 +99,10 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
     }, [doubt.id, openRepliesOnMount, searchParams]);
 
     const handleAction = async (action: string) => {
+        const likeDelta = doubt.hasLiked ? -1 : 1;
         if (action === "like") {
             setIsLiking(true);
-            setLikes(prev => doubt.hasLiked ? prev - 1 : prev + 1);
+            setLikes(prev => prev + likeDelta);
         }
         if (action === "solve") setIsSolving(true);
 
@@ -123,10 +124,11 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                     toast.success(statusText);
                 }
             } else if (!res.ok) {
+                if (action === "like") setLikes(prev => prev - likeDelta);
                 toast.error(data.error || `Failed to ${action} doubt.`);
             }
         } catch (error) {
-            if(action === 'like') setLikes(prev => doubt.hasLiked ? prev + 1 : prev - 1);
+            if (action === "like") setLikes(prev => prev - likeDelta);
 
             console.error(`Action ${action} failed:`, error);
             toast.error(`Failed to ${action} doubt.`);
