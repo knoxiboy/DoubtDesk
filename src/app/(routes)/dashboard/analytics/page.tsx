@@ -33,7 +33,7 @@ export default function AnalyticsDashboard() {
         try {
             const end = new Date();
             const start = new Date();
-            start.setDate(end.getDate() - parseInt(dateRange));
+            start.setDate(end.getDate() - parseInt(dateRange, 10));
 
             let url = `/api/teacher/analytics?startDate=${start.toISOString()}&endDate=${end.toISOString()}`;
             if (selectedClassroom !== "all") {
