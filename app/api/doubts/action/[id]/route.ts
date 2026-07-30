@@ -11,7 +11,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         
         const { action, content, subject, imageUrl, userName, replyId } = await req.json();
         const { id } = await params;
-        const doubtId = parseInt(id);
+        const doubtId = parseInt(id, 10);
 
         if (isNaN(doubtId)) {
             return NextResponse.json({ error: "Invalid doubt ID" }, { status: 400 });
@@ -142,7 +142,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         const email = user?.primaryEmailAddress?.emailAddress;
         
         const { id } = await params;
-        const doubtId = parseInt(id);
+        const doubtId = parseInt(id, 10);
 
         const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
