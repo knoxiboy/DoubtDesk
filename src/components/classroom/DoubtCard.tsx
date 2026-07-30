@@ -101,7 +101,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
     const handleAction = async (action: string) => {
         if (action === "like") {
             setIsLiking(true);
-            setLikes(prev => prev + 1);
+            setLikes(prev => doubt.hasLiked ? prev - 1 : prev + 1);
         }
         if (action === "solve") setIsSolving(true);
 
@@ -126,7 +126,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                 toast.error(data.error || `Failed to ${action} doubt.`);
             }
         } catch (error) {
-            if(action === 'like') setLikes(prev => prev -1);
+            if(action === 'like') setLikes(prev => doubt.hasLiked ? prev + 1 : prev - 1);
 
             console.error(`Action ${action} failed:`, error);
             toast.error(`Failed to ${action} doubt.`);
