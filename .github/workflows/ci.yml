@@ -123,7 +123,7 @@ jobs:
           POSTGRES_PASSWORD: doubtdesk
           POSTGRES_DB: doubtdesk_test
         options: >-
-          --health-cmd "pg_isready -U doubtdesk -d doubtdesk_test"
+          --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -132,8 +132,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://doubtdesk:doubtdesk@localhost:5432/doubtdesk_test
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA' }}
-      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY || 'sk_test_placeholder' }}
-      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY || 'placeholder' }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY || '' }}
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder' }}
       E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL || 'e2e-test@doubtdesk.dev' }}
