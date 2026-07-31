@@ -5,10 +5,16 @@ import { getDatabaseUrl, isLocalPostgresUrl } from './database-url';
 function createDbClient() {
     const url = getDatabaseUrl();
     const isLocalPostgres = isLocalPostgresUrl(url);
+    const isEdgeRuntime = process.env.NEXT_RUNTIME === 'edge';
     const maxPool = process.env.DATABASE_POOL_MAX ? parseInt(process.env.DATABASE_POOL_MAX, 10) : 10;
     const idleTimeout = process.env.DATABASE_POOL_IDLE_TIMEOUT ? parseInt(process.env.DATABASE_POOL_IDLE_TIMEOUT, 10) : 30000;
 
     if (isLocalPostgres) {
+        if (isEdgeRuntime) {
+            // Edge Runtime cannot instantiate Node.js 'pg' TCP connection pools (requires Node net, tls, and crypto).
+            // Return null so middleware on Edge Runtime gracefully handles/bypasses direct TCP DB queries without crashing.
+            return null;
+        }
         const { Pool: PgPool } = require('pg');
         const { drizzle: drizzlePg } = require('drizzle-orm/node-postgres');
         const pool = new PgPool({
