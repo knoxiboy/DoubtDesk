@@ -63,18 +63,14 @@ describe('DoubtCard Component', () => {
         await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     });
 
-    it('shows the Mark Solved button to the doubt owner', () => {
-        render(<DoubtCard doubt={{ ...mockDoubt, isOwnPost: true }} />);
-        expect(screen.getByRole('button', { name: /mark solved/i })).toBeInTheDocument();
+    it('does not show "View Official Solution" when solved but no official solution reply exists', () => {
+        render(<DoubtCard doubt={{ ...mockDoubt, isSolved: 'solved' as const, solvedReplyId: null }} />);
+        expect(screen.getByText('Solved')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /view official solution/i })).not.toBeInTheDocument();
     });
 
-    it('hides the Mark Solved button from teachers when no solution reply exists', () => {
-        render(<DoubtCard doubt={mockDoubt} role="teacher" />);
-        expect(screen.queryByRole('button', { name: /mark solved/i })).not.toBeInTheDocument();
-    });
-
-    it('shows the Mark Solved button to teachers when a solution reply exists', () => {
-        render(<DoubtCard doubt={{ ...mockDoubt, hasSolutionReply: true }} role="teacher" />);
-        expect(screen.getByRole('button', { name: /mark solved/i })).toBeInTheDocument();
+    it('shows "View Official Solution" when solved and an official solution reply exists', () => {
+        render(<DoubtCard doubt={{ ...mockDoubt, isSolved: 'solved' as const, solvedReplyId: 42 }} />);
+        expect(screen.getByRole('button', { name: /view official solution/i })).toBeInTheDocument();
     });
 });
