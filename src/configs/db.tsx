@@ -1,7 +1,5 @@
 import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-serverless';
-import { Pool as PgPool } from 'pg';
-import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
 import { getDatabaseUrl, isLocalPostgresUrl } from './database-url';
 
 function createDbClient() {
@@ -11,6 +9,8 @@ function createDbClient() {
     const idleTimeout = process.env.DATABASE_POOL_IDLE_TIMEOUT ? parseInt(process.env.DATABASE_POOL_IDLE_TIMEOUT, 10) : 30000;
 
     if (isLocalPostgres) {
+        const { Pool: PgPool } = require('pg');
+        const { drizzle: drizzlePg } = require('drizzle-orm/node-postgres');
         const pool = new PgPool({
             connectionString: url,
             max: maxPool,

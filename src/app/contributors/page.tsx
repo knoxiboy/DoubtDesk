@@ -11,19 +11,25 @@ import {
 import { GitHubContributor } from "@/types";
 import { DISCORD_INVITE_URL } from "@/lib/constants/constants";
 
-async function getContributors() {
-  const res = await fetch(
-    "https://api.github.com/repos/knoxiboy/DoubtDesk/contributors",
-    {
-      next: { revalidate: 3600 },
+async function getContributors(): Promise<GitHubContributor[]> {
+  try {
+    const res = await fetch(
+      "https://api.github.com/repos/knoxiboy/DoubtDesk/contributors",
+      {
+        next: { revalidate: 3600 },
+      }
+    );
+
+    if (!res.ok) {
+      console.warn("⚠️ Failed to fetch GitHub contributors:", res.statusText);
+      return [];
     }
-  );
 
-  if (!res.ok) {
-    throw new Error("Failed to fetch contributors");
+    return await res.json();
+  } catch (error) {
+    console.warn("⚠️ Error fetching GitHub contributors:", error);
+    return [];
   }
-
-  return res.json() as Promise<GitHubContributor[]>;
 }
 
 const stats = [
