@@ -1,41 +1,50 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import { getDatabaseUrl } from './database-url';
+import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
+import { drizzle as drizzleNeon } from 'drizzle-orm/neon-serverless';
+import { Pool as PgPool } from 'pg';
+import { drizzle as drizzlePg } from 'drizzle-orm/node-postgres';
+import { getDatabaseUrl, isLocalPostgresUrl } from './database-url';
 
-// Setup WebSocket constructor for Node environments (required for @neondatabase/serverless Pool)
-if (typeof globalThis.WebSocket === 'undefined') {
-    const ws = require('ws');
-    neonConfig.webSocketConstructor = ws;
-}
+function createDbClient() {
+    const url = getDatabaseUrl();
+    const isLocalPostgres = isLocalPostgresUrl(url);
+    const maxPool = process.env.DATABASE_POOL_MAX ? parseInt(process.env.DATABASE_POOL_MAX, 10) : 10;
+    const idleTimeout = process.env.DATABASE_POOL_IDLE_TIMEOUT ? parseInt(process.env.DATABASE_POOL_IDLE_TIMEOUT, 10) : 30000;
 
-let pool: Pool;
-let dbClient: ReturnType<typeof drizzle>;
-
-if (process.env.NODE_ENV === 'production') {
-    pool = new Pool({
-        connectionString: getDatabaseUrl(),
-        max: process.env.DATABASE_POOL_MAX ? parseInt(process.env.DATABASE_POOL_MAX, 10) : 10,
-        idleTimeoutMillis: process.env.DATABASE_POOL_IDLE_TIMEOUT ? parseInt(process.env.DATABASE_POOL_IDLE_TIMEOUT, 10) : 30000,
-    });
-    pool.on('error', (err: Error) => {
-        console.error('Neon Database Pool connection error:', err);
-    });
-    dbClient = drizzle({ client: pool });
-} else {
-    const g = globalThis as any;
-    if (!g.pool) {
-        g.pool = new Pool({
-            connectionString: getDatabaseUrl(),
-            max: process.env.DATABASE_POOL_MAX ? parseInt(process.env.DATABASE_POOL_MAX, 10) : 10,
-            idleTimeoutMillis: process.env.DATABASE_POOL_IDLE_TIMEOUT ? parseInt(process.env.DATABASE_POOL_IDLE_TIMEOUT, 10) : 30000,
+    if (isLocalPostgres) {
+        const pool = new PgPool({
+            connectionString: url,
+            max: maxPool,
+            idleTimeoutMillis: idleTimeout,
         });
-        g.pool.on('error', (err: Error) => {
+        pool.on('error', (err: Error) => {
+            console.error('PostgreSQL Pool connection error:', err);
+        });
+        return drizzlePg({ client: pool });
+    } else {
+        if (typeof globalThis.WebSocket === 'undefined') {
+            const ws = require('ws');
+            neonConfig.webSocketConstructor = ws;
+        }
+        const pool = new NeonPool({
+            connectionString: url,
+            max: maxPool,
+            idleTimeoutMillis: idleTimeout,
+        });
+        pool.on('error', (err: Error) => {
             console.error('Neon Database Pool connection error:', err);
         });
+        return drizzleNeon({ client: pool });
     }
-    pool = g.pool;
+}
+
+let dbClient: any;
+
+if (process.env.NODE_ENV === 'production') {
+    dbClient = createDbClient();
+} else {
+    const g = globalThis as any;
     if (!g.dbClient) {
-        g.dbClient = drizzle({ client: pool });
+        g.dbClient = createDbClient();
     }
     dbClient = g.dbClient;
 }
