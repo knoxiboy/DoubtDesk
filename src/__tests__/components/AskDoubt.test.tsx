@@ -16,6 +16,14 @@ describe('AskDoubt Modal Component', () => {
         expect(screen.getByText('Doubt')).toBeInTheDocument();
         expect(screen.getByPlaceholderText(/e.g. Quantum Mechanics/i)).toBeInTheDocument();
         expect(screen.getByPlaceholderText(/Type your question here/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Draw/i })).toBeInTheDocument();
+    });
+
+    it('opens WhiteboardModal when Draw button is clicked', () => {
+        render(<AskDoubt isOpen={true} defaultSubject="Physics" onClose={jest.fn()} onSuccess={jest.fn()} />);
+        const drawBtn = screen.getByRole('button', { name: /Draw/i });
+        fireEvent.click(drawBtn);
+        expect(screen.getByText('Visual Whiteboard')).toBeInTheDocument();
     });
 
     it('calls onClose when Cancel button is clicked', () => {

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, MoreVertical, Pencil, Trash2, PlusCircle, Eye, EyeOff, Bold, Italic, Code, List, ThumbsUp, FileText, ExternalLink, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
+import WhiteboardModal from "@/components/common/WhiteboardModal";
 import { DeleteConfirmationDialog } from "@/components/common/DeleteConfirmationDialog";
 import { PublicDoubt } from "@/types";
 import { useUser } from "@clerk/nextjs";
@@ -70,6 +71,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [isPreviewMode, setIsPreviewMode] = useState(false);
     const [isEditPreviewMode, setIsEditPreviewMode] = useState(false);
     const [isChatPreviewMode, setIsChatPreviewMode] = useState(false);
+    const [isWhiteboardOpen, setIsWhiteboardOpen] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -845,6 +847,15 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                 <button onClick={() => insertMarkdown(solutionTextareaRef, "code", setSolutionContent)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-600 dark:text-slate-400"><Code className="w-4 h-4" /></button>
                                 <button onClick={() => insertMarkdown(solutionTextareaRef, "list", setSolutionContent)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-600 dark:text-slate-400"><List className="w-4 h-4" /></button>
                                 <div className="w-px h-6 bg-slate-200 dark:bg-white/10 mx-2" />
+                                <button
+                                    onClick={() => setIsWhiteboardOpen(true)}
+                                    className="flex items-center gap-1.5 px-3 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 border border-purple-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                    title="Open Drawing Canvas / Whiteboard"
+                                    aria-label="Draw"
+                                >
+                                    <Pencil className="w-4 h-4" />
+                                    Draw
+                                </button>
                                 <button 
                                     onClick={() => setIsPreviewMode(!isPreviewMode)} 
                                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isPreviewMode ? 'bg-emerald-500 text-white' : 'bg-white/5 hover:bg-white/10 text-slate-400'}`}
@@ -992,6 +1003,15 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                         />
                                         <div className="absolute right-2 top-2 flex items-center gap-1">
                                             <button 
+                                                type="button"
+                                                onClick={() => setIsWhiteboardOpen(true)}
+                                                className="p-2 hover:bg-purple-500/10 rounded-xl text-purple-500 hover:text-purple-400 transition-all"
+                                                title="Open Drawing Canvas / Whiteboard"
+                                                aria-label="Draw"
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                            </button>
+                                            <button 
                                                 onClick={() => setIsChatPreviewMode(!isChatPreviewMode)}
                                                 className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-xl text-slate-500 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all"
                                                 title="Preview Markdown"
@@ -1071,6 +1091,19 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 </div>
             )}
             
+            <WhiteboardModal
+                isOpen={isWhiteboardOpen}
+                onClose={() => setIsWhiteboardOpen(false)}
+                onSave={(dataUrl) => {
+                    if (showSolutionForm) {
+                        setSolutionImage(dataUrl);
+                        setFileName("Whiteboard Drawing.png");
+                    } else {
+                        setChatText((prev) => (prev ? `${prev}\n![Whiteboard Drawing](${dataUrl})` : `![Whiteboard Drawing](${dataUrl})`));
+                    }
+                }}
+            />
+
             <DeleteConfirmationDialog
                 isOpen={replyToDelete !== null}
                 onClose={(open) => {

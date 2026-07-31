@@ -186,29 +186,31 @@ export default clerkMiddleware(async (auth, req) => {
 
         if (email) {
             try {
-                const [dbUser] = await db
-                    .select({ onboarded: usersTable.onboarded })
-                    .from(usersTable)
-                    .where(eq(usersTable.email, email))
-                    .limit(1);
+                if (db) {
+                    const [dbUser] = await db
+                        .select({ onboarded: usersTable.onboarded })
+                        .from(usersTable)
+                        .where(eq(usersTable.email, email))
+                        .limit(1);
 
-                if (!dbUser || !dbUser.onboarded) {
-                    const onboardingUrl = new URL('/onboarding', req.url);
-                    return NextResponse.redirect(onboardingUrl);
+                    if (!dbUser || !dbUser.onboarded) {
+                        const onboardingUrl = new URL('/onboarding', req.url);
+                        return NextResponse.redirect(onboardingUrl);
+                    }
+
+                    // User is confirmed onboarded — cache the result in a short-lived
+                    // HttpOnly cookie so the next TTL window of page navigations all
+                    // hit this fast path instead.
+                    const res = NextResponse.next();
+                    res.cookies.set(ONBOARDED_COOKIE, '1', {
+                        httpOnly: true,
+                        secure: process.env.NODE_ENV === 'production',
+                        sameSite: 'strict',
+                        maxAge: ONBOARDED_COOKIE_TTL_SECONDS,
+                        path: '/',
+                    });
+                    return res;
                 }
-
-                // User is confirmed onboarded — cache the result in a short-lived
-                // HttpOnly cookie so the next TTL window of page navigations all
-                // hit this fast path instead.
-                const res = NextResponse.next();
-                res.cookies.set(ONBOARDED_COOKIE, '1', {
-                    httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
-                    sameSite: 'strict',
-                    maxAge: ONBOARDED_COOKIE_TTL_SECONDS,
-                    path: '/',
-                });
-                return res;
             } catch (err) {
                 console.error("Middleware onboarding check error:", err);
             }

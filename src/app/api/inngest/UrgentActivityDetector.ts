@@ -48,7 +48,7 @@ export const checkUrgentClassroomActivity = inngest.createFunction(
                 )
                 .groupBy(doubtsTable.classroomId);
 
-            const staleResult = await db.execute<{ classroomId: number; id: number; subject: string | null; createdAt: string }>(sql`
+            const staleResult = (await db.execute(sql`
                 select distinct on (${doubtsTable.classroomId})
                     ${doubtsTable.classroomId} as "classroomId",
                     ${doubtsTable.id} as "id",
@@ -60,16 +60,16 @@ export const checkUrgentClassroomActivity = inngest.createFunction(
                     and ${doubtsTable.deletedAt} is null
                     and ${doubtsTable.createdAt} < ${staleCutoff}
                 order by ${doubtsTable.classroomId}, ${doubtsTable.createdAt} asc
-            `);
+            `)) as unknown as { rows: Array<{ classroomId: number; id: number; subject: string | null; createdAt: string }> };
 
             return {
-                unresolvedCounts: unresolvedRows.map((row) => [row.classroomId, row.value] as const),
+                unresolvedCounts: unresolvedRows.map((row) => [row.classroomId, Number(row.value)] as const),
                 staleDoubts: staleResult.rows.map((row) => [row.classroomId, row] as const),
             };
         });
 
-        const unresolvedByClassroom = new Map(unresolvedCounts);
-        const staleByClassroom = new Map(staleDoubts);
+        const unresolvedByClassroom = new Map<number, number>(unresolvedCounts as Array<[number, number]>);
+        const staleByClassroom = new Map<number, { classroomId: number; id: number; subject: string | null; createdAt: string }>(staleDoubts as Array<[number, { classroomId: number; id: number; subject: string | null; createdAt: string }]>);
 
         let alertsCreated = 0;
 
