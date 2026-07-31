@@ -44,6 +44,7 @@ interface DoubtCardProps {
         hasBookmarked?: boolean;
         hasLiked?: boolean;
         replyCount?: number;
+        hasSolutionReply?: boolean;
     };
     onUpdate?: () => void;
     onViewAISolution?: (
@@ -52,6 +53,7 @@ interface DoubtCardProps {
             hasBookmarked?: boolean;
             hasLiked?: boolean;
             replyCount?: number;
+            hasSolutionReply?: boolean;
         },
     ) => void;
     role?: string;
@@ -417,7 +419,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
-                            {((isOwner && doubt.type !== 'ai') || isTeacher) && doubt.isSolved !== "solved" && (
+                            {((isOwner && doubt.type !== 'ai') || (isTeacher && (isOwner || doubt.hasSolutionReply))) && doubt.isSolved !== "solved" && (
                                 <button
                                     onClick={() => handleAction("solve")}
                                     disabled={isSolving}

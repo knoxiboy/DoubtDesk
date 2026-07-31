@@ -16,7 +16,7 @@ jest.mock('@clerk/nextjs/server', () => ({
 
 jest.mock('@/configs/schema', () => ({
     doubtsTable: { id: 'doubts.id', deletedAt: 'doubts.deletedAt', classroomId: 'doubts.classroomId', type: 'doubts.type', subject: 'doubts.subject', content: 'doubts.content', userEmail: 'doubts.userEmail', isSolved: 'doubts.isSolved', isPinned: 'doubts.isPinned', likes: 'doubts.likes', createdAt: 'doubts.createdAt' },
-    repliesTable: { doubtId: 'replies.doubtId' },
+    repliesTable: { doubtId: 'replies.doubtId', type: 'replies.type' },
     likesTable: { doubtId: 'likes.doubtId', userEmail: 'likes.userEmail' },
     bookmarksTable: { doubtId: 'bookmarks.doubtId', userEmail: 'bookmarks.userEmail' },
     doubtTagsTable: { doubtId: 'doubtTags.doubtId', tagId: 'doubtTags.tagId' },
@@ -73,8 +73,8 @@ jest.mock('@/lib/anonymity/anonymity', () => ({ toPublicDoubt: (d: any) => ({ ..
 import { GET } from '@/app/api/doubts/route';
 
 const pageOfDoubts = [
-    { id: 1, subject: 'Physics', content: 'What is speed of light?', createdAt: '2026-01-01T00:00:00.000Z', likes: 4, isSolved: 'unsolved', isPinned: false, classroomId: null, type: 'community', userEmail: 'student@example.com', hasLiked: true, hasBookmarked: false },
-    { id: 2, subject: 'Chemistry', content: 'What is pH?', createdAt: '2026-01-02T00:00:00.000Z', likes: 10, isSolved: 'solved', isPinned: false, classroomId: null, type: 'community', userEmail: 'other@example.com', hasLiked: false, hasBookmarked: true },
+    { id: 1, subject: 'Physics', content: 'What is speed of light?', createdAt: '2026-01-01T00:00:00.000Z', likes: 4, isSolved: 'unsolved', isPinned: false, classroomId: null, type: 'community', userEmail: 'student@example.com', hasLiked: true, hasBookmarked: false, hasSolutionReply: false },
+    { id: 2, subject: 'Chemistry', content: 'What is pH?', createdAt: '2026-01-02T00:00:00.000Z', likes: 10, isSolved: 'solved', isPinned: false, classroomId: null, type: 'community', userEmail: 'other@example.com', hasLiked: false, hasBookmarked: true, hasSolutionReply: true },
 ];
 
 describe('Doubts GET endpoint — inline EXISTS for likes/bookmarks (PR #725)', () => {
@@ -134,5 +134,27 @@ describe('Doubts GET endpoint — inline EXISTS for likes/bookmarks (PR #725)', 
         // Anonymous users get false for both fields via the sql`false` fallback
         expect(json.doubts[0].hasLiked).toBe(false);
         expect(json.doubts[0].hasBookmarked).toBe(false);
+    });
+
+    it('returns hasSolutionReply inline from the main query (issue #1089)', async () => {
+        selectQueue.push(
+            [{ count: 2 }],
+            pageOfDoubts,
+            [],
+        );
+
+        const res = await GET(new Request('http://localhost/api/doubts?subject=Physics'));
+        const json = await res.json();
+
+        expect(res.status).toBe(200);
+        // The flag is a property of the doubt (not the viewer) and must reach the
+        // client so the UI can gate the teacher "Mark Solved" action on it.
+        expect(json.doubts[0].hasSolutionReply).toBe(false);
+        expect(json.doubts[1].hasSolutionReply).toBe(true);
+
+        const mainSelectCall = mockSelectCalls.find(
+            (call) => call[0] && 'hasSolutionReply' in call[0]
+        );
+        expect(mainSelectCall).toBeDefined();
     });
 });

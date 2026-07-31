@@ -196,6 +196,12 @@ export async function GET(req: Request) {
         : sql<boolean>`false`
     ).mapWith(Boolean);
 
+    // Whether at least one solution-typed reply exists. Mirrors the backend rule
+    // in /api/doubts/action/[id] that a non-owner teacher can only mark a doubt
+    // as solved when an official solution reply has been posted, so the UI can
+    // avoid offering an action the API would reject (issue #1089).
+    const hasSolutionReplySql = sql<boolean>`EXISTS (SELECT 1 FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id} AND ${repliesTable.type} = 'solution')`.mapWith(Boolean);
+
     const [totalCountRow] = await db
       .select({ count: count() })
       .from(doubtsTable)
@@ -208,6 +214,7 @@ export async function GET(req: Request) {
         replyCount: replyCountSql,
         hasLiked: hasLikedSql,
         hasBookmarked: hasBookmarkedSql,
+        hasSolutionReply: hasSolutionReplySql,
       })
       .from(doubtsTable);
 
