@@ -55,7 +55,7 @@ export async function GET(req: Request) {
   try {
     const user = await currentUser();
     const email = user?.primaryEmailAddress?.emailAddress ?? null;
-    const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
+    const classroomId = classroomIdStr ? parseInt(classroomIdStr, 10) : null;
 
     if (classroomId && !email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
