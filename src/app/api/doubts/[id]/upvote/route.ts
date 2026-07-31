@@ -27,7 +27,7 @@ export async function POST(
 
         // ── 2. NEXT.JS 15 ASYNC PARAMS RESOLUTION ────────────────────────────
         const { id } = await params;
-        const doubtId = parseInt(id);
+        const doubtId = parseInt(id, 10);
         
         if (isNaN(doubtId)) {
             return NextResponse.json({ error: "Invalid doubt id" }, { status: 400 });
