@@ -430,21 +430,23 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
 
                             {doubt.isSolved === "solved" && (
                                 <>
-                                    <button
-                                        onClick={() => {
-                                            if (doubt.type === 'ai' && onViewAISolution) {
-                                                onViewAISolution(doubt);
-                                            } else if (onCommentClick) {
-                                                onCommentClick();
-                                            } else if (!disableModal) {
-                                                setIsRepliesOpen(true);
-                                            }
-                                        }}
-                                        className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all shadow-2xl shadow-emerald-500/30 active:scale-95 group/sol whitespace-nowrap"
-                                    >
-                                        <CheckCircle className="w-4 h-4 fill-white/20 group-hover/sol:scale-110 transition-transform flex-shrink-0" />
-                                        <span className="text-[11px] font-black uppercase tracking-[0.2em]">View Official Solution</span>
-                                    </button>
+                                    {doubt.solvedReplyId && (
+                                        <button
+                                            onClick={() => {
+                                                if (doubt.type === 'ai' && onViewAISolution) {
+                                                    onViewAISolution(doubt);
+                                                } else if (onCommentClick) {
+                                                    onCommentClick();
+                                                } else if (!disableModal) {
+                                                    setIsRepliesOpen(true);
+                                                }
+                                            }}
+                                            className="flex-1 sm:flex-none flex items-center justify-center gap-3 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl transition-all shadow-2xl shadow-emerald-500/30 active:scale-95 group/sol whitespace-nowrap"
+                                        >
+                                            <CheckCircle className="w-4 h-4 fill-white/20 group-hover/sol:scale-110 transition-transform flex-shrink-0" />
+                                            <span className="text-[11px] font-black uppercase tracking-[0.2em]">View Official Solution</span>
+                                        </button>
+                                    )}
 
                                     {isSignedIn && !disableModal && (
                                         <button
