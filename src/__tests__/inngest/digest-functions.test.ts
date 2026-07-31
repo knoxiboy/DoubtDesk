@@ -18,7 +18,7 @@ jest.mock("@/lib/email/email", () => ({
 // Mock inngest client
 jest.mock("@/inngest/client", () => ({
   inngest: {
-    createFunction: jest.fn((config, handler) => handler),
+    createFunction: jest.fn((config, trigger, handler) => ({ fn: typeof handler === "function" ? handler : trigger })),
   },
 }));
 
@@ -74,7 +74,8 @@ function runHandler(
   fn: unknown,
   step: ReturnType<typeof makeStep>,
 ): Promise<unknown> {
-  return (fn as { fn: (ctx: { step: unknown }) => Promise<unknown> }).fn({ step });
+  const handlerFn = (fn as any)?.fn || fn;
+  return handlerFn({ step });
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

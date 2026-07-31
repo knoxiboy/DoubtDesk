@@ -38,6 +38,18 @@ jest.mock('@/configs/db', () => ({
                 where: jest.fn().mockImplementation(async (...whereArgs: any[]) => updateMock(...args, ...setArgs, ...whereArgs)),
             })),
         })),
+        transaction: jest.fn().mockImplementation(async (callback: any) => {
+            const txMock = {
+                execute: jest.fn().mockResolvedValue({ rows: [{ id: 1 }] }),
+                select: jest.fn().mockImplementation(() => createQueryMock(selectResultQueue.shift() ?? [])),
+                update: jest.fn().mockImplementation((...args: any[]) => ({
+                    set: jest.fn().mockImplementation((...setArgs: any[]) => ({
+                        where: jest.fn().mockImplementation(async (...whereArgs: any[]) => updateMock(...args, ...setArgs, ...whereArgs)),
+                    })),
+                })),
+            };
+            return callback(txMock);
+        }),
     },
 }));
 

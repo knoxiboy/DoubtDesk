@@ -136,3 +136,41 @@ jest.mock("@/lib/ratelimit/ratelimit", () => {
         resetMemoryMap,
     };
 });
+
+if (!process.env.GROQ_API_KEY) {
+    process.env.GROQ_API_KEY = "gsk_dummy_test_key_for_jest_environment";
+}
+
+if (typeof (global as any).EventSource === 'undefined') {
+    class MockEventSource {
+        url: string;
+        onmessage: ((event: any) => void) | null = null;
+        onerror: ((event: any) => void) | null = null;
+        onopen: ((event: any) => void) | null = null;
+        constructor(url: string) {
+            this.url = url;
+        }
+        close() {}
+        addEventListener() {}
+        removeEventListener() {}
+    }
+    (global as any).EventSource = MockEventSource;
+}
+
+jest.mock("groq-sdk", () => {
+    const MockGroq = jest.fn().mockImplementation(() => ({
+        chat: {
+            completions: {
+                create: jest.fn().mockResolvedValue({
+                    choices: [{ message: { content: "{}" } }],
+                }),
+            },
+        },
+    }));
+    return {
+        __esModule: true,
+        default: MockGroq,
+        Groq: MockGroq,
+    };
+});
+
