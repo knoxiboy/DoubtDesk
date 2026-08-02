@@ -331,7 +331,7 @@ export default function DiscussionsPage() {
                     <div className="flex items-center gap-3 text-slate-600 dark:text-zinc-400">
 
                       <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400">
-                        {thread.author.charAt(0)}
+                        {thread.author[0]}
                       </div>
 
                       <span>

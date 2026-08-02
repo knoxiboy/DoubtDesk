@@ -77,7 +77,7 @@ export function getAnonymousHandle(email?: string | null): string {
  */
 export function getAnonymousInitial(email?: string | null): string {
   const handle = getAnonymousHandle(email);
-  return handle.replace(/^Student_/, "").charAt(0).toUpperCase() || "A";
+  return handle.replace(/^Student_/, "")[0].toUpperCase() || "A";
 }
 
 /**

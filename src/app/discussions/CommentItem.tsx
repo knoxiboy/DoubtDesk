@@ -55,7 +55,7 @@ export default function CommentItem({ comment }: Props) {
         <div className="flex items-center gap-2 mb-3">
 
           <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center text-sm font-bold text-blue-500">
-            {comment.author.charAt(0)}
+            {comment.author[0]}
           </div>
 
           <span className="font-semibold text-slate-800 dark:text-zinc-200">
