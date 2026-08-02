@@ -101,7 +101,7 @@ function parseTopLevelPermissions(filePath) {
     const childLine = lines[j];
 
     // Blank lines are allowed between entries
-    if (childLine.trim() === '' || childLine.trim().startsWith('#')) {
+    if (childLine.trim().length === 0 || childLine.trim().startsWith('#')) {
       continue;
     }
 

@@ -399,7 +399,7 @@ export default function ClassroomPage() {
             <div className="space-y-4 min-w-0">
               <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl flex items-center justify-center text-xl sm:text-2xl font-black shrink-0 shadow-md shadow-blue-500/10">
-                  {classroom.name.charAt(0).toUpperCase()}
+                  {classroom.name[0].toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
                   <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight truncate">
