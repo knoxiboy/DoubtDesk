@@ -33,7 +33,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         const { id } = await params;
         const parsedReplyId = parseInt(id);
 
-        if (isNaN(parsedReplyId)) {
+        if (Number.isNaN(parsedReplyId)) {
             return NextResponse.json({ error: "Invalid reply ID" }, { status: 400 });
         }
 
@@ -121,7 +121,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         const { id } = await params;
         const replyId = parseInt(id);
 
-        if (isNaN(replyId)) {
+        if (Number.isNaN(replyId)) {
             return NextResponse.json({ error: "Invalid reply ID" }, { status: 400 });
         }
 
