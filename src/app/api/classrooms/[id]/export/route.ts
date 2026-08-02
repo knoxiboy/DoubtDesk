@@ -47,14 +47,14 @@ export async function GET(
 
         if (from) {
             const fromDate = new Date(from);
-            if (!isNaN(fromDate.getTime())) {
+            if (!Number.isNaN(fromDate.getTime())) {
                 conditions.push(gte(doubtsTable.createdAt, fromDate));
             }
         }
 
         if (to) {
             const toDate = new Date(to);
-            if (!isNaN(toDate.getTime())) {
+            if (!Number.isNaN(toDate.getTime())) {
                 conditions.push(lte(doubtsTable.createdAt, toDate));
             }
         }

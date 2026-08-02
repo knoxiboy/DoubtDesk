@@ -59,7 +59,7 @@ function RoleBadge({ role, isOwner }: { role: string; isOwner: boolean }) {
 
 function formatJoinedAt(joinedAt: string): string {
     const date = new Date(joinedAt);
-    if (isNaN(date.getTime())) return '';
+    if (Number.isNaN(date.getTime())) return '';
     return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
