@@ -1,7 +1,8 @@
 // app/api/doubts/[id]/accept/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
-import { doubtsTable, repliesTable } from "@/configs/schema";
+import { doubtsTable, repliesTable, usersTable, notificationsTable } from "@/configs/schema";
+import { publishNotification } from "@/lib/notifications/realtime";
 import { eq, and, or, isNull, ne } from "drizzle-orm";
 import { inngest } from "@/inngest/client";
 import { limitRequestBodySize } from "@/lib/validations/validate";
@@ -117,6 +118,43 @@ export async function POST(
 
         // ── 6. EMIT KARMA EVENT — only on genuine state transition ───────────
         if (reply.userEmail) {
+            // Milestone logic for Gamification Engine (Issue #1070)
+            const [replyAuthor] = await db
+                .select({ helpfulVotes: usersTable.helpfulVotes, unlockedBadges: usersTable.unlockedBadges })
+                .from(usersTable)
+                .where(eq(usersTable.email, reply.userEmail))
+                .limit(1);
+
+            if (replyAuthor) {
+                const newVotes = replyAuthor.helpfulVotes + 1;
+                const newBadges = [...(replyAuthor.unlockedBadges || [])];
+                
+                let milestoneReached = false;
+                if (newVotes === 10 && !newBadges.includes("Top Solver")) {
+                    newBadges.push("Top Solver");
+                    milestoneReached = true;
+                }
+
+                await db
+                    .update(usersTable)
+                    .set({ helpfulVotes: newVotes, unlockedBadges: newBadges })
+                    .where(eq(usersTable.email, reply.userEmail));
+
+                if (milestoneReached) {
+                    const [newNotification] = await db.insert(notificationsTable).values({
+                        userEmail: reply.userEmail,
+                        title: "🏅 Top Solver Badge!",
+                        message: "You unlocked the Top Solver badge for reaching 10 helpful answers!",
+                        type: "milestone_badge",
+                    }).returning();
+                    
+                    publishNotification({
+                        ...newNotification,
+                        createdAt: newNotification.createdAt.toISOString()
+                    });
+                }
+            }
+
             await inngest.send({
                 name: "karma/answer.accepted",
                 data: {

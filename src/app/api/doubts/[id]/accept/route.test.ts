@@ -1,6 +1,11 @@
 import { NextRequest } from "next/server";
 
 // ── Mutable per-test state shared between mocks ──────────────────────────────
+let mockUser: {
+    helpfulVotes: number;
+    unlockedBadges: string[];
+} | null = { helpfulVotes: 0, unlockedBadges: [] };
+
 let mockDoubt: {
     userEmail: string;
     isSolved: string;
@@ -37,6 +42,11 @@ jest.mock("@/inngest/client", () => ({
     inngest: { send: mockInngestSend },
 }));
 
+const mockPublishNotification = jest.fn();
+jest.mock("@/lib/notifications/realtime", () => ({
+    publishNotification: mockPublishNotification,
+}));
+
 
 jest.mock("@/configs/db", () => {
     const makeSelectChain = (result: unknown[]) => ({
@@ -53,11 +63,17 @@ jest.mock("@/configs/db", () => {
                 if (mockSelectCallCount === 1) {
                     return makeSelectChain(mockDoubt ? [mockDoubt] : []);
                 }
-                return makeSelectChain(mockReply ? [mockReply] : []);
+                if (mockSelectCallCount === 2) {
+                    return makeSelectChain(mockReply ? [mockReply] : []);
+                }
+                return makeSelectChain(mockUser ? [mockUser] : []);
             }),
             update: jest.fn().mockImplementation(() =>
                 makeUpdateChain(mockUpdatedDoubt ? [mockUpdatedDoubt] : [])
             ),
+            insert: jest.fn().mockImplementation(() => ({
+                values: (val: any) => ({ returning: () => Promise.resolve([{ ...val, id: 1, createdAt: new Date() }]) }),
+            })),
         },
     };
 });
@@ -70,6 +86,8 @@ jest.mock("@/configs/schema", () => ({
         solvedReplyId: "solvedReplyId",
     },
     repliesTable: { id: "id", doubtId: "doubtId", userEmail: "userEmail" },
+    usersTable: { email: "email", helpfulVotes: "helpfulVotes", unlockedBadges: "unlockedBadges" },
+    notificationsTable: { id: "id" },
 }));
 
 jest.mock("drizzle-orm", () => {
@@ -107,11 +125,13 @@ describe("POST /api/doubts/[id]/accept — idempotency (issue #687)", () => {
     beforeEach(() => {
         jest.clearAllMocks();
         mockInngestSend.mockReset();
+        mockPublishNotification.mockReset();
         mockSelectCallCount = 0;
 
         // Default: unsolved doubt, valid reply, state-changing update
         mockDoubt = { userEmail: "asker@test.com", isSolved: "unsolved", solvedReplyId: null };
         mockReply = { userEmail: "answerer@test.com", doubtId: 1 };
+        mockUser = { helpfulVotes: 0, unlockedBadges: [] };
         mockUpdatedDoubt = { id: 1 };
     });
 
@@ -175,6 +195,42 @@ describe("POST /api/doubts/[id]/accept — idempotency (issue #687)", () => {
         expect(res.status).toBe(403);
         expect(body.error).toBe("Forbidden! You cannot accept your own reply.");
         expect(mockInngestSend).not.toHaveBeenCalled();
+    });
+
+    describe("Gamification Milestone Logic", () => {
+        it("awards Top Solver badge exactly at 10 votes and emits real-time notification", async () => {
+            // Setup DB mock for milestone crossing: currently at 9 votes
+            mockUser = { helpfulVotes: 9, unlockedBadges: [] };
+
+            const res = await callPost(42);
+            expect(res.status).toBe(200);
+
+            // Notification should have been emitted
+            expect(mockPublishNotification).toHaveBeenCalledTimes(1);
+            expect(mockPublishNotification).toHaveBeenCalledWith(
+                expect.objectContaining({ type: "milestone_badge", title: "🏅 Top Solver Badge!" })
+            );
+        });
+
+        it("does not re-award Top Solver badge if they already have it at 10 votes", async () => {
+            // Currently at 9 votes, but somehow they already have the badge (edge case)
+            mockUser = { helpfulVotes: 9, unlockedBadges: ["Top Solver"] };
+
+            const res = await callPost(42);
+            expect(res.status).toBe(200);
+
+            // No notification should be emitted
+            expect(mockPublishNotification).not.toHaveBeenCalled();
+        });
+
+        it("does not award badge prematurely (e.g. at 8 votes)", async () => {
+            mockUser = { helpfulVotes: 7, unlockedBadges: [] };
+
+            const res = await callPost(42);
+            expect(res.status).toBe(200);
+
+            expect(mockPublishNotification).not.toHaveBeenCalled();
+        });
     });
 
     it("returns 500 with a generic message and does not leak error details", async () => {

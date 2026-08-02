@@ -1,4 +1,4 @@
-import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique, vector, pgEnum } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique, vector, pgEnum, jsonb } from "drizzle-orm/pg-core";
 
 export const userRoleEnum = pgEnum("user_role", ["student", "teacher", "admin"]);
 
@@ -25,6 +25,8 @@ export const usersTable = pgTable("users", {
     instituteInfo: text(),
     // ── Karma System ──────────────────────────────────────────────────────────
     karmaScore: integer().default(0).notNull(),         // total reputation points
+    helpfulVotes: integer("helpful_votes").default(0).notNull(),
+    unlockedBadges: jsonb("unlocked_badges").$type<string[]>().default([]).notNull(),
     karmaLevel: integer().default(1).notNull(),          // 1 = Newbie … 5 = Legend
     lastActiveDate: timestamp(),                         // Keep for general login tracking if needed
     lastContributionAt: timestamp(),                     // FIX: For genuine streak tracking (real user actions)
