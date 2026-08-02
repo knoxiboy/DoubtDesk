@@ -56,7 +56,7 @@ export async function PATCH(req: Request) {
         }
 
         const targetId = Number(alertIdString);
-        if (isNaN(targetId)) {
+        if (Number.isNaN(targetId)) {
             return new NextResponse("Invalid alert id", { status: 400 });
         }
 
