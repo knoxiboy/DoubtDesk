@@ -5,8 +5,9 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, Legend
 } from "recharts";
-import { Loader2, TrendingUp, AlertCircle, CheckCircle2, Users, Sparkles, BookOpen, ArrowRight } from "lucide-react";
+import { Loader2, TrendingUp, AlertCircle, CheckCircle2, Users, Sparkles, BookOpen, ArrowRight, Download } from "lucide-react";
 import Link from "next/link";
+import { generateAnalyticsReport } from "@/lib/pdf-generator";
 import { useSearchParams } from "next/navigation";
 
 const COLORS = ["#8b5cf6", "#3b82f6", "#ec4899", "#f59e0b", "#10b981"];
@@ -45,6 +46,7 @@ export default function TeacherDashboard() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
 
     const searchParams = useSearchParams();
     const classroomId = searchParams.get("classroomId");
@@ -104,6 +106,17 @@ export default function TeacherDashboard() {
 
     const recommendations: Recommendation[] = data.recommendations || [];
 
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            await generateAnalyticsReport(data, "analytics-charts");
+        } catch (err) {
+            console.error("PDF Export failed:", err);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <div className="space-y-10 animate-in fade-in duration-700 bg-white dark:bg-black p-6 lg:p-10 max-w-7xl mx-auto pb-24 text-slate-900 dark:text-zinc-100 min-h-screen relative overflow-hidden transition-colors duration-500">
             <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-500/10 dark:from-purple-500/5 blur-[130px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none z-0" />
@@ -118,6 +131,14 @@ export default function TeacherDashboard() {
                         <Users className="w-4 h-4 text-purple-600 dark:text-purple-400" /> Real-time student confusion profiles and metrics.
                     </p>
                 </div>
+                <button
+                    onClick={handleExport}
+                    disabled={isExporting}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    Download Report (PDF)
+                </button>
             </header>
 
             {/* ── Stat Cards ─────────────────────────────────────────────── */}
@@ -151,7 +172,7 @@ export default function TeacherDashboard() {
             </div>
 
             {/* ── Charts ─────────────────────────────────────────────────── */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
+            <div id="analytics-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10 bg-white dark:bg-black p-4 rounded-3xl -m-4">
                 <div className="bg-white/50 dark:bg-zinc-950/30 border border-slate-200 dark:border-zinc-900 rounded-3xl p-6 md:p-8 backdrop-blur-xl flex flex-col justify-between shadow-xl shadow-slate-200/5 dark:shadow-none">
                     <div className="flex items-center justify-between mb-6 px-2">
                         <div>
