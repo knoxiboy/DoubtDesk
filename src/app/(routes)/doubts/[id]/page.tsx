@@ -11,7 +11,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
     const { id } = await params;
     const doubtId = parseInt(id, 10);
-    if (isNaN(doubtId)) {
+    if (Number.isNaN(doubtId)) {
         return {
             title: "Doubt Not Found",
         };
@@ -55,7 +55,7 @@ export default async function DoubtPermalinkPage(
     const { id } = await params;
     const doubtId = parseInt(id, 10);
 
-    if (isNaN(doubtId)) {
+    if (Number.isNaN(doubtId)) {
         notFound();
     }
 
