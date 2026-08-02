@@ -36,7 +36,7 @@ export function decodeCursor(cursor: string | null | undefined): DecodedCursor |
     const idRaw = decoded.slice(sep + 1);
     const createdAt = new Date(iso);
     const id = Number(idRaw);
-    if (Number.isNaN(createdAt.getTime()) || !Number.isInteger(id) || idRaw.trim() === "") {
+    if (Number.isNaN(createdAt.getTime()) || !Number.isInteger(id) || idRaw.trim().length === 0) {
       return null;
     }
     return { createdAt, id };
