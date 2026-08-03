@@ -37,7 +37,7 @@ export async function GET(req: Request) {
     if (!doubtIdStr) {
       return errorResponse("Doubt ID required", 400);
     }
-    const doubtId = parseInt(doubtIdStr);
+    const doubtId = parseInt(doubtIdStr, 10);
 
     const [doubt] = await db.select().from(doubtsTable).where(
       and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt)),
