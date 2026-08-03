@@ -353,3 +353,5 @@ export async function GET(req: Request) {
         return NextResponse.json(body, { status });
     }
 }
+
+.catch(err => console.error("Promise.all failed:", err));
