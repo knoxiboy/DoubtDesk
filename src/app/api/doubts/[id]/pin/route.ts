@@ -17,7 +17,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         const { id } = await params;
-        const doubtId = parseInt(id);
+        const doubtId = parseInt(id, 10);
 
         const [doubt] = await db.select().from(doubtsTable).where(
             and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))
