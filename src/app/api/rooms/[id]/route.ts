@@ -79,7 +79,7 @@ export async function PATCH(
             updateData.pedagogyLevel = body.pedagogyLevel;
         }
         if (body.targetGradeLevel !== undefined) {
-            const parsed = parseInt(body.targetGradeLevel.toString());
+            const parsed = parseInt(body.targetGradeLevel.toString(, 10));
             if (!Number.isFinite(parsed)) {
                 return NextResponse.json({ error: 'Invalid targetGradeLevel' }, { status: 400 });
             }
