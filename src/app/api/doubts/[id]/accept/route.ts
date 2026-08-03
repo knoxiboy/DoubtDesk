@@ -25,7 +25,7 @@ export async function POST(
         const resolvedParams = "then" in params ? await params : params;
         const doubtId = parseInt(resolvedParams.id);
 
-        if (isNaN(doubtId)) {
+        if (Number.isNaN(doubtId)) {
             return NextResponse.json({ error: "Invalid doubt id" }, { status: 400 });
         }
 
