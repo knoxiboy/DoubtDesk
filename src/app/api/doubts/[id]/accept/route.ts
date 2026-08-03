@@ -23,7 +23,7 @@ export async function POST(
         const loggedInUserEmail = user.primaryEmailAddress.emailAddress;
 
         const resolvedParams = "then" in params ? await params : params;
-        const doubtId = parseInt(resolvedParams.id);
+        const doubtId = parseInt(resolvedParams.id, 10);
 
         if (isNaN(doubtId)) {
             return NextResponse.json({ error: "Invalid doubt id" }, { status: 400 });
