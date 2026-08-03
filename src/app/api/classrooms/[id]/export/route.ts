@@ -47,7 +47,7 @@ export async function GET(
 
         if (from) {
             const fromDate = new Date(from);
-            if (!isNaN(fromDate.getTime())) {
+            if (!Number.isNaN(fromDate.getTime())) {
                 conditions.push(gte(doubtsTable.createdAt, fromDate));
             }
         }
