@@ -64,7 +64,7 @@ export default function SessionTracker() {
             const now = Date.now();
 
             if (lastActivity) {
-                const elapsed = now - parseInt(lastActivity);
+                const elapsed = now - parseInt(lastActivity, 10);
                 if (elapsed > SESSION_DURATION) {
                     console.log("[SessionTracker] Session expired. Signing out...");
                     await broadcastLogout();
