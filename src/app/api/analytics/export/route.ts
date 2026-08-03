@@ -35,7 +35,7 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const classroomIdStr = searchParams.get("classroomId");
-  const classroomId = classroomIdStr ? parseInt(classroomIdStr) : null;
+  const classroomId = classroomIdStr ? parseInt(classroomIdStr, 10) : null;
 
   let classroomFilter;
 
