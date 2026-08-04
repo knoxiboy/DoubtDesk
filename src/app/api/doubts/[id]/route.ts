@@ -14,7 +14,7 @@ export async function GET(
         const { id } = await params;
         const doubtId = parseInt(id, 10);
 
-        if (isNaN(doubtId)) {
+        if (Number.isNaN(doubtId)) {
             return NextResponse.json({ error: "Invalid doubt ID" }, { status: 400 });
         }
 
