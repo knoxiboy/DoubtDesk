@@ -16,7 +16,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         if (rateLimitResponse) return rateLimitResponse;
 
         const { id } = await params;
-        const doubtId = parseInt(id);
+        const doubtId = parseInt(id, 10);
 
         const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
