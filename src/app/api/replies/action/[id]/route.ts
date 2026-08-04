@@ -31,7 +31,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         if (isBlocked) return errorResponse;
 
         const { id } = await params;
-        const parsedReplyId = parseInt(id);
+        const parsedReplyId = parseInt(id, 10);
 
         if (isNaN(parsedReplyId)) {
             return NextResponse.json({ error: "Invalid reply ID" }, { status: 400 });
