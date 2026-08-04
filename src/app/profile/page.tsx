@@ -224,3 +224,4 @@ export default async function ProfilePage() {
     </div>
   );
 }
+.catch(err => console.error("Promise.all failed:", err));
