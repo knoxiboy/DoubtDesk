@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
         // Fetch the soft-deleted doubt
         const [doubt] = await db.select().from(doubtsTable)
-            .where(eq(doubtsTable.id, parseInt(doubtId)))
+            .where(eq(doubtsTable.id, parseInt(doubtId, 10)))
             .limit(1);
 
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
