@@ -90,7 +90,7 @@ export async function PATCH(
                 updateData.inviteCodeExpiresAt = null;
             } else {
                 const parsedDate = new Date(body.inviteCodeExpiresAt);
-                if (isNaN(parsedDate.getTime())) {
+                if (Number.isNaN(parsedDate.getTime())) {
                     return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
                 }
                 updateData.inviteCodeExpiresAt = parsedDate;
