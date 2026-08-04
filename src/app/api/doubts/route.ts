@@ -379,7 +379,7 @@ export async function POST(req: Request) {
     let parsedCreatedAt: Date | undefined = undefined;
     if (data.createdAt) {
       const d = new Date(data.createdAt);
-      if (isNaN(d.getTime())) {
+      if (Number.isNaN(d.getTime())) {
         return NextResponse.json({ error: "Invalid createdAt date format" }, { status: 400 });
       }
       const now = new Date();
