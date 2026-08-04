@@ -64,7 +64,7 @@ export async function GET(req: Request) {
 
         const userData = {
             id: dbUser?.id || 0,
-            name: name,
+            name,
             email: email,
             university: dbUser?.university || undefined,
             year: dbUser?.year || undefined,
