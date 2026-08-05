@@ -304,7 +304,7 @@ export async function sendReplyNotificationEmail(params: {
             body: JSON.stringify({
                 from: "DoubtDesk <onboarding@resend.dev>",
                 to: [toEmail],
-                subject: `[DoubtDesk] New response on your doubt: ${escapeHtml(doubtSubject)}`,
+                subject: `[DoubtDesk] New response on your doubt: ${doubtSubject}`,
                 html: htmlContent
             })
         });
@@ -501,7 +501,7 @@ export async function sendDigestEmail(params: {
             body: JSON.stringify({
                 from: "DoubtDesk <onboarding@resend.dev>",
                 to: [toEmail],
-                subject: safeSubject,
+                subject: subject,
                 html: htmlContent
             })
         });
