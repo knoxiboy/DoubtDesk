@@ -8,8 +8,9 @@ type Classroom = {
     name: string;
     university: string;
     year: string;
-    inviteCode: string;
-    teacherEmail: string;
+    pedagogyLevel: string;
+    targetGradeLevel: number;
+    createdAt: string;
     recommendationScore: number;
     memberCount: number;
     activityCount: number;
@@ -171,7 +172,7 @@ export default function RecommendedClassrooms({ onJoin }: { onJoin?: (inviteCode
                             </div>
 
                             <button 
-                                onClick={() => onJoin?.(classroom.inviteCode)}
+                                onClick={() => onJoin?.("")}
                                 className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm text-white font-bold transition duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98]"
                             >
                                 Join
