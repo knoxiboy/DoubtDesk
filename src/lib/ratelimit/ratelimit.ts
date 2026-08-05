@@ -133,7 +133,7 @@ if (isRedisConfigured) {
   const createMockLimiter = (name: string, limit: number, windowMs: number) => ({
     limit: async (identifier: string) => {
       const now = Date.now();
-      const key = `${name}:${identifier}`;
+      const key = JSON.stringify([name, identifier]);
       const record = memoryMap.get(key) || { count: 0, reset: now + windowMs };
 
       if (now > record.reset) {

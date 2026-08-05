@@ -78,4 +78,25 @@ describe("mock rate limiter namespace isolation", () => {
     expect(second.remaining).toBe(28);
     expect(second.success).toBe(true);
   });
+
+  it("does not collide when identifiers contain ':' characters", async () => {
+    const { aiLimiter, aiDailyLimiter } = loadRealModule();
+
+    // aiLimiter with identifier "daily:user@example.com"
+    const ai = await limit(aiLimiter, "daily:user@example.com");
+    expect(ai.success).toBe(true);
+    expect(ai.remaining).toBe(9);
+
+    // aiDailyLimiter with identifier "user@example.com" should be independent
+    // Default aiDailyLimit is 100 when env var is not set
+    const expectedAiDailyLimit = 100;
+    const aiDaily = await limit(aiDailyLimiter, "user@example.com");
+    expect(aiDaily.success).toBe(true);
+    expect(aiDaily.remaining).toBe(expectedAiDailyLimit - 1);
+
+    // Consuming aiLimiter should not affect aiDailyLimiter
+    const aiDailyAfter = await limit(aiDailyLimiter, "user@example.com");
+    expect(aiDailyAfter.success).toBe(true);
+    expect(aiDailyAfter.remaining).toBe(expectedAiDailyLimit - 2);
+  });
 });
