@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
+import { db } from "@/configs/db";
+import { doubtsTable } from "@/configs/schema";
 import { checkUserBlock } from "@/lib/auth/auth-utils";
-import { buildErrorResponse } from "@/lib/errors/error-handler";
+import { ApiError, buildErrorResponse } from "@/lib/errors/error-handler";
 import {
-    parseClassroomId,
     requireAuth,
     requireMembership,
 } from "@/lib/auth/membership-guard";
@@ -13,7 +15,7 @@ if (!globalAny.sseClients) {
   globalAny.sseClients = new Map<string, Set<ReadableStreamDefaultController>>();
 }
 if (!globalAny.typingUsers) {
-  globalAny.typingUsers = new Map<string, Map<string, { initial: string; timestamp: number }>>();
+  globalAny.typingUsers = new Map<string, Map<string, { username: string; initial: string; timestamp: number }>>();
 }
 
 const getRoomClients = (roomId: string): Set<ReadableStreamDefaultController> => {
@@ -23,7 +25,7 @@ const getRoomClients = (roomId: string): Set<ReadableStreamDefaultController> =>
   return globalAny.sseClients.get(roomId);
 };
 
-const getRoomTyping = (roomId: string): Map<string, { initial: string; timestamp: number }> => {
+const getRoomTyping = (roomId: string): Map<string, { username: string; initial: string; timestamp: number }> => {
   if (!globalAny.typingUsers.has(roomId)) {
     globalAny.typingUsers.set(roomId, new Map());
   }
@@ -36,11 +38,11 @@ const broadcastTyping = (roomId: string) => {
   
   const now = Date.now();
   const activeTyping: { username: string; initial: string }[] = [];
-  for (const [username, data] of typingMap.entries()) {
+  for (const [email, data] of typingMap.entries()) {
     if (now - data.timestamp > 10000) {
-      typingMap.delete(username);
+      typingMap.delete(email);
     } else {
-      activeTyping.push({ username, initial: data.initial });
+      activeTyping.push({ username: data.username, initial: data.initial });
     }
   }
 
@@ -63,15 +65,35 @@ export async function GET(
     const { email } = await requireAuth();
 
     const { isBlocked, errorResponse } = await checkUserBlock(email);
+    if (errorResponse) return errorResponse;
     if (isBlocked) return errorResponse;
 
     const { id } = await params;
-    const classroomId = parseClassroomId(id);
-    await requireMembership(email, classroomId);
-    const roomId = classroomId.toString();
+    const doubtId = parseInt(id, 10);
+    if (!Number.isSafeInteger(doubtId) || doubtId <= 0) {
+      throw new ApiError(400, "Invalid doubt ID");
+    }
+
+    const [doubt] = await db
+      .select({ classroomId: doubtsTable.classroomId })
+      .from(doubtsTable)
+      .where(eq(doubtsTable.id, doubtId));
+
+    if (!doubt) {
+      throw new ApiError(404, "Doubt not found");
+    }
+
+    if (doubt.classroomId) {
+      await requireMembership(email, doubt.classroomId);
+    }
+
+    const roomId = id;
+
+    let streamController: ReadableStreamDefaultController;
 
     const stream = new ReadableStream({
       start(controller) {
+        streamController = controller;
         const clients = getRoomClients(roomId);
         clients.add(controller);
 
@@ -81,9 +103,11 @@ export async function GET(
           clients.delete(controller);
         });
       },
-      cancel(controller) {
-        const clients = getRoomClients(roomId);
-        clients.delete(controller);
+      cancel() {
+        if (streamController!) {
+          const clients = getRoomClients(roomId);
+          clients.delete(streamController);
+        }
       }
     });
 
@@ -105,22 +129,41 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { email } = await requireAuth();
+    const { user, email } = await requireAuth();
 
     const { isBlocked, errorResponse } = await checkUserBlock(email);
+    if (errorResponse) return errorResponse;
     if (isBlocked) return errorResponse;
 
     const { id } = await params;
-    const classroomId = parseClassroomId(id);
-    await requireMembership(email, classroomId);
-    const roomId = classroomId.toString();
+    const doubtId = parseInt(id, 10);
+    if (!Number.isSafeInteger(doubtId) || doubtId <= 0) {
+      throw new ApiError(400, "Invalid doubt ID");
+    }
+
+    const [doubt] = await db
+      .select({ classroomId: doubtsTable.classroomId })
+      .from(doubtsTable)
+      .where(eq(doubtsTable.id, doubtId));
+
+    if (!doubt) {
+      throw new ApiError(404, "Doubt not found");
+    }
+
+    if (doubt.classroomId) {
+      await requireMembership(email, doubt.classroomId);
+    }
+
+    const roomId = id;
 
     const { initial, isTyping } = await req.json();
+
+    const displayUsername = user.firstName || user.username || "Anonymous";
 
     const typingMap = getRoomTyping(roomId);
 
     if (isTyping) {
-      typingMap.set(email, { initial: initial || "?", timestamp: Date.now() });
+      typingMap.set(email, { username: displayUsername, initial: initial || "?", timestamp: Date.now() });
     } else {
       typingMap.delete(email);
     }
