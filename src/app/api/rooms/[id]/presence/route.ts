@@ -1,4 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
+import {
+    parseClassroomId,
+    requireAuth,
+    requireMembership,
+} from "@/lib/auth/membership-guard";
 
 const globalAny = global as any;
 
@@ -52,62 +59,77 @@ export async function GET(
   req: NextRequest, 
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const roomId = id;
+  try {
+    const { email } = await requireAuth();
 
-  const stream = new ReadableStream({
-    start(controller) {
-      const clients = getRoomClients(roomId);
-      clients.add(controller);
+    const { isBlocked, errorResponse } = await checkUserBlock(email);
+    if (isBlocked) return errorResponse;
 
-      broadcastTyping(roomId);
+    const { id } = await params;
+    const classroomId = parseClassroomId(id);
+    await requireMembership(email, classroomId);
+    const roomId = classroomId.toString();
 
-      req.signal.addEventListener("abort", () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        const clients = getRoomClients(roomId);
+        clients.add(controller);
+
+        broadcastTyping(roomId);
+
+        req.signal.addEventListener("abort", () => {
+          clients.delete(controller);
+        });
+      },
+      cancel(controller) {
+        const clients = getRoomClients(roomId);
         clients.delete(controller);
-      });
-    },
-    cancel(controller) {
-      const clients = getRoomClients(roomId);
-      clients.delete(controller);
-    }
-  });
+      }
+    });
 
-  return new NextResponse(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
-    },
-  });
+    return new NextResponse(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
+  } catch (error) {
+    const { status, body } = buildErrorResponse(error);
+    return NextResponse.json(body, { status });
+  }
 }
 
 export async function POST(
   req: NextRequest, 
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
-  const roomId = id;
-
   try {
-    const { username, initial, isTyping } = await req.json();
-    
-    if (!username) {
-      return NextResponse.json({ error: "Username is required" }, { status: 400 });
-    }
+    const { email } = await requireAuth();
+
+    const { isBlocked, errorResponse } = await checkUserBlock(email);
+    if (isBlocked) return errorResponse;
+
+    const { id } = await params;
+    const classroomId = parseClassroomId(id);
+    await requireMembership(email, classroomId);
+    const roomId = classroomId.toString();
+
+    const { initial, isTyping } = await req.json();
 
     const typingMap = getRoomTyping(roomId);
 
     if (isTyping) {
-      typingMap.set(username, { initial: initial || "?", timestamp: Date.now() });
+      typingMap.set(email, { initial: initial || "?", timestamp: Date.now() });
     } else {
-      typingMap.delete(username);
+      typingMap.delete(email);
     }
 
     broadcastTyping(roomId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Presence POST error", error);
-    return NextResponse.json({ error: "Invalid request payload" }, { status: 400 });
+    const { status, body } = buildErrorResponse(error);
+    return NextResponse.json(body, { status });
   }
 }
