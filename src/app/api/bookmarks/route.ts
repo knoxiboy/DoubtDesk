@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { buildErrorResponse, errorResponse } from "@/lib/errors/error-handler";
 import { parsePositiveInt } from "@/lib/utils/utils";
+import { toPublicDoubt } from "@/lib/anonymity/anonymity";
 
 export async function GET(req: Request) {
     try {
@@ -63,7 +64,7 @@ export async function GET(req: Request) {
         const doubtIds = bookmarks.map((b: any) => b.doubtId);
 
       
-        let doubts = await db.select().from(doubtsTable)
+        const doubts = await db.select().from(doubtsTable)
             .where(and(inArray(doubtsTable.id, doubtIds), isNull(doubtsTable.deletedAt)))
             .orderBy(desc(doubtsTable.createdAt));
 
@@ -87,16 +88,16 @@ export async function GET(req: Request) {
         const countsMap = Object.fromEntries(replyCounts.map((r: any) => [r.doubtId, r.count]));
 
         
-        doubts = doubts.map((doubt: any) => ({
+        const publicDoubts = doubts.map((doubt: any) => toPublicDoubt({
             ...doubt,
             hasLiked: likedIds.has(doubt.id),
             hasBookmarked: bookmarkedIds.has(doubt.id),
             replyCount: countsMap[doubt.id] || 0
-        }));
+        }, email));
 
        
         return NextResponse.json({
-            data: doubts,
+            data: publicDoubts,
             pagination: {
                 page,
                 limit,
