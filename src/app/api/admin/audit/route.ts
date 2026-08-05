@@ -10,14 +10,10 @@ export async function GET(request: Request) {
         await requireAdmin();
 
         const { searchParams } = new URL(request.url);
-
-        const pageStr = searchParams.get("page") || "1";
-        const limitStr = searchParams.get("limit") || "20";
-
-        // Secure parsing with safe defaults and an upper limit cap of 100
-        const page = parsePositiveInt(pageStr, 1);
-        const limit = Math.min(parsePositiveInt(limitStr, 20), 100);
-
+        const page = parseInt(searchParams.get("page") || "1");
+        const limitParam = searchParams.get("limit");
+        const parsedLimit = limitParam === null ? 20 : parseInt(limitParam, 10);
+        const limit = Math.min(Math.max(Number.isNaN(parsedLimit) ? 20 : parsedLimit, 1), 100);
         const offset = (page - 1) * limit;
 
         const [totalResult] = await db.select({ value: count() }).from(auditLogsTable);
