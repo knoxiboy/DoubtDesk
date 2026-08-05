@@ -69,7 +69,8 @@ describe('Reply Vote API Endpoint', () => {
 
         selectResultQueue.push(
             [], // user block check select
-            [{ id: 1, replyId: 1, userEmail: 'other@example.com' }],
+            [{ id: 1, replyId: 1, doubtId: 11, userEmail: 'other@example.com' }],
+            [{ classroomId: null }],
             []
         );
         updateResultQueue.push([{ id: 1, upvotes: 1 }]);

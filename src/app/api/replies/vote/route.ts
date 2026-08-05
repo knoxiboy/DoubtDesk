@@ -1,11 +1,11 @@
-// app/api/doubts/[id]/upvote/route.ts
 import { db } from "@/configs/db";
-import { repliesTable, replyLikesTable } from "@/configs/schema";
+import { doubtsTable, repliesTable, replyLikesTable } from "@/configs/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { inngest } from "@/inngest/client";
 import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { requireMembership } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { voteReplySchema } from "@/lib/validations/reply";
@@ -52,6 +52,16 @@ export async function POST(req: Request) {
                 { error: "Forbidden: You cannot upvote your own reply." },
                 { status: 403 }
             );
+        }
+
+        const [doubt] = await db
+            .select({ classroomId: doubtsTable.classroomId })
+            .from(doubtsTable)
+            .where(eq(doubtsTable.id, reply.doubtId))
+            .limit(1);
+
+        if (doubt?.classroomId) {
+            await requireMembership(email, doubt.classroomId);
         }
 
         // ── 3. ATOMIC TRANSACTION FLOW ──────────────────────────────────────
