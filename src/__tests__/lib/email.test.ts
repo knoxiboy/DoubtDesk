@@ -1,4 +1,5 @@
 import {
+    escapeHtml,
     generateUnsubscribeLink,
     generateUnsubscribeToken,
     sendBlockEmail,
@@ -93,5 +94,31 @@ describe('Email Helper Functions', () => {
             url.searchParams.get('expires'),
             url.searchParams.get('token')
         )).toBe(true);
+    });
+
+    describe('escapeHtml', () => {
+        it('should escape XSS payloads', () => {
+            const input = '<img src=x onerror="alert(1)">';
+            const result = escapeHtml(input);
+            expect(result).toBe('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;');
+            expect(result).not.toContain('<img');
+        });
+
+        it('should escape HTML tags', () => {
+            const input = '<b>Hello</b>';
+            const result = escapeHtml(input);
+            expect(result).toBe('&lt;b&gt;Hello&lt;/b&gt;');
+        });
+
+        it('should leave normal text unchanged', () => {
+            const input = 'Hello World';
+            expect(escapeHtml(input)).toBe('Hello World');
+        });
+
+        it('should escape all special characters', () => {
+            const input = '<>&\'"';
+            const result = escapeHtml(input);
+            expect(result).toBe('&lt;&gt;&amp;&#039;&quot;');
+        });
     });
 });

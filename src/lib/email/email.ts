@@ -1,5 +1,14 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
+export function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 const UNSUBSCRIBE_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 function getUnsubscribeSecret() {
@@ -101,6 +110,8 @@ export async function sendReplyNotificationEmail(params: {
     const { toEmail, doubtId, doubtSubject, doubtContent, replierName, replyContent } = params;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const doubtLink = `${appUrl}/doubts/${doubtId}`;
+    const safeDoubtSubject = escapeHtml(doubtSubject);
+    const safeReplierName = escapeHtml(replierName);
     const cleanDoubtContent = doubtContent.length > 100 ? `${doubtContent.slice(0, 97)}...` : doubtContent;
     const cleanReplyContent = replyContent.length > 180 ? `${replyContent.slice(0, 177)}...` : replyContent;
 
@@ -248,14 +259,14 @@ export async function sendReplyNotificationEmail(params: {
                 </div>
                 <div class="content">
                     <h3 class="greeting">Hi there,</h3>
-                    <p class="message">Great news! Someone has just posted a new response to your doubt regarding <strong>${doubtSubject}</strong>. Here are the details:</p>
+                    <p class="message">Great news! Someone has just posted a new response to your doubt regarding <strong>${safeDoubtSubject}</strong>. Here are the details:</p>
                     
                     <div class="card">
                         <div class="card-title">Your Original Doubt</div>
-                        <div class="card-body">"${cleanDoubtContent}"</div>
+                        <div class="card-body">"${escapeHtml(cleanDoubtContent)}"</div>
                         
-                        <div class="card-title">New Response from ${replierName}</div>
-                        <p class="reply-preview">"${cleanReplyContent}"</p>
+                        <div class="card-title">New Response from ${safeReplierName}</div>
+                        <p class="reply-preview">"${escapeHtml(cleanReplyContent)}"</p>
                     </div>
 
                     <div class="btn-container">
@@ -293,7 +304,7 @@ export async function sendReplyNotificationEmail(params: {
             body: JSON.stringify({
                 from: "DoubtDesk <onboarding@resend.dev>",
                 to: [toEmail],
-                subject: `[DoubtDesk] New response on your doubt: ${doubtSubject}`,
+                subject: `[DoubtDesk] New response on your doubt: ${escapeHtml(doubtSubject)}`,
                 html: htmlContent
             })
         });
@@ -333,27 +344,30 @@ export async function sendDigestEmail(params: {
     const { toEmail, subject, totalReplies, totalDoubts, doubts } = params;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const unsubscribeLink = generateUnsubscribeLink(toEmail, appUrl);
+    const safeSubject = escapeHtml(subject);
 
     let doubtsHtml = "";
     for (const d of doubts) {
         const doubtLink = `${appUrl}/rooms/${d.id}`;
+        const safeDoubtSubject = escapeHtml(d.subject);
         const cleanDoubtContent = d.content.length > 100 ? `${d.content.slice(0, 97)}...` : d.content;
         
         let repliesHtml = "";
         for (const r of d.replies) {
+            const safeReplierName = escapeHtml(r.replierName);
             const cleanReplyContent = r.content.length > 180 ? `${r.content.slice(0, 177)}...` : r.content;
             repliesHtml += `
                 <div style="margin-bottom: 12px; border-bottom: 1px solid #334155; padding-bottom: 12px; last-child { border-bottom: none; }">
-                    <div style="font-size: 14px; font-weight: 700; color: #f8fafc; margin-bottom: 4px;">Response from ${r.replierName}</div>
-                    <p style="font-size: 14px; line-height: 20px; color: #cbd5e1; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin: 0;">"${cleanReplyContent}"</p>
+                    <div style="font-size: 14px; font-weight: 700; color: #f8fafc; margin-bottom: 4px;">Response from ${safeReplierName}</div>
+                    <p style="font-size: 14px; line-height: 20px; color: #cbd5e1; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin: 0;">"${escapeHtml(cleanReplyContent)}"</p>
                 </div>
             `;
         }
 
         doubtsHtml += `
             <div style="background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #38bdf8; margin-top: 0; margin-bottom: 8px;">Doubt: ${d.subject}</div>
-                <div style="font-size: 14px; line-height: 22px; color: #94a3b8; font-style: italic; margin-bottom: 16px; border-left: 3px solid #38bdf8; padding-left: 12px;">"${cleanDoubtContent}"</div>
+                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #38bdf8; margin-top: 0; margin-bottom: 8px;">Doubt: ${safeDoubtSubject}</div>
+                <div style="font-size: 14px; line-height: 22px; color: #94a3b8; font-style: italic; margin-bottom: 16px; border-left: 3px solid #38bdf8; padding-left: 12px;">"${escapeHtml(cleanDoubtContent)}"</div>
                 
                 <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #a855f7; margin-bottom: 12px;">New Replies</div>
                 ${repliesHtml}
@@ -371,7 +385,7 @@ export async function sendDigestEmail(params: {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${subject}</title>
+        <title>${safeSubject}</title>
         <style>
             body {
                 margin: 0;
@@ -487,7 +501,7 @@ export async function sendDigestEmail(params: {
             body: JSON.stringify({
                 from: "DoubtDesk <onboarding@resend.dev>",
                 to: [toEmail],
-                subject,
+                subject: safeSubject,
                 html: htmlContent
             })
         });
