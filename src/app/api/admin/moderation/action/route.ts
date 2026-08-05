@@ -17,9 +17,12 @@ const moderationActionSchema = z.object({
 
 export async function POST(req: Request) {
     try {
+        // Guard first, then read — authorization must be verified before we rely
+        // on session data (which may be stale/null if the session is invalid).
+        await requireAdmin();
+
         const adminUser = await currentUser();
         const adminEmail = adminUser?.primaryEmailAddress?.emailAddress || "admin";
-        await requireAdmin();
 
         const { errorResponse, data } = await parseAndValidateRequest(req, moderationActionSchema);
         if (errorResponse) return errorResponse;
