@@ -57,6 +57,7 @@ export default function RoomsPage() {
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+    const [selectedRecommendation, setSelectedRecommendation] = useState<{ id: number; name: string } | null>(null);
 
     const [createData, setCreateData] = useState({ name: "", year: "1st Year" });
     const [joinCode, setJoinCode] = useState("");
@@ -119,6 +120,7 @@ export default function RoomsPage() {
             if (res.ok) {
                 toast.success(`Joined ${data.classroom.name}!`, { id: "classroom-joined" });
                 setIsJoinModalOpen(false);
+                setSelectedRecommendation(null);
                 setJoinCode("");
                 fetchRooms();
             } else {
@@ -196,8 +198,12 @@ export default function RoomsPage() {
 
                         {appUser?.role === 'student' && (
                             <div className="max-w-5xl mx-auto">
-                                <RecommendedClassrooms onJoin={async (code) => {
-                                    setJoinCode(code);
+                                <RecommendedClassrooms onJoin={async (classroomId) => {
+                                    const classroom = recommended.find(r => r.id === classroomId);
+                                    if (classroom) {
+                                        setSelectedRecommendation({ id: classroom.id, name: classroom.name });
+                                    }
+                                    setJoinCode("");
                                     setIsJoinModalOpen(true);
                                 }} />
                             </div>
@@ -218,8 +224,12 @@ export default function RoomsPage() {
 
                         {appUser?.role === 'student' && (
                             <div className="pt-8 border-t border-slate-100 dark:border-zinc-900">
-                                <RecommendedClassrooms onJoin={async (code) => {
-                                    setJoinCode(code);
+                                <RecommendedClassrooms onJoin={async (classroomId) => {
+                                    const classroom = recommended.find(r => r.id === classroomId);
+                                    if (classroom) {
+                                        setSelectedRecommendation({ id: classroom.id, name: classroom.name });
+                                    }
+                                    setJoinCode("");
                                     setIsJoinModalOpen(true);
                                 }} />
                             </div>
@@ -291,7 +301,13 @@ export default function RoomsPage() {
                     <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-900 w-full max-w-md rounded-2xl p-6 md:p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-300 text-slate-900 dark:text-zinc-100">
                         <div className="space-y-1">
                             <h2 className="text-2xl font-bold tracking-tight">Enter Class</h2>
-                            <p className="text-slate-500 dark:text-zinc-400 text-xs font-medium">Input your unique invitation code.</p>
+                            {selectedRecommendation ? (
+                                <p className="text-slate-500 dark:text-zinc-400 text-xs font-medium">
+                                    Joining <span className="font-semibold text-slate-700 dark:text-zinc-300">{selectedRecommendation.name}</span> — enter the invitation code from your teacher.
+                                </p>
+                            ) : (
+                                <p className="text-slate-500 dark:text-zinc-400 text-xs font-medium">Input your unique invitation code.</p>
+                            )}
                         </div>
 
                         <form onSubmit={handleJoinRoom} className="space-y-4">
@@ -311,7 +327,7 @@ export default function RoomsPage() {
                             <div className="flex gap-3 pt-2">
                                 <button 
                                     type="button" 
-                                    onClick={() => setIsJoinModalOpen(false)}
+                                    onClick={() => { setIsJoinModalOpen(false); setSelectedRecommendation(null); setJoinCode(""); }}
                                     className="flex-1 py-3.5 rounded-xl font-bold uppercase tracking-wider text-xs text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors border border-transparent"
                                 >
                                     Cancel
