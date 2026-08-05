@@ -1,0 +1,81 @@
+import type { Ratelimit } from "@upstash/ratelimit";
+
+// @upstash/redis pulls in ESM-only deps Jest cannot parse, so stub the Upstash
+// packages to allow loading the real ratelimit module below.
+jest.mock("@upstash/ratelimit", () => ({
+  Ratelimit: class {
+    limit = jest.fn();
+  },
+}));
+
+jest.mock("@upstash/redis", () => ({
+  Redis: {
+    fromEnv: jest.fn(),
+  },
+}));
+
+type LimiterLike = Pick<
+  Ratelimit | { limit(identifier: string): Promise<unknown> },
+  "limit"
+>;
+
+// jest.setup.ts registers a global mock for this module, so load the real
+// implementation to verify its namespace isolation.
+const loadRealModule = () => {
+  jest.resetModules();
+  return jest.requireActual("@/lib/ratelimit/ratelimit") as typeof import("@/lib/ratelimit/ratelimit");
+};
+
+const limit = async (limiter: LimiterLike, identifier: string) =>
+  (await limiter.limit(identifier)) as {
+    success: boolean;
+    limit: number;
+    remaining: number;
+    reset: number;
+  };
+
+describe("mock rate limiter namespace isolation", () => {
+  beforeAll(() => {
+    process.env.UPSTASH_REDIS_REST_URL = "";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "";
+  });
+
+  it("keeps AI and General counters independent for the same identifier", async () => {
+    const { aiLimiter, generalLimiter } = loadRealModule();
+
+    for (let i = 0; i < 10; i++) {
+      const ai = await limit(aiLimiter, "user@example.com");
+      expect(ai.success).toBe(true);
+    }
+
+    const aiExhausted = await limit(aiLimiter, "user@example.com");
+    expect(aiExhausted.success).toBe(false);
+    expect(aiExhausted.remaining).toBe(0);
+
+    const general = await limit(generalLimiter, "user@example.com");
+    expect(general.success).toBe(true);
+    expect(general.remaining).toBe(29);
+  });
+
+  it("produces different keys for different limiter namespaces", async () => {
+    const { aiLimiter, videoLimiter } = loadRealModule();
+
+    const ai = await limit(aiLimiter, "user@example.com");
+    const video = await limit(videoLimiter, "user@example.com");
+
+    expect(ai.remaining).toBe(9);
+    expect(video.remaining).toBe(2);
+  });
+
+  it("preserves existing behavior within a single limiter", async () => {
+    const { generalLimiter } = loadRealModule();
+
+    const first = await limit(generalLimiter, "user@example.com");
+    const second = await limit(generalLimiter, "user@example.com");
+
+    expect(first.remaining).toBe(29);
+    expect(first.success).toBe(true);
+    expect(second.remaining).toBe(28);
+    expect(second.success).toBe(true);
+  });
+});
