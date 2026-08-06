@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 
 interface Thread {
   id: number;
@@ -10,6 +12,8 @@ interface Thread {
   category: string;
   replies: number;
   lastReply: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface Props {
@@ -23,32 +27,67 @@ export default function CreateThreadModal({
   onClose,
   onCreate,
 }: Props) {
+  const { isSignedIn } = useUser();
+  const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [anonymous, setAnonymous] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!open) return null;
 
-  const handleCreate = () => {
-    if (!title.trim()) return;
+  const handleCreate = async () => {
+    if (!title.trim() || submitting) return;
 
-    const newThread: Thread = {
-      id: Date.now(),
-      title: title.trim(),
-      description: description.trim(),
-      author: anonymous ? "Anonymous" : "Student",
-      category: "General",
-      replies: 0,
-      lastReply: "Just now",
-    };
+    if (!isSignedIn) {
+      router.push("/sign-in");
+      return;
+    }
 
-    onCreate(newThread);
+    setSubmitting(true);
+    setError(null);
 
-    setTitle("");
-    setDescription("");
-    setAnonymous(false);
+    try {
+      const res = await fetch("/api/discussions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          anonymous,
+        }),
+      });
 
-    onClose();
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(json.error || "Failed to create discussion");
+        return;
+      }
+
+      const created = json.data;
+      onCreate({
+        id: created.id,
+        title: created.title,
+        description: created.description ?? "",
+        author: created.author,
+        category: created.category,
+        replies: created.replies ?? 0,
+        lastReply: "Just now",
+        createdAt: created.createdAt,
+        updatedAt: created.updatedAt,
+      });
+
+      setTitle("");
+      setDescription("");
+      setAnonymous(false);
+      onClose();
+    } catch {
+      setError("Failed to create discussion");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -137,6 +176,12 @@ export default function CreateThreadModal({
 
             Post anonymously
           </label>
+
+          {error && (
+            <p className="text-sm text-red-500" role="alert">
+              {error}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-4">
@@ -144,6 +189,7 @@ export default function CreateThreadModal({
           <button
             type="button"
             onClick={handleCreate}
+            disabled={submitting || !title.trim()}
             className="
             flex-1 py-4 rounded-2xl
             bg-blue-600 hover:bg-blue-700
@@ -152,14 +198,16 @@ export default function CreateThreadModal({
             hover:scale-[1.02]
             active:scale-[0.98]
             hover:shadow-[0_0_25px_rgba(59,130,246,0.35)]
+            disabled:opacity-60 disabled:pointer-events-none
             "
           >
-            Create Discussion
+            {submitting ? "Creating..." : "Create Discussion"}
           </button>
 
           <button
             type="button"
             onClick={onClose}
+            disabled={submitting}
             className="
             px-6 py-4 rounded-2xl
             border border-slate-300 dark:border-zinc-700
