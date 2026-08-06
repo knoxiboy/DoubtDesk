@@ -72,21 +72,19 @@ export async function POST(req: Request) {
                     violationCount: newViolationCount,
                     moderationLogId: logId,
                     emailDelivery: emailResult.success
-                        ? "accepted"
+                        ? "sent"
                         : emailResult.simulated
                           ? "unavailable"
                           : "failed",
                     emailError: emailResult.error,
-                    providerMessageId: emailResult.providerMessageId,
                 },
             });
 
             if (emailResult.success) {
                 return NextResponse.json({
                     success: true,
-                    emailDelivery: "accepted",
-                    providerMessageId: emailResult.providerMessageId,
-                    message: "User warned and notification email accepted by provider",
+                    emailDelivery: "sent",
+                    message: "User warned and notification email sent",
                 });
             }
 
@@ -138,21 +136,19 @@ export async function POST(req: Request) {
                     blockCount: newBlockCount,
                     moderationLogId: logId,
                     emailDelivery: emailResult.success
-                        ? "accepted"
+                        ? "sent"
                         : emailResult.simulated
                           ? "unavailable"
                           : "failed",
                     emailError: emailResult.error,
-                    providerMessageId: emailResult.providerMessageId,
                 },
             });
 
             if (emailResult.success) {
                 return NextResponse.json({
                     success: true,
-                    emailDelivery: "accepted",
-                    providerMessageId: emailResult.providerMessageId,
-                    message: "User blocked and notification email accepted by provider",
+                    emailDelivery: "sent",
+                    message: "User blocked and notification email sent",
                 });
             }
 
