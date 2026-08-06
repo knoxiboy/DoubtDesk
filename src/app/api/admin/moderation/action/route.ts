@@ -58,9 +58,9 @@ export async function POST(req: Request) {
                 .where(eq(moderationLogsTable.id, logId));
 
             const [log] = await db.select().from(moderationLogsTable).where(eq(moderationLogsTable.id, logId));
-            if (log) {
-                await sendWarningEmail(userEmail, log.reason, newViolationCount);
-            }
+            const emailResult = log
+                ? await sendWarningEmail(userEmail, log.reason, newViolationCount)
+                : { success: false, error: "Moderation log not found for email notification" };
 
             void auditLog({
                 actorEmail: adminEmail,
@@ -71,10 +71,30 @@ export async function POST(req: Request) {
                 metadata: {
                     violationCount: newViolationCount,
                     moderationLogId: logId,
+                    emailDelivery: emailResult.success
+                        ? "sent"
+                        : emailResult.simulated
+                          ? "unavailable"
+                          : "failed",
+                    emailError: emailResult.error,
                 },
             });
 
-            return NextResponse.json({ success: true, message: "User warned successfully" });
+            if (emailResult.success) {
+                return NextResponse.json({
+                    success: true,
+                    emailDelivery: "sent",
+                    message: "User warned and notification email sent",
+                });
+            }
+
+            return NextResponse.json({
+                success: true,
+                emailDelivery: emailResult.simulated ? "unavailable" : "failed",
+                message: emailResult.simulated
+                    ? "User warned, but email was not sent: email provider is not configured"
+                    : `User warned, but email delivery failed: ${emailResult.error ?? "unknown error"}`,
+            });
         }
 
         if (action === "block") {
@@ -103,7 +123,7 @@ export async function POST(req: Request) {
                 .set({ status: "blocked" })
                 .where(eq(moderationLogsTable.id, logId));
 
-            await sendBlockEmail(userEmail, durationDays, newBlockCount);
+            const emailResult = await sendBlockEmail(userEmail, durationDays, newBlockCount);
 
             void auditLog({
                 actorEmail: adminEmail,
@@ -115,10 +135,30 @@ export async function POST(req: Request) {
                     durationDays,
                     blockCount: newBlockCount,
                     moderationLogId: logId,
+                    emailDelivery: emailResult.success
+                        ? "sent"
+                        : emailResult.simulated
+                          ? "unavailable"
+                          : "failed",
+                    emailError: emailResult.error,
                 },
             });
 
-            return NextResponse.json({ success: true, message: "User blocked successfully" });
+            if (emailResult.success) {
+                return NextResponse.json({
+                    success: true,
+                    emailDelivery: "sent",
+                    message: "User blocked and notification email sent",
+                });
+            }
+
+            return NextResponse.json({
+                success: true,
+                emailDelivery: emailResult.simulated ? "unavailable" : "failed",
+                message: emailResult.simulated
+                    ? "User blocked, but email was not sent: email provider is not configured"
+                    : `User blocked, but email delivery failed: ${emailResult.error ?? "unknown error"}`,
+            });
         }
 
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });

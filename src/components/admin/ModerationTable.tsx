@@ -56,7 +56,11 @@ export default function ModerationTable({ logs, onActionSuccess }: ModerationTab
 
             if (!res.ok) throw new Error(data.error || "Action failed");
 
-            toast.success(data.message);
+            if (data.emailDelivery && data.emailDelivery !== "sent") {
+                toast.warning(data.message);
+            } else {
+                toast.success(data.message);
+            }
             onActionSuccess();
         } catch (error: unknown) {
             toast.error(error instanceof Error ? error.message : "An error occurred");
@@ -177,8 +181,8 @@ export default function ModerationTable({ logs, onActionSuccess }: ModerationTab
                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                         <AlertDialogDescription>
                             {actionLog?.action === "warn" 
-                                ? `This will send a warning email to ${actionLog.log.userEmail} and increment their violation count. Strike ${((actionLog.log.violationCount || 0) + 1)}/3.`
-                                : `This will block ${actionLog?.log.userEmail} from accessing the platform. The duration depends on their previous blocks.`
+                                ? `This will attempt to email ${actionLog.log.userEmail} a warning and increment their violation count. Strike ${((actionLog.log.violationCount || 0) + 1)}/3.`
+                                : `This will block ${actionLog?.log.userEmail} from accessing the platform and attempt to email them a notification. The duration depends on their previous blocks.`
                             }
                         </AlertDialogDescription>
                     </AlertDialogHeader>
