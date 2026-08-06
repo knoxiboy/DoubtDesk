@@ -217,10 +217,9 @@ export const sendDailyDigest = inngest.createFunction(
           });
         }
 
-        // Send first; only delete on confirmed success.
-        // If sendDigestEmail throws, the catch lets the step fail so Inngest
-        // retries it — pending rows are intentionally NOT deleted.
-          const emailResult = await sendDigestEmail({
+        // Send first; only delete on confirmed provider acceptance.
+        // Simulated / unconfigured delivery must NOT clear the queue.
+        const emailResult = await sendDigestEmail({
           toEmail: user.email,
           subject: "[DoubtDesk] Your Daily Doubt Updates Digest",
           totalReplies: pending.length,
@@ -228,9 +227,10 @@ export const sendDailyDigest = inngest.createFunction(
           doubts: Array.from(doubtsMap.values()),
         });
 
-        if (!emailResult?.success) {
-          // Email failed — throw so the step is retried and pending rows are preserved.
-          throw new Error(`Daily digest email failed for user: ${emailResult?.error ?? "unknown error"}`);
+        if (!emailResult?.success || emailResult.simulated) {
+          throw new Error(
+            `Daily digest email failed for user: ${emailResult?.error ?? "unknown error"}`,
+          );
         }
         
         // Delete only after confirmed send.
@@ -305,17 +305,18 @@ export const sendWeeklyDigest = inngest.createFunction(
           });
         }
 
-        try {
-          await sendDigestEmail({
-            toEmail: user.email,
-            subject: "[DoubtDesk] Your Weekly Doubt Updates Digest",
-            totalReplies: pending.length,
-            totalDoubts: doubtsMap.size,
-            doubts: Array.from(doubtsMap.values()),
-          });
-        } catch (emailErr) {
-          console.error(`[sendWeeklyDigest] Email failed for ${user.email}:`, emailErr);
-          throw emailErr;
+        const emailResult = await sendDigestEmail({
+          toEmail: user.email,
+          subject: "[DoubtDesk] Your Weekly Doubt Updates Digest",
+          totalReplies: pending.length,
+          totalDoubts: doubtsMap.size,
+          doubts: Array.from(doubtsMap.values()),
+        });
+
+        if (!emailResult?.success || emailResult.simulated) {
+          throw new Error(
+            `Weekly digest email failed for user: ${emailResult?.error ?? "unknown error"}`,
+          );
         }
 
         const notificationIds = pending.map(p => p.id);

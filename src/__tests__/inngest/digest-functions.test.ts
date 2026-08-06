@@ -1,6 +1,8 @@
 import { db } from "@/configs/db";
 import { sendDigestEmail } from "@/lib/email/email";
 
+process.env.GROQ_API_KEY = process.env.GROQ_API_KEY || "mock-groq-key";
+
 // ── Mocks ─────────────────────────────────────────────────────────────────────
 
 jest.mock("@/configs/db", () => ({
@@ -15,10 +17,28 @@ jest.mock("@/lib/email/email", () => ({
   sendDigestEmail: jest.fn(),
 }));
 
+jest.mock("@/lib/video/pipeline", () => ({
+  runVideoPipeline: jest.fn(),
+}));
+
+jest.mock("@/lib/ratelimit/ratelimit", () => ({
+  emailNotificationLimiter: { limit: jest.fn() },
+  redisClient: {},
+}));
+
+jest.mock("../../app/api/inngest/ConfusionSpikeDetector", () => ({
+  detectConfusionSpikes: {},
+}));
+
+jest.mock("../../app/api/inngest/UrgentActivityDetector", () => ({
+  checkUrgentClassroomActivity: {},
+  notifyFlaggedContentHidden: {},
+}));
+
 // Mock inngest client
 jest.mock("@/inngest/client", () => ({
   inngest: {
-    createFunction: jest.fn((config, handler) => handler),
+    createFunction: jest.fn((_config, handler) => ({ fn: handler })),
   },
 }));
 
@@ -123,9 +143,8 @@ describe("sendDailyDigest — per-user step isolation", () => {
 
     // Alice succeeds, Bob throws
     mockSendDigestEmail
-      .mockResolvedValueOnce({ success: true })            // alice: ok
-      .mockResolvedValueOnce({ success: false, error: "SMTP timeout" }); // bob: failmockSendDigestEmail
-      
+      .mockResolvedValueOnce({ success: true, simulated: false })            // alice: ok
+      .mockResolvedValueOnce({ success: false, error: "SMTP timeout" }); // bob: fail
     // Import the function under test after mocks are set.
     // We simulate the Inngest function invocation directly.
     const { sendDailyDigest } = await import("@/inngest/functions");
@@ -161,7 +180,7 @@ describe("sendDailyDigest — per-user step isolation", () => {
 
     const deleteChain = { where: jest.fn().mockResolvedValue(undefined) };
     (dbMock.delete as jest.Mock).mockReturnValue(deleteChain);
-    mockSendDigestEmail.mockResolvedValue({ success: true });
+    mockSendDigestEmail.mockResolvedValue({ success: true, simulated: false });
 
     const { sendDailyDigest } = await import("@/inngest/functions");
 
@@ -174,5 +193,38 @@ describe("sendDailyDigest — per-user step isolation", () => {
     await runHandler(sendDailyDigest, step);
     // sendDigestEmail must NOT be called again.
     expect(mockSendDigestEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("retains pending rows when digest delivery is only simulated", async () => {
+    const users = [{ email: "dana@test.com" }];
+    const danaPending: PendingRow[] = [
+      { id: 4, doubtId: 40, doubtSubject: "Q4", doubtContent: "...", replyId: 400, replierName: "w@t.com", replyContent: "ans" },
+    ];
+
+    const dbMock = db as jest.Mocked<typeof db>;
+    let selectCallCount = 0;
+    (dbMock.select as jest.Mock).mockImplementation(() => {
+      selectCallCount++;
+      const chain = { from: jest.fn().mockReturnThis(), where: jest.fn().mockReturnThis(), innerJoin: jest.fn().mockReturnThis() } as Record<string, jest.Mock>;
+      if (selectCallCount === 1) chain.where = jest.fn().mockResolvedValue(users);
+      else chain.where = jest.fn().mockResolvedValue(danaPending);
+      return chain;
+    });
+
+    const deleteChain = { where: jest.fn().mockResolvedValue(undefined) };
+    (dbMock.delete as jest.Mock).mockReturnValue(deleteChain);
+    mockSendDigestEmail.mockResolvedValue({
+      success: false,
+      simulated: true,
+      error: "Email delivery unavailable: RESEND_API_KEY is not configured",
+    });
+
+    const { sendDailyDigest } = await import("@/inngest/functions");
+    const step = makeStep();
+
+    await expect(runHandler(sendDailyDigest, step)).rejects.toThrow(
+      /RESEND_API_KEY is not configured/,
+    );
+    expect(dbMock.delete).not.toHaveBeenCalled();
   });
 });

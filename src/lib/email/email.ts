@@ -474,7 +474,11 @@ export async function sendDigestEmail(params: {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey || apiKey === "re_your_actual_key_here") {
         console.log("[EMAIL SIMULATION] Skipping real delivery. Resend API Key is not configured.");
-        return { success: true, simulated: true };
+        return {
+            success: false,
+            simulated: true,
+            error: "Email delivery unavailable: RESEND_API_KEY is not configured",
+        };
     }
 
     try {
