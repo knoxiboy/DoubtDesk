@@ -7,19 +7,16 @@ CREATE TABLE IF NOT EXISTS "practice_attempts" (
     "is_correct" boolean,
     "ai_feedback" text,
     "created_at" timestamp DEFAULT now() NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS "practice_attempts_userEmail_idx" ON "practice_attempts" ("user_email");
-CREATE INDEX IF NOT EXISTS "practice_attempts_doubtId_idx" ON "practice_attempts" ("original_doubt_id");
-
+);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "practice_attempts_userEmail_idx" ON "practice_attempts" ("user_email");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "practice_attempts_doubtId_idx" ON "practice_attempts" ("original_doubt_id");--> statement-breakpoint
 DO $$ BEGIN
     ALTER TABLE "practice_attempts"
         ADD CONSTRAINT "practice_attempts_user_email_users_email_fk"
         FOREIGN KEY ("user_email") REFERENCES "users"("email")
         ON DELETE CASCADE ON UPDATE NO ACTION;
 EXCEPTION WHEN duplicate_object THEN null;
-END $$;
-
+END $$;--> statement-breakpoint
 DO $$ BEGIN
     ALTER TABLE "practice_attempts"
         ADD CONSTRAINT "practice_attempts_original_doubt_id_doubts_id_fk"

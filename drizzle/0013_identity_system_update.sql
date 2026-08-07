@@ -7,7 +7,10 @@ ALTER TABLE "likes" ADD CONSTRAINT "likes_userEmail_doubtId_unique" UNIQUE("user
 ALTER TABLE "reply_likes" DROP CONSTRAINT IF EXISTS "reply_likes_userName_replyId_unique";
 ALTER TABLE "reply_likes" ADD CONSTRAINT "reply_likes_userEmail_replyId_unique" UNIQUE("userEmail","replyId");
 
--- Clean orphaned records before adding foreign key constraints
+-- Backfill renamed userEmail values that still hold display names, then clean orphans
+UPDATE "likes" SET "userEmail" = u."email" FROM "users" u WHERE lower("likes"."userEmail") = lower(u."name") OR lower("likes"."userEmail") = lower(u."email");
+UPDATE "reply_likes" SET "userEmail" = u."email" FROM "users" u WHERE lower("reply_likes"."userEmail") = lower(u."name") OR lower("reply_likes"."userEmail") = lower(u."email");
+
 DELETE FROM "likes" WHERE "userEmail" NOT IN (SELECT "email" FROM "users");
 DELETE FROM "reply_likes" WHERE "userEmail" NOT IN (SELECT "email" FROM "users");
 
