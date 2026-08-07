@@ -25,7 +25,11 @@ export async function GET(req: Request) {
         const [totalCountResult] = await db
             .select({ total: count() })
             .from(bookmarksTable)
-            .where(eq(bookmarksTable.userEmail, email));
+            .innerJoin(doubtsTable, eq(bookmarksTable.doubtId, doubtsTable.id))
+            .where(and(
+                eq(bookmarksTable.userEmail, email),
+                isNull(doubtsTable.deletedAt),
+            ));
         const totalBookmarks = totalCountResult?.total || 0;
 
         if (totalBookmarks === 0) {
@@ -42,7 +46,11 @@ export async function GET(req: Request) {
                 doubtId: bookmarksTable.doubtId,
             })
             .from(bookmarksTable)
-            .where(eq(bookmarksTable.userEmail, email))
+            .innerJoin(doubtsTable, eq(bookmarksTable.doubtId, doubtsTable.id))
+            .where(and(
+                eq(bookmarksTable.userEmail, email),
+                isNull(doubtsTable.deletedAt),
+            ))
             .orderBy(desc(bookmarksTable.createdAt), desc(bookmarksTable.id))
             .limit(limit)
             .offset(offset);
