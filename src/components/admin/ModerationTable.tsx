@@ -56,7 +56,7 @@ export default function ModerationTable({ logs, onActionSuccess }: ModerationTab
 
             if (!res.ok) throw new Error(data.error || "Action failed");
 
-            if (data.emailDelivery && data.emailDelivery !== "sent") {
+            if (data.emailDelivery && data.emailDelivery !== "accepted" && data.emailDelivery !== "sent") {
                 toast.warning(data.message);
             } else {
                 toast.success(data.message);

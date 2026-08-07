@@ -70,11 +70,18 @@ export type EmailSendResult = {
     success: boolean;
     simulated?: boolean;
     error?: string;
+    /** Resend message id when the provider accepted the send request (not final delivery). */
+    providerMessageId?: string;
 };
 
 function isResendConfigured() {
     const apiKey = process.env.RESEND_API_KEY;
     return Boolean(apiKey && apiKey !== "re_your_actual_key_here");
+}
+
+function getResendFromAddress() {
+    const from = process.env.RESEND_FROM_EMAIL?.trim();
+    return from || null;
 }
 
 function escapeHtml(value: string) {
@@ -103,6 +110,16 @@ async function sendResendEmail(params: {
         };
     }
 
+    const from = getResendFromAddress();
+    if (!from) {
+        console.log(`[EMAIL SIMULATION] Skipping real delivery for ${logLabel}. RESEND_FROM_EMAIL is not configured.`);
+        return {
+            success: false,
+            simulated: true,
+            error: "Email delivery unavailable: RESEND_FROM_EMAIL is not configured",
+        };
+    }
+
     try {
         const res = await fetch("https://api.resend.com/emails", {
             method: "POST",
@@ -111,7 +128,7 @@ async function sendResendEmail(params: {
                 Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
             },
             body: JSON.stringify({
-                from: "DoubtDesk Safety <onboarding@resend.dev>",
+                from,
                 to: [toEmail],
                 subject,
                 html,
@@ -120,15 +137,19 @@ async function sendResendEmail(params: {
         });
 
         if (res.ok) {
-            console.log(`[EMAIL SUCCESS] ${logLabel} delivered to: ${toEmail}`);
-            return { success: true, simulated: false };
+            const payload = await res.json().catch(() => ({} as { id?: string }));
+            const providerMessageId =
+                typeof payload?.id === "string" ? payload.id : undefined;
+            // res.ok means Resend accepted the request; delivery is confirmed via webhooks.
+            console.log(`[EMAIL SUCCESS] ${logLabel} accepted by Resend`);
+            return { success: true, simulated: false, providerMessageId };
         }
 
         const errText = await res.text();
-        console.error(`[EMAIL ERROR] Resend API responded with status ${res.status}:`, errText);
+        console.error(`[EMAIL ERROR] Resend API responded with status ${res.status}`);
         return { success: false, error: errText };
     } catch (error: unknown) {
-        console.error(`[EMAIL ERROR] Failed to send ${logLabel} via Resend:`, error);
+        console.error(`[EMAIL ERROR] Failed to send ${logLabel} via Resend`);
         return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
 }
@@ -145,7 +166,7 @@ export async function sendWarningEmail(
       <p>Further violations will result in an automatic account block.</p>
     `;
 
-    console.log(`[EMAIL] Preparing warning email to: ${email} (${strikes}/3 strikes, reason: ${reason})`);
+    console.log(`[EMAIL] Preparing warning email (${strikes}/3 strikes)`);
     return sendResendEmail({
         toEmail: email,
         subject,
@@ -172,7 +193,7 @@ export async function sendBlockEmail(
       <p>Your access will be restored on <strong>${unlockDate.toDateString()}</strong>.</p>
     `;
 
-    console.log(`[EMAIL] Preparing block email to: ${email} (${durationDays} days, block #${totalBlocks})`);
+    console.log(`[EMAIL] Preparing block email (durationDays=${durationDays}, blockCount=${totalBlocks})`);
     return sendResendEmail({
         toEmail: email,
         subject,
