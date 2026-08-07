@@ -107,7 +107,7 @@ describe("sendDailyDigest — per-user step isolation", () => {
   });
 
   it("deletes pending rows only for users whose email succeeded", async () => {
-    // Two users: alice succeeds, bob's email throws.
+    // Two users: alice succeeds, bob's email fails (retained, does not block batch).
     const users = [{ email: "alice@test.com" }, { email: "bob@test.com" }];
 
     const alicePending: PendingRow[] = [
@@ -141,7 +141,7 @@ describe("sendDailyDigest — per-user step isolation", () => {
     const deleteChain = { where: jest.fn().mockResolvedValue(undefined) };
     (dbMock.delete as jest.Mock).mockReturnValue(deleteChain);
 
-    // Alice succeeds, Bob throws
+    // Alice succeeds, Bob fails permanently — step must not throw so batch continues.
     mockSendDigestEmail
       .mockResolvedValueOnce({ success: true, simulated: false })            // alice: ok
       .mockResolvedValueOnce({ success: false, error: "SMTP timeout" }); // bob: fail
@@ -150,14 +150,17 @@ describe("sendDailyDigest — per-user step isolation", () => {
     const { sendDailyDigest } = await import("@/inngest/functions");
 
     const step = makeStep();
-    await expect(runHandler(sendDailyDigest, step)).rejects.toThrow("SMTP timeout");
+    await expect(runHandler(sendDailyDigest, step)).resolves.toEqual({
+      message: "Successfully sent daily digest to 1 users.",
+    });
 
     // Alice's row MUST have been deleted (email succeeded).
     expect(dbMock.delete).toHaveBeenCalledTimes(1);
     expect(deleteChain.where).toHaveBeenCalledTimes(1);
 
-    // Bob's row must NOT have been deleted (email failed, step threw).
-    // The delete call count would be 2 if bob's rows were removed — confirm it's 1.
+    // Bob's row must NOT have been deleted (email failed; pending retained).
+    // Both users were processed (alice + bob send attempts).
+    expect(mockSendDigestEmail).toHaveBeenCalledTimes(2);
     const deleteCalls = (dbMock.delete as jest.Mock).mock.calls.length;
     expect(deleteCalls).toBe(1);
   });
@@ -222,9 +225,9 @@ describe("sendDailyDigest — per-user step isolation", () => {
     const { sendDailyDigest } = await import("@/inngest/functions");
     const step = makeStep();
 
-    await expect(runHandler(sendDailyDigest, step)).rejects.toThrow(
-      /RESEND_API_KEY is not configured/,
-    );
+    await expect(runHandler(sendDailyDigest, step)).resolves.toEqual({
+      message: "Successfully sent daily digest to 0 users.",
+    });
     expect(dbMock.delete).not.toHaveBeenCalled();
   });
 });
