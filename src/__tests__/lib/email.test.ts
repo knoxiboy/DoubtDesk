@@ -28,51 +28,73 @@ describe('Email Helper Functions', () => {
 
     it('should report unavailable delivery when Resend is not configured for warnings', async () => {
         delete process.env.RESEND_API_KEY;
+        delete process.env.RESEND_FROM_EMAIL;
         const result = await sendWarningEmail('test@example.com', 'Inappropriate language', 2);
         expect(result.success).toBe(false);
         expect(result.simulated).toBe(true);
         expect(result.error).toMatch(/RESEND_API_KEY/);
         expect(consoleSpy).toHaveBeenCalledWith(
-            expect.stringContaining('test@example.com')
+            expect.stringContaining('Preparing warning email')
         );
         expect(consoleSpy).toHaveBeenCalledWith(
             expect.stringContaining('2/3 strikes')
+        );
+        expect(consoleSpy).not.toHaveBeenCalledWith(
+            expect.stringContaining('test@example.com')
+        );
+        expect(consoleSpy).not.toHaveBeenCalledWith(
+            expect.stringContaining('Inappropriate language')
         );
     });
 
     it('should report unavailable delivery when Resend is not configured for blocks', async () => {
         delete process.env.RESEND_API_KEY;
+        delete process.env.RESEND_FROM_EMAIL;
         const result = await sendBlockEmail('student@college.edu', 7, 2);
         expect(result.success).toBe(false);
         expect(result.simulated).toBe(true);
         expect(result.error).toMatch(/RESEND_API_KEY/);
         expect(consoleSpy).toHaveBeenCalledWith(
-            expect.stringContaining('student@college.edu')
+            expect.stringContaining('Preparing block email')
         );
         expect(consoleSpy).toHaveBeenCalledWith(
-            expect.stringContaining('block #2')
+            expect.stringContaining('blockCount=2')
+        );
+        expect(consoleSpy).not.toHaveBeenCalledWith(
+            expect.stringContaining('student@college.edu')
         );
     });
 
-    it('should deliver warning emails through Resend when configured', async () => {
+    it('should accept warning emails through Resend when configured', async () => {
         process.env.RESEND_API_KEY = 're_test_key';
+        process.env.RESEND_FROM_EMAIL = 'DoubtDesk Safety <safety@example.com>';
         const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
             ok: true,
+            json: async () => ({ id: 're_msg_123' }),
             text: async () => '',
         } as Response);
 
         const result = await sendWarningEmail('test@example.com', 'Spam', 1);
 
-        expect(result).toEqual({ success: true, simulated: false });
+        expect(result).toEqual({
+            success: true,
+            simulated: false,
+            providerMessageId: 're_msg_123',
+        });
         expect(fetchSpy).toHaveBeenCalledWith(
             'https://api.resend.com/emails',
             expect.objectContaining({
                 method: 'POST',
+                body: expect.stringContaining('safety@example.com'),
             }),
+        );
+        expect(consoleSpy).toHaveBeenCalledWith(
+            expect.stringContaining('accepted by Resend')
         );
 
         fetchSpy.mockRestore();
         delete process.env.RESEND_API_KEY;
+        delete process.env.RESEND_FROM_EMAIL;
     });
 
     it('should generate and verify signed unsubscribe tokens', () => {
