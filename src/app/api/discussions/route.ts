@@ -7,7 +7,9 @@ import { db } from "@/configs/db";
 import { discussionThreadsTable, usersTable } from "@/configs/schema";
 import { checkUserBlock } from "@/lib/auth/auth-utils";
 import { buildErrorResponse, errorResponse } from "@/lib/errors/error-handler";
-import { limitRequestBodySize } from "@/lib/validations/validate";
+import { parseAndValidateRequest } from "@/lib/validations/validate";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
+import { generalLimiter } from "@/lib/ratelimit/ratelimit";
 
 const createThreadSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(255),
@@ -54,8 +56,11 @@ export async function POST(req: Request) {
       return errorResponse("Unauthorized", 401);
     }
 
-    const { isBlocked, errorResponse: blockErrorResponse } = await checkUserBlock(email);
-    if (isBlocked) return blockErrorResponse;
+    const { errorResponse: blockErrorResponse } = await checkUserBlock(email);
+    if (blockErrorResponse) return blockErrorResponse;
+
+    const rateLimitResponse = await enforceApiRateLimit(generalLimiter, email, "general");
+    if (rateLimitResponse) return rateLimitResponse;
 
     const [dbUser] = await db
       .select()
@@ -66,20 +71,13 @@ export async function POST(req: Request) {
       return errorResponse("User profile not found", 403);
     }
 
-    const sizeError = await limitRequestBodySize(req);
-    if (sizeError) return sizeError;
+    const { errorResponse: validationResponse, data } = await parseAndValidateRequest(
+      req,
+      createThreadSchema,
+    );
+    if (validationResponse) return validationResponse;
 
-    const jsonBody = await req.json();
-    const parsed = createThreadSchema.safeParse(jsonBody);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.errors[0]?.message || "Invalid input" },
-        { status: 400 },
-      );
-    }
-
-    const { title, description, category, anonymous } = parsed.data;
+    const { title, description, category, anonymous } = data;
     const authorName =
       user.fullName?.trim() ||
       user.firstName?.trim() ||

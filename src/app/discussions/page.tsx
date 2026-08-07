@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 
 import {
@@ -18,6 +18,12 @@ import {
 import CreateThreadModal from "@/app/discussions/CreateThreadModal";
 import DiscussionModal from "@/app/discussions/DiscussionModal";
 
+const DISCUSSIONS_API_PATH = "/api/discussions";
+const TIMESTAMP_FALLBACK = "Just now";
+const LOAD_ERROR_MESSAGE = "Failed to load discussions";
+const LOADING_MESSAGE = "Loading discussions...";
+const EMPTY_MESSAGE = "No discussions yet. Create the first thread to get started.";
+
 interface Thread {
   id: number;
   title: string;
@@ -32,11 +38,11 @@ interface Thread {
 
 function formatLastReply(updatedAt?: string, createdAt?: string) {
   const raw = updatedAt || createdAt;
-  if (!raw) return "Just now";
+  if (!raw) return TIMESTAMP_FALLBACK;
   try {
     return formatDistanceToNow(new Date(raw), { addSuffix: true });
   } catch {
-    return "Just now";
+    return TIMESTAMP_FALLBACK;
   }
 }
 
@@ -83,6 +89,7 @@ export default function DiscussionsPage() {
   const [threadList, setThreadList] = useState<Thread[]>([]);
   const [loadingThreads, setLoadingThreads] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const fetchGenerationRef = useRef(0);
 
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -93,21 +100,21 @@ export default function DiscussionsPage() {
     useState(false);
 
   useEffect(() => {
-    let cancelled = false;
+    const generation = ++fetchGenerationRef.current;
 
     const loadThreads = async () => {
       setLoadingThreads(true);
       setLoadError(null);
 
       try {
-        const res = await fetch("/api/discussions");
+        const res = await fetch(DISCUSSIONS_API_PATH);
         const json = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          throw new Error(json.error || "Failed to load discussions");
+          throw new Error(json.error || LOAD_ERROR_MESSAGE);
         }
 
-        if (cancelled) return;
+        if (fetchGenerationRef.current !== generation) return;
 
         const mapped: Thread[] = (json.data || []).map((thread: any) => ({
           id: thread.id,
@@ -123,21 +130,19 @@ export default function DiscussionsPage() {
 
         setThreadList(mapped);
       } catch (err) {
-        if (!cancelled) {
+        if (fetchGenerationRef.current === generation) {
           setLoadError(
-            err instanceof Error ? err.message : "Failed to load discussions",
+            err instanceof Error ? err.message : LOAD_ERROR_MESSAGE,
           );
         }
       } finally {
-        if (!cancelled) setLoadingThreads(false);
+        if (fetchGenerationRef.current === generation) {
+          setLoadingThreads(false);
+        }
       }
     };
 
     loadThreads();
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
   const scrollToDiscussions = () => {
@@ -147,6 +152,8 @@ export default function DiscussionsPage() {
   };
 
   const handleCreateThread = (thread: Thread) => {
+    // Invalidate any in-flight GET so it cannot overwrite the optimistic prepend.
+    fetchGenerationRef.current += 1;
     setThreadList((prev) => [thread, ...prev]);
   };
 
@@ -299,8 +306,12 @@ export default function DiscussionsPage() {
           <div className="grid gap-5">
 
             {loadingThreads && (
-              <p className="text-sm text-slate-500 dark:text-zinc-500">
-                Loading discussions...
+              <p
+                className="text-sm text-slate-500 dark:text-zinc-500"
+                role="status"
+                aria-live="polite"
+              >
+                {LOADING_MESSAGE}
               </p>
             )}
 
@@ -312,7 +323,7 @@ export default function DiscussionsPage() {
 
             {!loadingThreads && !loadError && threadList.length === 0 && (
               <p className="text-sm text-slate-500 dark:text-zinc-500">
-                No discussions yet. Create the first thread to get started.
+                {EMPTY_MESSAGE}
               </p>
             )}
 

@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+
+const DISCUSSIONS_API_PATH = "/api/discussions";
+const CREATE_ERROR_MESSAGE = "Failed to create discussion";
+const CREATING_LABEL = "Creating...";
+const TIMESTAMP_FALLBACK = "Just now";
+const TITLE_ID = "create-thread-title";
 
 interface Thread {
   id: number;
@@ -27,18 +33,36 @@ export default function CreateThreadModal({
   onClose,
   onCreate,
 }: Props) {
-  const { isSignedIn } = useUser();
+  const { isLoaded, isSignedIn } = useUser();
   const router = useRouter();
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [anonymous, setAnonymous] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!open) return;
+
+    dialogRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const handleCreate = async () => {
     if (!title.trim() || submitting) return;
+
+    if (!isLoaded) return;
 
     if (!isSignedIn) {
       router.push("/sign-in");
@@ -49,7 +73,7 @@ export default function CreateThreadModal({
     setError(null);
 
     try {
-      const res = await fetch("/api/discussions", {
+      const res = await fetch(DISCUSSIONS_API_PATH, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -62,7 +86,7 @@ export default function CreateThreadModal({
       const json = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(json.error || "Failed to create discussion");
+        setError(json.error || CREATE_ERROR_MESSAGE);
         return;
       }
 
@@ -74,7 +98,7 @@ export default function CreateThreadModal({
         author: created.author,
         category: created.category,
         replies: created.replies ?? 0,
-        lastReply: "Just now",
+        lastReply: TIMESTAMP_FALLBACK,
         createdAt: created.createdAt,
         updatedAt: created.updatedAt,
       });
@@ -84,7 +108,7 @@ export default function CreateThreadModal({
       setAnonymous(false);
       onClose();
     } catch {
-      setError("Failed to create discussion");
+      setError(CREATE_ERROR_MESSAGE);
     } finally {
       setSubmitting(false);
     }
@@ -94,6 +118,11 @@ export default function CreateThreadModal({
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
 
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={TITLE_ID}
+        tabIndex={-1}
         className="
         w-full max-w-2xl rounded-3xl
         border border-slate-200 dark:border-zinc-800
@@ -101,12 +130,16 @@ export default function CreateThreadModal({
         p-8 space-y-6
         shadow-2xl
         animate-in fade-in zoom-in-95 duration-300
+        outline-none
         "
       >
 
         <div className="flex items-center justify-between">
 
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+          <h2
+            id={TITLE_ID}
+            className="text-2xl font-black text-slate-900 dark:text-white"
+          >
             Create Thread
           </h2>
 
@@ -201,7 +234,7 @@ export default function CreateThreadModal({
             disabled:opacity-60 disabled:pointer-events-none
             "
           >
-            {submitting ? "Creating..." : "Create Discussion"}
+            {submitting ? CREATING_LABEL : "Create Discussion"}
           </button>
 
           <button
