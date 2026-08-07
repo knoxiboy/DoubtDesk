@@ -77,6 +77,15 @@ function isResendConfigured() {
     return Boolean(apiKey && apiKey !== "re_your_actual_key_here");
 }
 
+function escapeHtml(value: string) {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 async function sendResendEmail(params: {
     toEmail: string;
     subject: string;
@@ -107,6 +116,7 @@ async function sendResendEmail(params: {
                 subject,
                 html,
             }),
+            signal: AbortSignal.timeout(10000),
         });
 
         if (res.ok) {
@@ -130,7 +140,7 @@ export async function sendWarningEmail(
 ): Promise<EmailSendResult> {
     const subject = "Safety Warning - DoubtDesk";
     const html = `
-      <p>Your post was flagged for: <strong>${reason}</strong>.</p>
+      <p>Your post was flagged for: <strong>${escapeHtml(reason)}</strong>.</p>
       <p>This is strike <strong>${strikes}</strong> of 3.</p>
       <p>Further violations will result in an automatic account block.</p>
     `;
