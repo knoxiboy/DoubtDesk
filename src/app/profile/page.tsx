@@ -16,6 +16,8 @@ interface DbUser {
   name?: string | null;
   email?: string;
   karmaScore?: number | null;
+  helpfulVotes?: number | null;
+  unlockedBadges?: unknown;
   createdAt?: string | Date | null;
   role?: string | null;
   university?: string | null;
@@ -47,6 +49,8 @@ export default async function ProfilePage() {
   let totalReplies = 0;
   let totalRooms = 0;
   let karmaScore = 0;
+  let helpfulVotes = 0;
+  let unlockedBadges: string[] = [];
   let dbUser: DbUser | null = null;
   let databaseErrorOccurred = false;
 
@@ -62,6 +66,8 @@ export default async function ProfilePage() {
       dbUser = userResult[0];
       // Enforce the correct karmaScore parameter mapping to clear the database validation flag
       karmaScore = dbUser.karmaScore || 0;
+      helpfulVotes = dbUser.helpfulVotes || 0;
+      unlockedBadges = Array.isArray(dbUser.unlockedBadges) ? dbUser.unlockedBadges as string[] : [];
     }
 
     // Run parallel aggregations 
@@ -126,6 +132,11 @@ export default async function ProfilePage() {
             {displayUser.year && (
               <Badge variant="outline" className="border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400">Year {displayUser.year}</Badge>
             )}
+            {unlockedBadges.map((badge, i) => (
+              <Badge key={i} className="bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700/50 flex items-center gap-1 shadow-sm">
+                🏅 {badge}
+              </Badge>
+            ))}
           </div>
         </div>
 
@@ -168,7 +179,7 @@ export default async function ProfilePage() {
         <Card className="bg-white dark:bg-zinc-950/20 border-slate-200 dark:border-zinc-900 shadow-sm">
           <CardContent className="flex flex-col items-center justify-center p-6 text-center h-full">
             <ThumbsUp className="w-7 h-7 text-emerald-500 mb-2" aria-hidden="true" />
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{karmaScore}</h3>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{helpfulVotes}</h3>
             <p className="text-xs font-semibold text-slate-500 dark:text-zinc-500 uppercase tracking-wider mt-0.5">Helpful Votes</p>
           </CardContent>
         </Card>
