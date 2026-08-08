@@ -20,6 +20,12 @@ global.fetch = jest.fn(() =>
     } as any)
 ) as jest.Mock;
 
+global.EventSource = jest.fn(() => ({
+    onmessage: null,
+    onerror: null,
+    close: jest.fn(),
+})) as unknown as typeof EventSource;
+
 const mockDoubt = {
     id: 1,
     author: 'Student_7F3Q2',
@@ -55,5 +61,20 @@ describe('DoubtCard Component', () => {
         const likeButton = screen.getByRole('button', { name: /like this doubt/i });
         fireEvent.click(likeButton);
         await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    });
+
+    it('shows the Mark Solved button to the doubt owner', () => {
+        render(<DoubtCard doubt={{ ...mockDoubt, isOwnPost: true }} />);
+        expect(screen.getByRole('button', { name: /mark solved/i })).toBeInTheDocument();
+    });
+
+    it('hides the Mark Solved button from teachers when no solution reply exists', () => {
+        render(<DoubtCard doubt={mockDoubt} role="teacher" />);
+        expect(screen.queryByRole('button', { name: /mark solved/i })).not.toBeInTheDocument();
+    });
+
+    it('shows the Mark Solved button to teachers when a solution reply exists', () => {
+        render(<DoubtCard doubt={{ ...mockDoubt, hasSolutionReply: true }} role="teacher" />);
+        expect(screen.getByRole('button', { name: /mark solved/i })).toBeInTheDocument();
     });
 });

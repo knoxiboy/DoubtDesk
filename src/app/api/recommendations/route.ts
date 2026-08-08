@@ -122,12 +122,16 @@ export async function GET() {
                 });
 
                 return {
-                    ...classroom,
+                    id: classroom.id,
+                    name: classroom.name,
+                    university: classroom.university,
+                    year: classroom.year,
+                    pedagogyLevel: classroom.pedagogyLevel,
+                    targetGradeLevel: classroom.targetGradeLevel,
+                    createdAt: classroom.createdAt,
                     recommendationScore: score,
-                    memberCount:
-                        memberCountMap[classroom.id] || 0,
-                    activityCount:
-                        activityCountMap[classroom.id] || 0,
+                    memberCount: memberCountMap[classroom.id] || 0,
+                    activityCount: activityCountMap[classroom.id] || 0,
                 };
             })
             .sort(
