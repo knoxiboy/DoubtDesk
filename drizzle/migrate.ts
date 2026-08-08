@@ -119,6 +119,22 @@ export async function acquireMigrationLock(db: DbClient, holder: string) {
   }
 }
 
+export async function renewMigrationLock(db: DbClient, holder: string) {
+  const result = await db.execute(sql`
+    UPDATE ${sql.identifier(MIGRATIONS_SCHEMA)}.${sql.identifier(LOCK_TABLE)}
+    SET acquired_at = now()
+    WHERE id = ${LOCK_ID} AND holder = ${holder}
+    RETURNING holder
+  `);
+
+  const rows = extractRows<{ holder: string }>(result);
+  if (!rows.some((row) => row.holder === holder)) {
+    throw new Error(
+      "Lost migration lock ownership while migrations were still running.",
+    );
+  }
+}
+
 export async function releaseMigrationLock(db: DbClient, holder: string) {
   await db.execute(sql`
     DELETE FROM ${sql.identifier(MIGRATIONS_SCHEMA)}.${sql.identifier(LOCK_TABLE)}
@@ -151,14 +167,28 @@ export async function runMigrations(options?: {
 
   await acquireMigrationLock(db, holder);
 
+  // Renew the lease while migrations run so a healthy holder cannot be stolen
+  // solely because LOCK_TTL_MINUTES elapsed.
+  const renewEveryMs = Math.floor((LOCK_TTL_MINUTES * 60 * 1000) / 3);
+  let renewFailed: Error | undefined;
+  const renewTimer = setInterval(() => {
+    void renewMigrationLock(db, holder).catch((error) => {
+      renewFailed =
+        error instanceof Error ? error : new Error(String(error));
+    });
+  }, renewEveryMs);
+  renewTimer.unref?.();
+
   try {
     console.log(
       `Running ${migrations.length} tracked migration(s) from ${migrationsFolder}...`,
     );
     await migrate(db, { migrationsFolder });
+    if (renewFailed) throw renewFailed;
     console.log("Migration complete!");
     return { total: migrations.length, tags: migrations.map((m) => m.tag) };
   } finally {
+    clearInterval(renewTimer);
     await releaseMigrationLock(db, holder).catch((error) => {
       console.error("Failed to release migration lock:", error);
     });
