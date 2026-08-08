@@ -1,6 +1,8 @@
 import { GET } from "@/app/api/bookmarks/route";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
+import { bookmarksTable } from "@/configs/schema";
+import { desc } from "drizzle-orm";
 
 jest.mock("@clerk/nextjs/server", () => ({
   currentUser: jest.fn(),
@@ -18,16 +20,18 @@ jest.mock("@/lib/errors/error-handler", () => ({
 const orderByMock = jest.fn();
 
 function createCountChain(total: number) {
-  return {
-    from: jest.fn().mockReturnValue({
-      where: jest.fn().mockResolvedValue([{ total }]),
-    }),
+  const chain = {
+    from: jest.fn().mockReturnThis(),
+    innerJoin: jest.fn().mockReturnThis(),
+    where: jest.fn().mockResolvedValue([{ total }]),
   };
+  return chain;
 }
 
 function createBookmarkPageChain(rows: Array<{ id: number; doubtId: number }>) {
   const chain = {
     from: jest.fn().mockReturnThis(),
+    innerJoin: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     orderBy: orderByMock.mockReturnThis(),
     limit: jest.fn().mockReturnThis(),
@@ -99,7 +103,10 @@ describe("Bookmarks API stable pagination", () => {
     const json = await res.json();
 
     expect(res.status).toBe(200);
-    expect(orderByMock).toHaveBeenCalled();
+    expect(orderByMock).toHaveBeenCalledWith(
+      desc(bookmarksTable.createdAt),
+      desc(bookmarksTable.id),
+    );
     expect(json.data.map((d: { id: number }) => d.id)).toEqual([3, 2]);
     expect(json.pagination).toEqual({ page: 1, limit: 2, total: 2 });
   });

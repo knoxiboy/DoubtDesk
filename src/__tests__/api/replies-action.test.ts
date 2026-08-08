@@ -30,6 +30,7 @@ jest.mock('@/configs/db', () => ({
                     })),
                 })),
             })),
+            transaction: jest.fn().mockImplementation(async (callback) => callback(db)),
         };
 
         (globalThis as any).__repliesActionDbMock = db;

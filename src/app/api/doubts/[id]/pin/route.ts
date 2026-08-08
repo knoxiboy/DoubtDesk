@@ -4,7 +4,7 @@ import {
     classroomsTable,
     membershipsTable,
     } from "@/configs/schema";
-import { and, eq, count, isNull } from "drizzle-orm";
+import { and, eq, count, isNull, sql } from "drizzle-orm";
 import { canTeach } from "@/lib/auth/membership-guard";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
@@ -45,19 +45,42 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             );
         }
             
-        // Check pin count
-        const [pinCount] = await db.select({ value: count() })
-            .from(doubtsTable)
-            .where(and(eq(doubtsTable.classroomId, doubt.classroomId), eq(doubtsTable.isPinned, true)));
+        // Check pin count and pin the doubt atomically. Locking the classroom
+        // row (SELECT ... FOR UPDATE) serializes concurrent pin requests for
+        // the same classroom, preventing a TOCTOU race where two requests both
+        // read a count below 3 and both proceed to exceed the 3-pin limit.
+        const result = await db.transaction(async (tx) => {
+            const locked = await tx.execute(
+                sql`SELECT ${classroomsTable.id} FROM ${classroomsTable} WHERE ${classroomsTable.id} = ${doubt.classroomId} FOR UPDATE`
+            );
 
-        if (pinCount.value >= 3) {
-            return NextResponse.json({ error: "Maximum of 3 pinned doubts allowed per classroom" }, { status: 400 });
+            if (!locked.rows.length) {
+                return null;
+            }
+
+            const [pinCount] = await tx.select({ value: count() })
+                .from(doubtsTable)
+                .where(and(eq(doubtsTable.classroomId, doubt.classroomId), eq(doubtsTable.isPinned, true)));
+
+            if (pinCount.value >= 3) {
+                return { error: "Maximum of 3 pinned doubts allowed per classroom", status: 400 };
+            }
+
+            const updated = await tx.update(doubtsTable)
+                .set({ isPinned: true })
+                .where(eq(doubtsTable.id, doubtId))
+                .returning();
+
+            return { updated };
+        });
+
+        if (!result) {
+            return NextResponse.json({ error: "Classroom not found" }, { status: 404 });
         }
 
-        const updated = await db.update(doubtsTable)
-            .set({ isPinned: true })
-            .where(eq(doubtsTable.id, doubtId))
-            .returning();
+        if ('error' in result) {
+            return NextResponse.json({ error: result.error }, { status: result.status });
+        }
 
         void auditLog({
             actorEmail: email,
@@ -69,7 +92,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             },
         });
 
-        return NextResponse.json(updated[0]);
+        return NextResponse.json(result.updated[0]);
     } catch (error) {
         console.error("Error pinning doubt:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

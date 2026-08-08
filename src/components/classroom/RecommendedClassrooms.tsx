@@ -8,8 +8,9 @@ type Classroom = {
     name: string;
     university: string;
     year: string;
-    inviteCode: string;
-    teacherEmail: string;
+    pedagogyLevel: string;
+    targetGradeLevel: number;
+    createdAt: string;
     recommendationScore: number;
     memberCount: number;
     activityCount: number;
@@ -25,7 +26,7 @@ const UI_TEXT = {
     RETRY_RECOMMENDATIONS_LABEL: "Retry loading recommendations",
 } as const;
 
-export default function RecommendedClassrooms({ onJoin }: { onJoin?: (inviteCode: string) => void }) {
+export default function RecommendedClassrooms({ onJoin }: { onJoin?: (classroomId: number) => void }) {
     const [classrooms, setClassrooms] = useState<Classroom[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -171,7 +172,7 @@ export default function RecommendedClassrooms({ onJoin }: { onJoin?: (inviteCode
                             </div>
 
                             <button 
-                                onClick={() => onJoin?.(classroom.inviteCode)}
+                                onClick={() => onJoin?.(classroom.id)}
                                 className="rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm text-white font-bold transition duration-300 shadow-md shadow-blue-600/10 active:scale-[0.98]"
                             >
                                 Join
