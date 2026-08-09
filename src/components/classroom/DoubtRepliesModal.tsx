@@ -40,6 +40,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [hasMore, setHasMore] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
+    const currentDoubtIdRef = useRef(doubt.id);
     const [chatText, setChatText] = useState("");
     const [isPosting, setIsPosting] = useState(false);
     const [showSolutionForm, setShowSolutionForm] = useState(false);
@@ -84,7 +85,6 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 const { getPendingReplies } = await import("@/lib/offline/syncQueue");
                 const pending = await getPendingReplies(doubt.id);
                 setPendingReplies(pending);
-                await fetchReplies();
             } catch (err) {
                 console.error("Failed to load pending replies:", err);
                 setPendingRepliesError(err);
@@ -123,7 +123,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const fetchReplies = async () => {
         try {
             setIsLoading(true);
-            setReplies([]);
+            currentDoubtIdRef.current = doubt.id;
             setNextCursor(null);
             setHasMore(false);
 
@@ -159,6 +159,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
         if (loadingMore || !hasMore) return;
         try {
             setLoadingMore(true);
+            const requestDoubtId = doubt.id;
             const params = new URLSearchParams({ doubtId: String(doubt.id) });
             params.set("limit", "20");
             if (nextCursor) params.set("cursor", nextCursor);
@@ -177,7 +178,11 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                 toast.error("Failed to load more replies.");
                 return;
             }
-            setReplies(prev => [...prev, ...json.replies]);
+            if (currentDoubtIdRef.current !== requestDoubtId) return;
+            setReplies(prev => {
+                const existingIds = new Set(prev.map(r => r.id));
+                return [...prev, ...json.replies.filter((r: Reply) => !existingIds.has(r.id))];
+            });
             setNextCursor(json.nextCursor ?? null);
             setHasMore(json.hasMore);
         } catch (error) {
@@ -781,7 +786,12 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                         if (isPendingA !== isPendingB) {
                                             return isPendingA - isPendingB;
                                         }
-                                        return String(a.id).localeCompare(String(b.id));
+                                        const aId = a.id;
+                                        const bId = b.id;
+                                        if (typeof aId === "number" && typeof bId === "number") {
+                                            return aId - bId;
+                                        }
+                                        return String(aId).localeCompare(String(bId));
                                     });
                                     const filteredReplies = activeTab === 'all'
                                         ? allReplies
