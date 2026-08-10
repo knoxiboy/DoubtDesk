@@ -6,6 +6,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/configs/db";
 import { discussionThreadsTable, usersTable } from "@/configs/schema";
 import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { moderateContent, handleModerationViolation } from "@/lib/moderation/moderation";
 import { buildErrorResponse, errorResponse } from "@/lib/errors/error-handler";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
@@ -83,6 +84,15 @@ export async function POST(req: Request) {
       user.firstName?.trim() ||
       dbUser.name ||
       "Student";
+
+    const contentToModerate = [title, description].filter(Boolean).join("\n");
+    if (contentToModerate) {
+      const moderation = await moderateContent(contentToModerate);
+      const violationError = await handleModerationViolation(email, contentToModerate, moderation);
+      if (violationError) {
+        return errorResponse(violationError, 400);
+      }
+    }
 
     const [created] = await db
       .insert(discussionThreadsTable)
