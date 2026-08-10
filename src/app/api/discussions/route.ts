@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, count } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 
 import { db } from "@/configs/db";
@@ -10,6 +10,7 @@ import { buildErrorResponse, errorResponse } from "@/lib/errors/error-handler";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
 import { generalLimiter } from "@/lib/ratelimit/ratelimit";
+import { parsePositiveInt } from "@/lib/utils/utils";
 
 const createThreadSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(255),
@@ -31,15 +32,40 @@ function toPublicThread(thread: typeof discussionThreadsTable.$inferSelect) {
   };
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const limitStr = searchParams.get("limit");
+    const offsetStr = searchParams.get("offset");
+    const pageStr = searchParams.get("page");
+    const limit = parsePositiveInt(limitStr, 20, 100);
+    const offset = offsetStr
+      ? parsePositiveInt(offsetStr, 0)
+      : pageStr
+        ? (parsePositiveInt(pageStr, 1) - 1) * limit
+        : 0;
+    const page = Math.floor(offset / limit) + 1;
+
+    const [totalCountRow] = await db
+      .select({ count: count() })
+      .from(discussionThreadsTable);
+    const totalCount = totalCountRow?.count ?? 0;
+
     const threads = await db
       .select()
       .from(discussionThreadsTable)
-      .orderBy(desc(discussionThreadsTable.createdAt));
+      .orderBy(desc(discussionThreadsTable.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const hasMore = offset + threads.length < totalCount;
 
     return NextResponse.json({
       data: threads.map(toPublicThread),
+      hasMore,
+      totalCount,
+      page,
+      limit,
     });
   } catch (error) {
     const { status, body } = buildErrorResponse(error);
