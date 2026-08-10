@@ -8,6 +8,7 @@ import { doubtsTable, usersTable, pendingNotificationsTable, repliesTable, video
 import { eq, inArray, and, lt } from "drizzle-orm";
 import { emailNotificationLimiter, redisClient } from "@/lib/ratelimit/ratelimit";
 import { sendReplyNotificationEmail, sendDigestEmail } from "@/lib/email/email";
+import { getAnonymousHandle } from "@/lib/anonymity/anonymity";
 import { runVideoPipeline } from "../lib/video/pipeline";
 
 interface InngestEvent {
@@ -212,7 +213,7 @@ export const sendDailyDigest = inngest.createFunction(
             });
           }
           doubtsMap.get(p.doubtId)!.replies.push({
-            replierName: p.replierName,
+            replierName: getAnonymousHandle(p.replierName),
             content: p.replyContent || "",
           });
         }
@@ -303,7 +304,7 @@ export const sendWeeklyDigest = inngest.createFunction(
             });
           }
           doubtsMap.get(p.doubtId)!.replies.push({
-            replierName: p.replierName,
+            replierName: getAnonymousHandle(p.replierName),
             content: p.replyContent || "",
           });
         }
