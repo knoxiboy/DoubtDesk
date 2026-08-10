@@ -98,8 +98,7 @@ export async function POST(
                     eq(doubtsTable.userEmail, loggedInUserEmail),
                     or(
                         ne(doubtsTable.isSolved, "solved"),
-                        isNull(doubtsTable.solvedReplyId),
-                        ne(doubtsTable.solvedReplyId, replyId)
+                        isNull(doubtsTable.solvedReplyId)
                     )
                 )
             )
