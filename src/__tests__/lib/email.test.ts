@@ -180,12 +180,14 @@ describe('Email Helper Functions', () => {
                 text: () => Promise.resolve('Email sent'),
             } as Response);
             process.env.RESEND_API_KEY = 're_test_key';
+            process.env.RESEND_FROM_EMAIL = 'DoubtDesk <notifications@example.com>';
             process.env.NEXT_PUBLIC_APP_URL = 'https://doubtdesk.example';
         });
 
         afterEach(() => {
             fetchSpy.mockRestore();
             delete process.env.RESEND_API_KEY;
+            delete process.env.RESEND_FROM_EMAIL;
             delete process.env.NEXT_PUBLIC_APP_URL;
         });
 

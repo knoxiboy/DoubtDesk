@@ -381,43 +381,17 @@ export async function sendReplyNotificationEmail(params: {
     </html>
     `;
 
-    console.log(`[EMAIL SIMULATION] Sending notification email to: ${toEmail}`);
-    console.log(`Subject: New reply on your doubt: ${doubtSubject}`);
-    console.log(`Body preview: ${cleanReplyContent}`);
+    console.log(`[EMAIL] Preparing reply notification email to: ${toEmail}`);
+    console.log(`[EMAIL] Subject: New reply on your doubt: ${doubtSubject}`);
+    console.log(`[EMAIL] Body preview: ${cleanReplyContent}`);
 
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey || apiKey === "re_your_actual_key_here") {
-        console.log("[EMAIL SIMULATION] Skipping real delivery. Resend API Key is not configured.");
-        return { success: true, simulated: true };
-    }
-
-    try {
-        const res = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                from: "DoubtDesk <onboarding@resend.dev>",
-                to: [toEmail],
-                subject: `[DoubtDesk] New response on your doubt: ${doubtSubject}`,
-                html: htmlContent
-            })
-        });
-
-        if (res.ok) {
-            console.log(`[EMAIL SUCCESS] Email successfully delivered to: ${toEmail}`);
-            return { success: true, simulated: false };
-        } else {
-            const errText = await res.text();
-            console.error(`[EMAIL ERROR] Resend API responded with status ${res.status}:`, errText);
-            return { success: false, error: errText };
-        }
-    } catch (error: unknown) {
-        console.error("[EMAIL ERROR] Failed to send email via Resend:", error);
-        return { success: false, error: error instanceof Error ? error.message : String(error) };
-    }
+    const subject = `[DoubtDesk] New response on your doubt: ${doubtSubject}`;
+    return sendResendEmail({
+        toEmail,
+        subject,
+        html: htmlContent,
+        logLabel: "reply notification",
+    });
 }
 
 /**
