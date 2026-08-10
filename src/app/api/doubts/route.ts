@@ -155,7 +155,7 @@ export async function GET(req: Request) {
     // once a cursor token is actually present.
     const cursorRequested = searchParams.has("cursor");
     const decodedCursor = decodeCursor(searchParams.get("cursor"));
-    const cursorCreatedAt = decodedCursor?.createdAt ?? null;
+    const cursorCreatedAt = decodedCursor?.timestamp ?? decodedCursor?.createdAt ?? null;
     const cursorId = decodedCursor?.id ?? null;
     const useCursor = cursorRequested && sort === "newest" && !search;
 
@@ -241,14 +241,16 @@ export async function GET(req: Request) {
     // Apply the keyset predicate only once a cursor token is present (the first
     // cursor-mode page has none and just returns the newest rows in keyset order).
     const cursorKeyset =
-      cursorCreatedAt !== null && cursorId !== null
-        ? or(
-            lt(doubtsTable.createdAt, cursorCreatedAt),
-            and(
-              eq(doubtsTable.createdAt, cursorCreatedAt),
-              lt(doubtsTable.id, cursorId),
-            ),
-          )
+      cursorCreatedAt !== null
+        ? cursorId !== null
+          ? or(
+              lt(doubtsTable.createdAt, cursorCreatedAt),
+              and(
+                eq(doubtsTable.createdAt, cursorCreatedAt),
+                lt(doubtsTable.id, cursorId),
+              ),
+            )
+          : lt(doubtsTable.createdAt, cursorCreatedAt)
         : undefined;
 
     // Cursor mode over-fetches one sentinel row so `hasMore` is exact (avoids a
