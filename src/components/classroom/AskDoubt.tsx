@@ -731,7 +731,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                                                         </div>
                                                     </div>
                                                     <a
-                                                        href={classroomId ? `/rooms/${classroomId}?doubt=${d.id}` : `/?doubt=${d.id}`}
+                                                        href={classroomId ? `/rooms/${classroomId}?doubtId=${d.id}` : `/?doubtId=${d.id}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="shrink-0 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-blue-400 hover:text-blue-300 px-2 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
