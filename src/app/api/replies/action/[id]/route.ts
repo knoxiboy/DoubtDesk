@@ -101,7 +101,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             },
         });
 
-        return NextResponse.json(updated[0]);
+        // Strip the author's real email before returning — identity must
+        // stay server-side only (see src/lib/anonymity/anonymity.ts).
+        const { userEmail: _, ...safeRow } = updated[0];
+        return NextResponse.json(safeRow);
     } catch (error) {
         console.error("Error updating reply:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

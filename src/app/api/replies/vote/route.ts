@@ -147,7 +147,10 @@ export async function POST(req: Request) {
             }
         }
 
-        return NextResponse.json(result);
+        // Strip the author's real email before returning — identity must
+        // stay server-side only (see src/lib/anonymity/anonymity.ts).
+        const { userEmail: _, ...safeResult } = result ?? {};
+        return NextResponse.json(safeResult);
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });
