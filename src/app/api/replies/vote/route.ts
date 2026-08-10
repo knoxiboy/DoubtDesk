@@ -125,7 +125,7 @@ export async function POST(req: Request) {
         });
 
         // ── 4. BACKGROUND SYSTEM EMISSION ───────────────────────────────────
-        if (result && result.hasUpvoted && result.userEmail && originalReplyAuthorEmail) {
+        if (result && result.userEmail && originalReplyAuthorEmail) {
             if (result.userEmail !== originalReplyAuthorEmail) {
                 console.error(
                     "[replies/vote] reply author email diverged between fetch and update",
@@ -135,9 +135,19 @@ export async function POST(req: Request) {
                         postUpdate: result.userEmail,
                     }
                 );
-            } else {
+            } else if (result.hasUpvoted) {
                 await inngest.send({
                     name: "karma/answer.upvoted",
+                    data: {
+                        replyAuthorEmail: originalReplyAuthorEmail,
+                        replyId: result.id || replyId,
+                        doubtId: result.doubtId,
+                    },
+                });
+            } else {
+                // Vote removed - revoke the +10 karma that was awarded when the vote was added
+                await inngest.send({
+                    name: "karma/answer.unupvoted",
                     data: {
                         replyAuthorEmail: originalReplyAuthorEmail,
                         replyId: result.id || replyId,

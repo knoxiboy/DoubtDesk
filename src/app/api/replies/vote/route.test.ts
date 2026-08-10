@@ -224,10 +224,87 @@ describe('Reply Vote API Endpoint', () => {
 
         const res = await POST(req);
         const json = await res?.json();
-        const { db } = jest.requireMock('@/configs/db');
+        const { inngest } = jest.requireMock('@/inngest/client');
 
         expect(res?.status).toBe(200);
         expect(json.hasUpvoted).toBe(false);
         expect(json.upvotes).toBe(4);
+
+        // Verify karma revocation event is emitted
+        expect(inngest.send).toHaveBeenCalledWith({
+            name: 'karma/answer.unupvoted',
+            data: {
+                replyAuthorEmail: 'author@example.com',
+                replyId: 1,
+                doubtId: 7,
+            },
+        });
+    });
+
+    it('emits upvoted on add and unupvoted on remove, net zero karma after toggle cycle', async () => {
+        // First request - add vote
+        mockCurrentUser.mockResolvedValue({
+            id: 'voter_clerk_id',
+            username: 'voter',
+            fullName: 'Voter User',
+            primaryEmailAddress: { emailAddress: 'voter@example.com' },
+        });
+
+        mockSelectResultQueue.push(
+            [], // 1. checkUserBlock
+            [{ id: 1, doubtId: 7, userEmail: 'author@example.com', upvotes: 5 }], // 2. repliesTable
+            [{ classroomId: 7 }], // 3. doubtsTable
+            [{ role: 'student' }], // 4. membershipsTable
+            []  // 5. replyLikesTable (no existing like)
+        );
+        mockUpdateResultQueue.push([{ id: 1, upvotes: 6, userEmail: 'author@example.com', doubtId: 7 }]);
+
+        const req1 = new Request('http://localhost/api/replies/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replyId: 1 }),
+        });
+
+        const res1 = await POST(req1);
+        expect((await res1.json()).hasUpvoted).toBe(true);
+
+        const { inngest } = jest.requireMock('@/inngest/client');
+        expect(inngest.send).toHaveBeenCalledWith({
+            name: 'karma/answer.upvoted',
+            data: { replyAuthorEmail: 'author@example.com', replyId: 1, doubtId: 7 },
+        });
+
+        // Second request - remove vote (toggle)
+        mockSelectResultQueue.length = 0;
+        mockUpdateResultQueue.length = 0;
+        inngest.send.mockClear();
+
+        mockSelectResultQueue.push(
+            [], // 1. checkUserBlock
+            [{ id: 1, doubtId: 7, userEmail: 'author@example.com', upvotes: 6 }], // 2. repliesTable
+            [{ classroomId: 7 }], // 3. doubtsTable
+            [{ role: 'student' }], // 4. membershipsTable
+            [{ id: 10, userEmail: 'voter@example.com', replyId: 1 }]  // 5. existing like
+        );
+        mockUpdateResultQueue.push([{ id: 1, upvotes: 5, userEmail: 'author@example.com', doubtId: 7 }]);
+
+        const req2 = new Request('http://localhost/api/replies/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replyId: 1 }),
+        });
+
+        const res2 = await POST(req2);
+        expect((await res2.json()).hasUpvoted).toBe(false);
+
+        // Verify unupvoted emitted, not upvoted again
+        expect(inngest.send).toHaveBeenCalledWith({
+            name: 'karma/answer.unupvoted',
+            data: { replyAuthorEmail: 'author@example.com', replyId: 1, doubtId: 7 },
+        });
+        expect(inngest.send).not.toHaveBeenCalledWith({
+            name: 'karma/answer.upvoted',
+            data: { replyAuthorEmail: 'author@example.com', replyId: 1, doubtId: 7 },
+        });
     });
 });
