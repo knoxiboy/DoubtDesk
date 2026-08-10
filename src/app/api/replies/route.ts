@@ -205,6 +205,12 @@ export async function POST(req: Request) {
       })
       .returning();
 
+    // Touch the streak heartbeat so the daily cron can award streak bonuses.
+    await db
+      .update(usersTable)
+      .set({ lastContributionAt: new Date() })
+      .where(eq(usersTable.email, email));
+
     createReplyNotification({
       doubtId,
       replyId: newReply[0].id,
