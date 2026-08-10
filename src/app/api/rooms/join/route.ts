@@ -8,12 +8,14 @@ import { buildErrorResponse } from '@/lib/errors/error-handler';
 import { parseAndValidateRequest } from '@/lib/validations/validate';
 import { joinClassroomSchema } from '@/lib/validations/classroom';
 import { inviteCodeLimiter } from '@/lib/ratelimit/ratelimit';
+import { getAnonymousQuotaIdentifier } from '@/lib/auth/request-identity';
 
 export async function POST(req: NextRequest) {
     try {
         // 0. Rate limit by IP (prevent brute-force enumeration of invite codes)
-        const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
-        const rateLimitResult = await inviteCodeLimiter.limit(ip);
+        // Use trusted proxy header via utility; ignores spoofable x-forwarded-for.
+        const ipKey = getAnonymousQuotaIdentifier(req);
+        const rateLimitResult = await inviteCodeLimiter.limit(ipKey);
         if (!rateLimitResult.success) {
             return NextResponse.json(
                 { error: 'Too many join attempts. Please try again later.' },
