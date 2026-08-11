@@ -9,6 +9,8 @@ import { requireMembership } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { voteReplySchema } from "@/lib/validations/reply";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
+import { generalLimiter } from "@/lib/ratelimit/ratelimit";
 
 export async function POST(req: Request) {
     try {
@@ -22,6 +24,9 @@ export async function POST(req: Request) {
 
         const email = user.primaryEmailAddress?.emailAddress;
         if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+
+        const rateLimitResponse = await enforceApiRateLimit(generalLimiter, email, "general");
+        if (rateLimitResponse) return rateLimitResponse;
 
         const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
         if (blockResponse) return blockResponse;
