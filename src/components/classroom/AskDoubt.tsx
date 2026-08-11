@@ -155,9 +155,11 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
             });
             if (res.ok) {
                 const data = await res.json();
+                if (similarityAbortControllerRef.current !== controller) return;
                 setSimilarDoubts(data.similarDoubts || []);
                 setSimilarityChecked(true);
             } else {
+                if (similarityAbortControllerRef.current !== controller) return;
                 setSimilarDoubts([]);
                 setSimilarityChecked(false);
                 setSimilarityCheckError(true);
@@ -166,6 +168,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
             if (err.name === "AbortError") {
                 return;
             }
+            if (similarityAbortControllerRef.current !== controller) return;
             console.error("Similarity check failed:", err);
             setSimilarDoubts([]);
             setSimilarityChecked(false);
@@ -231,6 +234,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
             if (similarityAbortControllerRef.current) {
                 similarityAbortControllerRef.current.abort();
                 similarityAbortControllerRef.current = null;
+                setIsCheckingSimilarity(false);
             }
             setSuggestedSubject("");
             setSimilarDoubts([]);
@@ -256,6 +260,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
             if (similarityAbortControllerRef.current) {
                 similarityAbortControllerRef.current.abort();
                 similarityAbortControllerRef.current = null;
+                setIsCheckingSimilarity(false);
             }
         };
     }, [content, subjectWasEdited]);
@@ -264,6 +269,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
         if (!isOpen && similarityAbortControllerRef.current) {
             similarityAbortControllerRef.current.abort();
             similarityAbortControllerRef.current = null;
+            setIsCheckingSimilarity(false);
         }
     }, [isOpen]);
 
