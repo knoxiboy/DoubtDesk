@@ -44,11 +44,11 @@ async function performOcrFallback(
   buffer: Buffer,
   options: PDFExtractionOptions
 ): Promise<string> {
-  if (options.customOcrHandler) {
-    return await options.customOcrHandler(buffer);
-  }
-
   try {
+    if (options.customOcrHandler) {
+      return await options.customOcrHandler(buffer);
+    }
+
     const { recognize } = require("tesseract.js");
     const lang = options.ocrLanguage || DEFAULT_OCR_LANGUAGE;
     const result = await recognize(buffer, lang);

@@ -115,6 +115,21 @@ describe("PDF Extractor Module (src/lib/pdf/extractor.ts)", () => {
     expect(result.warning).toContain("Extracted text length (9) is below minimal threshold");
   });
 
+  test("should handle rejected custom OCR handler gracefully", async () => {
+    const mockBuffer = Buffer.from("SCANNED_MATH_SHEET OCR_UNREADABLE");
+    const failingHandler = jest.fn(async (_buf: Buffer) => {
+      throw new Error("Custom Vision AI failed");
+    });
+
+    const result = await extractTextFromPDF(mockBuffer, {
+      customOcrHandler: failingHandler,
+    });
+
+    expect(failingHandler).toHaveBeenCalledTimes(1);
+    expect(result.isFallbackUsed).toBe(true);
+    expect(result.warning).toBe("PDF contains unreadable imagery or insufficient text layer. Please upload a clearer document or plain image.");
+  });
+
   test("should handle corrupted PDF gracefully and return error/warning message", async () => {
     const mockBuffer = Buffer.from("CORRUPTED_PDF_DATA OCR_UNREADABLE");
     const result = await extractTextFromPDF(mockBuffer);

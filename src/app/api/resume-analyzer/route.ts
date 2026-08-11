@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
         const extraction = await extractTextFromPDF(buffer, { minTextThreshold: 20 });
         const resumeText = extraction.text;
 
-        if (!resumeText || resumeText.trim().length === 0) {
+        if (!resumeText || resumeText.trim().length === 0 || extraction.warning) {
             return NextResponse.json({
                 error: extraction.warning || extraction.error || "Failed to extract text from the PDF. Please upload a clearer document or text-based PDF."
             }, { status: 400 });
