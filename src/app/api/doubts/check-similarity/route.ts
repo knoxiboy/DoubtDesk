@@ -57,17 +57,6 @@ export async function POST(req: Request) {
       if (userRateLimitResponse) return userRateLimitResponse;
       await requireMembership(email, classroomId);
       aiQuotaIdentifier = email;
-      const rateLimit = await aiLimiter.limit(email);
-      if (!rateLimit.success) {
-        const retryAfter = Math.max(
-          1,
-          Math.ceil((rateLimit.reset - Date.now()) / 1000),
-        );
-        return NextResponse.json(
-          { error: "Too many similarity check requests. Please try again shortly." },
-          { status: 429, headers: { "Retry-After": String(retryAfter) } },
-        );
-      }
     }
 
     try {
