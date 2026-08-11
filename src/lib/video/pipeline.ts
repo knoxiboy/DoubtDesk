@@ -1,11 +1,11 @@
 import { renderMedia, selectComposition } from "@remotion/renderer";
 import path from "path";
 import fs from "fs";
-import os from "os";
 import { groq } from "@/lib/ai/groq-client";
 import axios from "axios";
 import Tesseract from "tesseract.js";
 import { uploadVideo } from "./storage";
+import { createAudioTempDir, getVideoTempPath } from "./temp";
 
 export interface SceneData {
   text?: string;
@@ -199,7 +199,7 @@ Return ONLY a JSON object with a "scenes" array.`;
 
   // 4. Generate audio (free Google TTS).
   await onProgress({ progress: 65, step: "Generating audio…" });
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "doubtdesk-audio-"));
+  const tempDir = createAudioTempDir();
 
   const scenes: EnrichedScene[] = await Promise.all(
     rawScenes.map(async (scene: SceneData, i: number): Promise<EnrichedScene> => {
@@ -228,7 +228,7 @@ Return ONLY a JSON object with a "scenes" array.`;
   // 5. Render the video with Remotion.
   await onProgress({ progress: 90, step: "Rendering video…" });
   const entryPoint = path.resolve(process.cwd(), "src/lib/video/remotion/index.tsx");
-  const outputLocation = path.join(os.tmpdir(), `video-${Date.now()}.mp4`);
+  const outputLocation = getVideoTempPath();
 
   try {
     const { bundle } = await import("@remotion/bundler");
