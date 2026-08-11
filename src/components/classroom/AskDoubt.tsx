@@ -128,6 +128,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
     const [similarityCheckError, setSimilarityCheckError] = useState(false);
     const [expandedSolvedId, setExpandedSolvedId] = useState<number | null>(null);
     const similarityDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const similarityAbortControllerRef = useRef<AbortController | null>(null);
 
     const checkSimilarity = async (text: string) => {
         if (doubtToEdit || text.trim().length < 20) {
@@ -136,6 +137,13 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
             setSimilarityCheckError(false);
             return;
         }
+
+        if (similarityAbortControllerRef.current) {
+            similarityAbortControllerRef.current.abort();
+        }
+        const controller = new AbortController();
+        similarityAbortControllerRef.current = controller;
+
         setIsCheckingSimilarity(true);
         setSimilarityCheckError(false);
         try {
@@ -143,6 +151,7 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ content: text, classroomId }),
+                signal: controller.signal,
             });
             if (res.ok) {
                 const data = await res.json();
@@ -153,13 +162,18 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
                 setSimilarityChecked(false);
                 setSimilarityCheckError(true);
             }
-        } catch (err) {
+        } catch (err: any) {
+            if (err.name === "AbortError") {
+                return;
+            }
             console.error("Similarity check failed:", err);
             setSimilarDoubts([]);
             setSimilarityChecked(false);
             setSimilarityCheckError(true);
         } finally {
-            setIsCheckingSimilarity(false);
+            if (similarityAbortControllerRef.current === controller) {
+                setIsCheckingSimilarity(false);
+            }
         }
     };
 
@@ -214,6 +228,10 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
 
     useEffect(() => {
         if (content.trim().length < 20) {
+            if (similarityAbortControllerRef.current) {
+                similarityAbortControllerRef.current.abort();
+                similarityAbortControllerRef.current = null;
+            }
             setSuggestedSubject("");
             setSimilarDoubts([]);
             setSimilarityChecked(false);
@@ -235,8 +253,19 @@ export default function AskDoubt({ defaultSubject = "", isOpen, onClose, onSucce
 
         return () => {
             if (similarityDebounceRef.current) clearTimeout(similarityDebounceRef.current);
+            if (similarityAbortControllerRef.current) {
+                similarityAbortControllerRef.current.abort();
+                similarityAbortControllerRef.current = null;
+            }
         };
     }, [content, subjectWasEdited]);
+
+    useEffect(() => {
+        if (!isOpen && similarityAbortControllerRef.current) {
+            similarityAbortControllerRef.current.abort();
+            similarityAbortControllerRef.current = null;
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
