@@ -8,6 +8,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth/auth-utils";
 import { enforceAiAvailability} from "@/lib/ai/kill-switch";
 import { getAnonymousQuotaIdentifier } from "@/lib/auth/request-identity";
+import { limitRequestBodySize } from "@/lib/validations/validate";
 
 const require = createRequire(import.meta.url);
 const pdf = require("pdf-parse-fork");
@@ -15,6 +16,12 @@ const pdf = require("pdf-parse-fork");
 const MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024;
 const SUPPORTED_RESUME_MIME_TYPES = new Set(["application/pdf"]);
 const MAX_TEXT_LENGTH = 10_000;
+
+// Multipart form data adds boundary/header overhead on top of the resume
+// file itself, plus a few small text fields (jobDescription, fieldOfInterest,
+// targetRole). 1MB of headroom above the resume size cap is comfortable
+// without opening the door back up to large-payload abuse.
+const MAX_REQUEST_BODY_BYTES = MAX_RESUME_SIZE_BYTES + 1 * 1024 * 1024;
 
 const textFieldSchema = z.string().max(MAX_TEXT_LENGTH, `Field must not exceed ${MAX_TEXT_LENGTH} characters`);
 
@@ -47,6 +54,13 @@ function validateResumeFile(file: File) {
 
 export async function POST(req: NextRequest) {
     try {
+        // Reject oversized payloads before reading anything into memory.
+        // Without this, an attacker could send an arbitrarily large multipart
+        // body and force the server to buffer all of it via formData()/
+        // arrayBuffer() before any size validation ever runs.
+        const sizeError = await limitRequestBodySize(req, MAX_REQUEST_BODY_BYTES);
+        if (sizeError) return sizeError;
+
         const formData = await req.formData();
         const file = formData.get("resume");
         const jobDescription = (formData.get("jobDescription") as string || "").trim();
