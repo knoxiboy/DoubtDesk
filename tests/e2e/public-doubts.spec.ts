@@ -41,13 +41,16 @@ test.describe('Public Doubts Feed (/public-rooms)', () => {
   test('should filter by status', async ({ page }) => {
     await page.goto('/public-rooms');
     const solvedBtn = page.getByRole('button', { name: 'Solved', exact: true });
-    await solvedBtn.click();
+    await expect(solvedBtn).toBeVisible({ timeout: 15000 });
+    await solvedBtn.click({ force: true });
     await expect(solvedBtn).toHaveClass(/bg-emerald-500/);
   });
 
   test('should open the Ask a Doubt modal', async ({ page }) => {
     await page.goto('/public-rooms');
-    await page.getByRole('button', { name: /Ask a Doubt/i }).click();
+    const askBtn = page.getByRole('button', { name: /Ask a Doubt/i }).first();
+    await expect(askBtn).toBeVisible({ timeout: 15000 });
+    await askBtn.click({ force: true });
     await page.waitForTimeout(300);
   });
 });

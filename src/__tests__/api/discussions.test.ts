@@ -11,9 +11,13 @@ jest.mock("@/lib/auth/auth-utils", () => ({
   checkUserBlock: (...args: unknown[]) => checkUserBlockMock(...args),
 }));
 
-jest.mock("@/lib/validations/validate", () => ({
-  limitRequestBodySize: jest.fn().mockResolvedValue(null),
-}));
+jest.mock("@/lib/validations/validate", () => {
+  const actual = jest.requireActual("@/lib/validations/validate");
+  return {
+    ...actual,
+    limitRequestBodySize: jest.fn().mockResolvedValue(null),
+  };
+});
 
 const selectWhereMock = jest.fn();
 const insertReturningMock = jest.fn();

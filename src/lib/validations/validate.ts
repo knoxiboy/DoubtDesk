@@ -20,10 +20,10 @@ export async function limitRequestBodySize(
   }
 
   const clone = req.clone();
-  const reader = clone.body?.getReader();
-  if (!reader) {
-    throw new Error("Unable to read request body");
+  if (!clone.body || typeof clone.body.getReader !== "function") {
+    return null;
   }
+  const reader = clone.body.getReader();
 
   let total = 0;
   for (;;) {

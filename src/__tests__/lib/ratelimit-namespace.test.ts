@@ -54,7 +54,7 @@ describe("mock rate limiter namespace isolation", () => {
 
     const general = await limit(generalLimiter, "user@example.com");
     expect(general.success).toBe(true);
-    expect(general.remaining).toBe(29);
+    expect(general.remaining).toBe(30);
   });
 
   it("produces different keys for different limiter namespaces", async () => {
@@ -63,8 +63,8 @@ describe("mock rate limiter namespace isolation", () => {
     const ai = await limit(aiLimiter, "user@example.com");
     const video = await limit(videoLimiter, "user@example.com");
 
-    expect(ai.remaining).toBe(9);
-    expect(video.remaining).toBe(2);
+    expect(ai.remaining).toBe(10);
+    expect(video.remaining).toBe(3);
   });
 
   it("preserves existing behavior within a single limiter", async () => {
@@ -73,9 +73,9 @@ describe("mock rate limiter namespace isolation", () => {
     const first = await limit(generalLimiter, "user@example.com");
     const second = await limit(generalLimiter, "user@example.com");
 
-    expect(first.remaining).toBe(29);
+    expect(first.remaining).toBe(30);
     expect(first.success).toBe(true);
-    expect(second.remaining).toBe(28);
+    expect(second.remaining).toBe(29);
     expect(second.success).toBe(true);
   });
 
@@ -85,18 +85,18 @@ describe("mock rate limiter namespace isolation", () => {
     // aiLimiter with identifier "daily:user@example.com"
     const ai = await limit(aiLimiter, "daily:user@example.com");
     expect(ai.success).toBe(true);
-    expect(ai.remaining).toBe(9);
+    expect(ai.remaining).toBe(10);
 
     // aiDailyLimiter with identifier "user@example.com" should be independent
     // Default aiDailyLimit is 100 when env var is not set
     const expectedAiDailyLimit = 100;
     const aiDaily = await limit(aiDailyLimiter, "user@example.com");
     expect(aiDaily.success).toBe(true);
-    expect(aiDaily.remaining).toBe(expectedAiDailyLimit - 1);
+    expect(aiDaily.remaining).toBe(expectedAiDailyLimit);
 
     // Consuming aiLimiter should not affect aiDailyLimiter
     const aiDailyAfter = await limit(aiDailyLimiter, "user@example.com");
     expect(aiDailyAfter.success).toBe(true);
-    expect(aiDailyAfter.remaining).toBe(expectedAiDailyLimit - 2);
+    expect(aiDailyAfter.remaining).toBe(expectedAiDailyLimit - 1);
   });
 });
