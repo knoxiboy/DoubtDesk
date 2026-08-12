@@ -2,11 +2,13 @@
 export const dynamic = "force-dynamic";
 
 import { db } from "@/configs/db";
-import { classroomsTable, doubtsTable } from "@/configs/schema";
+import { doubtsTable } from "@/configs/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { generateRecommendations, WeakTopic } from "@/lib/ai/recommendations";
+import { requireTeacher } from "@/lib/auth/membership-guard";
+import { ApiError } from "@/lib/errors/error-handler";
 
 export async function GET(req: Request) {
     try {
@@ -28,14 +30,10 @@ export async function GET(req: Request) {
 
         const classroomId = Number(classroomIdStr);
 
-        const [classroom] = await db
-            .select({ id: classroomsTable.id })
-            .from(classroomsTable)
-            .where(and(eq(classroomsTable.id, classroomId), eq(classroomsTable.teacherEmail, email)));
-
-        if (!classroom) {
-            return NextResponse.json({ error: "Access denied to this classroom" }, { status: 403 });
-        }
+        // Authorization: verify the caller is an active teacher/owner member of the
+        // classroom via membershipsTable (not just a potentially stale teacherEmail
+        // field on the classrooms table). See requireTeacher / requireMembership.
+        await requireTeacher(email, classroomId);
 
         const classroomFilter = eq(doubtsTable.classroomId, classroomId);
 
@@ -143,6 +141,9 @@ export async function GET(req: Request) {
 
     } catch (error) {
         console.error("Teacher Insights failed:", error);
+        if (error instanceof ApiError) {
+            return NextResponse.json({ error: error.message }, { status: error.statusCode });
+        }
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

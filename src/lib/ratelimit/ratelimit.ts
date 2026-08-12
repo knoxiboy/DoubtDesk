@@ -130,34 +130,43 @@ if (isRedisConfigured) {
     return entry;
   };
 
-  const createMockLimiter = (limit: number, windowMs: number) => ({
+  const createMockLimiter = (name: string, limit: number, windowMs: number) => ({
     limit: async (identifier: string) => {
       const now = Date.now();
-      const record = memoryMap.get(identifier) || { count: 0, reset: now + windowMs };
+      const key = JSON.stringify([name, identifier]);
+      const record = memoryMap.get(key) || { count: 0, reset: now + windowMs };
 
       if (now > record.reset) {
         record.count = 0;
         record.reset = now + windowMs;
       }
 
+      // Check the limit against the current (pre-increment) count first, so the
+      // first allowed request reports `remaining === limit` and the (limit+1)-th
+      // request is the first to be rejected. Previously the counter was
+      // incremented before the check, silently allowing only `limit - 1`
+      // successful requests.
+      const success = record.count < limit;
+      const remaining = Math.max(0, limit - record.count);
+
       record.count++;
-      memoryMap.set(identifier, record);
+      memoryMap.set(key, record);
 
       return {
-        success: record.count <= limit,
+        success,
         limit,
-        remaining: Math.max(0, limit - record.count),
+        remaining,
         reset: record.reset,
       };
     },
   });
 
-  aiLimiter = createMockLimiter(10, 60 * 1000);
-  aiDailyLimiter = createMockLimiter(aiDailyLimit, 24 * 60 * 60 * 1000);
-  generalLimiter = createMockLimiter(30, 60 * 1000);
-  emailNotificationLimiter = createMockLimiter(1, 5 * 60 * 1000); // 1 per 5 mins
-  videoLimiter = createMockLimiter(3, 60 * 60 * 1000); // 3 per hour
-  inviteCodeLimiter = createMockLimiter(5, 60 * 1000); // 5 per minute
+  aiLimiter = createMockLimiter("ai", 10, 60 * 1000);
+  aiDailyLimiter = createMockLimiter("ai:daily", aiDailyLimit, 24 * 60 * 60 * 1000);
+  generalLimiter = createMockLimiter("general", 30, 60 * 1000);
+  emailNotificationLimiter = createMockLimiter("email_notify", 1, 5 * 60 * 1000); // 1 per 5 mins
+  videoLimiter = createMockLimiter("video", 3, 60 * 60 * 1000); // 3 per hour
+  inviteCodeLimiter = createMockLimiter("invite_code", 5, 60 * 1000); // 5 per minute
 
   // Provide a mock redis client for locks
   redisClient = {

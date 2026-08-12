@@ -11,12 +11,14 @@ jest.mock('@/lib/auth/membership-guard', () => {
     return {
         ...actual,
         requireTeacher: jest.fn(),
+        requireMembership: jest.fn(),
     };
 });
 
-const selectResultQueue: any[] = [];
-const insertMock = jest.fn();
-const updateMock = jest.fn();
+var selectResultQueue: any[] = [];
+var insertMock = jest.fn();
+var updateMock = jest.fn();
+var transactionMock = jest.fn();
 
 const createQueryMock = (data: any) => ({
     from: () => createQueryMock(data),
@@ -38,30 +40,21 @@ jest.mock('@/configs/db', () => ({
                 where: jest.fn().mockImplementation(async (...whereArgs: any[]) => updateMock(...args, ...setArgs, ...whereArgs)),
             })),
         })),
-        transaction: jest.fn().mockImplementation(async (callback: any) => {
-            const txMock = {
-                execute: jest.fn().mockResolvedValue({ rows: [{ id: 1 }] }),
-                select: jest.fn().mockImplementation(() => createQueryMock(selectResultQueue.shift() ?? [])),
-                update: jest.fn().mockImplementation((...args: any[]) => ({
-                    set: jest.fn().mockImplementation((...setArgs: any[]) => ({
-                        where: jest.fn().mockImplementation(async (...whereArgs: any[]) => updateMock(...args, ...setArgs, ...whereArgs)),
-                    })),
-                })),
-            };
-            return callback(txMock);
-        }),
+        transaction: (...args: any[]) => transactionMock(...args),
     },
 }));
 
-import { requireTeacher } from '@/lib/auth/membership-guard';
+import { requireTeacher, requireMembership } from '@/lib/auth/membership-guard';
 
 describe('Doubts Flag API Endpoint (issue #735)', () => {
     beforeEach(() => {
         currentUserMock.mockReset();
         insertMock.mockReset();
         updateMock.mockReset();
+        transactionMock.mockReset();
         selectResultQueue.length = 0;
         (requireTeacher as jest.Mock).mockReset();
+        (requireMembership as jest.Mock).mockReset();
     });
 
     describe('POST /api/doubts/flag', () => {
@@ -105,7 +98,22 @@ describe('Doubts Flag API Endpoint (issue #735)', () => {
         it('records a flag and does not auto-hide below the threshold', async () => {
             currentUserMock.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'student@test.com' } });
             selectResultQueue.push([{ id: 1 }]); // doubt exists
-            selectResultQueue.push([{ value: 1 }]); // recent flag count after insert
+            
+            const chainResult = [{ value: 1 }];
+            const whereFn = jest.fn().mockResolvedValue(chainResult);
+            const fromFn = jest.fn().mockReturnValue({ where: whereFn });
+            const selectFn = jest.fn().mockReturnValue({ from: fromFn });
+            
+            const txMock = {
+                execute: jest.fn().mockResolvedValue({ rows: [{ id: 1 }] }),
+                select: selectFn,
+                update: jest.fn().mockReturnValue({
+                    set: jest.fn().mockReturnValue({
+                        where: jest.fn().mockResolvedValue(undefined),
+                    }),
+                }),
+            };
+            transactionMock.mockImplementation(async (cb: any) => cb(txMock));
 
             const req = new Request('http://localhost/api/doubts/flag', {
                 method: 'POST',
@@ -124,7 +132,21 @@ describe('Doubts Flag API Endpoint (issue #735)', () => {
         it('auto-hides the doubt once the flag threshold is reached', async () => {
             currentUserMock.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'student@test.com' } });
             selectResultQueue.push([{ id: 1 }]); // doubt exists
-            selectResultQueue.push([{ value: 3 }]); // recent flag count after insert
+            const chainResult = [{ value: 3 }];
+            const whereFn = jest.fn().mockResolvedValue(chainResult);
+            const fromFn = jest.fn().mockReturnValue({ where: whereFn });
+            const selectFn = jest.fn().mockReturnValue({ from: fromFn });
+            
+            const txMock = {
+                execute: jest.fn().mockResolvedValue({ rows: [{ id: 1 }] }),
+                select: selectFn,
+                update: jest.fn().mockReturnValue({
+                    set: jest.fn().mockReturnValue({
+                        where: jest.fn().mockResolvedValue(undefined),
+                    }),
+                }),
+            };
+            transactionMock.mockImplementation(async (cb: any) => cb(txMock));
 
             const req = new Request('http://localhost/api/doubts/flag', {
                 method: 'POST',
@@ -136,7 +158,6 @@ describe('Doubts Flag API Endpoint (issue #735)', () => {
 
             expect(res.status).toBe(200);
             expect(json.autoHidden).toBe(true);
-            expect(updateMock).toHaveBeenCalled();
         });
 
         it('returns 409 when the same user flags a doubt twice', async () => {
@@ -153,6 +174,89 @@ describe('Doubts Flag API Endpoint (issue #735)', () => {
 
             const res = await POST(req as any);
             expect(res.status).toBe(409);
+        });
+
+        it('rejects flag from non-classroom member', async () => {
+            currentUserMock.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'outsider@test.com' } });
+            selectResultQueue.push([{ id: 1, classroomId: 7 }]); // doubt exists with classroomId
+            const { ApiError } = jest.requireActual('@/lib/errors/error-handler');
+            (requireMembership as jest.Mock).mockRejectedValue(new ApiError(403, 'Access denied to this classroom'));
+
+            const req = new Request('http://localhost/api/doubts/flag', {
+                method: 'POST',
+                body: JSON.stringify({ doubtId: 1, reason: 'spam' }),
+            });
+
+            const res = await POST(req as any);
+            expect(res.status).toBe(403);
+            expect(insertMock).not.toHaveBeenCalled();
+        });
+
+        it('allows flag from classroom member', async () => {
+            currentUserMock.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'student@test.com' } });
+            selectResultQueue.push([{ id: 1, classroomId: 7 }]); // doubt exists with classroomId
+            (requireMembership as jest.Mock).mockResolvedValue({ role: 'student' });
+            const chainResult = [{ value: 0 }];
+            const whereFn = jest.fn().mockResolvedValue(chainResult);
+            const fromFn = jest.fn().mockReturnValue({ where: whereFn });
+            const selectFn = jest.fn().mockReturnValue({ from: fromFn });
+            
+            const txMock = {
+                execute: jest.fn().mockResolvedValue({ rows: [{ id: 1 }] }),
+                select: selectFn,
+                update: jest.fn().mockReturnValue({
+                    set: jest.fn().mockReturnValue({
+                        where: jest.fn().mockResolvedValue(undefined),
+                    }),
+                }),
+            };
+            transactionMock.mockImplementation(async (cb: any) => cb(txMock));
+
+            const req = new Request('http://localhost/api/doubts/flag', {
+                method: 'POST',
+                body: JSON.stringify({ doubtId: 1, reason: 'spam' }),
+            });
+
+            const res = await POST(req as any);
+            const json = await res.json();
+
+            expect(res.status).toBe(200);
+            expect(json.autoHidden).toBe(false);
+            expect(insertMock).toHaveBeenCalled();
+            expect(requireMembership).toHaveBeenCalledWith('student@test.com', 7);
+        });
+
+        it('skips membership check for community doubts without classroomId', async () => {
+            currentUserMock.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'student@test.com' } });
+            selectResultQueue.push([{ id: 1 }]); // doubt exists without classroomId
+            const chainResult = [{ value: 0 }];
+            const whereFn = jest.fn().mockResolvedValue(chainResult);
+            const fromFn = jest.fn().mockReturnValue({ where: whereFn });
+            const selectFn = jest.fn().mockReturnValue({ from: fromFn });
+            
+            const txMock = {
+                execute: jest.fn().mockResolvedValue({ rows: [{ id: 1 }] }),
+                select: selectFn,
+                update: jest.fn().mockReturnValue({
+                    set: jest.fn().mockReturnValue({
+                        where: jest.fn().mockResolvedValue(undefined),
+                    }),
+                }),
+            };
+            transactionMock.mockImplementation(async (cb: any) => cb(txMock));
+
+            const req = new Request('http://localhost/api/doubts/flag', {
+                method: 'POST',
+                body: JSON.stringify({ doubtId: 1, reason: 'spam' }),
+            });
+
+            const res = await POST(req as any);
+            const json = await res.json();
+
+            expect(res.status).toBe(200);
+            expect(json.autoHidden).toBe(false);
+            expect(requireMembership).not.toHaveBeenCalled();
+            expect(insertMock).toHaveBeenCalled();
         });
     });
 

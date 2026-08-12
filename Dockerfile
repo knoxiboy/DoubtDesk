@@ -24,6 +24,14 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
 
 RUN npm run build
 
+# Bundle the migration runner so the production image can apply the full
+# tracked Drizzle set without shipping the entire node_modules tree.
+RUN npx esbuild drizzle/migrate.ts \
+    --bundle \
+    --platform=node \
+    --format=cjs \
+    --outfile=scripts/run-migrations.js
+
 FROM node:20-alpine AS runner
 WORKDIR /app
 
@@ -39,11 +47,17 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-RUN mkdir -p public/temp-assets public/videos && \
-    chown -R nextjs:nodejs public/temp-assets public/videos
+# Ship the complete migration journal/SQL set and the bundled runner.
+COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/run-migrations.js ./scripts/run-migrations.js
+COPY --from=builder --chown=nextjs:nodejs /app/scripts/docker-entrypoint.sh ./docker-entrypoint.sh
+
+RUN mkdir -p public/temp-assets public/videos scripts && \
+    chown -R nextjs:nodejs public/temp-assets public/videos scripts drizzle && \
+    chmod +x ./docker-entrypoint.sh
 
 USER nextjs
 
 EXPOSE 3000
 
-CMD ["node", "server.js"]
+CMD ["./docker-entrypoint.sh"]

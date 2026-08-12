@@ -102,7 +102,7 @@ export default function TestimonialsMarquee({
           </p>
 
           <Link
-            href="/auth/sign-up"
+            href="/sign-up"
             className="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium"
           >
             Get Started with DoubtDesk →

@@ -1,5 +1,14 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
+export function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 const UNSUBSCRIBE_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 function getUnsubscribeSecret() {
@@ -57,34 +66,131 @@ export function generateUnsubscribeLink(email: string, appUrl: string) {
     return url.toString();
 }
 
-export async function sendWarningEmail(email: string, reason: string, strikes: number) {
-    console.log(`[EMAIL SIMULATION] To: ${email}, Subject: Safety Warning - DoubtDesk, Message: Your post was flagged for: ${reason}. You have ${strikes}/3 strikes. Further violations will result in an automatic account block.`);
-    
-    // Placeholder for actual email service integration (e.g., Resend)
-    /*
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
-      from: 'Safety @ DoubtDesk <safety@doubtdesk.com>',
-      to: email,
-      subject: 'Safety Warning - DoubtDesk',
-      html: `<p>Your post was flagged for: <strong>${reason}</strong>.</p>
-             <p>This is strike <strong>${strikes}</strong> of 3.</p>
-             <p>Further violations will result in an automatic account block.</p>`
+export type EmailSendResult = {
+    success: boolean;
+    simulated?: boolean;
+    error?: string;
+    /** Resend message id when the provider accepted the send request (not final delivery). */
+    providerMessageId?: string;
+};
+
+function isResendConfigured() {
+    const apiKey = process.env.RESEND_API_KEY;
+    return Boolean(apiKey && apiKey !== "re_your_actual_key_here");
+}
+
+function getResendFromAddress() {
+    const from = process.env.RESEND_FROM_EMAIL?.trim();
+    return from || null;
+}
+
+async function sendResendEmail(params: {
+    toEmail: string;
+    subject: string;
+    html: string;
+    logLabel: string;
+}): Promise<EmailSendResult> {
+    const { toEmail, subject, html, logLabel } = params;
+
+    if (!isResendConfigured()) {
+        console.log(`[EMAIL SIMULATION] Skipping real delivery for ${logLabel}. Resend API Key is not configured.`);
+        return {
+            success: false,
+            simulated: true,
+            error: "Email delivery unavailable: RESEND_API_KEY is not configured",
+        };
+    }
+
+    const from = getResendFromAddress();
+    if (!from) {
+        console.log(`[EMAIL SIMULATION] Skipping real delivery for ${logLabel}. RESEND_FROM_EMAIL is not configured.`);
+        return {
+            success: false,
+            simulated: true,
+            error: "Email delivery unavailable: RESEND_FROM_EMAIL is not configured",
+        };
+    }
+
+    try {
+        const res = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            },
+            body: JSON.stringify({
+                from,
+                to: [toEmail],
+                subject,
+                html,
+            }),
+            signal: AbortSignal.timeout(10000),
+        });
+
+        if (res.ok) {
+            const payload = await res.json().catch(() => ({} as { id?: string }));
+            const providerMessageId =
+                typeof payload?.id === "string" ? payload.id : undefined;
+            // res.ok means Resend accepted the request; delivery is confirmed via webhooks.
+            console.log(`[EMAIL SUCCESS] ${logLabel} accepted by Resend`);
+            return { success: true, simulated: false, providerMessageId };
+        }
+
+        const errText = await res.text();
+        console.error(`[EMAIL ERROR] Resend API responded with status ${res.status}`);
+        return { success: false, error: errText };
+    } catch (error: unknown) {
+        console.error(`[EMAIL ERROR] Failed to send ${logLabel} via Resend`);
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+    }
+}
+
+export async function sendWarningEmail(
+    email: string,
+    reason: string,
+    strikes: number,
+): Promise<EmailSendResult> {
+    const subject = "Safety Warning - DoubtDesk";
+    const html = `
+      <p>Your post was flagged for: <strong>${escapeHtml(reason)}</strong>.</p>
+      <p>This is strike <strong>${strikes}</strong> of 3.</p>
+      <p>Further violations will result in an automatic account block.</p>
+    `;
+
+    console.log(`[EMAIL] Preparing warning email (${strikes}/3 strikes)`);
+    return sendResendEmail({
+        toEmail: email,
+        subject,
+        html,
+        logLabel: "warning email",
     });
-    */
 }
 
 /**
- * Simulates sending a blocking notification email.
+ * Sends a blocking notification email.
  */
-export async function sendBlockEmail(email: string, durationDays: number, totalBlocks: number) {
+export async function sendBlockEmail(
+    email: string,
+    durationDays: number,
+    totalBlocks: number,
+): Promise<EmailSendResult> {
     const unlockDate = new Date();
     unlockDate.setDate(unlockDate.getDate() + durationDays);
 
-    console.log(`[EMAIL SIMULATION] To: ${email} | Subject: Account Temporarily Blocked`);
-    console.log(`Body: Your account has been suspended for ${durationDays} days due to repeated safety violations. This is your block #${totalBlocks}. Your access will be restored on ${unlockDate.toDateString()}.`);
-    
-    // In production, integrate with Resend here.
+    const subject = "Account Temporarily Blocked - DoubtDesk";
+    const html = `
+      <p>Your account has been suspended for <strong>${durationDays} days</strong> due to repeated safety violations.</p>
+      <p>This is block <strong>#${totalBlocks}</strong>.</p>
+      <p>Your access will be restored on <strong>${unlockDate.toDateString()}</strong>.</p>
+    `;
+
+    console.log(`[EMAIL] Preparing block email (durationDays=${durationDays}, blockCount=${totalBlocks})`);
+    return sendResendEmail({
+        toEmail: email,
+        subject,
+        html,
+        logLabel: "block email",
+    });
 }
 
 /**
@@ -101,6 +207,8 @@ export async function sendReplyNotificationEmail(params: {
     const { toEmail, doubtId, doubtSubject, doubtContent, replierName, replyContent } = params;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const doubtLink = `${appUrl}/doubts/${doubtId}`;
+    const safeDoubtSubject = escapeHtml(doubtSubject);
+    const safeReplierName = escapeHtml(replierName);
     const cleanDoubtContent = doubtContent.length > 100 ? `${doubtContent.slice(0, 97)}...` : doubtContent;
     const cleanReplyContent = replyContent.length > 180 ? `${replyContent.slice(0, 177)}...` : replyContent;
 
@@ -248,14 +356,14 @@ export async function sendReplyNotificationEmail(params: {
                 </div>
                 <div class="content">
                     <h3 class="greeting">Hi there,</h3>
-                    <p class="message">Great news! Someone has just posted a new response to your doubt regarding <strong>${doubtSubject}</strong>. Here are the details:</p>
+                    <p class="message">Great news! Someone has just posted a new response to your doubt regarding <strong>${safeDoubtSubject}</strong>. Here are the details:</p>
                     
                     <div class="card">
                         <div class="card-title">Your Original Doubt</div>
-                        <div class="card-body">"${cleanDoubtContent}"</div>
+                        <div class="card-body">"${escapeHtml(cleanDoubtContent)}"</div>
                         
-                        <div class="card-title">New Response from ${replierName}</div>
-                        <p class="reply-preview">"${cleanReplyContent}"</p>
+                        <div class="card-title">New Response from ${safeReplierName}</div>
+                        <p class="reply-preview">"${escapeHtml(cleanReplyContent)}"</p>
                     </div>
 
                     <div class="btn-container">
@@ -333,27 +441,30 @@ export async function sendDigestEmail(params: {
     const { toEmail, subject, totalReplies, totalDoubts, doubts } = params;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const unsubscribeLink = generateUnsubscribeLink(toEmail, appUrl);
+    const safeSubject = escapeHtml(subject);
 
     let doubtsHtml = "";
     for (const d of doubts) {
         const doubtLink = `${appUrl}/rooms/${d.id}`;
+        const safeDoubtSubject = escapeHtml(d.subject);
         const cleanDoubtContent = d.content.length > 100 ? `${d.content.slice(0, 97)}...` : d.content;
         
         let repliesHtml = "";
         for (const r of d.replies) {
+            const safeReplierName = escapeHtml(r.replierName);
             const cleanReplyContent = r.content.length > 180 ? `${r.content.slice(0, 177)}...` : r.content;
             repliesHtml += `
                 <div style="margin-bottom: 12px; border-bottom: 1px solid #334155; padding-bottom: 12px; last-child { border-bottom: none; }">
-                    <div style="font-size: 14px; font-weight: 700; color: #f8fafc; margin-bottom: 4px;">Response from ${r.replierName}</div>
-                    <p style="font-size: 14px; line-height: 20px; color: #cbd5e1; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin: 0;">"${cleanReplyContent}"</p>
+                    <div style="font-size: 14px; font-weight: 700; color: #f8fafc; margin-bottom: 4px;">Response from ${safeReplierName}</div>
+                    <p style="font-size: 14px; line-height: 20px; color: #cbd5e1; background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin: 0;">"${escapeHtml(cleanReplyContent)}"</p>
                 </div>
             `;
         }
 
         doubtsHtml += `
             <div style="background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #38bdf8; margin-top: 0; margin-bottom: 8px;">Doubt: ${d.subject}</div>
-                <div style="font-size: 14px; line-height: 22px; color: #94a3b8; font-style: italic; margin-bottom: 16px; border-left: 3px solid #38bdf8; padding-left: 12px;">"${cleanDoubtContent}"</div>
+                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #38bdf8; margin-top: 0; margin-bottom: 8px;">Doubt: ${safeDoubtSubject}</div>
+                <div style="font-size: 14px; line-height: 22px; color: #94a3b8; font-style: italic; margin-bottom: 16px; border-left: 3px solid #38bdf8; padding-left: 12px;">"${escapeHtml(cleanDoubtContent)}"</div>
                 
                 <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #a855f7; margin-bottom: 12px;">New Replies</div>
                 ${repliesHtml}
@@ -371,7 +482,7 @@ export async function sendDigestEmail(params: {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${subject}</title>
+        <title>${safeSubject}</title>
         <style>
             body {
                 margin: 0;
@@ -474,7 +585,11 @@ export async function sendDigestEmail(params: {
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey || apiKey === "re_your_actual_key_here") {
         console.log("[EMAIL SIMULATION] Skipping real delivery. Resend API Key is not configured.");
-        return { success: true, simulated: true };
+        return {
+            success: false,
+            simulated: true,
+            error: "Email delivery unavailable: RESEND_API_KEY is not configured",
+        };
     }
 
     try {
@@ -487,7 +602,7 @@ export async function sendDigestEmail(params: {
             body: JSON.stringify({
                 from: "DoubtDesk <onboarding@resend.dev>",
                 to: [toEmail],
-                subject,
+                subject: subject,
                 html: htmlContent
             })
         });
