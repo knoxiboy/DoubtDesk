@@ -63,7 +63,7 @@ export async function GET(req: Request) {
         }
 
         const doubtIds = bookmarks.map((b) => b.doubtId);
-        const bookmarkOrder = new Map(doubtIds.map((id, index) => [id, index]));
+        const bookmarkOrder = new Map<number, number>(doubtIds.map((id, index) => [id, index]));
 
         const doubts = await db.select().from(doubtsTable)
             .where(and(inArray(doubtsTable.id, doubtIds), isNull(doubtsTable.deletedAt)));
@@ -86,7 +86,7 @@ export async function GET(req: Request) {
         const countsMap = Object.fromEntries(replyCounts.map((r) => [r.doubtId, r.count]));
 
         const orderedDoubts = [...doubts]
-            .sort((a, b) => (bookmarkOrder.get(a.id) ?? 0) - (bookmarkOrder.get(b.id) ?? 0))
+            .sort((a, b) => Number(bookmarkOrder.get(a.id) ?? 0) - Number(bookmarkOrder.get(b.id) ?? 0))
             .map((doubt) => ({
                 ...doubt,
                 hasLiked: likedIds.has(doubt.id),
