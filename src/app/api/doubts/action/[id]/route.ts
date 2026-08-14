@@ -10,6 +10,7 @@ import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubts/doub
 import { auditLog, AUDIT_ACTIONS } from "@/lib/audit/audit";
 import type { Tag } from "@/types";
 import { canTeach } from "@/lib/auth/membership-guard";
+import { toPublicDoubt } from "@/lib/anonymity/anonymity";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -99,7 +100,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
             }
 
-            return NextResponse.json(result);
+            return NextResponse.json({ ...toPublicDoubt(result, email), hasLiked: result.hasLiked });
         }
 
         if (action === "solve") {
@@ -207,7 +208,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 },
             });
 
-            return NextResponse.json(updated[0]);
+            return NextResponse.json(toPublicDoubt(updated[0], email));
         }
 
         if (action === "edit") {
@@ -319,7 +320,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 },
             });
 
-            return NextResponse.json({ ...updated, tags: savedTags });
+            return NextResponse.json({ ...toPublicDoubt(updated, email), tags: savedTags });
         }
 
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });

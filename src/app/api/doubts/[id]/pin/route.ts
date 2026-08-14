@@ -9,6 +9,7 @@ import { canTeach } from "@/lib/auth/membership-guard";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { auditLog, AUDIT_ACTIONS } from "@/lib/audit/audit";
+import { toPublicDoubt } from "@/lib/anonymity/anonymity";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -92,7 +93,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             },
         });
 
-        return NextResponse.json(result.updated[0]);
+        return NextResponse.json(toPublicDoubt(result.updated[0], email));
     } catch (error) {
         console.error("Error pinning doubt:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
@@ -150,7 +151,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             },
         });
 
-        return NextResponse.json(updated[0]);
+        return NextResponse.json(toPublicDoubt(updated[0], email));
     } catch (error) {
         console.error("Error unpinning doubt:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
