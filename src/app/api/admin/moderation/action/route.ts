@@ -49,9 +49,32 @@ export async function POST(req: Request) {
 
         if (action === "warn") {
             const newViolationCount = user.violationCount + 1;
-            await db.update(usersTable)
-                .set({ violationCount: newViolationCount })
-                .where(eq(usersTable.email, userEmail));
+            const shouldBlock = newViolationCount >= 3;
+
+            if (shouldBlock) {
+                const newBlockCount = user.blockCount + 1;
+                let durationDays = 3;
+                if (newBlockCount === 2) durationDays = 7;
+                else if (newBlockCount >= 3) durationDays = 14 * Math.pow(2, newBlockCount - 3);
+
+                const blockedUntil = new Date();
+                blockedUntil.setDate(blockedUntil.getDate() + durationDays);
+
+                await db.update(usersTable)
+                    .set({
+                        violationCount: 0,
+                        isBlocked: true,
+                        blockedUntil,
+                        blockCount: newBlockCount,
+                    })
+                    .where(eq(usersTable.email, userEmail));
+
+                await sendBlockEmail(userEmail, durationDays, newBlockCount);
+            } else {
+                await db.update(usersTable)
+                    .set({ violationCount: newViolationCount })
+                    .where(eq(usersTable.email, userEmail));
+            }
 
             await db.update(moderationLogsTable)
                 .set({ status: "warned" })
@@ -65,11 +88,14 @@ export async function POST(req: Request) {
             void auditLog({
                 actorEmail: adminEmail,
                 targetEmail: userEmail,
-                action: AUDIT_ACTIONS.USER_WARNED,
+                action: shouldBlock ? AUDIT_ACTIONS.USER_BLOCKED : AUDIT_ACTIONS.USER_WARNED,
                 resourceType: "user",
                 resourceId: userEmail,
                 metadata: {
-                    violationCount: newViolationCount,
+                    violationCount: shouldBlock ? 0 : newViolationCount,
+                    ...(shouldBlock && {
+                        blockCount: user.blockCount + 1,
+                    }),
                     moderationLogId: logId,
                     emailDelivery: emailResult.success
                         ? "accepted"
