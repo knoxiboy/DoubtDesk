@@ -1,4 +1,5 @@
 import { inArray } from 'drizzle-orm';
+import { moderateContent, handleModerationViolation } from '@/lib/moderation/moderation';
 
 const currentUserMock = jest.fn();
 const selectQueue: any[] = [];
@@ -226,5 +227,7 @@ describe('Replies POST endpoint — hidden doubts (issue #1354)', () => {
 
         expect(res.status).toBe(404);
         expect(json.error).toBe('Doubt not found');
+        expect(moderateContent).not.toHaveBeenCalled();
+        expect(handleModerationViolation).not.toHaveBeenCalled();
     });
 });

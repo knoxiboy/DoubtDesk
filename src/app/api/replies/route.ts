@@ -133,14 +133,6 @@ export async function POST(req: Request) {
       );
     }
 
-    if (content) {
-      const moderation = await moderateContent(content);
-      const violationError = await handleModerationViolation(email, content, moderation);
-      if (violationError) {
-        return errorResponse(violationError, 400);
-      }
-    }
-
     const [doubt] = await db.select().from(doubtsTable).where(
       and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt)),
     );
@@ -174,6 +166,17 @@ export async function POST(req: Request) {
     const denial = getDoubtReadDenial(email, doubt, membership);
     if (denial) {
       return errorResponse(denial.error, denial.status);
+    }
+
+    // Authorization must precede moderation. Otherwise an unauthorized reply
+    // to a hidden doubt could create strikes, violation logs, or warning emails
+    // before the request is rejected.
+    if (content) {
+      const moderation = await moderateContent(content);
+      const violationError = await handleModerationViolation(email, content, moderation);
+      if (violationError) {
+        return errorResponse(violationError, 400);
+      }
     }
 
     const newReply = await db
