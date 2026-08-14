@@ -307,4 +307,31 @@ describe('Reply Vote API Endpoint', () => {
             data: { replyAuthorEmail: 'author@example.com', replyId: 1, doubtId: 7 },
         });
     });
+
+    it('returns 404 and does not emit karma when the parent doubt is soft-deleted', async () => {
+        mockCurrentUser.mockResolvedValue({
+            id: 'voter_clerk_id',
+            primaryEmailAddress: { emailAddress: 'voter@example.com' },
+        });
+
+        mockSelectResultQueue.push(
+            [],
+            [{ id: 1, doubtId: 7, userEmail: 'author@example.com', upvotes: 5 }],
+            [],
+        );
+
+        const req = new Request('http://localhost/api/replies/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replyId: 1 }),
+        });
+
+        const res = await POST(req);
+        const json = await res?.json();
+        const { inngest } = jest.requireMock('@/inngest/client');
+
+        expect(res?.status).toBe(404);
+        expect(json.error).toBe('Doubt not found');
+        expect(inngest.send).not.toHaveBeenCalled();
+    });
 });

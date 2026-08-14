@@ -1,6 +1,6 @@
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, replyLikesTable } from "@/configs/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { inngest } from "@/inngest/client";
@@ -62,10 +62,14 @@ export async function POST(req: Request) {
         const [doubt] = await db
             .select({ classroomId: doubtsTable.classroomId })
             .from(doubtsTable)
-            .where(eq(doubtsTable.id, reply.doubtId))
+            .where(and(eq(doubtsTable.id, reply.doubtId), isNull(doubtsTable.deletedAt)))
             .limit(1);
 
-        if (doubt?.classroomId) {
+        if (!doubt) {
+            return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
+
+        if (doubt.classroomId) {
             await requireMembership(email, doubt.classroomId);
         }
 

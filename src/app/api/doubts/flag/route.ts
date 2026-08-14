@@ -2,7 +2,7 @@ import { inngest } from "@/inngest/client";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { contentFlagsTable, doubtsTable } from "@/configs/schema";
-import { and, count, desc, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { requireTeacher, parseClassroomId, requireMembership } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
         const [doubt] = await db
             .select({ id: doubtsTable.id, classroomId: doubtsTable.classroomId })
             .from(doubtsTable)
-            .where(eq(doubtsTable.id, doubtId));
+            .where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt)));
 
         if (!doubt) {
             return NextResponse.json({ error: "Doubt not found" }, { status: 404 });

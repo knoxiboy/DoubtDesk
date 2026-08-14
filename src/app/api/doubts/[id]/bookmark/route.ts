@@ -1,6 +1,6 @@
 import { db } from "@/configs/db";
 import { bookmarksTable, doubtsTable, membershipsTable } from "@/configs/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
@@ -18,7 +18,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const { id } = await params;
         const doubtId = parseInt(id);
 
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+        const [doubt] = await db.select().from(doubtsTable).where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
         if (doubt.classroomId && email) {
@@ -65,7 +65,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         const { id } = await params;
         const doubtId = parseInt(id);
 
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+        const [doubt] = await db.select().from(doubtsTable).where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
         if (doubt.classroomId && email) {

@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { repliesTable, replyLikesTable, doubtsTable, membershipsTable } from "@/configs/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, isNull } from "drizzle-orm";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { inngest } from "@/inngest/client";
 import { limitRequestBodySize } from "@/lib/validations/validate";
@@ -76,7 +76,7 @@ export async function POST(
         const [doubt] = await db
             .select({ classroomId: doubtsTable.classroomId })
             .from(doubtsTable)
-            .where(eq(doubtsTable.id, doubtId))
+            .where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt)))
             .limit(1);
 
         if (!doubt) {

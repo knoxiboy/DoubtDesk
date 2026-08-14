@@ -43,7 +43,7 @@ export async function POST(
         const [existingDoubt] = await db
             .select({ userEmail: doubtsTable.userEmail })
             .from(doubtsTable)
-            .where(eq(doubtsTable.id, doubtId))
+            .where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt)))
             .limit(1);
 
         if (!existingDoubt) {
@@ -96,6 +96,7 @@ export async function POST(
                 and(
                     eq(doubtsTable.id, doubtId),
                     eq(doubtsTable.userEmail, loggedInUserEmail),
+                    isNull(doubtsTable.deletedAt),
                     or(
                         ne(doubtsTable.isSolved, "solved"),
                         isNull(doubtsTable.solvedReplyId)
