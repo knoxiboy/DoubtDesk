@@ -20,6 +20,7 @@ import {
 } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { buildErrorResponse } from "@/lib/errors/error-handler";
 
 export async function GET(req: Request) {
   const user = await currentUser();
@@ -342,19 +343,7 @@ if (classroomId) {
     });
   } catch (error: unknown) {
     console.error("Error fetching analytics:", error);
-    return NextResponse.json({
-      trendingDoubts: [],
-      mostAskedTopics: [],
-      solvedStats: [],
-      peakTime: [],
-      engagement: { totalStudents: 0, totalDoubts: 0, totalReplies: 0 },
-      weakTopics: [],
-      topContributors: [],
-      classroomSettings: {
-        pedagogyLevel: "Undergraduate (Freshman)",
-        targetGradeLevel: 13,
-      },
-      recentAIReplies: [],
-    });
+    const { status, body } = buildErrorResponse(error);
+    return NextResponse.json(body, { status });
   }
 }
