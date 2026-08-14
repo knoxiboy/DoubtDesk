@@ -50,7 +50,33 @@ jest.mock('@/configs/db', () => {
     };
 });
 
-import { GET } from '@/app/api/replies/route';
+jest.mock('@/lib/ratelimit/api-rate-limit', () => ({
+    enforceApiRateLimit: jest.fn().mockResolvedValue(null),
+}));
+jest.mock('@/lib/ratelimit/ratelimit', () => ({
+    generalLimiter: {},
+}));
+jest.mock('@/lib/moderation/moderation', () => ({
+    moderateContent: jest.fn().mockResolvedValue({ isAllowed: true }),
+    handleModerationViolation: jest.fn().mockResolvedValue(null),
+}));
+jest.mock('@/inngest/client', () => ({
+    inngest: { send: jest.fn().mockResolvedValue(undefined) },
+}));
+jest.mock('@/lib/notifications/service', () => ({
+    createReplyNotification: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('@/lib/validations/validate', () => ({
+    parseAndValidateRequest: jest.fn().mockImplementation(async (req: Request) => ({
+        errorResponse: null,
+        data: await req.json().catch(() => ({})),
+    })),
+}));
+jest.mock('@/lib/validations/reply', () => ({
+    createReplySchema: {},
+}));
+
+import { GET, POST } from '@/app/api/replies/route';
 
 describe('Replies GET endpoint', () => {
     beforeEach(() => {
@@ -113,5 +139,92 @@ describe('Replies GET endpoint', () => {
         expect(res.status).toBe(200);
         expect((inArray as jest.Mock).mock.calls.length).toBe(0);
         expect(json[0].hasUpvoted).toBeFalsy();
+    });
+
+    it('returns 404 when a student fetches replies on a hidden classroom doubt', async () => {
+        currentUserMock.mockResolvedValue({
+            id: 'clerk_1',
+            primaryEmailAddress: { emailAddress: 'student@example.com' },
+        });
+
+        selectQueue.push(
+            [],
+            [{ id: 1, classroomId: 7, type: 'community', userEmail: 'owner@example.com', isHidden: true }],
+            [{ role: 'student' }],
+        );
+
+        const res = await GET(new Request('http://localhost/api/replies?doubtId=1'));
+        const json = await res.json();
+
+        expect(res.status).toBe(404);
+        expect(json.error).toBe('Doubt not found');
+    });
+
+    it('allows the author to fetch replies on a hidden doubt', async () => {
+        currentUserMock.mockResolvedValue({
+            id: 'clerk_1',
+            primaryEmailAddress: { emailAddress: 'owner@example.com' },
+        });
+
+        selectQueue.push(
+            [],
+            [{ id: 1, classroomId: 7, type: 'community', userEmail: 'owner@example.com', isHidden: true }],
+            [{ role: 'student' }],
+            [{ id: 9, doubtId: 1, userEmail: 'owner@example.com' }],
+            [],
+        );
+
+        const res = await GET(new Request('http://localhost/api/replies?doubtId=1'));
+        expect(res.status).toBe(200);
+    });
+
+    it('allows a teacher to fetch replies on a hidden doubt', async () => {
+        currentUserMock.mockResolvedValue({
+            id: 'clerk_1',
+            primaryEmailAddress: { emailAddress: 'teacher@example.com' },
+        });
+
+        selectQueue.push(
+            [],
+            [{ id: 1, classroomId: 7, type: 'community', userEmail: 'owner@example.com', isHidden: true }],
+            [{ role: 'teacher' }],
+            [{ id: 9, doubtId: 1, userEmail: 'owner@example.com' }],
+            [],
+        );
+
+        const res = await GET(new Request('http://localhost/api/replies?doubtId=1'));
+        expect(res.status).toBe(200);
+    });
+});
+
+describe('Replies POST endpoint — hidden doubts (issue #1354)', () => {
+    beforeEach(() => {
+        currentUserMock.mockReset();
+        selectQueue.length = 0;
+        jest.clearAllMocks();
+    });
+
+    it('rejects replies from classmates on a hidden doubt', async () => {
+        currentUserMock.mockResolvedValue({
+            id: 'clerk_1',
+            fullName: 'Student',
+            primaryEmailAddress: { emailAddress: 'student@example.com' },
+        });
+
+        selectQueue.push(
+            [], // block check
+            [{ id: 1, classroomId: 7, type: 'community', userEmail: 'owner@example.com', isHidden: true, isSolved: 'unsolved' }],
+            [{ role: 'student' }],
+        );
+
+        const res = await POST(new Request('http://localhost/api/replies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ doubtId: 1, type: 'text', content: 'hello' }),
+        }));
+        const json = await res.json();
+
+        expect(res.status).toBe(404);
+        expect(json.error).toBe('Doubt not found');
     });
 });

@@ -14,6 +14,7 @@ import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
 import { generalLimiter } from "@/lib/ratelimit/ratelimit";
 import { canTeach } from "@/lib/auth/membership-guard";
 import { toPublicReply } from "@/lib/anonymity/anonymity";
+import { getDoubtReadDenial } from "@/lib/doubts/doubt-access";
 
 export async function GET(req: Request) {
   try {
@@ -44,13 +45,15 @@ export async function GET(req: Request) {
     );
     if (!doubt) return errorResponse("Doubt not found", 404);
 
+    let membership: { role: string } | undefined;
     if (doubt.classroomId && email) {
-      const [membership] = await db.select().from(membershipsTable).where(
+      const [row] = await db.select().from(membershipsTable).where(
         and(
           eq(membershipsTable.userEmail, email),
           eq(membershipsTable.classroomId, doubt.classroomId),
         ),
       );
+      membership = row;
       if (!membership) {
         return errorResponse("Access denied to this classroom's doubt replies", 403);
       }
@@ -58,26 +61,9 @@ export async function GET(req: Request) {
       return errorResponse("Access denied to this classroom's doubt replies", 403);
     }
 
-    if (doubt.type === "teacher") {
-      let membership;
-      if (email && doubt.classroomId) {
-        const res = await db
-          .select()
-          .from(membershipsTable)
-          .where(
-            and(
-              eq(membershipsTable.userEmail, email),
-              eq(membershipsTable.classroomId, doubt.classroomId),
-            ),
-          );
-        membership = res[0];
-      }
-
-      const isTeacher = membership ? canTeach(membership.role) : false;
-      const isOwner = email ? doubt.userEmail === email : false;
-      if (!isTeacher && !isOwner) {
-        return errorResponse("Access denied", 403);
-      }
+    const denial = getDoubtReadDenial(email, doubt, membership);
+    if (denial) {
+      return errorResponse(denial.error, denial.status);
     }
 
     const data = await db
@@ -163,34 +149,31 @@ export async function POST(req: Request) {
       return errorResponse("Doubt not found", 404);
     }
 
+    let membership: { role: string } | undefined;
     if (doubt.classroomId) {
-      const [membership] = await db.select().from(membershipsTable).where(
+      const [row] = await db.select().from(membershipsTable).where(
         and(
           eq(membershipsTable.userEmail, email),
           eq(membershipsTable.classroomId, doubt.classroomId),
         ),
       );
+      membership = row;
       if (!membership) {
         return errorResponse("Access denied to this classroom", 403);
       }
     }
 
     if (doubt.type === "teacher") {
-      const [membership] = await db
-        .select()
-        .from(membershipsTable)
-        .where(
-          and(
-            eq(membershipsTable.userEmail, email),
-            eq(membershipsTable.classroomId, doubt.classroomId!),
-          ),
-        );
-
       if (doubt.classroomId) {
         if (!membership || !canTeach(membership.role)) {
           return errorResponse("Insufficient permissions to reply to this doubt", 403);
         }
       }
+    }
+
+    const denial = getDoubtReadDenial(email, doubt, membership);
+    if (denial) {
+      return errorResponse(denial.error, denial.status);
     }
 
     const newReply = await db
