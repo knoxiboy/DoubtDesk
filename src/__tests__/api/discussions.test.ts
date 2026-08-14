@@ -26,16 +26,37 @@ jest.mock("@/lib/validations/validate", () => ({
 
 const selectWhereMock = jest.fn();
 const insertReturningMock = jest.fn();
-const orderByMock = jest.fn();
+const countResultMock = jest.fn();
+const dataResultMock = jest.fn();
+
+let dbLimitValue: number | undefined;
+let dbOffsetValue: number | undefined;
 
 jest.mock("@/configs/db", () => ({
   db: {
-    select: jest.fn(() => ({
-      from: jest.fn(() => ({
-        where: selectWhereMock,
-        orderBy: orderByMock,
-      })),
-    })),
+    select: jest.fn((...args: unknown[]) => {
+      if (args.length > 0) {
+        return {
+          from: jest.fn(() => countResultMock()),
+        };
+      }
+      return {
+        from: jest.fn(() => ({
+          where: selectWhereMock,
+          orderBy: jest.fn(() => ({
+            limit: jest.fn((limitValue: number) => {
+              dbLimitValue = limitValue;
+              return {
+                offset: jest.fn((offsetValue: number) => {
+                  dbOffsetValue = offsetValue;
+                  return dataResultMock();
+                }),
+              };
+            }),
+          })),
+        })),
+      };
+    }),
     insert: jest.fn(() => ({
       values: jest.fn(() => ({
         returning: insertReturningMock,
@@ -44,9 +65,25 @@ jest.mock("@/configs/db", () => ({
   },
 }));
 
+const threadRow = (overrides: Record<string, unknown> = {}) => ({
+  id: 1,
+  title: "Thread",
+  description: "",
+  category: "General",
+  authorEmail: "a@example.com",
+  authorName: "Author",
+  isAnonymous: false,
+  replyCount: 0,
+  createdAt: new Date("2026-08-01T10:00:00.000Z"),
+  updatedAt: new Date("2026-08-01T10:00:00.000Z"),
+  ...overrides,
+});
+
 describe("Discussions API", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    dbLimitValue = undefined;
+    dbOffsetValue = undefined;
     checkUserBlockMock.mockResolvedValue({ isBlocked: false, errorResponse: null });
     moderateContentMock.mockResolvedValue({ isAllowed: true, reason: "Content looks good" });
     handleModerationViolationMock.mockResolvedValue(null);
@@ -56,34 +93,132 @@ describe("Discussions API", () => {
     });
   });
 
-  it("GET returns discussion threads newest first", async () => {
-    const createdAt = new Date("2026-08-01T10:00:00.000Z");
-    orderByMock.mockResolvedValue([
-      {
-        id: 2,
-        title: "Newer thread",
-        description: "desc",
-        category: "General",
-        authorEmail: "a@example.com",
-        authorName: "Aarav",
-        isAnonymous: false,
-        replyCount: 3,
-        createdAt,
-        updatedAt: createdAt,
-      },
-    ]);
+  describe("GET /api/discussions — pagination", () => {
+    it("applies default limit=20 and offset=0 when no query params", async () => {
+      countResultMock.mockResolvedValue([{ count: 1 }]);
+      dataResultMock.mockResolvedValue([threadRow()]);
 
-    const res = await GET();
-    const json = await res.json();
+      const res = await GET(new Request("http://localhost/api/discussions"));
+      const json = await res.json();
 
-    expect(res.status).toBe(200);
-    expect(json.data).toHaveLength(1);
-    expect(json.data[0]).toMatchObject({
-      id: 2,
-      title: "Newer thread",
-      author: "Aarav",
-      replies: 3,
+      expect(res.status).toBe(200);
+      expect(dbLimitValue).toBe(20);
+      expect(dbOffsetValue).toBe(0);
+      expect(json.limit).toBe(20);
+      expect(json.page).toBe(1);
+      expect(json.totalCount).toBe(1);
+      expect(json.hasMore).toBe(false);
+      expect(json.data).toHaveLength(1);
+      expect(json.data[0]).toMatchObject({
+        id: 1,
+        title: "Thread",
+        author: "Author",
+        replies: 0,
+      });
     });
+
+    it("applies custom limit from query params", async () => {
+      countResultMock.mockResolvedValue([{ count: 100 }]);
+      dataResultMock.mockResolvedValue([threadRow(), threadRow({ id: 2 })]);
+
+      const res = await GET(new Request("http://localhost/api/discussions?limit=5"));
+      const json = await res.json();
+
+      expect(dbLimitValue).toBe(5);
+      expect(json.limit).toBe(5);
+      expect(json.data).toHaveLength(2);
+    });
+
+    it("applies custom offset from query params", async () => {
+      countResultMock.mockResolvedValue([{ count: 100 }]);
+      dataResultMock.mockResolvedValue([threadRow({ id: 11 })]);
+
+      const res = await GET(new Request("http://localhost/api/discussions?offset=10"));
+      const json = await res.json();
+
+      expect(dbOffsetValue).toBe(10);
+      expect(json.page).toBe(1);
+      expect(json.data).toHaveLength(1);
+      expect(json.data[0].id).toBe(11);
+    });
+
+    it("converts page=2&limit=10 to offset=10", async () => {
+      countResultMock.mockResolvedValue([{ count: 100 }]);
+      dataResultMock.mockResolvedValue([threadRow({ id: 11 })]);
+
+      const res = await GET(new Request("http://localhost/api/discussions?page=2&limit=10"));
+      const json = await res.json();
+
+      expect(dbLimitValue).toBe(10);
+      expect(dbOffsetValue).toBe(10);
+      expect(json.limit).toBe(10);
+      expect(json.page).toBe(2);
+    });
+
+    it("caps limit at 100 when exceeding maximum", async () => {
+      countResultMock.mockResolvedValue([{ count: 1000 }]);
+      dataResultMock.mockResolvedValue([]);
+
+      const res = await GET(new Request("http://localhost/api/discussions?limit=200"));
+      const json = await res.json();
+
+      expect(dbLimitValue).toBe(100);
+      expect(json.limit).toBe(100);
+    });
+
+    it("falls back to default limit=20 for non-numeric limit", async () => {
+      countResultMock.mockResolvedValue([{ count: 50 }]);
+      dataResultMock.mockResolvedValue([]);
+
+      const res = await GET(new Request("http://localhost/api/discussions?limit=abc"));
+      const json = await res.json();
+
+      expect(dbLimitValue).toBe(20);
+      expect(json.limit).toBe(20);
+    });
+
+    it("returns hasMore=true when more rows remain", async () => {
+      countResultMock.mockResolvedValue([{ count: 50 }]);
+      dataResultMock.mockResolvedValue(
+        Array.from({ length: 20 }, (_, i) => threadRow({ id: i + 1 })),
+      );
+
+      const res = await GET(new Request("http://localhost/api/discussions"));
+      const json = await res.json();
+
+      expect(json.hasMore).toBe(true);
+      expect(json.totalCount).toBe(50);
+      expect(json.data).toHaveLength(20);
+    });
+
+    it("returns hasMore=false when all rows are returned", async () => {
+      countResultMock.mockResolvedValue([{ count: 3 }]);
+      dataResultMock.mockResolvedValue(
+        Array.from({ length: 3 }, (_, i) => threadRow({ id: i + 1 })),
+      );
+
+      const res = await GET(new Request("http://localhost/api/discussions"));
+      const json = await res.json();
+
+      expect(json.hasMore).toBe(false);
+      expect(json.totalCount).toBe(3);
+      expect(json.data).toHaveLength(3);
+    });
+
+    it("returns empty data with hasMore=false when table is empty", async () => {
+      countResultMock.mockResolvedValue([{ count: 0 }]);
+      dataResultMock.mockResolvedValue([]);
+
+      const res = await GET(new Request("http://localhost/api/discussions"));
+      const json = await res.json();
+
+      expect(json.data).toEqual([]);
+      expect(json.totalCount).toBe(0);
+      expect(json.hasMore).toBe(false);
+      expect(json.page).toBe(1);
+      expect(json.limit).toBe(20);
+    });
+
   });
 
   it("POST rejects unauthenticated users", async () => {
