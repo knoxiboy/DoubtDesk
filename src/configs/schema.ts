@@ -227,6 +227,25 @@ export const repliesTable = pgTable("replies", {
     }).onDelete("set null"),
 }));
 
+export const replyTaskStatesTable = pgTable("reply_task_states", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    replyId: integer().notNull(),
+    taskIndex: integer().notNull(),
+    isCompleted: boolean().default(false).notNull(),
+    updatedBy: varchar({ length: 255 }).notNull(),
+    updatedAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    replyIdFk: foreignKey({
+        columns: [table.replyId],
+        foreignColumns: [repliesTable.id],
+    }).onDelete("cascade"),
+    updatedByFk: foreignKey({
+        columns: [table.updatedBy],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+    uniqueReplyTask: unique("reply_task_states_reply_task_unique").on(table.replyId, table.taskIndex),
+}));
+
 export const likesTable = pgTable("likes", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     userEmail: varchar({ length: 255 }).notNull(),

@@ -46,6 +46,8 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [isPendingRepliesLoading, setIsPendingRepliesLoading] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [chatText, setChatText] = useState("");
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [taskProgresses, setTaskProgresses] = useState<Record<number, { completed: number, total: number }>>({});
     const [isPosting, setIsPosting] = useState(false);
     const [showSolutionForm, setShowSolutionForm] = useState(false);
     const [solutionContent, setSolutionContent] = useState("");
@@ -438,6 +440,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const ReplyBubble = ({ reply }: { reply: any }) => {
         const isMe = !!reply.isOwnPost;
         const isOfficial = doubt.solvedReplyId === reply.id;
+        const taskProgress = taskProgresses[reply.id];
 
         return (
             <div className={`flex flex-col group/msg relative w-full mb-6 ${isMe ? 'items-end' : 'items-start'} ${reply.isPendingSync ? 'opacity-65 italic' : ''}`}>
@@ -456,6 +459,19 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             {reply.type === 'solution' && isOfficial && (
                                 <div className="bg-emerald-500 text-slate-900 dark:text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-full shadow-lg shadow-emerald-500/20 flex items-center gap-1">
                                     <CheckCircle className="w-2.5 h-2.5" /> Official
+                                </div>
+                            )}
+                            {taskProgress && taskProgress.total > 0 && (
+                                <div className="flex items-center gap-2 ml-2 bg-slate-100 dark:bg-white/5 px-2.5 py-1 rounded-full border border-slate-200 dark:border-white/10">
+                                    <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full bg-blue-500 transition-all duration-500 ease-out" 
+                                            style={{ width: `${(taskProgress.completed / taskProgress.total) * 100}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-[9px] font-black uppercase text-blue-500">
+                                        {taskProgress.completed}/{taskProgress.total} Tasks
+                                    </span>
                                 </div>
                             )}
                         </div>
@@ -563,7 +579,11 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             <>
                                 {reply.content && (
                                     <div className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
-                                        <MarkdownRenderer content={reply.content} />
+                                        <MarkdownRenderer 
+                                            content={reply.content} 
+                                            replyId={reply.id} 
+                                            onTaskProgress={(completed, total) => setTaskProgresses(prev => ({ ...prev, [reply.id]: { completed, total } }))} 
+                                        />
                                     </div>
                                 )}
                                 {reply.imageUrl && (
