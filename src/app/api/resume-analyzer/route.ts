@@ -6,8 +6,7 @@ import { db } from "@/configs/db";
 import { resumeAnalysisTable } from "@/configs/schema";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth/auth-utils";
-import { enforceAiAvailability} from "@/lib/ai/kill-switch";
-import { getAnonymousQuotaIdentifier } from "@/lib/auth/request-identity";
+import { enforceAiAvailability } from "@/lib/ai/kill-switch";
 import { limitRequestBodySize } from "@/lib/validations/validate";
 
 const require = createRequire(import.meta.url);
@@ -61,6 +60,16 @@ export async function POST(req: NextRequest) {
         const sizeError = await limitRequestBodySize(req, MAX_REQUEST_BODY_BYTES);
         if (sizeError) return sizeError;
 
+        const user = await currentUser();
+        const userEmail = user?.primaryEmailAddress?.emailAddress;
+
+        if (!user || !userEmail) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { isBlocked, errorResponse } = await checkUserBlock(userEmail);
+        if (isBlocked) return errorResponse;
+
         const formData = await req.formData();
         const file = formData.get("resume");
         const jobDescription = (formData.get("jobDescription") as string || "").trim();
@@ -91,16 +100,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: validationError }, { status: 400 });
         }
 
-        const user = await currentUser();
-        const userEmail = user?.primaryEmailAddress?.emailAddress;
-
-        if (userEmail) {
-            const { isBlocked, errorResponse } = await checkUserBlock(userEmail);
-            if (isBlocked) return errorResponse;
-        }
-        
-        const aiQuotaIdentifier = userEmail ?? getAnonymousQuotaIdentifier(req);
-        const availabilityResponse = await enforceAiAvailability(aiQuotaIdentifier);
+        const availabilityResponse = await enforceAiAvailability(userEmail);
         if (availabilityResponse) return availabilityResponse;
 
         const buffer = Buffer.from(await file.arrayBuffer());
@@ -205,21 +205,19 @@ ${resumeText}
 
         const aiOutput = JSON.parse(response.data.choices[0].message.content);
 
-        if (userEmail) {
-            const displayTitle = jobDescription
-                ? jobDescription
-                : (fieldOfInterest || targetRole)
-                    ? `${fieldOfInterest}${fieldOfInterest && targetRole ? ' - ' : ''}${targetRole}`.trim()
-                    : "General Analysis";
+        const displayTitle = jobDescription
+            ? jobDescription
+            : (fieldOfInterest || targetRole)
+                ? `${fieldOfInterest}${fieldOfInterest && targetRole ? ' - ' : ''}${targetRole}`.trim()
+                : "General Analysis";
 
-            await db.insert(resumeAnalysisTable).values({
-                userEmail,
-                resumeText,
-                resumeName: file.name,
-                jobDescription: displayTitle,
-                analysisData: JSON.stringify(aiOutput)
-            });
-        }
+        await db.insert(resumeAnalysisTable).values({
+            userEmail,
+            resumeText,
+            resumeName: file.name,
+            jobDescription: displayTitle,
+            analysisData: JSON.stringify(aiOutput)
+        });
 
         return NextResponse.json(aiOutput);
 
