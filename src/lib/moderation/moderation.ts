@@ -346,9 +346,11 @@ export async function handleModerationViolation(
 ): Promise<string | null> {
     if (moderation.isAllowed) return null;
 
-    return db.transaction(async (tx) => {
-        // Atomically increment violationCount at the DB level — eliminates the
-        // read-modify-write race under concurrent violation processing.
+    // Execute all DB mutations inside the transaction.
+    // Emails are dispatched AFTER the transaction commits so a failed
+    // email delivery (SMTP timeout, invalid API key, etc.) cannot roll back
+    // the block state or violation counter.
+    const emailData = await db.transaction(async (tx) => {
         const [updated] = await tx.update(usersTable).set({
                 violationCount: sql`${usersTable.violationCount} + 1`,
             })
@@ -360,32 +362,28 @@ export async function handleModerationViolation(
             });
 
         if (!updated) {
-            // User row not found — log and bail without crashing the request.
             console.error(`[handleModerationViolation] User not found: ${email}`);
             return null;
         }
 
-       const newViolationCount = updated.violationCount;
-       const isThirdViolation = newViolationCount >= 3;
+        const newViolationCount = updated.violationCount;
+        const isThirdViolation = newViolationCount >= 3;
 
         let blockedUntil: Date | null = updated.blockedUntil || null;
         let newBlockCount = updated.blockCount || 0;
+        let durationDays = 0;
 
         if (isThirdViolation) {
             newBlockCount += 1;
 
-            // Duration: 3 days (1st block), 7 days (2nd), 14*2^n (subsequent)
-            let durationDays = 3;
-            if (newBlockCount === 2) durationDays = 7;
-            else if (newBlockCount >= 3) durationDays = 14 * Math.pow(2, newBlockCount - 3);
+            let days = 3;
+            if (newBlockCount === 2) days = 7;
+            else if (newBlockCount >= 3) days = 14 * Math.pow(2, newBlockCount - 3);
+            durationDays = days;
 
             blockedUntil = new Date();
             blockedUntil.setDate(blockedUntil.getDate() + durationDays);
 
-            // Persist block state in the same transaction. violationCount is reset
-            // to 0 here so the 3-strike counter starts fresh once the user is
-            // unblocked — without this, every violation after the first block
-            // would stay >= 3 and re-trigger an immediate additional block.
             await tx.update(usersTable).set({
                     isBlocked: true,
                     blockedUntil,
@@ -393,11 +391,8 @@ export async function handleModerationViolation(
                     violationCount: 0,
                 })
                 .where(eq(usersTable.email, email));
-
-            await sendBlockEmail(email, durationDays, newBlockCount);
         }
 
-        // Log violation inside transaction — rolls back if the outer update fails.
         await tx.insert(moderationLogsTable).values({
             userEmail: email,
             reason: moderation.reason,
@@ -405,15 +400,36 @@ export async function handleModerationViolation(
             contentSnippet: content.substring(0, 200),
         });
 
-        // Email is outside the transaction (side-effect; non-rollbackable).
-        await sendWarningEmail(email, moderation.reason, newViolationCount);
-
-        let errorMessage = `Content flagged: ${moderation.reason}. This is strike ${newViolationCount}/3. Please stick to academic topics.`;
-
-        if (isThirdViolation && blockedUntil) {
-            errorMessage = `Content flagged. Your account is now blocked for ${newBlockCount > 1 ? 'additional ' : ''}violations. Access restored on ${blockedUntil.toDateString()}.`;
-        }
-
-        return errorMessage;
+        return {
+            newViolationCount,
+            isThirdViolation,
+            blockedUntil,
+            newBlockCount,
+            durationDays,
+        };
     });
+
+    // If user not found, emailData will be null
+    if (!emailData) return null;
+
+    const { newViolationCount, isThirdViolation, blockedUntil, newBlockCount, durationDays } = emailData;
+
+    // Fire-and-forget email sends — failures do NOT affect moderation state.
+    if (isThirdViolation) {
+        sendBlockEmail(email, durationDays, newBlockCount).catch((err) => {
+            console.error("[handleModerationViolation] Failed to send block email:", err);
+        });
+    }
+
+    sendWarningEmail(email, moderation.reason, newViolationCount).catch((err) => {
+        console.error("[handleModerationViolation] Failed to send warning email:", err);
+    });
+
+    let errorMessage = `Content flagged: ${moderation.reason}. This is strike ${newViolationCount}/3. Please stick to academic topics.`;
+
+    if (isThirdViolation && blockedUntil) {
+        errorMessage = `Content flagged. Your account is now blocked for ${newBlockCount > 1 ? 'additional ' : ''}violations. Access restored on ${blockedUntil.toDateString()}.`;
+    }
+
+    return errorMessage;
 }
