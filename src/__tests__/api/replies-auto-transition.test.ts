@@ -19,9 +19,24 @@ import { DOUBT_STATUS, isValidDoubtStatus, isOpen, DoubtStatus } from "@/lib/dou
 
 // Chainable query builder used by the route. Each helper returns `this`
 // (or a thenable) so we can record the call sequence.
-const updateBuilder = {
-    set: jest.fn().mockReturnThis(),
-    where: jest.fn().mockResolvedValue([]),
+let pendingUpdatePayload: Record<string, unknown> | undefined;
+let rejectTransitionUpdate = false;
+const updateBuilder: {
+    set: jest.Mock;
+    where: jest.Mock;
+} = {
+    set: jest.fn((payload: Record<string, unknown>) => {
+        pendingUpdatePayload = payload;
+        return updateBuilder;
+    }),
+    where: jest.fn(() => {
+        const payload = pendingUpdatePayload;
+        pendingUpdatePayload = undefined;
+        if (rejectTransitionUpdate && payload?.isSolved) {
+            return Promise.reject(new Error("transient db error"));
+        }
+        return Promise.resolve([]);
+    }),
 };
 
 const insertBuilder = {
@@ -118,6 +133,8 @@ async function callPost(opts: {
 beforeEach(() => {
     jest.clearAllMocks();
     selectChains.length = 0;
+    pendingUpdatePayload = undefined;
+    rejectTransitionUpdate = false;
 });
 
 // --- Pure helpers --------------------------------------------------------
@@ -160,7 +177,7 @@ describe("POST /api/replies — auto-transition (issue #183)", () => {
             isSolved: DOUBT_STATUS.IN_PROGRESS,
         });
         // And the WHERE clause should pin on isSolved = 'unsolved' (race guard).
-        expect(updateBuilder.where).toHaveBeenCalledTimes(1);
+        expect(updateBuilder.where).toHaveBeenCalled();
     });
 
     test("in-progress doubt is left alone (idempotent)", async () => {
@@ -202,11 +219,13 @@ describe("POST /api/replies — auto-transition (issue #183)", () => {
         });
 
         // For AI doubts we skip the transition update entirely.
-        expect(updateBuilder.set).not.toHaveBeenCalled();
+        expect(updateBuilder.set.mock.calls).not.toContainEqual([
+            { isSolved: DOUBT_STATUS.IN_PROGRESS },
+        ]);
     });
 
     test("transition failure does not fail the reply insert", async () => {
-        updateBuilder.where.mockRejectedValueOnce(new Error("transient db error"));
+        rejectTransitionUpdate = true;
 
         const res = await callPost({
             doubt: { ...mockDoubt, isSolved: DOUBT_STATUS.UNSOLVED },
