@@ -4,6 +4,11 @@ import { ReadableStream, TransformStream, WritableStream } from 'stream/web';
 import { MessageChannel, MessagePort } from 'worker_threads';
 import { Blob } from 'buffer';
 
+// Production intentionally fails fast when this secret is absent. Unit tests
+// mock every outbound Groq call, so provide a non-secret placeholder before
+// application modules are imported.
+process.env.GROQ_API_KEY ||= 'test-groq-api-key';
+
 global.TextEncoder = TextEncoder as any;
 global.TextDecoder = TextDecoder as any;
 global.ReadableStream = ReadableStream as any;
@@ -104,6 +109,12 @@ jest.mock("remark-math", () => () => {});
 jest.mock("rehype-katex", () => () => {});
 jest.mock("react-hotkeys-hook", () => ({
     useHotkeys: () => {}
+}));
+// The Upstash package pulls an ESM-only browser dependency into Jest's
+// CommonJS runtime. Tests run without Redis credentials and exercise the
+// in-process fallback, so a minimal module stub is sufficient here.
+jest.mock("@upstash/redis", () => ({
+    Redis: { fromEnv: jest.fn() },
 }));
 
 jest.mock("@/lib/ratelimit/ratelimit", () => {
