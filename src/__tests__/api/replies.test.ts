@@ -17,12 +17,28 @@ jest.mock('@clerk/nextjs/server', () => ({
     currentUser: () => currentUserMock(),
 }));
 
-jest.mock('@/configs/schema', () => ({
-    repliesTable: { doubtId: 'replies.doubtId', id: 'replies.id', userEmail: 'replies.userEmail' },
-    doubtsTable: { id: 'doubts.id', deletedAt: 'doubts.deletedAt' },
-    replyLikesTable: { userEmail: 'replyLikes.userEmail', replyId: 'replyLikes.replyId' },
-    usersTable: { email: 'users.email', blockedUntil: 'users.blockedUntil' },
-    membershipsTable: { userEmail: 'memberships.userEmail', classroomId: 'memberships.classroomId', role: 'memberships.role' },
+jest.mock('@/configs/schema', () => {
+    const actual = jest.requireActual('drizzle-orm');
+    return {
+        repliesTable: { doubtId: 'replies.doubtId', id: 'replies.id', userEmail: 'replies.userEmail', createdAt: 'replies.createdAt' },
+        doubtsTable: { id: 'doubts.id', deletedAt: 'doubts.deletedAt', classroomId: 'doubts.classroomId', type: 'doubts.type', userEmail: 'doubts.userEmail' },
+        replyLikesTable: { userEmail: 'replyLikes.userEmail', replyId: 'replyLikes.replyId' },
+        usersTable: { email: 'users.email', blockedUntil: 'users.blockedUntil' },
+        membershipsTable: { userEmail: 'memberships.userEmail', classroomId: 'memberships.classroomId', role: 'memberships.role' },
+    };
+});
+
+jest.mock('@/lib/moderation/moderation', () => ({
+    moderateContent: jest.fn(),
+    handleModerationViolation: jest.fn(),
+}));
+
+jest.mock('@/inngest/client', () => ({
+    inngest: { send: jest.fn() },
+}));
+
+jest.mock('@/lib/notifications/service', () => ({
+    createReplyNotification: jest.fn(),
 }));
 
 const buildQuery = (data: any) => {
@@ -67,8 +83,8 @@ describe('Replies GET endpoint', () => {
         });
 
         const replies = [
-            { id: 7, doubtId: 1, userEmail: 'owner@example.com' },
-            { id: 8, doubtId: 1, userEmail: 'other@example.com' },
+            { id: 7, doubtId: 1, userEmail: 'owner@example.com', createdAt: '2024-01-01T00:00:00Z' },
+            { id: 8, doubtId: 1, userEmail: 'other@example.com', createdAt: '2024-01-01T00:01:00Z' },
         ];
 
         // Queue order matches GET execution:
@@ -92,7 +108,7 @@ describe('Replies GET endpoint', () => {
         expect(scopedCall![1]).toHaveLength(2);
 
         // hasUpvoted reflects only this doubt's replies.
-        const byId = Object.fromEntries(json.map((r: any) => [r.id, r.hasUpvoted]));
+        const byId = Object.fromEntries(json.replies.map((r: any) => [r.id, r.hasUpvoted]));
         expect(byId[7]).toBe(true);
         expect(byId[8]).toBe(false);
     });
@@ -104,7 +120,7 @@ describe('Replies GET endpoint', () => {
         // is present), so the queue starts directly with the doubt lookup.
         selectQueue.push(
             [{ id: 1, classroomId: null, type: 'community', userEmail: 'owner@example.com' }],
-            [{ id: 9, doubtId: 1, userEmail: 'owner@example.com' }],
+            [{ id: 9, doubtId: 1, userEmail: 'owner@example.com', createdAt: '2024-01-01T00:00:00Z' }],
         );
 
         const res = await GET(new Request('http://localhost/api/replies?doubtId=1'));
@@ -112,6 +128,6 @@ describe('Replies GET endpoint', () => {
 
         expect(res.status).toBe(200);
         expect((inArray as jest.Mock).mock.calls.length).toBe(0);
-        expect(json[0].hasUpvoted).toBeFalsy();
+        expect(json.replies[0].hasUpvoted).toBeFalsy();
     });
 });

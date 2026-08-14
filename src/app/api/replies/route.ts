@@ -1,6 +1,6 @@
 import { db } from "@/configs/db";
 import { repliesTable, doubtsTable, replyLikesTable, usersTable, membershipsTable } from "@/configs/schema";
-import { eq, asc, and, isNull, inArray } from "drizzle-orm";
+import { eq, asc, and, gt, or, isNull, inArray, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { moderateContent, handleModerationViolation } from "@/lib/moderation/moderation";
@@ -14,6 +14,8 @@ import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
 import { generalLimiter } from "@/lib/ratelimit/ratelimit";
 import { canTeach } from "@/lib/auth/membership-guard";
 import { toPublicReply } from "@/lib/anonymity/anonymity";
+import { encodeCursor, decodeCursor } from "@/lib/pagination";
+import { parsePositiveInt } from "@/lib/utils/utils";
 
 export async function GET(req: Request) {
   try {
@@ -80,17 +82,39 @@ export async function GET(req: Request) {
       }
     }
 
+    const limitStr = searchParams.get("limit");
+    const cursorStr = searchParams.get("cursor");
+
+    const limit = Math.min(parsePositiveInt(limitStr, 20), 100);
+    const cursor = decodeCursor(cursorStr);
+
+    const whereConditions: any[] = [eq(repliesTable.doubtId, doubtId)];
+
+    if (cursor) {
+      whereConditions.push(
+        or(
+          gt(sql`date_trunc('milliseconds', ${repliesTable.createdAt})`, cursor.createdAt),
+          and(
+            eq(sql`date_trunc('milliseconds', ${repliesTable.createdAt})`, cursor.createdAt),
+            gt(repliesTable.id, cursor.id),
+          ),
+        ),
+      );
+    }
+
     const data = await db
       .select()
       .from(repliesTable)
-      .where(eq(repliesTable.doubtId, doubtId))
-      .orderBy(asc(repliesTable.createdAt));
+      .where(and(...whereConditions))
+      .orderBy(asc(repliesTable.createdAt), asc(repliesTable.id))
+      .limit(limit + 1);
 
-    let repliesWithVotes = data;
+    const hasMore = data.length > limit;
+    const pageData = hasMore ? data.slice(0, limit) : data;
+
+    let repliesWithVotes = pageData;
     if (email) {
-      // Only fetch the current user's likes for this doubt's replies, not
-      // every like they have ever made across the entire app.
-      const replyIds = data.map((r: any) => r.id);
+      const replyIds = pageData.map((r: any) => r.id);
       const userUpvotes = replyIds.length > 0
         ? await db
             .select()
@@ -103,17 +127,22 @@ export async function GET(req: Request) {
             )
         : [];
       const upvotedReplyIds = new Set(userUpvotes.map((v: any) => v.replyId));
-      repliesWithVotes = data.map((reply: any) => ({
+      repliesWithVotes = pageData.map((reply: any) => ({
         ...reply,
         hasUpvoted: upvotedReplyIds.has(reply.id),
       }));
     }
 
-    // Strip the reply author's userEmail before returning; expose only the
-    // anonymized handle and a session-derived `isOwnPost`. See src/lib/anonymity.ts.
     const publicReplies = repliesWithVotes.map((reply: any) => toPublicReply(reply, email));
 
-    return NextResponse.json(publicReplies);
+    const lastReply = pageData[pageData.length - 1];
+    const nextCursor = lastReply ? encodeCursor(lastReply.createdAt, lastReply.id) : null;
+
+    return NextResponse.json({
+      replies: publicReplies,
+      nextCursor,
+      hasMore,
+    });
   } catch (error) {
     const { status, body } = buildErrorResponse(error);
     return NextResponse.json(body, { status });
