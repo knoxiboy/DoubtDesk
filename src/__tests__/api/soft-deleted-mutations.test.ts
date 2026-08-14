@@ -1,7 +1,9 @@
 import { POST as bookmarkPost } from "@/app/api/doubts/[id]/bookmark/route";
 import { POST as upvotePost } from "@/app/api/doubts/[id]/upvote/route";
 import { POST as flagPost } from "@/app/api/doubts/flag/route";
+import { POST as acceptPost } from "@/app/api/doubts/[id]/accept/route";
 import { currentUser } from "@clerk/nextjs/server";
+import { db } from "@/configs/db";
 
 jest.mock("@clerk/nextjs/server", () => ({
   currentUser: jest.fn(),
@@ -24,6 +26,7 @@ jest.mock("@/lib/validations/validate", () => ({
 }));
 
 const selectResultQueue: any[] = [];
+const updateResultQueue: any[] = [];
 
 const createQueryMock = (data: any) => {
   const chain: any = {
@@ -41,6 +44,13 @@ jest.mock("@/configs/db", () => ({
     insert: jest.fn(() => ({
       values: jest.fn().mockResolvedValue([]),
     })),
+    update: jest.fn(() => ({
+      set: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          returning: jest.fn().mockImplementation(async () => updateResultQueue.shift() ?? []),
+        }),
+      }),
+    })),
     transaction: jest.fn(),
   },
 }));
@@ -53,6 +63,7 @@ describe("soft-deleted doubt mutations (issue #1355)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     selectResultQueue.length = 0;
+    updateResultQueue.length = 0;
     (currentUser as jest.Mock).mockResolvedValue({
       primaryEmailAddress: { emailAddress: "student@example.com" },
     });
@@ -69,10 +80,7 @@ describe("soft-deleted doubt mutations (issue #1355)", () => {
   });
 
   it("returns 404 and does not emit karma when upvoting a reply on a soft-deleted doubt", async () => {
-    selectResultQueue.push(
-      [{ userEmail: "author@example.com", doubtId: 42 }],
-      [],
-    );
+    selectResultQueue.push([]);
 
     const res = await upvotePost(
       new Request("http://localhost/api/doubts/42/upvote", {
@@ -89,6 +97,40 @@ describe("soft-deleted doubt mutations (issue #1355)", () => {
     expect(inngest.send).not.toHaveBeenCalled();
   });
 
+  it("rechecks active state inside the bookmark transaction", async () => {
+    selectResultQueue.push([{ id: 42, classroomId: null }]);
+    const txInsert = jest.fn();
+    (db.transaction as jest.Mock).mockImplementationOnce(async (callback) => callback({
+      execute: jest.fn().mockResolvedValue({ rows: [] }),
+      insert: txInsert,
+    }));
+
+    const res = await bookmarkPost(new Request("http://localhost/api/doubts/42/bookmark", { method: "POST" }), params);
+
+    expect(res.status).toBe(404);
+    expect(txInsert).not.toHaveBeenCalled();
+  });
+
+  it("rechecks active state before inserting a flag", async () => {
+    selectResultQueue.push([{ id: 42, classroomId: null }]);
+    const txInsert = jest.fn();
+    (db.transaction as jest.Mock).mockImplementationOnce(async (callback) => callback({
+      execute: jest.fn().mockResolvedValue({ rows: [] }),
+      insert: txInsert,
+    }));
+
+    const res = await flagPost(
+      new Request("http://localhost/api/doubts/flag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ doubtId: 42, reason: "spam" }),
+      }) as any,
+    );
+
+    expect(res.status).toBe(404);
+    expect(txInsert).not.toHaveBeenCalled();
+  });
+
   it("returns 404 when flagging a soft-deleted doubt", async () => {
     selectResultQueue.push([]);
 
@@ -103,5 +145,26 @@ describe("soft-deleted doubt mutations (issue #1355)", () => {
 
     expect(res.status).toBe(404);
     expect(json.error).toBe("Doubt not found");
+  });
+
+  it("rechecks active state when an accept update affects no row", async () => {
+    selectResultQueue.push(
+      [{ userEmail: "student@example.com" }],
+      [{ userEmail: "author@example.com", doubtId: 42 }],
+      [],
+    );
+    updateResultQueue.push([]);
+
+    const res = await acceptPost(
+      new Request("http://localhost/api/doubts/42/accept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ replyId: 9 }),
+      }) as any,
+      params,
+    );
+
+    expect(res.status).toBe(404);
+    expect((inngest.send as jest.Mock)).not.toHaveBeenCalled();
   });
 });

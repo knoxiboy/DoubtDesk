@@ -3,6 +3,7 @@ import { POST } from '@/app/api/replies/vote/route';
 const currentUserMock = jest.fn();
 const selectResultQueue: any[] = [];
 const updateResultQueue: any[] = [];
+let transactionLockRows: any[] = [{ id: 11 }];
 
 jest.mock('@clerk/nextjs/server', () => ({
     currentUser: () => currentUserMock(),
@@ -44,6 +45,7 @@ jest.mock('@/configs/db', () => ({
         // Add transaction that runs callback with a tx proxy sharing the same mocks
         db.transaction = jest.fn().mockImplementation((callback: (tx: any) => Promise<any>) => {
             const tx = {
+                execute: jest.fn().mockImplementation(async () => ({ rows: transactionLockRows })),
                 select: () => createQueryMock(selectResultQueue.shift() ?? []),
                 delete: () => ({ where: jest.fn().mockResolvedValue({}) }),
                 insert: db.insert,
@@ -62,6 +64,7 @@ describe('Reply Vote API Endpoint', () => {
         currentUserMock.mockReset();
         selectResultQueue.length = 0;
         updateResultQueue.length = 0;
+        transactionLockRows = [{ id: 11 }];
         jest.clearAllMocks();
     });
 
@@ -99,5 +102,27 @@ describe('Reply Vote API Endpoint', () => {
             userEmail: 'teacher@example.com',
             replyId: 1,
         });
+    });
+
+    it('does not mutate when the parent is deleted before the transaction lock', async () => {
+        currentUserMock.mockResolvedValue({
+            id: 'clerk_user_id',
+            primaryEmailAddress: { emailAddress: 'teacher@example.com' },
+        });
+        selectResultQueue.push(
+            [],
+            [{ id: 1, replyId: 1, doubtId: 11, userEmail: 'other@example.com' }],
+            [{ classroomId: null }],
+        );
+        transactionLockRows = [];
+
+        const res = await POST(new Request('http://localhost/api/replies/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replyId: 1 }),
+        }));
+
+        expect(res.status).toBe(404);
+        expect((globalThis as any).__voteDbMock.insert).not.toHaveBeenCalled();
     });
 });

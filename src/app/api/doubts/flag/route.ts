@@ -43,11 +43,41 @@ export async function POST(req: NextRequest) {
             await requireMembership(reporterEmail, doubt.classroomId);
         }
 
+        let autoHidden = false;
+        let activeAtWrite = false;
         try {
-            await db.insert(contentFlagsTable).values({
-                doubtId,
-                reporterEmail,
-                reason,
+            await db.transaction(async (tx: any) => {
+                // The active-state check, flag insert, and count/update are one
+                // serialized unit so a concurrent soft delete cannot slip
+                // between validation and mutation.
+                const locked = await tx.execute(
+                    sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} AND ${doubtsTable.deletedAt} IS NULL FOR UPDATE`,
+                );
+                if (!locked.rows?.length) return;
+                activeAtWrite = true;
+
+                await tx.insert(contentFlagsTable).values({
+                    doubtId,
+                    reporterEmail,
+                    reason,
+                });
+
+                const windowStart = new Date(Date.now() - AUTO_HIDE_WINDOW_MS);
+                const [{ value: recentFlagCount }] = await tx
+                    .select({ value: count() })
+                    .from(contentFlagsTable)
+                    .where(
+                        and(
+                            eq(contentFlagsTable.doubtId, doubtId),
+                            eq(contentFlagsTable.status, "open"),
+                            gte(contentFlagsTable.createdAt, windowStart),
+                        ),
+                    );
+
+                if (recentFlagCount >= AUTO_HIDE_FLAG_THRESHOLD) {
+                    await tx.update(doubtsTable).set({ isHidden: true }).where(eq(doubtsTable.id, doubtId));
+                    autoHidden = true;
+                }
             });
         } catch (error: unknown) {
             // Unique constraint on (doubtId, reporterEmail) — same user can't flag twice.
@@ -58,44 +88,20 @@ export async function POST(req: NextRequest) {
             throw error;
         }
 
-        // Atomic count-and-hide with row lock so concurrent flag requests are
-        // serialized, preventing a TOCTOU race where multiple requests all read
-        // the count below the threshold before any of them hides the doubt.
-        let autoHidden = false;
-        await db.transaction(async (tx: any) => {
-            const locked = await tx.execute(
-                sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} FOR UPDATE`,
-            );
-            if (!locked.rows?.length) return;
+        if (!activeAtWrite) {
+            return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
 
-            const windowStart = new Date(Date.now() - AUTO_HIDE_WINDOW_MS);
-            const [{ value: recentFlagCount }] = await tx
-                .select({ value: count() })
-                .from(contentFlagsTable)
-                .where(
-                    and(
-                        eq(contentFlagsTable.doubtId, doubtId),
-                        eq(contentFlagsTable.status, "open"),
-                        gte(contentFlagsTable.createdAt, windowStart),
-                    ),
-                );
-
-            if (recentFlagCount >= AUTO_HIDE_FLAG_THRESHOLD) {
-                await tx.update(doubtsTable).set({ isHidden: true }).where(eq(doubtsTable.id, doubtId));
-                autoHidden = true;
-
-                if (doubt.classroomId) {
-                    try {
-                        await inngest.send({
-                            name: "doubt/auto-hidden",
-                            data: { doubtId, classroomId: doubt.classroomId },
-                        });
-                    } catch (error) {
-                        console.error("Failed to send doubt/auto-hidden event", error);
-                    }
-                }
+        if (autoHidden && doubt.classroomId) {
+            try {
+                await inngest.send({
+                    name: "doubt/auto-hidden",
+                    data: { doubtId, classroomId: doubt.classroomId },
+                });
+            } catch (error) {
+                console.error("Failed to send doubt/auto-hidden event", error);
             }
-        });
+        }
 
         return NextResponse.json({
             success: true,

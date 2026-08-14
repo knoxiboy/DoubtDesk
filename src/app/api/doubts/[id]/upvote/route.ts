@@ -48,31 +48,8 @@ export async function POST(
             return NextResponse.json({ error: "replyId is required" }, { status: 400 });
         }
 
-        // ── 3. DATA INTEGRITY CHECK (THREAD VALIDATION) ──────────────────────
-        const [targetReply] = await db
-            .select({ 
-                userEmail: repliesTable.userEmail,
-                doubtId: repliesTable.doubtId 
-            })
-            .from(repliesTable)
-            .where(eq(repliesTable.id, replyId))
-            .limit(1);
-
-        if (!targetReply) {
-            return NextResponse.json({ error: "Reply not found" }, { status: 404 });
-        }
-
-        if (targetReply.doubtId !== doubtId) {
-            return NextResponse.json({ 
-                error: "Integrity Error: The provided reply does not belong to this doubt thread." 
-            }, { status: 400 });
-        }
-
-        if (targetReply.userEmail === stableUserIdentifier) {
-            return NextResponse.json({ error: "Forbidden: You cannot upvote your own answer." }, { status: 403 });
-        }
-
-        // ── 4. CLASSROOM MEMBERSHIP GUARD ─────────────────────────────────────
+        // Validate the parent first so a deleted doubt consistently returns 404
+        // without exposing reply-specific existence, ownership, or integrity.
         const [doubt] = await db
             .select({ classroomId: doubtsTable.classroomId })
             .from(doubtsTable)
@@ -98,6 +75,30 @@ export async function POST(
             if (!membership) {
                 return NextResponse.json({ error: "Access denied to this classroom's doubt" }, { status: 403 });
             }
+        }
+
+        // ── 3. DATA INTEGRITY CHECK (THREAD VALIDATION) ──────────────────────
+        const [targetReply] = await db
+            .select({
+                userEmail: repliesTable.userEmail,
+                doubtId: repliesTable.doubtId
+            })
+            .from(repliesTable)
+            .where(eq(repliesTable.id, replyId))
+            .limit(1);
+
+        if (!targetReply) {
+            return NextResponse.json({ error: "Reply not found" }, { status: 404 });
+        }
+
+        if (targetReply.doubtId !== doubtId) {
+            return NextResponse.json({
+                error: "Integrity Error: The provided reply does not belong to this doubt thread."
+            }, { status: 400 });
+        }
+
+        if (targetReply.userEmail === stableUserIdentifier) {
+            return NextResponse.json({ error: "Forbidden: You cannot upvote your own answer." }, { status: 403 });
         }
 
         // ── 5 & 6. ATOMIC TRANSACTION: INSERT LIKE & INCREMENT COUNTER ───────

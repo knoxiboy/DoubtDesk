@@ -75,6 +75,10 @@ export async function POST(req: Request) {
 
         // ── 3. ATOMIC TRANSACTION FLOW ──────────────────────────────────────
         const result = await db.transaction(async (tx) => {
+            const lockedParent = await tx.execute(
+                sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${reply.doubtId} AND ${doubtsTable.deletedAt} IS NULL FOR UPDATE`,
+            );
+            if (!lockedParent.rows?.length) return null;
 
             // Check existing vote inside transaction
             const existingLike = await tx.select()
@@ -133,6 +137,10 @@ export async function POST(req: Request) {
             }
         });
 
+        if (!result) {
+            return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
+
         // ── 4. BACKGROUND SYSTEM EMISSION ───────────────────────────────────
         if (result && result.userEmail && originalReplyAuthorEmail) {
             if (result.userEmail !== originalReplyAuthorEmail) {
@@ -168,7 +176,7 @@ export async function POST(req: Request) {
 
         // Strip the author's real email before returning — identity must
         // stay server-side only (see src/lib/anonymity/anonymity.ts).
-        const { userEmail: _, ...safeResult } = result ?? {};
+        const { userEmail: _, ...safeResult } = result;
         return NextResponse.json(safeResult);
     } catch (error) {
         const { status, body } = buildErrorResponse(error);

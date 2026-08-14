@@ -107,11 +107,29 @@ export async function POST(
 
         // ── 5. IDEMPOTENT RESPONSE ────────────────────────────────────────────
         if (!updatedDoubt) {
+            const [currentDoubt] = await db
+                .select({
+                    isSolved: doubtsTable.isSolved,
+                    solvedReplyId: doubtsTable.solvedReplyId,
+                })
+                .from(doubtsTable)
+                .where(
+                    and(
+                        eq(doubtsTable.id, doubtId),
+                        eq(doubtsTable.userEmail, loggedInUserEmail),
+                        isNull(doubtsTable.deletedAt),
+                    ),
+                )
+                .limit(1);
+
+            if (!currentDoubt) {
+                return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+            }
             return NextResponse.json({
                 success: true,
                 message: "Answer was already accepted (no-op)",
                 doubtId,
-                solvedReplyId: replyId,
+                solvedReplyId: currentDoubt.solvedReplyId,
             });
         }
 

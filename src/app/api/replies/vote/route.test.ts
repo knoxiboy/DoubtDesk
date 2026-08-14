@@ -41,6 +41,7 @@ jest.mock('@/configs/db', () => ({
         // Add transaction that runs callback with a tx proxy sharing the same mocks
         db.transaction = jest.fn().mockImplementation((callback: (tx: any) => Promise<any>) => {
             const tx = {
+                execute: jest.fn().mockResolvedValue({ rows: [{ id: 7 }] }),
                 select: jest.fn().mockImplementation(() => mockCreateQuery(mockSelectResultQueue.shift() ?? [])),
                 delete: jest.fn().mockImplementation(() => ({
                     where: jest.fn().mockResolvedValue({}),
