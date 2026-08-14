@@ -90,4 +90,33 @@ describe("POST /api/resume-analyzer", () => {
     expect(mockAxiosPost).not.toHaveBeenCalled();
     expect(enforceAiAvailability).not.toHaveBeenCalled();
   });
+
+  it("returns block-check failures before parsing or calling Groq", async () => {
+    mockCurrentUser.mockResolvedValue({
+      primaryEmailAddress: { emailAddress: "student@example.com" },
+    });
+    mockCheckUserBlock.mockResolvedValue({
+      isBlocked: false,
+      errorResponse: NextResponse.json({ error: "Unable to verify account" }, { status: 503 }),
+    });
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(503);
+    expect(mockAxiosPost).not.toHaveBeenCalled();
+    expect(enforceAiAvailability).not.toHaveBeenCalled();
+  });
+
+  it("requires a persisted user before parsing or calling Groq", async () => {
+    mockCurrentUser.mockResolvedValue({
+      primaryEmailAddress: { emailAddress: "student@example.com" },
+    });
+    mockCheckUserBlock.mockResolvedValue({ isBlocked: false, dbUser: undefined });
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(409);
+    expect(mockAxiosPost).not.toHaveBeenCalled();
+    expect(enforceAiAvailability).not.toHaveBeenCalled();
+  });
 });

@@ -67,8 +67,17 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { isBlocked, errorResponse } = await checkUserBlock(userEmail);
-        if (isBlocked) return errorResponse;
+        const { isBlocked, errorResponse, dbUser } = await checkUserBlock(userEmail);
+        if (errorResponse) return errorResponse;
+        if (isBlocked) {
+            return NextResponse.json({ error: "Account is blocked" }, { status: 403 });
+        }
+        if (!dbUser) {
+            return NextResponse.json(
+                { error: "Complete your profile before analyzing a resume" },
+                { status: 409 },
+            );
+        }
 
         const formData = await req.formData();
         const file = formData.get("resume");

@@ -88,11 +88,38 @@ describe("POST /api/cover-letter", () => {
     expect(mockAxiosPost).not.toHaveBeenCalled();
   });
 
+  it("returns block-check failures before calling Groq", async () => {
+    mockCurrentUser.mockResolvedValue({
+      primaryEmailAddress: { emailAddress: "student@example.com" },
+    });
+    mockCheckUserBlock.mockResolvedValue({
+      isBlocked: false,
+      errorResponse: NextResponse.json({ error: "Unable to verify account" }, { status: 503 }),
+    });
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(503);
+    expect(mockAxiosPost).not.toHaveBeenCalled();
+  });
+
+  it("requires a persisted user before calling Groq", async () => {
+    mockCurrentUser.mockResolvedValue({
+      primaryEmailAddress: { emailAddress: "student@example.com" },
+    });
+    mockCheckUserBlock.mockResolvedValue({ isBlocked: false, dbUser: undefined });
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(409);
+    expect(mockAxiosPost).not.toHaveBeenCalled();
+  });
+
   it("generates a cover letter for an authenticated user", async () => {
     mockCurrentUser.mockResolvedValue({
       primaryEmailAddress: { emailAddress: "student@example.com" },
     });
-    mockCheckUserBlock.mockResolvedValue({ isBlocked: false });
+    mockCheckUserBlock.mockResolvedValue({ isBlocked: false, dbUser: { id: 1 } });
     mockAxiosPost.mockResolvedValue({
       data: { choices: [{ message: { content: "Dear Hiring Manager..." } }] },
     });
