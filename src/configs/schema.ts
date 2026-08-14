@@ -122,6 +122,8 @@ export const doubtsTable = pgTable("doubts", {
     type: varchar({ length: 20 }).default("community"),
     isPinned: boolean().default(false),
     isHidden: boolean("isHidden").default(false).notNull(),
+    slaStatus: varchar({ length: 20 }).default("ok").notNull(),
+    resolvedAt: timestamp(),
     deletedAt: timestamp(),
     createdAt: timestamp().defaultNow().notNull(),
 

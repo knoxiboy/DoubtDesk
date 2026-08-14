@@ -194,6 +194,35 @@ export async function sendBlockEmail(
 }
 
 /**
+ * Sends a notification email when a doubt breaches the SLA.
+ */
+export async function sendSlaBreachEmail(params: {
+    toEmail: string;
+    doubtId: number;
+    doubtSubject: string;
+    hours: number;
+}): Promise<EmailSendResult> {
+    const { toEmail, doubtId, doubtSubject, hours } = params;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const doubtLink = `${appUrl}/doubts/${doubtId}`;
+    
+    const subject = "SLA Breached - DoubtDesk Action Required";
+    const html = `
+      <p>A doubt in your classroom has been unsolved for over <strong>${hours} hours</strong> and has breached the SLA.</p>
+      <p><strong>Subject:</strong> ${escapeHtml(doubtSubject)}</p>
+      <p><a href="${doubtLink}">Click here to view and resolve the doubt</a></p>
+    `;
+
+    console.log(`[EMAIL] Preparing SLA breach email for doubt ${doubtId}`);
+    return sendResendEmail({
+        toEmail,
+        subject,
+        html,
+        logLabel: "SLA breach email",
+    });
+}
+
+/**
  * Sends a premium, responsive HTML email notification to the doubt author when a reply is posted.
  */
 export async function sendReplyNotificationEmail(params: {

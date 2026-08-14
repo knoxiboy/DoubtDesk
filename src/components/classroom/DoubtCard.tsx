@@ -294,6 +294,28 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                         <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Pinned</span>
                                     </div>
                                 )}
+                                {doubt.isSolved !== "solved" && doubt.slaStatus === "breached" && (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="px-3 py-1 bg-rose-500/10 border border-rose-500/20 rounded-full flex items-center gap-1.5 cursor-help">
+                                                <AlertTriangle className="w-3 h-3 text-rose-500" />
+                                                <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">SLA Breached</span>
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Unsolved for over 24 hours</TooltipContent>
+                                    </Tooltip>
+                                )}
+                                {doubt.isSolved !== "solved" && doubt.slaStatus === "warning" && (
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <div className="px-3 py-1 bg-orange-500/10 border border-orange-500/20 rounded-full flex items-center gap-1.5 cursor-help">
+                                                <AlertTriangle className="w-3 h-3 text-orange-500" />
+                                                <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">SLA Warning</span>
+                                            </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Unsolved for over 12 hours</TooltipContent>
+                                    </Tooltip>
+                                )}
                                 {doubt.isSolved === "solved" ? (
                                     <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center gap-1.5">
                                         <CheckCircle className="w-3 h-3 text-emerald-500" />

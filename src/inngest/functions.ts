@@ -3,10 +3,10 @@ import type { NonRetriableError } from "inngest";
 import fs from "fs";
 import path from "path";
 import { db } from "../configs/db";
-import { doubtsTable, usersTable, pendingNotificationsTable, repliesTable, videoJobsTable } from "../configs/schema";
-import { eq, inArray, and, lt } from "drizzle-orm";
+import { doubtsTable, usersTable, pendingNotificationsTable, repliesTable, videoJobsTable, classroomsTable } from "../configs/schema";
+import { eq, inArray, and, lt, isNull } from "drizzle-orm";
 import { emailNotificationLimiter, redisClient } from "@/lib/ratelimit/ratelimit";
-import { sendReplyNotificationEmail, sendDigestEmail } from "@/lib/email/email";
+import { sendReplyNotificationEmail, sendDigestEmail, sendSlaBreachEmail } from "@/lib/email/email";
 import { getAnonymousHandle } from "@/lib/anonymity/anonymity";
 import { runVideoPipeline } from "../lib/video/pipeline";
 import { TEMP_ROOT } from "../lib/video/temp";
@@ -428,4 +428,68 @@ export const cleanupStaleVideoJobs = inngest.createFunction(
       return { failedStaleJobs: failed.length };
     });
   },
+);
+
+export const evaluateSlas = inngest.createFunction(
+  { id: "evaluate-slas", triggers: [{ cron: "0 * * * *" }] },
+  async ({ step }: { step: InngestStep }) => {
+    return await step.run("evaluate-slas-step", async () => {
+      const now = new Date();
+      const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000);
+      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+      const unsolvedDoubts = await db
+        .select()
+        .from(doubtsTable)
+        .where(
+          and(
+            inArray(doubtsTable.isSolved, ["unsolved", "in-progress"]),
+            isNull(doubtsTable.deletedAt)
+          )
+        );
+
+      let warningsUpdated = 0;
+      let breachesUpdated = 0;
+
+      for (const doubt of unsolvedDoubts) {
+        const doubtAge = doubt.createdAt.getTime();
+        
+        if (doubtAge < twentyFourHoursAgo.getTime() && doubt.slaStatus !== "breached") {
+          // Breach
+          await db
+            .update(doubtsTable)
+            .set({ slaStatus: "breached" })
+            .where(eq(doubtsTable.id, doubt.id));
+            
+          breachesUpdated++;
+
+          if (doubt.classroomId) {
+            const [classroom] = await db
+              .select()
+              .from(classroomsTable)
+              .where(eq(classroomsTable.id, doubt.classroomId));
+
+            if (classroom && classroom.teacherEmail) {
+              await sendSlaBreachEmail({
+                toEmail: classroom.teacherEmail,
+                doubtId: doubt.id,
+                doubtSubject: doubt.subject,
+                hours: 24
+              }).catch(err => console.error("Failed to send SLA breach email:", err));
+            }
+          }
+        } else if (doubtAge >= twentyFourHoursAgo.getTime() && doubtAge < twelveHoursAgo.getTime() && doubt.slaStatus === "ok") {
+          // Warning
+          await db
+            .update(doubtsTable)
+            .set({ slaStatus: "warning" })
+            .where(eq(doubtsTable.id, doubt.id));
+          
+          warningsUpdated++;
+        }
+      }
+
+      return { warningsUpdated, breachesUpdated };
+    });
+  }
 );

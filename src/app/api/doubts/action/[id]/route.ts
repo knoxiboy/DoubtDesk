@@ -188,7 +188,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
             const updated = await db.update(doubtsTable)
                 .set({ 
                     isSolved: newStatus,
-                    solvedReplyId: newSolvedReplyId 
+                    solvedReplyId: newSolvedReplyId,
+                    resolvedAt: newStatus === DOUBT_STATUS.SOLVED ? new Date() : null
                 })
                 .where(eq(doubtsTable.id, doubtId))
                 .returning();
