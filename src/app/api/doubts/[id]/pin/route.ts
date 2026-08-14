@@ -83,6 +83,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             return NextResponse.json({ error: result.error }, { status: result.status });
         }
 
+        if (!result.updated[0]) {
+            return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
+
         void auditLog({
             actorEmail: email,
             action: AUDIT_ACTIONS.DOUBT_PINNED,

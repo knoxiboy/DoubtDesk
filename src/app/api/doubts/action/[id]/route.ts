@@ -80,6 +80,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                         .where(eq(doubtsTable.id, doubtId))
                         .returning();
 
+                    if (!updated[0]) return null;
                     return { ...updated[0], hasLiked: false };
                 } else {
                     await tx.insert(likesTable).values({
@@ -92,6 +93,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                         .where(eq(doubtsTable.id, doubtId))
                         .returning();
 
+                    if (!updated[0]) return null;
                     return { ...updated[0], hasLiked: true };
                 }
             });
@@ -302,6 +304,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
                 return { updated: updatedRow, savedTags: resolvedTags };
             });
+
+            if (!updated) {
+                return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+            }
 
             void auditLog({
                 actorEmail: email || "unknown",

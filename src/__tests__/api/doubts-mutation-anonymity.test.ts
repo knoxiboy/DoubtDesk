@@ -48,6 +48,8 @@ jest.mock("@/lib/auth/membership-guard", () => ({
 const selectResultQueue: any[] = [];
 const updateReturning = jest.fn();
 const transactionMock = jest.fn();
+const txSelectResultQueue: any[] = [];
+const txUpdateResultQueue: any[] = [];
 
 const createQueryMock = (data: any) => {
   const chain: any = {
@@ -58,6 +60,24 @@ const createQueryMock = (data: any) => {
     then: (resolve: any) => Promise.resolve(resolve(data)),
   };
   return chain;
+};
+
+const txMock = {
+  execute: jest.fn().mockResolvedValue({ rows: [{ id: 42 }] }),
+  select: jest.fn(() => createQueryMock(txSelectResultQueue.shift() ?? [])),
+  update: jest.fn(() => ({
+    set: () => ({
+      where: () => ({
+        returning: jest.fn().mockImplementation(async () => txUpdateResultQueue.shift() ?? []),
+      }),
+    }),
+  })),
+  insert: jest.fn(() => ({
+    values: jest.fn().mockResolvedValue(undefined),
+  })),
+  delete: jest.fn(() => ({
+    where: jest.fn().mockResolvedValue(undefined),
+  })),
 };
 
 jest.mock("@/configs/db", () => ({
@@ -89,6 +109,10 @@ describe("Doubt mutation anonymity (issue #1356)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     selectResultQueue.length = 0;
+    txSelectResultQueue.length = 0;
+    txUpdateResultQueue.length = 0;
+    transactionMock.mockImplementation((callback) => callback(txMock));
+    txMock.execute.mockResolvedValue({ rows: [{ id: 42 }] });
     (currentUser as jest.Mock).mockResolvedValue({
       primaryEmailAddress: { emailAddress: VIEWER_EMAIL },
     });
@@ -100,7 +124,8 @@ describe("Doubt mutation anonymity (issue #1356)", () => {
       data: { action: "like" },
     });
     selectResultQueue.push([authoredDoubt], [{ role: "student" }]);
-    transactionMock.mockResolvedValue({ ...authoredDoubt, likes: 3, hasLiked: true });
+    txSelectResultQueue.push([]);
+    txUpdateResultQueue.push([{ ...authoredDoubt, likes: 3 }]);
 
     const res = await PATCH(new Request("http://localhost/api/doubts/action/42", { method: "PATCH" }), params);
     const json = await res.json();
@@ -139,10 +164,8 @@ describe("Doubt mutation anonymity (issue #1356)", () => {
       data: { action: "edit", content: "updated", subject: "Thermo" },
     });
     selectResultQueue.push([authoredDoubt], [{ role: "student" }]);
-    transactionMock.mockResolvedValue({
-      updated: { ...authoredDoubt, content: "updated", subject: "Thermo" },
-      savedTags: [],
-    });
+    txUpdateResultQueue.push([{ ...authoredDoubt, content: "updated", subject: "Thermo" }]);
+    txSelectResultQueue.push([]);
 
     const res = await PATCH(new Request("http://localhost/api/doubts/action/42", { method: "PATCH" }), params);
     const json = await res.json();
@@ -154,9 +177,8 @@ describe("Doubt mutation anonymity (issue #1356)", () => {
 
   it("strips userEmail from pin responses", async () => {
     selectResultQueue.push([authoredDoubt], [{ role: "teacher" }]);
-    transactionMock.mockResolvedValue({
-      updated: [{ ...authoredDoubt, isPinned: true }],
-    });
+    txSelectResultQueue.push([{ value: 0 }]);
+    txUpdateResultQueue.push([{ ...authoredDoubt, isPinned: true }]);
 
     const res = await pinPost(new Request("http://localhost/api/doubts/42/pin", { method: "POST" }), params);
     const json = await res.json();
@@ -176,5 +198,21 @@ describe("Doubt mutation anonymity (issue #1356)", () => {
     expect(res.status).toBe(200);
     expect(json.isPinned).toBe(false);
     assertNoIdentityLeak(json);
+  });
+
+  it("returns 404 when a like transaction updates no doubt row", async () => {
+    (parseAndValidateRequest as jest.Mock).mockResolvedValue({
+      errorResponse: null,
+      data: { action: "like" },
+    });
+    selectResultQueue.push([authoredDoubt], [{ role: "student" }]);
+    txSelectResultQueue.push([]);
+    txUpdateResultQueue.push([]);
+
+    const res = await PATCH(new Request("http://localhost/api/doubts/action/42", { method: "PATCH" }), params);
+
+    expect(res.status).toBe(404);
+    expect(transactionMock).toHaveBeenCalledTimes(1);
+    expect(txMock.update).toHaveBeenCalled();
   });
 });
