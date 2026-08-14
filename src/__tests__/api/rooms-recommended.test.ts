@@ -1,6 +1,17 @@
 import { GET } from "@/app/api/rooms/route";
 import { currentUser } from "@clerk/nextjs/server";
 import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { classroomsTable } from "@/configs/schema";
+import { isNull, notInArray } from "drizzle-orm";
+
+jest.mock("drizzle-orm", () => {
+  const actual = jest.requireActual("drizzle-orm");
+  return {
+    ...actual,
+    isNull: jest.fn(actual.isNull),
+    notInArray: jest.fn(actual.notInArray),
+  };
+});
 
 jest.mock("@clerk/nextjs/server", () => ({
   currentUser: jest.fn(),
@@ -58,7 +69,7 @@ describe("GET /api/rooms recommended[]", () => {
 
   it("does not expose inviteCode or teacherEmail on recommended classrooms", async () => {
     selectResultQueue.push(
-      [], // joined rooms
+      [{ id: 5, role: "student" }], // joined rooms
       [{ email: "student@example.com", university: "MIT", year: "1st Year" }],
       [
         {
@@ -95,5 +106,7 @@ describe("GET /api/rooms recommended[]", () => {
     expect(recommendedSelect).not.toHaveProperty("teacherEmail");
     expect(recommendedSelect).not.toHaveProperty("allowedEmailDomains");
     expect(recommendedSelect).not.toHaveProperty("inviteCodeExpiresAt");
+    expect(isNull).toHaveBeenCalledWith(classroomsTable.organizationId);
+    expect(notInArray).toHaveBeenCalledWith(classroomsTable.id, [5]);
   });
 });
