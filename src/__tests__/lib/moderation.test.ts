@@ -62,7 +62,8 @@ export const mockCreate = jest.fn().mockImplementation(async ({ messages }: any)
 
 jest.mock('groq-sdk', () => {
     return {
-        Groq: jest.fn().mockImplementation(() => ({
+        __esModule: true,
+        default: jest.fn().mockImplementation(() => ({
             chat: {
                 completions: {
                     create: jest.fn().mockImplementation((...args: any[]) => mockCreate(...args))
