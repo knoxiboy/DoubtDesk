@@ -49,10 +49,25 @@ export async function GET(req: Request) {
 
         let classrooms: ProfileClassroom[] = [];
         if (classroomIds.length > 0) {
-            classrooms = await db
-                .select()
+            const classroomRows = await db
+                .select({
+                    id: classroomsTable.id,
+                    name: classroomsTable.name,
+                    university: classroomsTable.university,
+                    year: classroomsTable.year,
+                    createdAt: classroomsTable.createdAt,
+                })
                 .from(classroomsTable)
                 .where(inArray(classroomsTable.id, classroomIds));
+
+            const roleByClassroomId = new Map(
+                memberships.map((m: { classroomId: number | null; role: string }) => [m.classroomId, m.role])
+            );
+
+            classrooms = classroomRows.map((classroom) => ({
+                ...classroom,
+                role: roleByClassroomId.get(classroom.id),
+            }));
         }
 
         const totalDoubts = totalDoubtsResult[0]?.value ?? 0;
