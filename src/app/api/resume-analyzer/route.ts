@@ -10,8 +10,7 @@ import { enforceAiAvailability} from "@/lib/ai/kill-switch";
 import { getAnonymousQuotaIdentifier } from "@/lib/auth/request-identity";
 import { limitRequestBodySize } from "@/lib/validations/validate";
 
-const require = createRequire(import.meta.url);
-const pdf = require("pdf-parse-fork");
+import { extractTextFromPDF } from "@/lib/pdf/extractor";
 
 const MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024;
 const SUPPORTED_RESUME_MIME_TYPES = new Set(["application/pdf"]);
@@ -104,20 +103,13 @@ export async function POST(req: NextRequest) {
         if (availabilityResponse) return availabilityResponse;
 
         const buffer = Buffer.from(await file.arrayBuffer());
-        let resumeText = "";
-        
-        try {
-            const data = await pdf(buffer);
-            resumeText = data.text;
-        } catch (parseError: unknown) {
-            console.error("PDF Parsing Error:", parseError);
-            return NextResponse.json({
-                error: "Unable to read the uploaded PDF. Please upload a valid text-based PDF resume."
-            }, { status: 400 });
-        }
+        const extraction = await extractTextFromPDF(buffer, { minTextThreshold: 20 });
+        const resumeText = extraction.text;
 
-        if (!resumeText || resumeText.trim().length === 0) {
-            return NextResponse.json({ error: "Failed to extract text from the PDF" }, { status: 400 });
+        if (!resumeText || resumeText.trim().length === 0 || extraction.warning) {
+            return NextResponse.json({
+                error: extraction.warning || extraction.error || "Failed to extract text from the PDF. Please upload a clearer document or text-based PDF."
+            }, { status: 400 });
         }
 
         const hasJD = !!jobDescription;
