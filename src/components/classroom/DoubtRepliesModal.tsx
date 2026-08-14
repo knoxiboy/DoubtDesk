@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, MoreVertical, Pencil, Trash2, PlusCircle, Eye, EyeOff, Bold, Italic, Code, List, ThumbsUp, FileText, ExternalLink, AlertTriangle } from "lucide-react";
+import { X, Send, CheckCircle, MessageSquare, Loader2, Upload, File, ZoomIn, MoreVertical, Pencil, Trash2, PlusCircle, Eye, EyeOff, Bold, Italic, Code, List, ThumbsUp, FileText, ExternalLink, AlertTriangle, Sparkles, Bot } from "lucide-react";
 import { toast } from "sonner";
 import MarkdownRenderer from "@/components/common/MarkdownRenderer";
 import { DeleteConfirmationDialog } from "@/components/common/DeleteConfirmationDialog";
@@ -46,6 +46,10 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const [isPendingRepliesLoading, setIsPendingRepliesLoading] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [chatText, setChatText] = useState("");
+    const [taskProgresses, setTaskProgresses] = useState<Record<number, { completed: number, total: number }>>({});
+    const [threadSummary, setThreadSummary] = useState<{summaryBullets: string[], keyTakeaway: string} | null>(null);
+    const [isSummarizing, setIsSummarizing] = useState(false);
+    const [summaryError, setSummaryError] = useState("");
     const [isPosting, setIsPosting] = useState(false);
     const [showSolutionForm, setShowSolutionForm] = useState(false);
     const [solutionContent, setSolutionContent] = useState("");
@@ -417,6 +421,23 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
     const editTextareaRef = useRef<HTMLTextAreaElement>(null);
     const chatInputRef = useRef<HTMLInputElement>(null);
 
+    const handleSummarize = async () => {
+        if (!doubt) return;
+        setIsSummarizing(true);
+        setSummaryError("");
+        try {
+            const res = await fetch(`/api/doubts/${doubt.id}/summarize`, { method: "POST" });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to summarize discussion");
+            setThreadSummary(data);
+        } catch (err: any) {
+            setSummaryError(err.message);
+            toast.error(err.message);
+        } finally {
+            setIsSummarizing(false);
+        }
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -727,7 +748,59 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                             <p className="text-[10px] uppercase font-black tracking-widest text-slate-600 mt-2">Be the first to help out!</p>
                         </div>
                     ) : (
-                        <div className="space-y-6">
+                        <div className="space-y-6 flex flex-col relative">
+                            {replies.length >= 5 && !threadSummary && !isSummarizing && (
+                                <button
+                                    onClick={handleSummarize}
+                                    className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-blue-600/10 border border-blue-500/20 rounded-2xl hover:bg-blue-600/20 transition-all text-blue-500 font-bold text-[11px] uppercase tracking-widest shadow-lg shadow-blue-500/5 group"
+                                >
+                                    <Sparkles className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+                                    Summarize Discussion
+                                </button>
+                            )}
+
+                            {(isSummarizing || threadSummary) && (
+                                <div className="w-full rounded-2xl border border-purple-500/30 bg-white/5 dark:bg-slate-900/50 p-6 shadow-xl relative overflow-hidden backdrop-blur-xl mb-4">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
+                                            <Bot className="w-4 h-4 text-purple-400" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xs font-black uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">AI Thread Summary</h3>
+                                        </div>
+                                    </div>
+
+                                    {isSummarizing ? (
+                                        <div className="space-y-3 animate-pulse">
+                                            <div className="h-4 bg-purple-500/20 rounded w-3/4"></div>
+                                            <div className="h-4 bg-purple-500/20 rounded w-5/6"></div>
+                                            <div className="h-4 bg-purple-500/20 rounded w-1/2"></div>
+                                            <div className="mt-4 pt-4 border-t border-white/10">
+                                                <div className="h-4 bg-purple-500/20 rounded w-full"></div>
+                                            </div>
+                                        </div>
+                                    ) : threadSummary ? (
+                                        <div className="animate-in fade-in zoom-in-95 duration-500">
+                                            <ul className="space-y-2 mb-4">
+                                                {threadSummary.summaryBullets.map((bullet, idx) => (
+                                                    <li key={idx} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 shrink-0" />
+                                                        <span className="leading-relaxed">{bullet}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                            <div className="pt-4 border-t border-slate-200 dark:border-white/10">
+                                                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                                                    <span className="text-purple-500 mr-2">Key Takeaway:</span>
+                                                    {threadSummary.keyTakeaway}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            )}
+
                             {(() => {
                                 const allReplies = [...replies, ...pendingReplies].sort((a, b) => {
                                     const timeA = new Date(a.createdAt).getTime() || 0;
