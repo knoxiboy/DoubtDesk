@@ -164,6 +164,7 @@ export interface Doubt {
     solvedReplyId?: number | null;
     type: "ai" | "community" | "teacher";
     isPinned: boolean | null;
+    isEdited?: boolean | null;
     isPendingSync?: boolean;
     createdAt: Date | string;
     // The raw author identifier must never appear on a client-facing Doubt. Typing
@@ -184,6 +185,15 @@ export interface Doubt {
  * type-check against this shape.
  */
 export type PublicDoubt = PublicAuthored<Doubt>;
+
+export interface DoubtEdit {
+    id: number;
+    doubtId: number;
+    previousSubject: string | null;
+    previousContent: string | null;
+    editedByEmail: string;
+    editedAt: Date | string;
+}
 
 /** Type for a doubt record with simplified fields (server-side DB record;
  *  carries the raw author identifier, unlike the client-facing Doubt/PublicDoubt). */

@@ -1,5 +1,5 @@
 import { db } from "@/configs/db";
-import { doubtTagsTable, doubtsTable, likesTable, classroomsTable, repliesTable, tagsTable, membershipsTable } from "@/configs/schema";
+import { doubtTagsTable, doubtsTable, likesTable, classroomsTable, repliesTable, tagsTable, membershipsTable, doubtEditsTable } from "@/configs/schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
@@ -237,11 +237,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 : isNull(tagsTable.classroomId);
 
             const { updated, savedTags } = await db.transaction(async (tx) => {
+                // Record the previous state before updating
+                await tx.insert(doubtEditsTable).values({
+                    doubtId,
+                    previousSubject: doubt.subject,
+                    previousContent: doubt.content,
+                    editedByEmail: email!,
+                });
+
                 const [updatedRow] = await tx.update(doubtsTable)
                     .set({
                         content: content || null,
                         subject,
-                        imageUrl: imageUrl || null
+                        imageUrl: imageUrl || null,
+                        isEdited: true
                     })
                     .where(eq(doubtsTable.id, doubtId))
                     .returning();

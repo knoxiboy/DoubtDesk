@@ -25,6 +25,7 @@ const ARIA_LABELS = {
   VIEW_REPLIES: (count: number) => `View ${count} ${count === 1 ? "reply" : "replies"}`,
 } as const;
 import { useSearchParams } from "next/navigation";
+import { DoubtEditHistory } from "./DoubtEditHistory";
 import { useUser } from "@clerk/nextjs";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 
@@ -259,9 +260,12 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                 {doubt.author || 'Anonymous'}
                                 {isOwner && <span className="ml-2 text-[10px] bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">You</span>}
                             </h3>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest mt-0.5">
-                                {new Date(doubt.createdAt).toLocaleDateString()}
-                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                                <p className="text-[10px] text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest">
+                                    {new Date(doubt.createdAt).toLocaleDateString()}
+                                </p>
+                                {doubt.isEdited && <DoubtEditHistory doubtId={doubt.id} />}
+                            </div>
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">

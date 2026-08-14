@@ -122,6 +122,7 @@ export const doubtsTable = pgTable("doubts", {
     type: varchar({ length: 20 }).default("community"),
     isPinned: boolean().default(false),
     isHidden: boolean("isHidden").default(false).notNull(),
+    isEdited: boolean().default(false).notNull(),
     deletedAt: timestamp(),
     createdAt: timestamp().defaultNow().notNull(),
 
@@ -159,6 +160,27 @@ export const doubtsTable = pgTable("doubts", {
             columns: [table.classroomId],
             foreignColumns: [classroomsTable.id],
         }).onDelete("set null"),
+    };
+});
+
+export const doubtEditsTable = pgTable("doubt_edits", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    doubtId: integer().notNull(),
+    previousSubject: varchar({ length: 100 }),
+    previousContent: text(),
+    editedByEmail: varchar({ length: 255 }).notNull(),
+    editedAt: timestamp().defaultNow().notNull(),
+}, (table) => {
+    return {
+        doubtIdIndex: index("doubt_edits_doubtId_idx").on(table.doubtId),
+        doubtIdFk: foreignKey({
+            columns: [table.doubtId],
+            foreignColumns: [doubtsTable.id],
+        }).onDelete("cascade"),
+        editedByEmailFk: foreignKey({
+            columns: [table.editedByEmail],
+            foreignColumns: [usersTable.email],
+        }).onDelete("cascade"),
     };
 });
 
