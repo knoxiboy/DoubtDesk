@@ -94,6 +94,7 @@ describe("GET /api/profile activities.classrooms", () => {
     );
     expect(classroomSelect).toBeDefined();
     expect(classroomSelect).not.toHaveProperty("inviteCode");
+    expect(classroomSelect).not.toHaveProperty("inviteCodeExpiresAt");
     expect(classroomSelect).not.toHaveProperty("teacherEmail");
     expect(classroomSelect).not.toHaveProperty("allowedEmailDomains");
   });
