@@ -13,7 +13,8 @@ import {
     MessageSquare,
     School,
     Brain,
-    Zap
+    Zap,
+    Trophy
 } from "lucide-react"
 
 import {
@@ -61,6 +62,10 @@ export function CommandMenu() {
                     <CommandItem onSelect={() => runCommand(() => router.push("/rooms"))}>
                         <School className="mr-2 h-4 w-4" />
                         <span>Virtual Campus</span>
+                    </CommandItem>
+                    <CommandItem onSelect={() => runCommand(() => router.push("/leaderboard"))}>
+                        <Trophy className="mr-2 h-4 w-4 text-blue-500" />
+                        <span>Leaderboard</span>
                     </CommandItem>
                     <CommandItem onSelect={() => runCommand(() => router.push("/public-rooms"))}>
                         <MessageSquare className="mr-2 h-4 w-4" />

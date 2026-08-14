@@ -17,7 +17,8 @@ import {
     Map,
     Bot,
     Network,
-    ShieldCheck
+    ShieldCheck,
+    Trophy
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
@@ -30,6 +31,7 @@ const SIDEBAR_CONSTANTS = {
 const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
     { name: 'Virtual Campus', icon: School, href: '/rooms' },
+    { name: 'Leaderboard', icon: Trophy, href: '/leaderboard' },
     { name: 'Bookmarks', icon: Bookmark, href: '/bookmarks' },
 ]
 

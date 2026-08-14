@@ -10,6 +10,7 @@ import { DOUBT_STATUS, DoubtStatus, isValidDoubtStatus } from "@/lib/doubts/doub
 import { auditLog, AUDIT_ACTIONS } from "@/lib/audit/audit";
 import type { Tag } from "@/types";
 import { canTeach } from "@/lib/auth/membership-guard";
+import { inngest } from "@/inngest/client";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -178,6 +179,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
                 newStatus = DOUBT_STATUS.SOLVED;
                 newSolvedReplyId = replyId;
+
+                // Award Karma for accepted answer
+                if (targetReply.userEmail && targetReply.userEmail !== doubt.userEmail) {
+                    await inngest.send({
+                        name: "karma/answer.accepted",
+                        data: {
+                            replyAuthorEmail: targetReply.userEmail,
+                            replyId: replyId,
+                            doubtId: doubtId,
+                        },
+                    });
+                }
             }
 
             // Defensive: only `solved` doubts should retain a solvedReplyId.
