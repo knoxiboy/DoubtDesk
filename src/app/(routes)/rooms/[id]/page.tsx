@@ -45,6 +45,8 @@ import {
 import AskDoubt from "@/components/classroom/AskDoubt";
 import DoubtCard from "@/components/classroom/DoubtCard";
 import AskAIView from "@/components/classroom/AskAIView";
+import KnowledgeBaseView from "@/components/classroom/KnowledgeBaseView";
+import WebhookSettings from "@/components/classroom/WebhookSettings";
 import ExportButton from "@/components/common/ExportButton";
 import DoubtSortSelect, { DoubtSortValue } from "@/components/classroom/DoubtSortSelect";
 import { toast } from "sonner";
@@ -435,6 +437,7 @@ export default function ClassroomPage() {
                   icon: GraduationCap,
                 },
                 { id: "insights", label: "Insights", icon: TrendingUp },
+                { id: "faq", label: "Knowledge Base", icon: BookOpen },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -450,7 +453,7 @@ export default function ClassroomPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-12 pb-2 flex justify-end relative z-10 mt-6">
-        {activeTab !== "ask-ai" && activeTab !== "insights" && (
+        {activeTab !== "ask-ai" && activeTab !== "insights" && activeTab !== "faq" && (
           <DoubtSortSelect value={sort} onValueChange={updateSort} />
         )}
       </div>
@@ -976,7 +979,13 @@ export default function ClassroomPage() {
           </div>
         )}
 
-        {activeTab !== "insights" && (
+        {activeTab === "faq" && (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto mt-6">
+             <KnowledgeBaseView classroomId={classroom.id} role={classroom.role} />
+          </div>
+        )}
+
+        {activeTab !== "insights" && activeTab !== "faq" && (
           <div ref={loadMoreRef} className="py-8 flex justify-center">
             {isLoadingMore && (
               <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
@@ -1234,6 +1243,7 @@ export default function ClassroomPage() {
                   <Save className="w-3.5 h-3.5" /> Save Domains
                 </button>
               </div>
+              <WebhookSettings classroomId={Number(id)} />
             </div>
           </div>
         </div>

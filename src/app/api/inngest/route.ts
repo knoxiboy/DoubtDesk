@@ -11,7 +11,10 @@ import {
     generateVideo,
     cleanupStaleVideoJobs,
     checkUrgentClassroomActivity,
-    notifyFlaggedContentHidden
+    notifyFlaggedContentHidden,
+    generateClassroomFaqs,
+    dispatchWebhooksOnCreate,
+    dispatchWebhooksOnFlag
 } from "../../../inngest/functions";
 
 // Serve your registered background processes safely
@@ -27,6 +30,9 @@ export const { GET, POST, PUT } = serve({
         generateVideo,
         cleanupStaleVideoJobs,
         checkUrgentClassroomActivity,
-        notifyFlaggedContentHidden
+        notifyFlaggedContentHidden,
+        generateClassroomFaqs,
+        dispatchWebhooksOnCreate,
+        dispatchWebhooksOnFlag
     ],
 });

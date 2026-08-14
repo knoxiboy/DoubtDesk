@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     try {
         const { errorResponse: validationError, data } = await parseAndValidateRequest(req, updateReplyActionSchema);
         if (validationError) return validationError;
-        const { content, imageUrl } = data;
+        const { content, imageUrl, originalCode, correctedCode, language } = data;
         
         const user = await currentUser();
         if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -77,9 +77,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             }
         }
 
-        const updateData: { content?: string | null; imageUrl?: string | null } = {};
+        const updateData: { content?: string | null; imageUrl?: string | null; originalCode?: string | null; correctedCode?: string | null; language?: string | null; } = {};
         if (content !== undefined) updateData.content = content;
         if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
+        if (originalCode !== undefined) updateData.originalCode = originalCode;
+        if (correctedCode !== undefined) updateData.correctedCode = correctedCode;
+        if (language !== undefined) updateData.language = language;
 
         const updated = await db.update(repliesTable)
             .set(updateData)

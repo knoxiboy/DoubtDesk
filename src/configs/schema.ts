@@ -114,12 +114,14 @@ export const doubtsTable = pgTable("doubts", {
     classroomId: integer(),
     subject: varchar({ length: 100 }).notNull(),
     subTopic: varchar({ length: 255 }),
+    difficulty: varchar({ length: 20 }).default("intermediate"),
     content: text(),
     imageUrl: text(),
     likes: integer().default(0),
     isSolved: varchar({ length: 20 }).default("unsolved"),
     solvedReplyId: integer(),
     type: varchar({ length: 20 }).default("community"),
+    meTooCount: integer().default(0).notNull(),
     isPinned: boolean().default(false),
     isHidden: boolean("isHidden").default(false).notNull(),
     deletedAt: timestamp(),
@@ -159,6 +161,7 @@ export const doubtsTable = pgTable("doubts", {
             columns: [table.classroomId],
             foreignColumns: [classroomsTable.id],
         }).onDelete("set null"),
+        embeddingIndex: index("doubts_embedding_idx").using("hnsw", table.embedding.op("vector_cosine_ops")),
     };
 });
 
@@ -214,6 +217,9 @@ export const repliesTable = pgTable("replies", {
     readabilityScore: integer("readability_score"),
     pedagogyDrifted: boolean("pedagogy_drifted").default(false),
     driftExplanation: text("drift_explanation"),
+    originalCode: text("original_code"),
+    correctedCode: text("corrected_code"),
+    language: varchar("language", { length: 50 }).default("javascript"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
     doubtIdIndex: index("doubtId_idx").on(table.doubtId),
@@ -583,6 +589,37 @@ export const resumeAnalysisTable = pgTable("resume_analysis", {
         columns: [table.userEmail],
         foreignColumns: [usersTable.email],
     }).onDelete("cascade"),
+}));
+
+export const classroomFaqsTable = pgTable("classroom_faqs", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    classroomId: integer().notNull().references(() => classroomsTable.id, { onDelete: "cascade" }),
+    topic: varchar({ length: 255 }).notNull(),
+    question: text().notNull(),
+    answer: text().notNull(),
+    sourceDoubtIds: integer().array().notNull(),
+    isPublished: boolean().default(false).notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+});
+
+export const webhooksTable = pgTable("webhooks", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  classroomId: integer().notNull().references(() => classroomsTable.id, { onDelete: "cascade" }),
+  url: text().notNull(),
+  secret: varchar({ length: 64 }).notNull(),
+  platform: varchar({ length: 20 }).notNull(), // 'discord' | 'slack' | 'custom'
+  events: text().array().notNull(), // ['doubt.created', 'doubt.flagged']
+  isActive: boolean().default(true).notNull(),
+  createdAt: timestamp().defaultNow().notNull(),
+});
+
+export const doubtMeToosTable = pgTable("doubt_me_toos", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  doubtId: integer().notNull().references(() => doubtsTable.id, { onDelete: "cascade" }),
+  userEmail: varchar({ length: 255 }).notNull().references(() => usersTable.email, { onDelete: "cascade" }),
+  createdAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+  uniqueUserDoubt: unique("doubt_me_toos_user_doubt_unique").on(table.doubtId, table.userEmail),
 }));
 
 export const discussionThreadsTable = pgTable("discussion_threads", {

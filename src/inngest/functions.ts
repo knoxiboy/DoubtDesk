@@ -3,12 +3,14 @@ import type { NonRetriableError } from "inngest";
 import fs from "fs";
 import path from "path";
 import { db } from "../configs/db";
-import { doubtsTable, usersTable, pendingNotificationsTable, repliesTable, videoJobsTable } from "../configs/schema";
-import { eq, inArray, and, lt } from "drizzle-orm";
+import { doubtsTable, usersTable, pendingNotificationsTable, repliesTable, videoJobsTable, classroomsTable, classroomFaqsTable, webhooksTable } from "../configs/schema";
+import { eq, inArray, and, lt, gte, sql } from "drizzle-orm";
 import { emailNotificationLimiter, redisClient } from "@/lib/ratelimit/ratelimit";
 import { sendReplyNotificationEmail, sendDigestEmail } from "@/lib/email/email";
 import { getAnonymousHandle } from "@/lib/anonymity/anonymity";
 import { runVideoPipeline } from "../lib/video/pipeline";
+import { groq } from "@/lib/ai/groq-client";
+import { dispatchWebhook } from "@/lib/webhooks/dispatcher";
 import { TEMP_ROOT } from "../lib/video/temp";
 
 interface InngestEvent {
@@ -428,4 +430,132 @@ export const cleanupStaleVideoJobs = inngest.createFunction(
       return { failedStaleJobs: failed.length };
     });
   },
+);
+
+export const generateClassroomFaqs = inngest.createFunction(
+  { id: "generate-classroom-faqs", triggers: [{ cron: "0 0 * * 0" }] },
+  async ({ step }: { step: InngestStep }) => {
+    const classrooms = await step.run("fetch-classrooms", async () => {
+      return await db.select({ id: classroomsTable.id }).from(classroomsTable);
+    });
+
+    let generatedCount = 0;
+
+    for (const room of classrooms) {
+      await step.run(`process-classroom-${room.id}`, async () => {
+        const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        
+        const resolvedDoubts = await db
+          .select({ id: doubtsTable.id, subject: doubtsTable.subject, content: doubtsTable.content })
+          .from(doubtsTable)
+          .where(
+            and(
+              eq(doubtsTable.classroomId, room.id),
+              eq(doubtsTable.isSolved, 'solved'),
+              gte(doubtsTable.createdAt, oneWeekAgo)
+            )
+          );
+
+        if (resolvedDoubts.length === 0) return;
+
+        const doubtsText = resolvedDoubts.map(d => `ID: ${d.id}\nSubject: ${d.subject}\nContent: ${d.content}`).join('\n\n');
+
+        const systemPrompt = `Cluster the following resolved student doubts into 3-5 distinct FAQ topics.
+Return JSON: [{ "topic": "...", "question": "...", "answer": "...", "sourceDoubtIds": [...] }]
+The sourceDoubtIds should be an array of integers corresponding to the IDs of the doubts that fall into that topic.`;
+
+        const response = await groq.chat.completions.create({
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: doubtsText }
+            ],
+            model: "llama-3.3-70b-versatile",
+            response_format: { type: "json_object" }
+        });
+
+        const resultText = response.choices[0]?.message?.content || "{}";
+        let faqs: any[] = [];
+        try {
+            const parsed = JSON.parse(resultText);
+            // sometimes it's an array, sometimes it's wrapped in an object like { faqs: [...] }
+            faqs = Array.isArray(parsed) ? parsed : (parsed.faqs || parsed.topics || Object.values(parsed)[0] || []);
+        } catch (e) {
+            console.error("Failed to parse FAQ JSON", e);
+            return;
+        }
+
+        if (!Array.isArray(faqs) || faqs.length === 0) return;
+
+        const formattedFaqs = faqs.map(faq => ({
+            classroomId: room.id,
+            topic: faq.topic || "General",
+            question: faq.question || "Unknown question",
+            answer: faq.answer || "Unknown answer",
+            sourceDoubtIds: Array.isArray(faq.sourceDoubtIds) ? faq.sourceDoubtIds.map(Number) : [],
+            isPublished: false
+        }));
+
+        await db.insert(classroomFaqsTable).values(formattedFaqs);
+        generatedCount += formattedFaqs.length;
+      });
+    }
+
+    return { message: `Generated ${generatedCount} FAQs across ${classrooms.length} classrooms.` };
+  }
+);
+
+export const dispatchWebhooksOnCreate = inngest.createFunction(
+    { id: "dispatch-webhooks-on-create", triggers: [{ event: "doubt/created" }] },
+    async ({ event, step }: { event: any; step: InngestStep }) => {
+        const { classroomId, doubtId } = event.data;
+        await step.run("dispatch-webhooks", async () => {
+            const webhooks = await db.select().from(webhooksTable).where(and(eq(webhooksTable.classroomId, classroomId), eq(webhooksTable.isActive, true)));
+            
+            const doubtData = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+            const doubt = doubtData[0];
+            if (!doubt) return;
+
+            const matchingWebhooks = webhooks.filter(w => w.events.includes('doubt.created'));
+            
+            for (const webhook of matchingWebhooks) {
+                await dispatchWebhook(webhook.url, webhook.secret, webhook.platform as any, {
+                    event: 'doubt.created',
+                    data: {
+                        subject: doubt.subject,
+                        difficulty: doubt.difficulty,
+                        content: doubt.content,
+                        url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://doubtdesk.com'}/rooms/${classroomId}?tab=community`
+                    }
+                }).catch(err => console.error(`Failed to dispatch webhook ${webhook.id}`, err));
+            }
+        });
+    }
+);
+
+export const dispatchWebhooksOnFlag = inngest.createFunction(
+    { id: "dispatch-webhooks-on-flag", triggers: [{ event: "doubt/auto-hidden" }] },
+    async ({ event, step }: { event: any; step: InngestStep }) => {
+        const { classroomId, doubtId } = event.data;
+        await step.run("dispatch-webhooks", async () => {
+            const webhooks = await db.select().from(webhooksTable).where(and(eq(webhooksTable.classroomId, classroomId), eq(webhooksTable.isActive, true)));
+            
+            const doubtData = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+            const doubt = doubtData[0];
+            if (!doubt) return;
+
+            const matchingWebhooks = webhooks.filter(w => w.events.includes('doubt.flagged'));
+            
+            for (const webhook of matchingWebhooks) {
+                await dispatchWebhook(webhook.url, webhook.secret, webhook.platform as any, {
+                    event: 'doubt.flagged',
+                    data: {
+                        subject: doubt.subject,
+                        difficulty: doubt.difficulty,
+                        content: doubt.content,
+                        url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://doubtdesk.com'}/rooms/${classroomId}?tab=community`
+                    }
+                }).catch(err => console.error(`Failed to dispatch webhook ${webhook.id}`, err));
+            }
+        });
+    }
 );

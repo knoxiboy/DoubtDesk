@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock, Loader2, Link2, Share2, Copy, Send, Brain } from "lucide-react";
+import { MessageSquare, ThumbsUp, CheckCircle, Edit2, Trash2, X, ZoomIn, AlertTriangle, Pin, Bookmark, Clock, Loader2, Link2, Share2, Copy, Send, Brain, Users } from "lucide-react";
 import AskDoubt from "./AskDoubt";
 import DoubtRepliesModal from "./DoubtRepliesModal";
 import PracticeModal from "./PracticeModal";
@@ -22,6 +22,8 @@ const ARIA_LABELS = {
   REMOVE_BOOKMARK: "Remove bookmark",
   LIKE_DOUBT: "Like this doubt",
   UNLIKE_DOUBT: "Unlike this doubt",
+  METOO_DOUBT: "I have this question too",
+  REMOVE_METOO_DOUBT: "Remove I have this question too",
   VIEW_REPLIES: (count: number) => `View ${count} ${count === 1 ? "reply" : "replies"}`,
 } as const;
 import { useSearchParams } from "next/navigation";
@@ -79,6 +81,9 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
     const [isBookmarking, setIsBookmarking] = useState(false);
     const [isPracticeOpen, setIsPracticeOpen] = useState(false);
     const [likes, setLikes] = useState<number>(doubt.likes || 0);
+    const [hasMeToo, setHasMeToo] = useState(doubt.hasMeToo || false);
+    const [meTooCount, setMeTooCount] = useState<number>(doubt.meTooCount || 0);
+    const [isTogglingMeToo, setIsTogglingMeToo] = useState(false);
     const searchParams = useSearchParams();
     const lastAutoOpenedThread = useRef<string | null>(null);
 
@@ -140,6 +145,38 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
         } finally {
             setIsLiking(false);
             setIsSolving(false);
+        }
+    };
+
+    const handleMeToo = async () => {
+        setIsTogglingMeToo(true);
+        // Optimistic update
+        const previousHasMeToo = hasMeToo;
+        const previousCount = meTooCount;
+        setHasMeToo(!previousHasMeToo);
+        setMeTooCount(prev => previousHasMeToo ? prev - 1 : prev + 1);
+
+        try {
+            const res = await fetch(`/api/doubts/${doubt.id}/me-too`, {
+                method: "POST",
+            });
+            const data = await res.json();
+            if (res.ok) {
+                // Ensure state matches server response
+                setHasMeToo(data.hasMeToo);
+                setMeTooCount(data.meTooCount);
+                if (onUpdate) onUpdate();
+            } else {
+                toast.error(data.error || "Failed to update status");
+                setHasMeToo(previousHasMeToo);
+                setMeTooCount(previousCount);
+            }
+        } catch (error) {
+            toast.error("Error updating status");
+            setHasMeToo(previousHasMeToo);
+            setMeTooCount(previousCount);
+        } finally {
+            setIsTogglingMeToo(false);
         }
     };
 
@@ -378,6 +415,25 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
                                 </TooltipTrigger>
                                 <TooltipContent>{doubt.hasLiked ? "Unlike this doubt" : "Like this doubt"}</TooltipContent>
                             </Tooltip>
+
+                            {/* Me Too Button with Tooltip */}
+                            {isSignedIn && doubt.type !== 'ai' && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={handleMeToo}
+                                            disabled={isTogglingMeToo}
+                                            aria-label={hasMeToo ? ARIA_LABELS.REMOVE_METOO_DOUBT : ARIA_LABELS.METOO_DOUBT}
+                                            aria-busy={isTogglingMeToo}
+                                            className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-6 py-3 rounded-2xl transition-all group/metoo ${ hasMeToo ? "bg-amber-600/20 text-amber-500 border border-amber-500/30 shadow-lg shadow-amber-500/10" : "bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5" }`}
+                                        >
+                                            <Users className={`w-4 h-4 ${isTogglingMeToo ? 'animate-pulse' : 'group-hover/metoo:scale-110 transition-transform'}`} />
+                                            <span className="text-xs font-black">{meTooCount}</span>
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>{hasMeToo ? "Remove I have this question too" : "I have this question too"}</TooltipContent>
+                                </Tooltip>
+                            )}
 
                             {/* Bookmark Button with Tooltip */}
                             {isSignedIn && (

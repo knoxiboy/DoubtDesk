@@ -42,6 +42,7 @@ const mockDoubt = {
     imageUrl: null,
     classroomId: null,
     isPendingSync: false,
+    meTooCount: 0,
     isSolved: 'unsolved' as const,
     type: 'community' as const,
     isPinned: false,

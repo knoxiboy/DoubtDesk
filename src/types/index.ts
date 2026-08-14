@@ -165,6 +165,8 @@ export interface Doubt {
     type: "ai" | "community" | "teacher";
     isPinned: boolean | null;
     isPendingSync?: boolean;
+    meTooCount: number;
+    hasMeToo?: boolean;
     createdAt: Date | string;
     // The raw author identifier must never appear on a client-facing Doubt. Typing
     // it as `never` means a raw DB row (which carries `userEmail: string`) does not

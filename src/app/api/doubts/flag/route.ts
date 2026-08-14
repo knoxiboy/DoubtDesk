@@ -66,6 +66,7 @@ export async function POST(req: NextRequest) {
             const locked = await tx.execute(
                 sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} FOR UPDATE`,
             );
+            
             if (!locked.rows?.length) return;
 
             const windowStart = new Date(Date.now() - AUTO_HIDE_WINDOW_MS);

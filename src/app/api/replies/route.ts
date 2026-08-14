@@ -136,7 +136,7 @@ export async function POST(req: Request) {
     );
     if (validationResponse) return validationResponse;
 
-    const { doubtId, type, content, imageUrl } = data;
+    const { doubtId, type, content, imageUrl, originalCode, correctedCode, language } = data;
 
     const [dbUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
     if (dbUser?.blockedUntil && new Date(dbUser.blockedUntil) > new Date()) {
@@ -201,6 +201,9 @@ export async function POST(req: Request) {
         type,
         content: content || null,
         imageUrl: imageUrl || null,
+        originalCode: originalCode || null,
+        correctedCode: correctedCode || null,
+        language: language || "javascript",
         createdAt: new Date(),
       })
       .returning();

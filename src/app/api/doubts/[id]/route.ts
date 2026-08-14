@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/configs/db";
-import { doubtsTable, repliesTable, tagsTable, doubtTagsTable, bookmarksTable, likesTable } from "@/configs/schema";
+import { doubtsTable, repliesTable, tagsTable, doubtTagsTable, bookmarksTable, likesTable, doubtMeToosTable } from "@/configs/schema";
 import { eq, sql, and, isNull, getTableColumns } from "drizzle-orm";
 import { getOptionalAuth, requireMembership } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
@@ -83,6 +83,7 @@ export async function GET(
         // specific user had liked a doubt. We now trust only the server-side session.
         let hasLiked = false;
         let hasBookmarked = false;
+        let hasMeToo = false;
 
         if (email) {
             const [likeRecord] = await db
@@ -112,8 +113,22 @@ export async function GET(
             hasBookmarked = !!bookmarkRecord;
         }
 
+        if (email) {
+            const [meTooRecord] = await db
+                .select()
+                .from(doubtMeToosTable)
+                .where(
+                    and(
+                        eq(doubtMeToosTable.userEmail, email),
+                        eq(doubtMeToosTable.doubtId, doubtId)
+                    )
+                )
+                .limit(1);
+            hasMeToo = !!meTooRecord;
+        }
+
         return NextResponse.json(
-            toPublicDoubt({ ...doubt, tags, hasLiked, hasBookmarked }, email)
+            toPublicDoubt({ ...doubt, tags, hasLiked, hasBookmarked, hasMeToo }, email)
         );
 
     } catch (error) {
