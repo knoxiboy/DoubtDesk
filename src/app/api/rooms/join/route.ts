@@ -83,13 +83,15 @@ export async function POST(req: NextRequest) {
         //    (classroomsTable.teacherEmail) or an explicit promotion by the owner/admin.
         const role = 'student' as const;
 
-        // 5. Add membership (the foreign key ensures referential integrity; the unique
-        //    constraint on memberships(userEmail, classroomId) prevents duplicates at the DB level too)
-        const [newMembership] = await db.insert(membershipsTable).values({
+        const inserted = await db.insert(membershipsTable).values({
             userEmail: email,
             classroomId: classroom.id,
             role,
-        }).returning();
+        }).onConflictDoNothing().returning();
+
+        if (inserted.length === 0) {
+            return NextResponse.json({ error: 'Already a member of this classroom' }, { status: 400 });
+        }
 
         return NextResponse.json({
             success: true,
@@ -100,6 +102,10 @@ export async function POST(req: NextRequest) {
             },
         });
     } catch (error) {
+        const dbError = error as { code?: string };
+        if (dbError?.code === "23505") {
+            return NextResponse.json({ error: 'Already a member of this classroom' }, { status: 400 });
+        }
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });
     }
