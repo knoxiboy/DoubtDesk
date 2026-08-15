@@ -1,6 +1,6 @@
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, replyLikesTable } from "@/configs/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { inngest } from "@/inngest/client";
@@ -20,15 +20,25 @@ export async function POST(req: Request) {
         const { replyId } = data;
 
         const user = await currentUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        if (!user) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
         const email = user.primaryEmailAddress?.emailAddress;
-        if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+        if (!email) {
+            return NextResponse.json({ error: "Email required" }, { status: 400 });
+        }
 
-        const rateLimitResponse = await enforceApiRateLimit(generalLimiter, email, "general");
+        const rateLimitResponse = await enforceApiRateLimit(
+            generalLimiter,
+            email,
+            "general"
+        );
+
         if (rateLimitResponse) return rateLimitResponse;
 
         const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
+
         if (blockResponse) return blockResponse;
         if (isBlocked) return blockResponse;
 
@@ -40,40 +50,60 @@ export async function POST(req: Request) {
             .limit(1);
 
         if (!reply) {
-            return NextResponse.json({ error: "Reply not found" }, { status: 404 });
+            return NextResponse.json(
+                { error: "Reply not found" },
+                { status: 404 }
+            );
         }
 
         // Capture the author email up front. The karma event must credit
         // whoever owned the reply at the moment the vote was cast, never the
-        // post-update returning() row — that row is trusted output of a write
-        // we just performed, so any later corruption to repliesTable.userEmail
-        // would otherwise leak karma to the wrong account.
+        // post-update returning() row.
         const originalReplyAuthorEmail = reply.userEmail;
 
-        // ── 2. FIX: ANTI-SELF-UPVOTE GUARD ──────────────────────────────────
-        // Blocks authors from liking their own replies and exploiting the karma event trigger
-        if (email && originalReplyAuthorEmail === email) {
+        // ── 2. ANTI-SELF-UPVOTE GUARD ───────────────────────────────────────
+        // Blocks authors from liking their own replies and exploiting the
+        // karma event trigger.
+        if (email === originalReplyAuthorEmail) {
             return NextResponse.json(
                 { error: "Forbidden: You cannot upvote your own reply." },
                 { status: 403 }
             );
         }
 
+        // ── 3. VALIDATE PARENT DOUBT IS ACTIVE ───────────────────────────────
+        // Replies belonging to soft-deleted doubts must not be votable.
+        //
+        // A soft-deleted doubt has deletedAt set. By requiring deletedAt
+        // to be NULL here, the query returns no row for deleted doubts and
+        // the vote request is rejected before any vote or karma changes occur.
         const [doubt] = await db
             .select({ classroomId: doubtsTable.classroomId })
             .from(doubtsTable)
-            .where(eq(doubtsTable.id, reply.doubtId))
+            .where(
+                and(
+                    eq(doubtsTable.id, reply.doubtId),
+                    isNull(doubtsTable.deletedAt)
+                )
+            )
             .limit(1);
 
-        if (doubt?.classroomId) {
+        if (!doubt) {
+            return NextResponse.json(
+                { error: "Doubt not found" },
+                { status: 404 }
+            );
+        }
+
+        if (doubt.classroomId) {
             await requireMembership(email, doubt.classroomId);
         }
 
-        // ── 3. ATOMIC TRANSACTION FLOW ──────────────────────────────────────
+        // ── 4. ATOMIC TRANSACTION FLOW ──────────────────────────────────────
         const result = await db.transaction(async (tx) => {
-
             // Check existing vote inside transaction
-            const existingLike = await tx.select()
+            const existingLike = await tx
+                .select()
                 .from(replyLikesTable)
                 .where(
                     and(
@@ -85,7 +115,8 @@ export async function POST(req: Request) {
 
             if (existingLike.length > 0) {
                 // Remove vote
-                await tx.delete(replyLikesTable)
+                await tx
+                    .delete(replyLikesTable)
                     .where(
                         and(
                             eq(replyLikesTable.userEmail, email),
@@ -94,7 +125,8 @@ export async function POST(req: Request) {
                     );
 
                 // Prevent negative vote counts
-                const updated = await tx.update(repliesTable)
+                const updated = await tx
+                    .update(repliesTable)
                     .set({
                         upvotes: sql`GREATEST(${repliesTable.upvotes} - 1, 0)`
                     })
@@ -105,17 +137,18 @@ export async function POST(req: Request) {
                     ...updated[0],
                     hasUpvoted: false
                 };
-
             } else {
                 // Add vote
-                await tx.insert(replyLikesTable)
+                await tx
+                    .insert(replyLikesTable)
                     .values({
                         userEmail: email,
                         replyId
                     });
 
                 // Atomic increment
-                const updated = await tx.update(repliesTable)
+                const updated = await tx
+                    .update(repliesTable)
                     .set({
                         upvotes: sql`${repliesTable.upvotes} + 1`
                     })
@@ -129,7 +162,7 @@ export async function POST(req: Request) {
             }
         });
 
-        // ── 4. BACKGROUND SYSTEM EMISSION ───────────────────────────────────
+        // ── 5. BACKGROUND SYSTEM EMISSION ───────────────────────────────────
         if (result && result.userEmail && originalReplyAuthorEmail) {
             if (result.userEmail !== originalReplyAuthorEmail) {
                 console.error(
@@ -150,7 +183,8 @@ export async function POST(req: Request) {
                     },
                 });
             } else {
-                // Vote removed - revoke the +10 karma that was awarded when the vote was added
+                // Vote removed - revoke the +10 karma that was awarded
+                // when the vote was added.
                 await inngest.send({
                     name: "karma/answer.unupvoted",
                     data: {
@@ -163,8 +197,9 @@ export async function POST(req: Request) {
         }
 
         // Strip the author's real email before returning — identity must
-        // stay server-side only (see src/lib/anonymity/anonymity.ts).
+        // stay server-side only.
         const { userEmail: _, ...safeResult } = result ?? {};
+
         return NextResponse.json(safeResult);
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
