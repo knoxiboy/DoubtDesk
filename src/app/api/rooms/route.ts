@@ -7,7 +7,6 @@ import { checkUserBlock } from '@/lib/auth/auth-utils';
 import { buildErrorResponse, errorResponse } from '@/lib/errors/error-handler';
 import { parseAndValidateRequest } from '@/lib/validations/validate';
 import { createClassroomSchema } from '@/lib/validations/classroom';
-import { Classroom } from '@/types';
 import { enforceApiRateLimit } from '@/lib/ratelimit/api-rate-limit';
 import { generalLimiter } from '@/lib/ratelimit/ratelimit';
 
@@ -62,7 +61,15 @@ export async function GET(req: Request) {
             .from(usersTable)
             .where(eq(usersTable.email, email));
 
-        let recommendedRooms: Classroom[] = [];
+        let recommendedRooms: {
+            id: number;
+            name: string;
+            university: string;
+            year: string;
+            pedagogyLevel: string;
+            targetGradeLevel: number;
+            createdAt: Date;
+        }[] = [];
 
         if (dbUser && dbUser.university && dbUser.year) {
             const joinedIds = joinedRooms.map((r: any) => r.id);
@@ -78,7 +85,15 @@ export async function GET(req: Request) {
             }
 
             recommendedRooms = await db
-                .select()
+                .select({
+                    id: classroomsTable.id,
+                    name: classroomsTable.name,
+                    university: classroomsTable.university,
+                    year: classroomsTable.year,
+                    pedagogyLevel: classroomsTable.pedagogyLevel,
+                    targetGradeLevel: classroomsTable.targetGradeLevel,
+                    createdAt: classroomsTable.createdAt,
+                })
                 .from(classroomsTable)
                 .where(and(...conditions));
         }
