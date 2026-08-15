@@ -99,6 +99,10 @@ export default defineConfig({
         storageState: AUTH_FILE,
       },
     },
+    {
+      name: 'fork-smoke',
+      testMatch: /fork-smoke\.spec\.ts/,
+    },
   ],
   webServer: {
     command: process.env.CI ? 'npm run start' : 'npm run dev',
