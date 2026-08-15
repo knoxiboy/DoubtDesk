@@ -1,4 +1,4 @@
-import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique, vector, pgEnum } from "drizzle-orm/pg-core";
+import { integer, pgTable, varchar, text, timestamp, boolean, index, uniqueIndex, foreignKey, unique, vector, pgEnum, real } from "drizzle-orm/pg-core";
 
 export const userRoleEnum = pgEnum("user_role", ["student", "teacher", "admin"]);
 
@@ -500,9 +500,19 @@ export const practiceAttemptsTable = pgTable("practice_attempts", {
     isCorrect: boolean("is_correct"),
     aiFeedback: text("ai_feedback"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
+
+    // ── Spaced Repetition (SM-2) ──────────────────────────────────────
+    nextReviewAt: timestamp("next_review_at"),
+    intervalDays: integer("interval_days").default(0).notNull(),
+    easeFactor: real("ease_factor").default(2.5).notNull(),
+    // ───────────────────────────────────────────────────────────────────
 }, (table) => ({
     userEmailIndex: index("practice_attempts_userEmail_idx").on(table.userEmail),
     doubtIdIndex: index("practice_attempts_doubtId_idx").on(table.originalDoubtId),
+    nextReviewAtIndex: index("practice_attempts_userEmail_nextReviewAt_idx").on(
+        table.userEmail,
+        table.nextReviewAt,
+    ),
     userEmailFk: foreignKey({
         columns: [table.userEmail],
         foreignColumns: [usersTable.email],
@@ -602,4 +612,4 @@ export const discussionThreadsTable = pgTable("discussion_threads", {
         foreignColumns: [usersTable.email],
     }).onDelete("cascade"),
     createdAtIndex: index("discussion_threads_created_at_idx").on(table.createdAt),
-}));
+}));

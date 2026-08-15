@@ -6,6 +6,7 @@ import { eq, and, isNull } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { limitRequestBodySize } from "@/lib/validations/validate";
+import { computeNextReview } from "@/lib/spaced-repetition";
 
 export async function POST(
     req: Request,
@@ -41,7 +42,6 @@ export async function POST(
             return NextResponse.json({ error: "Answer cannot be empty" }, { status: 400 });
         }
 
-        // Fetch the practice attempt
         const [attempt] = await db
             .select()
             .from(practiceAttemptsTable)
@@ -65,7 +65,6 @@ export async function POST(
             );
         }
 
-        // Grade the answer using Groq
         const systemPrompt = `You are an expert academic grader. Evaluate the student's answer to the given practice question.
 
 Rules:
@@ -105,7 +104,7 @@ Evaluate this answer for correctness and understanding.`;
                 response_format: { type: "json_object" },
             },
             {
-                timeout: 15000, // 15 seconds timeout
+                timeout: 15000,
             }
         );
 
@@ -121,7 +120,6 @@ Evaluate this answer for correctness and understanding.`;
             );
         }
 
-        // Strictly validate and parse isCorrect boolean
         let isCorrect = false;
         if (typeof parsed.isCorrect === "boolean") {
             isCorrect = parsed.isCorrect;
@@ -129,13 +127,20 @@ Evaluate this answer for correctness and understanding.`;
             isCorrect = parsed.isCorrect.toLowerCase() === "true";
         }
 
-        // Update the practice attempt atomically using the isNull condition to prevent double-grading
+        const { nextReviewAt, intervalDays, easeFactor } = computeNextReview(
+            { intervalDays: attempt.intervalDays, easeFactor: attempt.easeFactor },
+            isCorrect
+        );
+
         const [updatedAttempt] = await db
             .update(practiceAttemptsTable)
             .set({
                 userAnswer: answer.trim(),
                 isCorrect,
                 aiFeedback: JSON.stringify(parsed),
+                nextReviewAt,
+                intervalDays,
+                easeFactor,
             })
             .where(
                 and(
