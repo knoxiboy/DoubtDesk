@@ -181,7 +181,8 @@ describe('Reply Vote API Endpoint', () => {
 
         mockSelectResultQueue.push(
             [], // checkUserBlock (not blocked)
-            [{ id: 1, doubtId: 7, userEmail: 'author@example.com', upvotes: 5 }] // repliesTable select
+            [{ id: 1, doubtId: 7, userEmail: 'author@example.com', upvotes: 5 }], // repliesTable select
+            [{ classroomId: 7 }] // active parent doubt
         );
 
         const req = new Request('http://localhost/api/replies/vote', {
