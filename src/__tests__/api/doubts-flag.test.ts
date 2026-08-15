@@ -29,6 +29,23 @@ const createQueryMock = (data: any) => ({
     then: (resolve: any) => Promise.resolve(resolve(data)),
 });
 
+const createFlagTransaction = (recentFlagCount: number, rows = [{ id: 1 }]) => ({
+    execute: jest.fn().mockResolvedValue({ rows }),
+    insert: jest.fn().mockReturnValue({
+        values: jest.fn().mockImplementation((...args: any[]) => insertMock(...args)),
+    }),
+    select: jest.fn().mockReturnValue({
+        from: jest.fn().mockReturnValue({
+            where: jest.fn().mockResolvedValue([{ value: recentFlagCount }]),
+        }),
+    }),
+    update: jest.fn().mockReturnValue({
+        set: jest.fn().mockReturnValue({
+            where: jest.fn().mockResolvedValue(undefined),
+        }),
+    }),
+});
+
 jest.mock('@/configs/db', () => ({
     db: {
         select: jest.fn().mockImplementation(() => createQueryMock(selectResultQueue.shift() ?? [])),
@@ -99,21 +116,7 @@ describe('Doubts Flag API Endpoint (issue #735)', () => {
             currentUserMock.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'student@test.com' } });
             selectResultQueue.push([{ id: 1 }]); // doubt exists
             
-            const chainResult = [{ value: 1 }];
-            const whereFn = jest.fn().mockResolvedValue(chainResult);
-            const fromFn = jest.fn().mockReturnValue({ where: whereFn });
-            const selectFn = jest.fn().mockReturnValue({ from: fromFn });
-            
-            const txMock = {
-                execute: jest.fn().mockResolvedValue({ rows: [{ id: 1 }] }),
-                select: selectFn,
-                update: jest.fn().mockReturnValue({
-                    set: jest.fn().mockReturnValue({
-                        where: jest.fn().mockResolvedValue(undefined),
-                    }),
-                }),
-            };
-            transactionMock.mockImplementation(async (cb: any) => cb(txMock));
+            transactionMock.mockImplementation(async (cb: any) => cb(createFlagTransaction(1)));
 
             const req = new Request('http://localhost/api/doubts/flag', {
                 method: 'POST',
@@ -132,21 +135,7 @@ describe('Doubts Flag API Endpoint (issue #735)', () => {
         it('auto-hides the doubt once the flag threshold is reached', async () => {
             currentUserMock.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'student@test.com' } });
             selectResultQueue.push([{ id: 1 }]); // doubt exists
-            const chainResult = [{ value: 3 }];
-            const whereFn = jest.fn().mockResolvedValue(chainResult);
-            const fromFn = jest.fn().mockReturnValue({ where: whereFn });
-            const selectFn = jest.fn().mockReturnValue({ from: fromFn });
-            
-            const txMock = {
-                execute: jest.fn().mockResolvedValue({ rows: [{ id: 1 }] }),
-                select: selectFn,
-                update: jest.fn().mockReturnValue({
-                    set: jest.fn().mockReturnValue({
-                        where: jest.fn().mockResolvedValue(undefined),
-                    }),
-                }),
-            };
-            transactionMock.mockImplementation(async (cb: any) => cb(txMock));
+            transactionMock.mockImplementation(async (cb: any) => cb(createFlagTransaction(3)));
 
             const req = new Request('http://localhost/api/doubts/flag', {
                 method: 'POST',
@@ -166,6 +155,7 @@ describe('Doubts Flag API Endpoint (issue #735)', () => {
             insertMock.mockImplementation(() => {
                 throw Object.assign(new Error('duplicate'), { code: '23505' });
             });
+            transactionMock.mockImplementation(async (cb: any) => cb(createFlagTransaction(0)));
 
             const req = new Request('http://localhost/api/doubts/flag', {
                 method: 'POST',
@@ -196,21 +186,7 @@ describe('Doubts Flag API Endpoint (issue #735)', () => {
             currentUserMock.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'student@test.com' } });
             selectResultQueue.push([{ id: 1, classroomId: 7 }]); // doubt exists with classroomId
             (requireMembership as jest.Mock).mockResolvedValue({ role: 'student' });
-            const chainResult = [{ value: 0 }];
-            const whereFn = jest.fn().mockResolvedValue(chainResult);
-            const fromFn = jest.fn().mockReturnValue({ where: whereFn });
-            const selectFn = jest.fn().mockReturnValue({ from: fromFn });
-            
-            const txMock = {
-                execute: jest.fn().mockResolvedValue({ rows: [{ id: 1 }] }),
-                select: selectFn,
-                update: jest.fn().mockReturnValue({
-                    set: jest.fn().mockReturnValue({
-                        where: jest.fn().mockResolvedValue(undefined),
-                    }),
-                }),
-            };
-            transactionMock.mockImplementation(async (cb: any) => cb(txMock));
+            transactionMock.mockImplementation(async (cb: any) => cb(createFlagTransaction(0)));
 
             const req = new Request('http://localhost/api/doubts/flag', {
                 method: 'POST',
@@ -229,21 +205,7 @@ describe('Doubts Flag API Endpoint (issue #735)', () => {
         it('skips membership check for community doubts without classroomId', async () => {
             currentUserMock.mockResolvedValue({ primaryEmailAddress: { emailAddress: 'student@test.com' } });
             selectResultQueue.push([{ id: 1 }]); // doubt exists without classroomId
-            const chainResult = [{ value: 0 }];
-            const whereFn = jest.fn().mockResolvedValue(chainResult);
-            const fromFn = jest.fn().mockReturnValue({ where: whereFn });
-            const selectFn = jest.fn().mockReturnValue({ from: fromFn });
-            
-            const txMock = {
-                execute: jest.fn().mockResolvedValue({ rows: [{ id: 1 }] }),
-                select: selectFn,
-                update: jest.fn().mockReturnValue({
-                    set: jest.fn().mockReturnValue({
-                        where: jest.fn().mockResolvedValue(undefined),
-                    }),
-                }),
-            };
-            transactionMock.mockImplementation(async (cb: any) => cb(txMock));
+            transactionMock.mockImplementation(async (cb: any) => cb(createFlagTransaction(0)));
 
             const req = new Request('http://localhost/api/doubts/flag', {
                 method: 'POST',

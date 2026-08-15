@@ -41,6 +41,7 @@ jest.mock('@/configs/db', () => ({
         // Add transaction that runs callback with a tx proxy sharing the same mocks
         db.transaction = jest.fn().mockImplementation((callback: (tx: any) => Promise<any>) => {
             const tx = {
+                execute: jest.fn().mockResolvedValue({ rows: [{ id: 7 }] }),
                 select: jest.fn().mockImplementation(() => mockCreateQuery(mockSelectResultQueue.shift() ?? [])),
                 delete: jest.fn().mockImplementation(() => ({
                     where: jest.fn().mockResolvedValue({}),
@@ -180,7 +181,8 @@ describe('Reply Vote API Endpoint', () => {
 
         mockSelectResultQueue.push(
             [], // checkUserBlock (not blocked)
-            [{ id: 1, doubtId: 7, userEmail: 'author@example.com', upvotes: 5 }] // repliesTable select
+            [{ id: 1, doubtId: 7, userEmail: 'author@example.com', upvotes: 5 }], // repliesTable select
+            [{ classroomId: 7 }] // active parent doubt
         );
 
         const req = new Request('http://localhost/api/replies/vote', {
@@ -306,5 +308,32 @@ describe('Reply Vote API Endpoint', () => {
             name: 'karma/answer.upvoted',
             data: { replyAuthorEmail: 'author@example.com', replyId: 1, doubtId: 7 },
         });
+    });
+
+    it('returns 404 and does not emit karma when the parent doubt is soft-deleted', async () => {
+        mockCurrentUser.mockResolvedValue({
+            id: 'voter_clerk_id',
+            primaryEmailAddress: { emailAddress: 'voter@example.com' },
+        });
+
+        mockSelectResultQueue.push(
+            [],
+            [{ id: 1, doubtId: 7, userEmail: 'author@example.com', upvotes: 5 }],
+            [],
+        );
+
+        const req = new Request('http://localhost/api/replies/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replyId: 1 }),
+        });
+
+        const res = await POST(req);
+        const json = await res?.json();
+        const { inngest } = jest.requireMock('@/inngest/client');
+
+        expect(res?.status).toBe(404);
+        expect(json.error).toBe('Doubt not found');
+        expect(inngest.send).not.toHaveBeenCalled();
     });
 });

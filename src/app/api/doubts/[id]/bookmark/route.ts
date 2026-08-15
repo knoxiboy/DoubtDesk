@@ -1,6 +1,6 @@
 import { db } from "@/configs/db";
 import { bookmarksTable, doubtsTable, membershipsTable } from "@/configs/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
@@ -18,7 +18,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const { id } = await params;
         const doubtId = parseInt(id);
 
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+        const [doubt] = await db.select().from(doubtsTable).where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
         if (doubt.classroomId && email) {
@@ -32,21 +32,33 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             return NextResponse.json({ error: "Unauthorized access to classroom doubt" }, { status: 401 });
         }
 
-        // Check if already bookmarked
-        const existing = await db.select().from(bookmarksTable)
-            .where(and(eq(bookmarksTable.userEmail, email), eq(bookmarksTable.doubtId, doubtId)))
-            .limit(1);
+        const result = await db.transaction(async (tx) => {
+            // Serialize against soft deletion and re-check active state in the
+            // same transaction that creates the bookmark.
+            const locked = await tx.execute(
+                sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} AND ${doubtsTable.deletedAt} IS NULL FOR UPDATE`,
+            );
+            if (!locked.rows?.length) return { status: "missing" as const };
 
-        if (existing.length > 0) {
+            const existing = await tx.select().from(bookmarksTable)
+                .where(and(eq(bookmarksTable.userEmail, email), eq(bookmarksTable.doubtId, doubtId)))
+                .limit(1);
+            if (existing.length > 0) return { status: "existing" as const };
+
+            const [inserted] = await tx.insert(bookmarksTable).values({
+                userEmail: email,
+                doubtId,
+            }).returning();
+            return { status: "inserted" as const, inserted };
+        });
+
+        if (result.status === "missing") {
+            return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
+        if (result.status === "existing") {
             return NextResponse.json({ message: "Already bookmarked" });
         }
-
-        const inserted = await db.insert(bookmarksTable).values({
-            userEmail: email,
-            doubtId
-        }).returning();
-
-        return NextResponse.json(inserted[0]);
+        return NextResponse.json(result.inserted);
     } catch (error) {
         console.error("Error bookmarking doubt:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
@@ -65,7 +77,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         const { id } = await params;
         const doubtId = parseInt(id);
 
-        const [doubt] = await db.select().from(doubtsTable).where(eq(doubtsTable.id, doubtId)).limit(1);
+        const [doubt] = await db.select().from(doubtsTable).where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt))).limit(1);
         if (!doubt) return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
 
         if (doubt.classroomId && email) {
@@ -79,8 +91,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             return NextResponse.json({ error: "Unauthorized access to classroom doubt" }, { status: 401 });
         }
 
-        await db.delete(bookmarksTable)
-            .where(and(eq(bookmarksTable.userEmail, email), eq(bookmarksTable.doubtId, doubtId)));
+        const removed = await db.transaction(async (tx) => {
+            const locked = await tx.execute(
+                sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} AND ${doubtsTable.deletedAt} IS NULL FOR UPDATE`,
+            );
+            if (!locked.rows?.length) return false;
+
+            await tx.delete(bookmarksTable)
+                .where(and(eq(bookmarksTable.userEmail, email), eq(bookmarksTable.doubtId, doubtId)));
+            return true;
+        });
+
+        if (!removed) {
+            return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
 
         return NextResponse.json({ message: "Bookmark removed" });
     } catch (error) {

@@ -193,6 +193,17 @@ describe("POST /api/doubts/[id]/accept — idempotency (issue #687)", () => {
         expect(JSON.stringify(body)).not.toContain("relation");
         expect(JSON.stringify(body)).not.toContain("does not exist");
     });
+
+    it("returns 404 and does not emit karma when the doubt is soft-deleted", async () => {
+        mockDoubt = null;
+
+        const res = await callPost(42);
+        const body = await res.json();
+
+        expect(res.status).toBe(404);
+        expect(body.error).toBe("Doubt not found");
+        expect(mockInngestSend).not.toHaveBeenCalled();
+    });
 });
 
 describe("POST /api/doubts/[id]/accept — accepted-reply lock (issue #1315)", () => {
@@ -245,6 +256,17 @@ describe("POST /api/doubts/[id]/accept — accepted-reply lock (issue #1315)", (
 
         const res3 = await callPost(42);
         expect((await res3.json()).message).toBe("Answer was already accepted (no-op)");
+        expect(mockInngestSend).not.toHaveBeenCalled();
+    });
+
+    it("returns 404 and does not emit karma when the doubt is soft-deleted", async () => {
+        mockDoubt = null;
+
+        const res = await callPost(42);
+        const body = await res.json();
+
+        expect(res.status).toBe(404);
+        expect(body.error).toBe("Doubt not found");
         expect(mockInngestSend).not.toHaveBeenCalled();
     });
 });

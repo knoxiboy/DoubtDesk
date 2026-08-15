@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { repliesTable, replyLikesTable, doubtsTable, membershipsTable } from "@/configs/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, isNull } from "drizzle-orm";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { inngest } from "@/inngest/client";
 import { limitRequestBodySize } from "@/lib/validations/validate";
@@ -48,35 +48,12 @@ export async function POST(
             return NextResponse.json({ error: "replyId is required" }, { status: 400 });
         }
 
-        // ── 3. DATA INTEGRITY CHECK (THREAD VALIDATION) ──────────────────────
-        const [targetReply] = await db
-            .select({ 
-                userEmail: repliesTable.userEmail,
-                doubtId: repliesTable.doubtId 
-            })
-            .from(repliesTable)
-            .where(eq(repliesTable.id, replyId))
-            .limit(1);
-
-        if (!targetReply) {
-            return NextResponse.json({ error: "Reply not found" }, { status: 404 });
-        }
-
-        if (targetReply.doubtId !== doubtId) {
-            return NextResponse.json({ 
-                error: "Integrity Error: The provided reply does not belong to this doubt thread." 
-            }, { status: 400 });
-        }
-
-        if (targetReply.userEmail === stableUserIdentifier) {
-            return NextResponse.json({ error: "Forbidden: You cannot upvote your own answer." }, { status: 403 });
-        }
-
-        // ── 4. CLASSROOM MEMBERSHIP GUARD ─────────────────────────────────────
+        // Validate the parent first so a deleted doubt consistently returns 404
+        // without exposing reply-specific existence, ownership, or integrity.
         const [doubt] = await db
             .select({ classroomId: doubtsTable.classroomId })
             .from(doubtsTable)
-            .where(eq(doubtsTable.id, doubtId))
+            .where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt)))
             .limit(1);
 
         if (!doubt) {
@@ -100,12 +77,44 @@ export async function POST(
             }
         }
 
+        // ── 3. DATA INTEGRITY CHECK (THREAD VALIDATION) ──────────────────────
+        const [targetReply] = await db
+            .select({
+                userEmail: repliesTable.userEmail,
+                doubtId: repliesTable.doubtId
+            })
+            .from(repliesTable)
+            .where(eq(repliesTable.id, replyId))
+            .limit(1);
+
+        if (!targetReply) {
+            return NextResponse.json({ error: "Reply not found" }, { status: 404 });
+        }
+
+        if (targetReply.doubtId !== doubtId) {
+            return NextResponse.json({
+                error: "Integrity Error: The provided reply does not belong to this doubt thread."
+            }, { status: 400 });
+        }
+
+        if (targetReply.userEmail === stableUserIdentifier) {
+            return NextResponse.json({ error: "Forbidden: You cannot upvote your own answer." }, { status: 403 });
+        }
+
         // ── 5 & 6. ATOMIC TRANSACTION: INSERT LIKE & INCREMENT COUNTER ───────
         let updatedReply;
+        let parentMissingAtWrite = false;
 
         try {
             updatedReply = await db.transaction(async (tx) => {
-                
+                const lockedParent = await tx.execute(
+                    sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} AND ${doubtsTable.deletedAt} IS NULL FOR UPDATE`,
+                );
+                if (!lockedParent.rows?.length) {
+                    parentMissingAtWrite = true;
+                    return undefined;
+                }
+
                 // A. FIX: Standardized column input across all vote handlers to use the stable identifier.
                 // Note: If your Drizzle schema explicitly names the column field `userName`, we map the unique 
                 // email string directly into it to preserve the unique multi-column compound index layout.
@@ -150,6 +159,9 @@ export async function POST(
         }
 
         if (!updatedReply) {
+            if (parentMissingAtWrite) {
+                return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+            }
             return NextResponse.json({ 
                 error: "Integrity Error: Counter increment rejected. Thread validation failed at database write." 
             }, { status: 400 });

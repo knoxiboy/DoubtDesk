@@ -1,6 +1,6 @@
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, replyLikesTable } from "@/configs/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { inngest } from "@/inngest/client";
@@ -50,27 +50,35 @@ export async function POST(req: Request) {
         // would otherwise leak karma to the wrong account.
         const originalReplyAuthorEmail = reply.userEmail;
 
-        // ── 2. FIX: ANTI-SELF-UPVOTE GUARD ──────────────────────────────────
-        // Blocks authors from liking their own replies and exploiting the karma event trigger
-        if (email && originalReplyAuthorEmail === email) {
+        const [doubt] = await db
+            .select({ classroomId: doubtsTable.classroomId })
+            .from(doubtsTable)
+            .where(and(eq(doubtsTable.id, reply.doubtId), isNull(doubtsTable.deletedAt)))
+            .limit(1);
+
+        if (!doubt) {
+            return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
+
+        // Validate the active parent before revealing that the authenticated
+        // user owns the reply.
+        if (originalReplyAuthorEmail === email) {
             return NextResponse.json(
                 { error: "Forbidden: You cannot upvote your own reply." },
                 { status: 403 }
             );
         }
 
-        const [doubt] = await db
-            .select({ classroomId: doubtsTable.classroomId })
-            .from(doubtsTable)
-            .where(eq(doubtsTable.id, reply.doubtId))
-            .limit(1);
-
-        if (doubt?.classroomId) {
+        if (doubt.classroomId) {
             await requireMembership(email, doubt.classroomId);
         }
 
         // ── 3. ATOMIC TRANSACTION FLOW ──────────────────────────────────────
         const result = await db.transaction(async (tx) => {
+            const lockedParent = await tx.execute(
+                sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${reply.doubtId} AND ${doubtsTable.deletedAt} IS NULL FOR UPDATE`,
+            );
+            if (!lockedParent.rows?.length) return null;
 
             // Check existing vote inside transaction
             const existingLike = await tx.select()
@@ -129,6 +137,10 @@ export async function POST(req: Request) {
             }
         });
 
+        if (!result) {
+            return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
+
         // ── 4. BACKGROUND SYSTEM EMISSION ───────────────────────────────────
         if (result && result.userEmail && originalReplyAuthorEmail) {
             if (result.userEmail !== originalReplyAuthorEmail) {
@@ -164,7 +176,7 @@ export async function POST(req: Request) {
 
         // Strip the author's real email before returning — identity must
         // stay server-side only (see src/lib/anonymity/anonymity.ts).
-        const { userEmail: _, ...safeResult } = result ?? {};
+        const { userEmail: _, ...safeResult } = result;
         return NextResponse.json(safeResult);
     } catch (error) {
         const { status, body } = buildErrorResponse(error);

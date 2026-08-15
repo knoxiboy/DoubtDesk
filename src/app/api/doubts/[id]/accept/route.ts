@@ -43,7 +43,7 @@ export async function POST(
         const [existingDoubt] = await db
             .select({ userEmail: doubtsTable.userEmail })
             .from(doubtsTable)
-            .where(eq(doubtsTable.id, doubtId))
+            .where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt)))
             .limit(1);
 
         if (!existingDoubt) {
@@ -96,6 +96,7 @@ export async function POST(
                 and(
                     eq(doubtsTable.id, doubtId),
                     eq(doubtsTable.userEmail, loggedInUserEmail),
+                    isNull(doubtsTable.deletedAt),
                     or(
                         ne(doubtsTable.isSolved, "solved"),
                         isNull(doubtsTable.solvedReplyId)
@@ -106,11 +107,29 @@ export async function POST(
 
         // ── 5. IDEMPOTENT RESPONSE ────────────────────────────────────────────
         if (!updatedDoubt) {
+            const [currentDoubt] = await db
+                .select({
+                    isSolved: doubtsTable.isSolved,
+                    solvedReplyId: doubtsTable.solvedReplyId,
+                })
+                .from(doubtsTable)
+                .where(
+                    and(
+                        eq(doubtsTable.id, doubtId),
+                        eq(doubtsTable.userEmail, loggedInUserEmail),
+                        isNull(doubtsTable.deletedAt),
+                    ),
+                )
+                .limit(1);
+
+            if (!currentDoubt) {
+                return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+            }
             return NextResponse.json({
                 success: true,
                 message: "Answer was already accepted (no-op)",
                 doubtId,
-                solvedReplyId: replyId,
+                solvedReplyId: currentDoubt.solvedReplyId,
             });
         }
 
