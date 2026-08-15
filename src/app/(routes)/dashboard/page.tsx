@@ -11,6 +11,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs"
 import Link from "next/link";
+import DueForReview from "@/components/DueForReview";
 
 type AnalyticsData = {
     trendingDoubts: any[];
@@ -126,6 +127,10 @@ export default function Dashboard() {
                             </p>
                         </div>
                     </header>
+
+                    <div className="relative z-10">
+                        <DueForReview />
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 relative z-10">
                         {[
