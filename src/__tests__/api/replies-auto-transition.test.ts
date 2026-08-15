@@ -173,9 +173,11 @@ describe("POST /api/replies — auto-transition (issue #183)", () => {
         });
 
         // `db.update` should have been called for the transition.
-        expect(updateBuilder.set).toHaveBeenCalledWith({
-            isSolved: DOUBT_STATUS.IN_PROGRESS,
-        });
+        expect(updateBuilder.set.mock.calls).toEqual(
+            expect.arrayContaining([
+                [expect.objectContaining({ isSolved: DOUBT_STATUS.IN_PROGRESS })],
+            ]),
+        );
         // And the WHERE clause should pin on isSolved = 'unsolved' (race guard).
         expect(updateBuilder.where).toHaveBeenCalled();
     });
@@ -219,9 +221,11 @@ describe("POST /api/replies — auto-transition (issue #183)", () => {
         });
 
         // For AI doubts we skip the transition update entirely.
-        expect(updateBuilder.set.mock.calls).not.toContainEqual([
-            { isSolved: DOUBT_STATUS.IN_PROGRESS },
-        ]);
+        expect(updateBuilder.set.mock.calls).not.toEqual(
+            expect.arrayContaining([
+                [expect.objectContaining({ isSolved: DOUBT_STATUS.IN_PROGRESS })],
+            ]),
+        );
     });
 
     test("transition failure does not fail the reply insert", async () => {
