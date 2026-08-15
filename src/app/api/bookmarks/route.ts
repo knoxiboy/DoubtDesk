@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { buildErrorResponse, errorResponse } from "@/lib/errors/error-handler";
 import { parsePositiveInt } from "@/lib/utils/utils";
+import { toPublicDoubt } from "@/lib/anonymity/anonymity";
 
 export async function GET(req: Request) {
     try {
