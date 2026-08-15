@@ -551,7 +551,10 @@ export const organizationMembershipsTable = pgTable("organization_memberships", 
     userEmail: varchar({ length: 255 }).notNull(),
     role: varchar({ length: 20 }).notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-});
+}, (table) => ({
+    organizationIdIndex: index("organization_memberships_organization_id_idx").on(table.organizationId),
+    userEmailIndex: index("organization_memberships_user_email_idx").on(table.userEmail),
+}));
 
 export const coverLettersTable = pgTable("cover_letters", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -580,4 +583,23 @@ export const resumeAnalysisTable = pgTable("resume_analysis", {
         columns: [table.userEmail],
         foreignColumns: [usersTable.email],
     }).onDelete("cascade"),
+}));
+
+export const discussionThreadsTable = pgTable("discussion_threads", {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    title: varchar({ length: 255 }).notNull(),
+    description: text().notNull().default(""),
+    category: varchar({ length: 100 }).notNull().default("General"),
+    authorEmail: varchar({ length: 255 }).notNull(),
+    authorName: varchar({ length: 255 }).notNull(),
+    isAnonymous: boolean().default(false).notNull(),
+    replyCount: integer().default(0).notNull(),
+    createdAt: timestamp().defaultNow().notNull(),
+    updatedAt: timestamp().defaultNow().notNull(),
+}, (table) => ({
+    authorEmailFk: foreignKey({
+        columns: [table.authorEmail],
+        foreignColumns: [usersTable.email],
+    }).onDelete("cascade"),
+    createdAtIndex: index("discussion_threads_created_at_idx").on(table.createdAt),
 }));

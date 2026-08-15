@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/configs/db";
 import { doubtsTable, repliesTable, tagsTable, doubtTagsTable, bookmarksTable, likesTable } from "@/configs/schema";
-import { eq, sql, and, getTableColumns } from "drizzle-orm";
+import { eq, sql, and, isNull, getTableColumns } from "drizzle-orm";
 import { getOptionalAuth, requireMembership } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { toPublicDoubt } from "@/lib/anonymity/anonymity";
@@ -27,7 +27,7 @@ export async function GET(
                 replyCount: sql<number>`coalesce((SELECT count(*)::int FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id}), 0)`.mapWith(Number),
             })
             .from(doubtsTable)
-            .where(eq(doubtsTable.id, doubtId))
+            .where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt)))
             .limit(1);
 
         if (!doubt) {

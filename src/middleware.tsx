@@ -68,8 +68,8 @@ export default clerkMiddleware(async (auth, req) => {
 
     if (path.startsWith('/api') && !hasRouteLevelLimit) {
         const { userId } = await auth();
-        const forwardedFor = req.headers.get("x-forwarded-for");
-        const ip = req.headers.get("x-real-ip") ?? forwardedFor?.split(",")[0]?.trim() ?? "127.0.0.1";
+        // Use only trusted proxy header x-real-ip; ignore spoofable x-forwarded-for.
+        const ip = req.headers.get("x-real-ip") ?? "127.0.0.1";
         const rateLimitKey = userId || ip;
 
         const isAiRoute =
@@ -134,6 +134,9 @@ export default clerkMiddleware(async (auth, req) => {
     // with the correct value, so they pass through. Requests with no Origin
     // (direct API calls, older browsers) are allowed as a safe default since
     // they cannot be cross-origin form submissions without an Origin header.
+    // The literal "null" origin (sent by sandboxed iframes, file:// and
+    // data: URIs, and certain browser extensions) is NOT a valid application
+    // origin and is rejected explicitly.
     const APP_ORIGIN =
         process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -143,7 +146,7 @@ export default clerkMiddleware(async (auth, req) => {
         STATE_CHANGING_METHODS.has(req.method)
     ) {
         const origin = req.headers.get('origin');
-        if (origin && origin !== APP_ORIGIN) {
+        if (origin === 'null' || (origin && origin !== APP_ORIGIN)) {
             return new NextResponse(
                 JSON.stringify({ error: 'CSRF validation failed' }),
                 { status: 403, headers: { 'Content-Type': 'application/json' } },

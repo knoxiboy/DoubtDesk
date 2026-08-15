@@ -14,6 +14,7 @@ import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { updateReplyActionSchema } from "@/lib/validations/reply";
 import { auditLog, AUDIT_ACTIONS } from "@/lib/audit/audit";
 import { canTeach } from "@/lib/auth/membership-guard";
+import { DOUBT_STATUS } from "@/lib/doubts/doubtStatus";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -100,7 +101,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             },
         });
 
-        return NextResponse.json(updated[0]);
+        // Strip the author's real email before returning — identity must
+        // stay server-side only (see src/lib/anonymity/anonymity.ts).
+        const { userEmail: _, ...safeRow } = updated[0];
+        return NextResponse.json(safeRow);
     } catch (error) {
         console.error("Error updating reply:", error);
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
@@ -156,7 +160,26 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
             return NextResponse.json({ error: "Forbidden: not allowed to delete this reply" }, { status: 403 });
         }
 
-        await db.delete(repliesTable).where(eq(repliesTable.id, replyId));
+        // Delete the reply and, if it was pinned as a doubt's official solution,
+        // clear that reference (and reset the doubt status) so doubts never hold
+        // a dangling solvedReplyId pointing at a deleted row. Done atomically.
+        await db.transaction(async (tx) => {
+            await tx.delete(repliesTable).where(eq(repliesTable.id, replyId));
+
+            if (reply.doubtId) {
+                await tx.update(doubtsTable)
+                    .set({
+                        solvedReplyId: null,
+                        isSolved: DOUBT_STATUS.UNSOLVED,
+                    })
+                    .where(
+                        and(
+                            eq(doubtsTable.id, reply.doubtId),
+                            eq(doubtsTable.solvedReplyId, replyId)
+                        )
+                    );
+            }
+        });
 
         void auditLog({
             actorEmail: email,

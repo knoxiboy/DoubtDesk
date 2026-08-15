@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/configs/db";
 import { doubtsTable, classroomsTable, membershipsTable } from "@/configs/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
 import DoubtPermalinkClient from "./DoubtPermalinkClient";
 import type { Metadata } from "next";
@@ -24,7 +24,7 @@ export async function generateMetadata(
                 content: doubtsTable.content,
             })
             .from(doubtsTable)
-            .where(eq(doubtsTable.id, doubtId))
+            .where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt)))
             .limit(1);
 
         if (!doubt) {
@@ -66,7 +66,7 @@ export default async function DoubtPermalinkPage(
     const [doubt] = await db
         .select()
         .from(doubtsTable)
-        .where(eq(doubtsTable.id, doubtId))
+        .where(and(eq(doubtsTable.id, doubtId), isNull(doubtsTable.deletedAt)))
         .limit(1);
 
     if (!doubt) {

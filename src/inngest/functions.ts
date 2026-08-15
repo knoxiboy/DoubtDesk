@@ -2,13 +2,14 @@ import { inngest } from "./client";
 import type { NonRetriableError } from "inngest";
 import fs from "fs";
 import path from "path";
-import os from "os";
 import { db } from "../configs/db";
 import { doubtsTable, usersTable, pendingNotificationsTable, repliesTable, videoJobsTable } from "../configs/schema";
 import { eq, inArray, and, lt } from "drizzle-orm";
 import { emailNotificationLimiter, redisClient } from "@/lib/ratelimit/ratelimit";
 import { sendReplyNotificationEmail, sendDigestEmail } from "@/lib/email/email";
+import { getAnonymousHandle } from "@/lib/anonymity/anonymity";
 import { runVideoPipeline } from "../lib/video/pipeline";
+import { TEMP_ROOT } from "../lib/video/temp";
 
 interface InngestEvent {
     data: Record<string, unknown>;
@@ -43,7 +44,7 @@ export const cleanupTempAssets = inngest.createFunction(
       const now = Date.now();
       let count = 0;
 
-      const tmpRoot = os.tmpdir();
+      const tmpRoot = TEMP_ROOT;
       if (fs.existsSync(tmpRoot)) {
         const entries = fs.readdirSync(tmpRoot);
         for (const entry of entries) {
@@ -212,15 +213,14 @@ export const sendDailyDigest = inngest.createFunction(
             });
           }
           doubtsMap.get(p.doubtId)!.replies.push({
-            replierName: p.replierName,
+            replierName: getAnonymousHandle(p.replierName),
             content: p.replyContent || "",
           });
         }
 
-        // Send first; only delete on confirmed success.
-        // If sendDigestEmail throws, the catch lets the step fail so Inngest
-        // retries it — pending rows are intentionally NOT deleted.
-          const emailResult = await sendDigestEmail({
+        // Send first; only delete on confirmed provider acceptance.
+        // Simulated / unconfigured delivery must NOT clear the queue.
+        const emailResult = await sendDigestEmail({
           toEmail: user.email,
           subject: "[DoubtDesk] Your Daily Doubt Updates Digest",
           totalReplies: pending.length,
@@ -228,11 +228,15 @@ export const sendDailyDigest = inngest.createFunction(
           doubts: Array.from(doubtsMap.values()),
         });
 
-        if (!emailResult?.success) {
-          // Email failed — throw so the step is retried and pending rows are preserved.
-          throw new Error(`Daily digest email failed for user: ${emailResult?.error ?? "unknown error"}`);
+        if (!emailResult?.success || emailResult.simulated) {
+          const error = emailResult?.error ?? "unknown error";
+          console.error(
+            `Daily digest email failed for ${user.email}; retaining pending rows: ${error}`,
+          );
+          // Do not throw — isolate failure so later users in the batch still run.
+          return { skipped: true, retained: true, error };
         }
-        
+
         // Delete only after confirmed send.
         const notificationIds = pending.map(p => p.id);
         await db
@@ -300,22 +304,26 @@ export const sendWeeklyDigest = inngest.createFunction(
             });
           }
           doubtsMap.get(p.doubtId)!.replies.push({
-            replierName: p.replierName,
+            replierName: getAnonymousHandle(p.replierName),
             content: p.replyContent || "",
           });
         }
 
-        try {
-          await sendDigestEmail({
-            toEmail: user.email,
-            subject: "[DoubtDesk] Your Weekly Doubt Updates Digest",
-            totalReplies: pending.length,
-            totalDoubts: doubtsMap.size,
-            doubts: Array.from(doubtsMap.values()),
-          });
-        } catch (emailErr) {
-          console.error(`[sendWeeklyDigest] Email failed for ${user.email}:`, emailErr);
-          throw emailErr;
+        const emailResult = await sendDigestEmail({
+          toEmail: user.email,
+          subject: "[DoubtDesk] Your Weekly Doubt Updates Digest",
+          totalReplies: pending.length,
+          totalDoubts: doubtsMap.size,
+          doubts: Array.from(doubtsMap.values()),
+        });
+
+        if (!emailResult?.success || emailResult.simulated) {
+          const error = emailResult?.error ?? "unknown error";
+          console.error(
+            `Weekly digest email failed for ${user.email}; retaining pending rows: ${error}`,
+          );
+          // Do not throw — isolate failure so later users in the batch still run.
+          return { skipped: true, retained: true, error };
         }
 
         const notificationIds = pending.map(p => p.id);

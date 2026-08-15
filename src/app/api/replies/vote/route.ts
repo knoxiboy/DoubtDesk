@@ -1,14 +1,16 @@
-// app/api/doubts/[id]/upvote/route.ts
 import { db } from "@/configs/db";
-import { repliesTable, replyLikesTable } from "@/configs/schema";
+import { doubtsTable, repliesTable, replyLikesTable } from "@/configs/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { inngest } from "@/inngest/client";
 import { checkUserBlock } from "@/lib/auth/auth-utils";
+import { requireMembership } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { parseAndValidateRequest } from "@/lib/validations/validate";
 import { voteReplySchema } from "@/lib/validations/reply";
+import { enforceApiRateLimit } from "@/lib/ratelimit/api-rate-limit";
+import { generalLimiter } from "@/lib/ratelimit/ratelimit";
 
 export async function POST(req: Request) {
     try {
@@ -22,6 +24,9 @@ export async function POST(req: Request) {
 
         const email = user.primaryEmailAddress?.emailAddress;
         if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });
+
+        const rateLimitResponse = await enforceApiRateLimit(generalLimiter, email, "general");
+        if (rateLimitResponse) return rateLimitResponse;
 
         const { isBlocked, errorResponse: blockResponse } = await checkUserBlock(email);
         if (blockResponse) return blockResponse;
@@ -52,6 +57,16 @@ export async function POST(req: Request) {
                 { error: "Forbidden: You cannot upvote your own reply." },
                 { status: 403 }
             );
+        }
+
+        const [doubt] = await db
+            .select({ classroomId: doubtsTable.classroomId })
+            .from(doubtsTable)
+            .where(eq(doubtsTable.id, reply.doubtId))
+            .limit(1);
+
+        if (doubt?.classroomId) {
+            await requireMembership(email, doubt.classroomId);
         }
 
         // ── 3. ATOMIC TRANSACTION FLOW ──────────────────────────────────────
@@ -115,7 +130,7 @@ export async function POST(req: Request) {
         });
 
         // ── 4. BACKGROUND SYSTEM EMISSION ───────────────────────────────────
-        if (result && result.hasUpvoted && result.userEmail && originalReplyAuthorEmail) {
+        if (result && result.userEmail && originalReplyAuthorEmail) {
             if (result.userEmail !== originalReplyAuthorEmail) {
                 console.error(
                     "[replies/vote] reply author email diverged between fetch and update",
@@ -125,9 +140,19 @@ export async function POST(req: Request) {
                         postUpdate: result.userEmail,
                     }
                 );
-            } else {
+            } else if (result.hasUpvoted) {
                 await inngest.send({
                     name: "karma/answer.upvoted",
+                    data: {
+                        replyAuthorEmail: originalReplyAuthorEmail,
+                        replyId: result.id || replyId,
+                        doubtId: result.doubtId,
+                    },
+                });
+            } else {
+                // Vote removed - revoke the +10 karma that was awarded when the vote was added
+                await inngest.send({
+                    name: "karma/answer.unupvoted",
                     data: {
                         replyAuthorEmail: originalReplyAuthorEmail,
                         replyId: result.id || replyId,
@@ -137,7 +162,10 @@ export async function POST(req: Request) {
             }
         }
 
-        return NextResponse.json(result);
+        // Strip the author's real email before returning — identity must
+        // stay server-side only (see src/lib/anonymity/anonymity.ts).
+        const { userEmail: _, ...safeResult } = result ?? {};
+        return NextResponse.json(safeResult);
     } catch (error) {
         const { status, body } = buildErrorResponse(error);
         return NextResponse.json(body, { status });

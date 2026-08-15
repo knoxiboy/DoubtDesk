@@ -11,20 +11,10 @@ import { toPublicDoubt } from "@/lib/anonymity/anonymity";
 
 export async function GET(req: Request) {
     try {
-        
-        //temporary example
-        //return NextResponse.json({
-          //data: [
-           // { id: 1, title: "Mocked Doubt 1", content: "Is this working?" },
-            //{ id: 2, title: "Mocked Doubt 2", content: "Yes it is!" }
-          //],
-         // pagination: { page: 1, limit: 2, total: 42 }
-        //});
         const user = await currentUser();
         const email = user?.primaryEmailAddress?.emailAddress;
         if (!email) return errorResponse("Unauthorized", 401);
 
-        
         const { searchParams } = new URL(req.url);
         const pageStr = searchParams.get("page") || "1";
         const limitStr = searchParams.get("limit") || "20";
@@ -36,7 +26,11 @@ export async function GET(req: Request) {
         const [totalCountResult] = await db
             .select({ total: count() })
             .from(bookmarksTable)
-            .where(eq(bookmarksTable.userEmail, email));
+            .innerJoin(doubtsTable, eq(bookmarksTable.doubtId, doubtsTable.id))
+            .where(and(
+                eq(bookmarksTable.userEmail, email),
+                isNull(doubtsTable.deletedAt),
+            ));
         const totalBookmarks = totalCountResult?.total || 0;
 
         if (totalBookmarks === 0) {
@@ -46,11 +40,19 @@ export async function GET(req: Request) {
             });
         }
 
-       
+        // Stable page membership: newest bookmarks first, id as tie-breaker.
         const bookmarks = await db
-            .select({ doubtId: bookmarksTable.doubtId })
+            .select({
+                id: bookmarksTable.id,
+                doubtId: bookmarksTable.doubtId,
+            })
             .from(bookmarksTable)
-            .where(eq(bookmarksTable.userEmail, email))
+            .innerJoin(doubtsTable, eq(bookmarksTable.doubtId, doubtsTable.id))
+            .where(and(
+                eq(bookmarksTable.userEmail, email),
+                isNull(doubtsTable.deletedAt),
+            ))
+            .orderBy(desc(bookmarksTable.createdAt), desc(bookmarksTable.id))
             .limit(limit)
             .offset(offset);
 
@@ -61,22 +63,19 @@ export async function GET(req: Request) {
             });
         }
 
-        const doubtIds = bookmarks.map((b: any) => b.doubtId);
+        const doubtIds = bookmarks.map((b) => b.doubtId);
+        const bookmarkOrder = new Map(doubtIds.map((id, index) => [id, index]));
 
-      
         const doubts = await db.select().from(doubtsTable)
-            .where(and(inArray(doubtsTable.id, doubtIds), isNull(doubtsTable.deletedAt)))
-            .orderBy(desc(doubtsTable.createdAt));
+            .where(and(inArray(doubtsTable.id, doubtIds), isNull(doubtsTable.deletedAt)));
 
-       
         const userLikes = await db.select({ doubtId: likesTable.doubtId })
             .from(likesTable)
             .where(eq(likesTable.userEmail, email));
 
-        const likedIds = new Set(userLikes.map((l: any) => l.doubtId));
+        const likedIds = new Set(userLikes.map((l) => l.doubtId));
         const bookmarkedIds = new Set(doubtIds);
 
-       
         const replyCounts = await db.select({
             doubtId: repliesTable.doubtId,
             count: sql<number>`count(*)`.mapWith(Number)
@@ -85,19 +84,19 @@ export async function GET(req: Request) {
             .where(inArray(repliesTable.doubtId, doubtIds))
             .groupBy(repliesTable.doubtId);
 
-        const countsMap = Object.fromEntries(replyCounts.map((r: any) => [r.doubtId, r.count]));
+        const countsMap = Object.fromEntries(replyCounts.map((r) => [r.doubtId, r.count]));
 
-        
-        const publicDoubts = doubts.map((doubt: any) => toPublicDoubt({
-            ...doubt,
-            hasLiked: likedIds.has(doubt.id),
-            hasBookmarked: bookmarkedIds.has(doubt.id),
-            replyCount: countsMap[doubt.id] || 0
-        }, email));
+        const orderedDoubts = [...doubts]
+            .sort((a, b) => (bookmarkOrder.get(a.id) ?? 0) - (bookmarkOrder.get(b.id) ?? 0))
+            .map((doubt) => ({
+                ...doubt,
+                hasLiked: likedIds.has(doubt.id),
+                hasBookmarked: bookmarkedIds.has(doubt.id),
+                replyCount: countsMap[doubt.id] || 0
+            }));
 
-       
         return NextResponse.json({
-            data: publicDoubts,
+            data: orderedDoubts,
             pagination: {
                 page,
                 limit,

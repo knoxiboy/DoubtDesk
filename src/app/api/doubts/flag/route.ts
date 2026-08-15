@@ -4,7 +4,7 @@ import { db } from "@/configs/db";
 import { contentFlagsTable, doubtsTable } from "@/configs/schema";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { currentUser } from "@clerk/nextjs/server";
-import { requireTeacher, parseClassroomId } from "@/lib/auth/membership-guard";
+import { requireTeacher, parseClassroomId, requireMembership } from "@/lib/auth/membership-guard";
 import { buildErrorResponse } from "@/lib/errors/error-handler";
 import { limitRequestBodySize } from "@/lib/validations/validate";
 
@@ -36,6 +36,11 @@ export async function POST(req: NextRequest) {
 
         if (!doubt) {
             return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
+
+        // Verify the user belongs to the classroom that owns this doubt.
+        if (doubt.classroomId) {
+            await requireMembership(reporterEmail, doubt.classroomId);
         }
 
         try {

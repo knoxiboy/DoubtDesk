@@ -74,7 +74,8 @@ describe('Reply Vote API Endpoint', () => {
 
         mockSelectResultQueue.push(
             [], // user block check select
-            [{ id: 1, replyId: 1, userEmail: 'other@example.com' }],
+            [{ id: 1, replyId: 1, doubtId: 11, userEmail: 'other@example.com' }],
+            [{ classroomId: null }],
             []
         );
         mockUpdateResultQueue.push([{ id: 1, upvotes: 1 }]);
@@ -108,11 +109,13 @@ describe('Reply Vote API Endpoint', () => {
 
         mockSelectResultQueue.push(
             [], // 1. checkUserBlock userBlocksTable query (not blocked)
-            [{ id: 1, userEmail: 'author@example.com', upvotes: 5 }], // 2. repliesTable query
-            []  // 3. replyLikesTable query inside transaction
+            [{ id: 1, doubtId: 7, userEmail: 'author@example.com', upvotes: 5 }], // 2. repliesTable query
+            [{ classroomId: 7 }], // 3. doubtsTable query
+            [{ role: 'student' }], // 4. membershipsTable query inside requireMembership
+            []  // 5. replyLikesTable query inside transaction
         );
 
-        mockUpdateResultQueue.push([{ id: 1, upvotes: 6, userEmail: 'author@example.com' }]);
+        mockUpdateResultQueue.push([{ id: 1, upvotes: 6, userEmail: 'author@example.com', doubtId: 7 }]);
 
         const req = new Request('http://localhost/api/replies/vote', {
             method: 'POST',
@@ -133,9 +136,38 @@ describe('Reply Vote API Endpoint', () => {
             data: {
                 replyAuthorEmail: 'author@example.com',
                 replyId: 1,
-                doubtId: undefined,
+                doubtId: 7,
             },
         });
+    });
+
+    it('rejects a non-member from voting on a classroom reply', async () => {
+        mockCurrentUser.mockResolvedValue({
+            id: 'intruder_clerk_id',
+            username: 'intruder',
+            fullName: 'Intruder User',
+            primaryEmailAddress: { emailAddress: 'intruder@example.com' },
+        });
+
+        mockSelectResultQueue.push(
+            [], // 1. checkUserBlock userBlocksTable query (not blocked)
+            [{ id: 1, doubtId: 9, userEmail: 'author@example.com', upvotes: 5 }], // 2. repliesTable query
+            [{ classroomId: 9 }], // 3. doubtsTable query
+            [], // 4. membershipsTable query inside requireMembership
+            [] // 5. classroomsTable ownership fallback inside requireMembership
+        );
+
+        const req = new Request('http://localhost/api/replies/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replyId: 1 }),
+        });
+
+        const res = await POST(req);
+        const json = await res?.json();
+
+        expect(res?.status).toBe(403);
+        expect(json.error).toContain('Access denied to this classroom');
     });
 
     it('prevents a user from upvoting their own reply', async () => {
@@ -148,7 +180,7 @@ describe('Reply Vote API Endpoint', () => {
 
         mockSelectResultQueue.push(
             [], // checkUserBlock (not blocked)
-            [{ id: 1, userEmail: 'author@example.com', upvotes: 5 }] // repliesTable select
+            [{ id: 1, doubtId: 7, userEmail: 'author@example.com', upvotes: 5 }] // repliesTable select
         );
 
         const req = new Request('http://localhost/api/replies/vote', {
@@ -176,11 +208,13 @@ describe('Reply Vote API Endpoint', () => {
 
         mockSelectResultQueue.push(
             [], // 1. checkUserBlock userBlocksTable query (not blocked)
-            [{ id: 1, userEmail: 'author@example.com', upvotes: 5 }], // 2. repliesTable query
-            [{ id: 10, userEmail: 'voter@example.com', replyId: 1 }]  // 3. replyLikesTable query inside transaction (existing like)
+            [{ id: 1, doubtId: 7, userEmail: 'author@example.com', upvotes: 5 }], // 2. repliesTable query
+            [{ classroomId: 7 }], // 3. doubtsTable query
+            [{ role: 'student' }], // 4. membershipsTable query inside requireMembership
+            [{ id: 10, userEmail: 'voter@example.com', replyId: 1 }]  // 5. replyLikesTable query inside transaction (existing like)
         );
 
-        mockUpdateResultQueue.push([{ id: 1, upvotes: 4, userEmail: 'author@example.com' }]);
+        mockUpdateResultQueue.push([{ id: 1, upvotes: 4, userEmail: 'author@example.com', doubtId: 7 }]);
 
         const req = new Request('http://localhost/api/replies/vote', {
             method: 'POST',
@@ -190,10 +224,87 @@ describe('Reply Vote API Endpoint', () => {
 
         const res = await POST(req);
         const json = await res?.json();
-        const { db } = jest.requireMock('@/configs/db');
+        const { inngest } = jest.requireMock('@/inngest/client');
 
         expect(res?.status).toBe(200);
         expect(json.hasUpvoted).toBe(false);
         expect(json.upvotes).toBe(4);
+
+        // Verify karma revocation event is emitted
+        expect(inngest.send).toHaveBeenCalledWith({
+            name: 'karma/answer.unupvoted',
+            data: {
+                replyAuthorEmail: 'author@example.com',
+                replyId: 1,
+                doubtId: 7,
+            },
+        });
+    });
+
+    it('emits upvoted on add and unupvoted on remove, net zero karma after toggle cycle', async () => {
+        // First request - add vote
+        mockCurrentUser.mockResolvedValue({
+            id: 'voter_clerk_id',
+            username: 'voter',
+            fullName: 'Voter User',
+            primaryEmailAddress: { emailAddress: 'voter@example.com' },
+        });
+
+        mockSelectResultQueue.push(
+            [], // 1. checkUserBlock
+            [{ id: 1, doubtId: 7, userEmail: 'author@example.com', upvotes: 5 }], // 2. repliesTable
+            [{ classroomId: 7 }], // 3. doubtsTable
+            [{ role: 'student' }], // 4. membershipsTable
+            []  // 5. replyLikesTable (no existing like)
+        );
+        mockUpdateResultQueue.push([{ id: 1, upvotes: 6, userEmail: 'author@example.com', doubtId: 7 }]);
+
+        const req1 = new Request('http://localhost/api/replies/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replyId: 1 }),
+        });
+
+        const res1 = await POST(req1);
+        expect((await res1.json()).hasUpvoted).toBe(true);
+
+        const { inngest } = jest.requireMock('@/inngest/client');
+        expect(inngest.send).toHaveBeenCalledWith({
+            name: 'karma/answer.upvoted',
+            data: { replyAuthorEmail: 'author@example.com', replyId: 1, doubtId: 7 },
+        });
+
+        // Second request - remove vote (toggle)
+        mockSelectResultQueue.length = 0;
+        mockUpdateResultQueue.length = 0;
+        inngest.send.mockClear();
+
+        mockSelectResultQueue.push(
+            [], // 1. checkUserBlock
+            [{ id: 1, doubtId: 7, userEmail: 'author@example.com', upvotes: 6 }], // 2. repliesTable
+            [{ classroomId: 7 }], // 3. doubtsTable
+            [{ role: 'student' }], // 4. membershipsTable
+            [{ id: 10, userEmail: 'voter@example.com', replyId: 1 }]  // 5. existing like
+        );
+        mockUpdateResultQueue.push([{ id: 1, upvotes: 5, userEmail: 'author@example.com', doubtId: 7 }]);
+
+        const req2 = new Request('http://localhost/api/replies/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replyId: 1 }),
+        });
+
+        const res2 = await POST(req2);
+        expect((await res2.json()).hasUpvoted).toBe(false);
+
+        // Verify unupvoted emitted, not upvoted again
+        expect(inngest.send).toHaveBeenCalledWith({
+            name: 'karma/answer.unupvoted',
+            data: { replyAuthorEmail: 'author@example.com', replyId: 1, doubtId: 7 },
+        });
+        expect(inngest.send).not.toHaveBeenCalledWith({
+            name: 'karma/answer.upvoted',
+            data: { replyAuthorEmail: 'author@example.com', replyId: 1, doubtId: 7 },
+        });
     });
 });

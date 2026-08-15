@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { formatDistanceToNow } from "date-fns";
 
 import {
   MessageSquare,
@@ -11,12 +12,17 @@ import {
   BookOpen,
   ShieldCheck,
   ArrowRight,
-  Flame,
   Plus,
 } from "lucide-react";
 
 import CreateThreadModal from "@/app/discussions/CreateThreadModal";
 import DiscussionModal from "@/app/discussions/DiscussionModal";
+
+const DISCUSSIONS_API_PATH = "/api/discussions";
+const TIMESTAMP_FALLBACK = "Just now";
+const LOAD_ERROR_MESSAGE = "Failed to load discussions";
+const LOADING_MESSAGE = "Loading discussions...";
+const EMPTY_MESSAGE = "No discussions yet. Create the first thread to get started.";
 
 interface Thread {
   id: number;
@@ -26,6 +32,18 @@ interface Thread {
   replies: number;
   lastReply: string;
   description?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+function formatLastReply(updatedAt?: string, createdAt?: string) {
+  const raw = updatedAt || createdAt;
+  if (!raw) return TIMESTAMP_FALLBACK;
+  try {
+    return formatDistanceToNow(new Date(raw), { addSuffix: true });
+  } catch {
+    return TIMESTAMP_FALLBACK;
+  }
 }
 
 const categories = [
@@ -67,49 +85,11 @@ const categories = [
   },
 ];
 
-const initialThreads: Thread[] = [
-  {
-    id: 1,
-    title: "How do I prepare for DBMS viva effectively?",
-    author: "Aarav",
-    category: "Exam Help",
-    replies: 12,
-    lastReply: "2h ago",
-    description:
-      "I have my DBMS viva next week. Which topics should I focus on the most?",
-  },
-  {
-    id: 2,
-    title: "Can someone explain time complexity of DFS vs BFS?",
-    author: "Neha",
-    category: "DSA",
-    replies: 18,
-    lastReply: "35m ago",
-    description:
-      "I understand traversal basics but still get confused between DFS and BFS complexity.",
-  },
-  {
-    id: 3,
-    title: "Best resources for learning Operating Systems?",
-    author: "Rahul",
-    category: "Resources",
-    replies: 7,
-    lastReply: "5h ago",
-    description:
-      "Looking for beginner-friendly Operating Systems resources and playlists.",
-  },
-];
-
-const activityFeed = [
-  "Aarav replied to 'Operating System viva questions'",
-  "Neha started a discussion in AI Solver",
-  "Rahul marked a thread as solved",
-  "Priya shared semester revision resources",
-];
-
 export default function DiscussionsPage() {
-  const [threadList, setThreadList] =
-    useState<Thread[]>(initialThreads);
+  const [threadList, setThreadList] = useState<Thread[]>([]);
+  const [loadingThreads, setLoadingThreads] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const fetchGenerationRef = useRef(0);
 
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -119,6 +99,52 @@ export default function DiscussionsPage() {
   const [discussionOpen, setDiscussionOpen] =
     useState(false);
 
+  useEffect(() => {
+    const generation = ++fetchGenerationRef.current;
+
+    const loadThreads = async () => {
+      setLoadingThreads(true);
+      setLoadError(null);
+
+      try {
+        const res = await fetch(DISCUSSIONS_API_PATH);
+        const json = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(json.error || LOAD_ERROR_MESSAGE);
+        }
+
+        if (fetchGenerationRef.current !== generation) return;
+
+        const mapped: Thread[] = (json.data || []).map((thread: any) => ({
+          id: thread.id,
+          title: thread.title,
+          description: thread.description,
+          author: thread.author,
+          category: thread.category,
+          replies: thread.replies ?? 0,
+          lastReply: formatLastReply(thread.updatedAt, thread.createdAt),
+          createdAt: thread.createdAt,
+          updatedAt: thread.updatedAt,
+        }));
+
+        setThreadList(mapped);
+      } catch (err) {
+        if (fetchGenerationRef.current === generation) {
+          setLoadError(
+            err instanceof Error ? err.message : LOAD_ERROR_MESSAGE,
+          );
+        }
+      } finally {
+        if (fetchGenerationRef.current === generation) {
+          setLoadingThreads(false);
+        }
+      }
+    };
+
+    loadThreads();
+  }, []);
+
   const scrollToDiscussions = () => {
     document
       .getElementById("active-discussions")
@@ -126,6 +152,8 @@ export default function DiscussionsPage() {
   };
 
   const handleCreateThread = (thread: Thread) => {
+    // Invalidate any in-flight GET so it cannot overwrite the optimistic prepend.
+    fetchGenerationRef.current += 1;
     setThreadList((prev) => [thread, ...prev]);
   };
 
@@ -276,6 +304,28 @@ export default function DiscussionsPage() {
           </div>
 
           <div className="grid gap-5">
+
+            {loadingThreads && (
+              <p
+                className="text-sm text-slate-500 dark:text-zinc-500"
+                role="status"
+                aria-live="polite"
+              >
+                {LOADING_MESSAGE}
+              </p>
+            )}
+
+            {!loadingThreads && loadError && (
+              <p className="text-sm text-red-500" role="alert">
+                {loadError}
+              </p>
+            )}
+
+            {!loadingThreads && !loadError && threadList.length === 0 && (
+              <p className="text-sm text-slate-500 dark:text-zinc-500">
+                {EMPTY_MESSAGE}
+              </p>
+            )}
 
             {threadList.map((thread) => (
               <div

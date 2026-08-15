@@ -157,6 +157,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                 newStatus = DOUBT_STATUS.UNSOLVED;
                 newSolvedReplyId = null;
             } else if (replyId) {
+                // Security: a reply can only be pinned as the official solution if it was
+                // actually submitted as a solution-type reply. Without this check, any
+                // arbitrary reply (regular comment, AI answer, etc.) could be presented
+                // as the "official solution".
+                const [targetReply] = await db.select()
+                    .from(repliesTable)
+                    .where(and(eq(repliesTable.id, replyId), eq(repliesTable.doubtId, doubtId)))
+                    .limit(1);
+
+                if (!targetReply) {
+                    return NextResponse.json({ error: "Reply not found for this doubt" }, { status: 404 });
+                }
+
+                if (targetReply.type !== 'solution') {
+                    return NextResponse.json({
+                        error: "Only an official solution reply can be marked as the solution."
+                    }, { status: 400 });
+                }
+
                 newStatus = DOUBT_STATUS.SOLVED;
                 newSolvedReplyId = replyId;
             }

@@ -103,6 +103,8 @@ export async function findSemanticDuplicates(params: {
       ? eq(doubtsTable.classroomId, classroomId)
       : isNull(doubtsTable.classroomId),
     eq(doubtsTable.type, type),
+    isNull(doubtsTable.deletedAt),
+    eq(doubtsTable.isHidden, false),
     // exclude null embeddings
     sql`${doubtsTable.embedding} IS NOT NULL`,
   );

@@ -194,3 +194,57 @@ describe("POST /api/doubts/[id]/accept — idempotency (issue #687)", () => {
         expect(JSON.stringify(body)).not.toContain("does not exist");
     });
 });
+
+describe("POST /api/doubts/[id]/accept — accepted-reply lock (issue #1315)", () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        mockInngestSend.mockReset();
+        mockSelectCallCount = 0;
+
+        // Default: unsolved doubt, valid reply, state-changing update
+        mockDoubt = { userEmail: "asker@test.com", isSolved: "unsolved", solvedReplyId: null };
+        mockReply = { userEmail: "answerer@test.com", doubtId: 1 };
+        mockUpdatedDoubt = { id: 1 };
+    });
+
+    it("does not re-award karma when the owner switches to a different reply", async () => {
+        // Doubt is already solved with reply 42; the owner now tries to accept reply 41.
+        // The atomic UPDATE WHERE clause must find no matching row (solved + pinned),
+        // so the state change and the karma event are both skipped.
+        mockDoubt = { userEmail: "asker@test.com", isSolved: "solved", solvedReplyId: 42 };
+        mockUpdatedDoubt = null;
+
+        const res = await callPost(41);
+        const body = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(body.message).toBe("Answer was already accepted (no-op)");
+        expect(mockInngestSend).not.toHaveBeenCalled();
+    });
+
+    it("grants karma only once across an A → B → A switch cycle", async () => {
+        // First POST — genuine state transition (reply 42 accepted)
+        const res1 = await callPost(42);
+        expect((await res1.json()).message).toBe("Answer accepted successfully");
+        expect(mockInngestSend).toHaveBeenCalledTimes(1);
+
+        // Switch to reply 41 — doubt already solved, must be a no-op (no karma)
+        mockSelectCallCount = 0;
+        mockInngestSend.mockClear();
+        mockDoubt = { userEmail: "asker@test.com", isSolved: "solved", solvedReplyId: 42 };
+        mockUpdatedDoubt = null;
+
+        const res2 = await callPost(41);
+        expect((await res2.json()).message).toBe("Answer was already accepted (no-op)");
+        expect(mockInngestSend).not.toHaveBeenCalled();
+
+        // Switch back to reply 42 — still a no-op (no karma)
+        mockSelectCallCount = 0;
+        mockInngestSend.mockClear();
+
+        const res3 = await callPost(42);
+        expect((await res3.json()).message).toBe("Answer was already accepted (no-op)");
+        expect(mockInngestSend).not.toHaveBeenCalled();
+    });
+});

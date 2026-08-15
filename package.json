@@ -10,6 +10,7 @@
     "test": "jest --watchAll=false --forceExit",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "db:migrate": "tsx drizzle/migrate.ts",
     "prepare": "husky"
   },
   "dependencies": {

@@ -18,7 +18,7 @@ export interface DecodedCursor {
 /** Encode a (createdAt, id) ordering key into an opaque cursor string. */
 export function encodeCursor(createdAt: Date | string | number, id: number): string {
   const iso = new Date(createdAt).toISOString();
-  return Buffer.from(`${iso}|${id}`).toString("base64");
+  return Buffer.from(`${iso},${id}`).toString("base64");
 }
 
 /**
@@ -30,13 +30,24 @@ export function decodeCursor(cursor: string | null | undefined): DecodedCursor |
   if (!cursor) return null;
   try {
     const decoded = Buffer.from(cursor, "base64").toString("utf8");
-    const sep = decoded.lastIndexOf("|");
-    if (sep <= 0) return null;
+    const sep = Math.max(decoded.lastIndexOf(","), decoded.lastIndexOf("|"));
+    if (sep <= 0) {
+      const singleDate = new Date(decoded);
+      if (!Number.isNaN(singleDate.getTime()) && singleDate.toISOString() === decoded) {
+        return { createdAt: singleDate, id: Number.MAX_SAFE_INTEGER };
+      }
+      return null;
+    }
     const iso = decoded.slice(0, sep);
     const idRaw = decoded.slice(sep + 1);
     const createdAt = new Date(iso);
     const id = Number(idRaw);
-    if (Number.isNaN(createdAt.getTime()) || !Number.isInteger(id) || idRaw.trim() === "") {
+    if (
+      Number.isNaN(createdAt.getTime()) ||
+      createdAt.toISOString() !== iso ||
+      !Number.isInteger(id) ||
+      idRaw.trim() === ""
+    ) {
       return null;
     }
     return { createdAt, id };

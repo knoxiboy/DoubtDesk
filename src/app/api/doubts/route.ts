@@ -8,6 +8,7 @@ import {
   repliesTable,
   tagsTable,
   membershipsTable,
+  usersTable,
 } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
 import { safeGenerateEmbedding } from "@/lib/ai/embeddings";
@@ -38,7 +39,7 @@ import { generalLimiter } from "@/lib/ratelimit/ratelimit";
 import { buildRankOrder } from "@/lib/search/search";
 import { canTeach } from "@/lib/auth/membership-guard";
 import { currentUser } from "@clerk/nextjs/server";
-import { parsePositiveInt } from "@/lib/utils/utils";
+import { parsePositiveInt, escapeLike } from "@/lib/utils/utils";
 import { toPublicDoubt } from "@/lib/anonymity/anonymity";
 import { decodeCursor, encodeCursor } from "@/lib/pagination";
 
@@ -109,8 +110,8 @@ export async function GET(req: Request) {
       // email here would let a caller probe email fragments and infer which
       // anonymized posts belong to a given author from result presence/counts.
       const searchCondition = or(
-        ilike(doubtsTable.content, `%${search}%`),
-        ilike(doubtsTable.subject, `%${search}%`),
+        ilike(doubtsTable.content, `%${escapeLike(search)}%`),
+        ilike(doubtsTable.subject, `%${escapeLike(search)}%`),
       );
       if (searchCondition) conditions.push(searchCondition);
     }
@@ -196,6 +197,12 @@ export async function GET(req: Request) {
         : sql<boolean>`false`
     ).mapWith(Boolean);
 
+    // Whether at least one solution-typed reply exists. Mirrors the backend rule
+    // in /api/doubts/action/[id] that a non-owner teacher can only mark a doubt
+    // as solved when an official solution reply has been posted, so the UI can
+    // avoid offering an action the API would reject (issue #1089).
+    const hasSolutionReplySql = sql<boolean>`EXISTS (SELECT 1 FROM ${repliesTable} WHERE ${repliesTable.doubtId} = ${doubtsTable.id} AND ${repliesTable.type} = 'solution')`.mapWith(Boolean);
+
     const [totalCountRow] = await db
       .select({ count: count() })
       .from(doubtsTable)
@@ -208,6 +215,7 @@ export async function GET(req: Request) {
         replyCount: replyCountSql,
         hasLiked: hasLikedSql,
         hasBookmarked: hasBookmarkedSql,
+        hasSolutionReply: hasSolutionReplySql,
       })
       .from(doubtsTable);
 
@@ -403,6 +411,12 @@ export async function POST(req: Request) {
         createdAt: parsedCreatedAt,
       })
       .returning();
+
+    // Touch the streak heartbeat so the daily cron can award streak bonuses.
+    await db
+      .update(usersTable)
+      .set({ lastContributionAt: new Date() })
+      .where(eq(usersTable.email, email));
 
     try {
       const embeddingInput = `${subject}\n${content || ""}`.trim();

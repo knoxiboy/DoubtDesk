@@ -21,6 +21,8 @@
     { "idx": 16, "version": "7", "when": 1781400000000, "tag": "0016_video_jobs", "breakpoints": true },
     { "idx": 17, "version": "7", "when": 1783052444378, "tag": "0017_mushy_virginia_dare", "breakpoints": true },
     { "idx": 18, "version": "7", "when": 1783200000000, "tag": "0018_add_content_flags", "breakpoints": true },
-    { "idx": 19, "version": "7", "when": 1783300000000, "tag": "0019_doubts_composite_indexes", "breakpoints": true }
+    { "idx": 19, "version": "7", "when": 1783300000000, "tag": "0019_doubts_composite_indexes", "breakpoints": true },
+    { "idx": 20, "version": "7", "when": 1783400000000, "tag": "0020_discussion_threads", "breakpoints": true },
+    { "idx": 21, "version": "7", "when": 1783500000000, "tag": "0021_organization_memberships_indexes", "breakpoints": true }
   ]
 }

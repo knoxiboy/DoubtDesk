@@ -12,6 +12,7 @@
   "dependencies": {
     "@clerk/backend": "^3.11.4",
     "@clerk/nextjs": "^7.5.17",
+    "@neondatabase/serverless": "^1.0.2",
     "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

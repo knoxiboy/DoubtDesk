@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth/requireAdmin";
+import { parsePositiveInt } from "@/lib/utils/utils";
 import { db } from "@/configs/db";
 import { auditLogsTable, usersTable } from "@/configs/schema";
 import { count, eq, desc } from "drizzle-orm";
@@ -10,7 +11,9 @@ export async function GET(request: Request) {
 
         const { searchParams } = new URL(request.url);
         const page = parseInt(searchParams.get("page") || "1");
-        const limit = parseInt(searchParams.get("limit") || "20");
+        const limitParam = searchParams.get("limit");
+        const parsedLimit = limitParam === null ? 20 : parseInt(limitParam, 10);
+        const limit = Math.min(Math.max(Number.isNaN(parsedLimit) ? 20 : parsedLimit, 1), 100);
         const offset = (page - 1) * limit;
 
         const [totalResult] = await db.select({ value: count() }).from(auditLogsTable);

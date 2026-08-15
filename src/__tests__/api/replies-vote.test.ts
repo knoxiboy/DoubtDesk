@@ -8,6 +8,13 @@ jest.mock('@clerk/nextjs/server', () => ({
     currentUser: () => currentUserMock(),
 }));
 
+jest.mock('@/lib/ratelimit/api-rate-limit', () => ({
+    enforceApiRateLimit: jest.fn().mockResolvedValue(null),
+}));
+jest.mock('@/lib/ratelimit/ratelimit', () => ({
+    generalLimiter: {},
+}));
+
 const createQueryMock = (data: any) => ({
     from: () => createQueryMock(data),
     where: () => createQueryMock(data),
@@ -69,7 +76,8 @@ describe('Reply Vote API Endpoint', () => {
 
         selectResultQueue.push(
             [], // user block check select
-            [{ id: 1, replyId: 1, userEmail: 'other@example.com' }],
+            [{ id: 1, replyId: 1, doubtId: 11, userEmail: 'other@example.com' }],
+            [{ classroomId: null }],
             []
         );
         updateResultQueue.push([{ id: 1, upvotes: 1 }]);
