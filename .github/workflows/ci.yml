@@ -168,7 +168,7 @@ jobs:
             npx playwright test
           else
             echo "Fork secrets unavailable; running unauthenticated public E2E coverage."
-            npx playwright test --project=public-doubts
+            npx playwright test --project=fork-smoke
           fi
       - name: Upload Playwright report
         if: always()
