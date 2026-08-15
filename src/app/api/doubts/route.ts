@@ -491,9 +491,38 @@ export async function POST(req: Request) {
         }
       }
 
-      if (tagsToInsert.length > 0) {
-        const insertedRows = await db.insert(tagsTable).values(tagsToInsert).returning();
-        savedTags.push(...insertedRows);
+       if (tagsToInsert.length > 0) {
+            await db
+                .insert(tagsTable)
+                .values(tagsToInsert)
+                .onConflictDoNothing();
+
+        const resolvedTags = (await db
+          .select()
+          .from(tagsTable)
+          .where(
+            and(
+              inArray(
+                tagsTable.normalizedName,
+                tagsToInsert.map((tag) => tag.normalizedName),
+              ),
+              parsedClassroomId
+                ? eq(tagsTable.classroomId, parsedClassroomId)
+                : isNull(tagsTable.classroomId),
+            ),
+          )) as Array<typeof tagsTable.$inferSelect>;
+
+        const resolvedTagsMap = new Map(
+          resolvedTags.map((tag) => [tag.normalizedName, tag]),
+        );
+
+        for (const tag of tagsToInsert) {
+          const resolvedTag = resolvedTagsMap.get(tag.normalizedName);
+
+          if (resolvedTag) {
+            savedTags.push(resolvedTag);
+          }
+        }
       }
 
       if (savedTags.length > 0) {
