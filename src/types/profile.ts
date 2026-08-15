@@ -34,14 +34,13 @@ export interface ProfileReply {
     createdAt: string;
 }
 
-/** A classroom the user belongs to. Maps to the `classrooms` table. */
+/** A classroom the user belongs to. Public profile summary only. */
 export interface ProfileClassroom {
     id: number;
     name: string;
     university: string;
     year: string;
-    teacherEmail: string;
-    inviteCode: string;
+    role?: string;
     createdAt: Date | string;
 }
 
