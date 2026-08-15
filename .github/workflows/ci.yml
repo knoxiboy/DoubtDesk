@@ -132,7 +132,9 @@ jobs:
     env:
       DATABASE_URL: postgresql://doubtdesk:doubtdesk@localhost:5432/doubtdesk_test
       NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_ZHVtbXkuY2xlcmsuYWNjb3VudHMuZGV2JA' }}
-      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      # Fork PR workflows do not receive repository secrets. Clerk still needs
+      # a non-empty test key to initialize middleware for the stubbed E2E auth.
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY || 'sk_test_placeholder' }}
       # Next.js evaluates API route modules while collecting build metadata;
       # use a non-secret placeholder when forks cannot access repository secrets.
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY || 'placeholder' }}
