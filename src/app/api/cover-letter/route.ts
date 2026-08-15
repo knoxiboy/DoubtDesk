@@ -19,9 +19,20 @@ export async function POST(req: NextRequest) {
         const user = await currentUser();
         const userEmail = user?.primaryEmailAddress?.emailAddress;
 
-        if (userEmail) {
-            const { isBlocked, errorResponse } = await checkUserBlock(userEmail);
-            if (isBlocked) return errorResponse;
+        if (!user || !userEmail) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        const { isBlocked, errorResponse, dbUser } = await checkUserBlock(userEmail);
+        if (errorResponse) return errorResponse;
+        if (isBlocked) {
+            return NextResponse.json({ error: "Account is blocked" }, { status: 403 });
+        }
+        if (!dbUser) {
+            return NextResponse.json(
+                { error: "Complete your profile before generating a cover letter" },
+                { status: 409 },
+            );
         }
 
         const sizeError = await limitRequestBodySize(req);
@@ -83,14 +94,12 @@ Write a professional cover letter based on these details.
 
         const coverLetter = response.data.choices[0].message.content;
 
-        if (userEmail) {
-            await db.insert(coverLettersTable).values({
-                userEmail,
-                jobDescription,
-                userDetails,
-                coverLetter
-            });
-        }
+        await db.insert(coverLettersTable).values({
+            userEmail,
+            jobDescription,
+            userDetails,
+            coverLetter
+        });
 
         return NextResponse.json({ coverLetter });
 

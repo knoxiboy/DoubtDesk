@@ -123,6 +123,7 @@
     "jest-environment-jsdom": "^30.4.1",
     "lint-staged": "^16.4.0",
     "openai": "^6.29.0",
+    "pg": "^8.23.0",
     "postcss": "8.4.47",
     "remotion": "^4.0.435",
     "tailwindcss": "3.4.14",
