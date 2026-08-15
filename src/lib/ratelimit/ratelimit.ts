@@ -141,16 +141,13 @@ if (isRedisConfigured) {
         record.reset = now + windowMs;
       }
 
-      // Check the limit against the current (pre-increment) count first, so the
-      // first allowed request reports `remaining === limit` and the (limit+1)-th
-      // request is the first to be rejected. Previously the counter was
-      // incremented before the check, silently allowing only `limit - 1`
-      // successful requests.
-      const success = record.count < limit;
-      const remaining = Math.max(0, limit - record.count);
-
       record.count++;
       memoryMap.set(key, record);
+
+      // Match Upstash's response semantics: the current request consumes one
+      // slot, so the first successful request reports limit - 1 remaining.
+      const success = record.count <= limit;
+      const remaining = Math.max(0, limit - record.count);
 
       return {
         success,
