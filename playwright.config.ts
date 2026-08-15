@@ -85,11 +85,13 @@ export default defineConfig({
     {
       name: 'public-doubts',
       testMatch: /public-doubts\.spec\.ts/,
-      dependencies: ['setup'],
       use: {
         ...devices['Desktop Chrome'],
-        storageState: AUTH_FILE,
       },
+    },
+    {
+      name: 'fork-smoke',
+      testMatch: /fork-smoke\.spec\.ts/,
     },
   ],
   webServer: {
