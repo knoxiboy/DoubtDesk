@@ -305,6 +305,55 @@ describe('Reply Vote API Endpoint', () => {
         expect(inngest.send).not.toHaveBeenCalledWith({
             name: 'karma/answer.upvoted',
             data: { replyAuthorEmail: 'author@example.com', replyId: 1, doubtId: 7 },
-        });
+        }); 
     });
+    it('rejects voting on a reply whose parent doubt has been soft-deleted', async () => {
+    mockCurrentUser.mockResolvedValue({
+        id: 'voter_clerk_id',
+        username: 'voter',
+        fullName: 'Voter User',
+        primaryEmailAddress: {
+            emailAddress: 'voter@example.com',
+        },
+    });
+
+    mockSelectResultQueue.push(
+        [], // checkUserBlock
+        [
+            {
+                id: 1,
+                doubtId: 7,
+                userEmail: 'author@example.com',
+                upvotes: 5,
+            },
+        ], // reply lookup
+        [] // parent doubt is not returned because it is soft-deleted
+    );
+
+    const req = new Request(
+        'http://localhost/api/replies/vote',
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                replyId: 1,
+            }),
+        }
+    );
+
+    const res = await POST(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(404);
+    expect(json.error).toBe('Doubt not found');
+
+    const { db } = jest.requireMock('@/configs/db');
+    const { inngest } = jest.requireMock('@/inngest/client');
+
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(db.insert).not.toHaveBeenCalled();
+    expect(inngest.send).not.toHaveBeenCalled();
+});
 });
