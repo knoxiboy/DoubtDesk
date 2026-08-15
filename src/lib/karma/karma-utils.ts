@@ -162,14 +162,13 @@ export async function updateStreak(userEmail: string): Promise<void> {
     const activeTimestamp = new Date(user.lastActiveDate).getTime();
     const daysDiff = Math.floor((todayMidnight - activeTimestamp) / oneDayMs);
 
-    if (daysDiff === 0) {
+    if (daysDiff === 1) {
+        // Consecutive day — extend the streak and award +5 bonus
         const nextStreakVal = user.currentStreak + 1;
 
         await db.transaction(async (tx) => {
-            // Compute the target score inline to resolve level scaling factors
             const nextScoreSql = sql`${usersTable.karmaScore} + 5`;
 
-            // Recompute tier level thresholds instantly during the same write lock sequence
             const atomicLevelCaseSql = sql`CASE 
                 WHEN ${nextScoreSql} >= 1500 THEN 5
                 WHEN ${nextScoreSql} >= 700  THEN 4
@@ -178,14 +177,13 @@ export async function updateStreak(userEmail: string): Promise<void> {
                 ELSE 1
             END`;
 
-            // ✅ Native Date assignment applied safely inside the transaction payload
             await tx
                 .update(usersTable)
                 .set({ 
                     karmaScore: nextScoreSql,
                     karmaLevel: atomicLevelCaseSql, 
                     currentStreak: nextStreakVal,
-                    lastActiveDate: now, // Advancing the marker prevents double-dipping
+                    lastActiveDate: now,
                 })
                 .where(eq(usersTable.email, userEmail));
 
@@ -200,6 +198,7 @@ export async function updateStreak(userEmail: string): Promise<void> {
         await checkAndAwardBadges(userEmail);
 
     } else if (daysDiff >= 2) {
+        // Streak broken — reset to 0
         if (user.currentStreak > 0) {
             await db
                 .update(usersTable)
@@ -207,4 +206,5 @@ export async function updateStreak(userEmail: string): Promise<void> {
                 .where(eq(usersTable.email, userEmail));
         }
     }
+    // daysDiff === 0: same-day activity, already counted — no-op
 }
