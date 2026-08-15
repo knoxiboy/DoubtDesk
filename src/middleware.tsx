@@ -68,8 +68,8 @@ export default clerkMiddleware(async (auth, req) => {
 
     if (path.startsWith('/api') && !hasRouteLevelLimit) {
         const { userId } = await auth();
-        const forwardedFor = req.headers.get("x-forwarded-for");
-        const ip = req.headers.get("x-real-ip") ?? forwardedFor?.split(",")[0]?.trim() ?? "127.0.0.1";
+        // Use only trusted proxy header x-real-ip; ignore spoofable x-forwarded-for.
+        const ip = req.headers.get("x-real-ip") ?? "127.0.0.1";
         const rateLimitKey = userId || ip;
 
         const isAiRoute =

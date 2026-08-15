@@ -24,6 +24,28 @@ describe("pagination cursor", () => {
     const cursor = encodeCursor(new Date("2026-06-01T00:00:00.000Z"), 7);
     expect(cursor).toMatch(/^[A-Za-z0-9+/]+=*$/);
     expect(cursor).not.toContain("|");
+    expect(cursor).not.toContain(",");
+  });
+
+  it("decodes legacy pipe-delimited or comma-delimited composite cursors", () => {
+    const pipeCursor = Buffer.from("2026-06-01T00:00:00.000Z|15").toString("base64");
+    const commaCursor = Buffer.from("2026-06-01T00:00:00.000Z,15").toString("base64");
+    expect(decodeCursor(pipeCursor)).toEqual({
+      createdAt: new Date("2026-06-01T00:00:00.000Z"),
+      id: 15,
+    });
+    expect(decodeCursor(commaCursor)).toEqual({
+      createdAt: new Date("2026-06-01T00:00:00.000Z"),
+      id: 15,
+    });
+  });
+
+  it("decodes single-field timestamp cursor as fallback", () => {
+    const legacyCursor = Buffer.from("2026-06-01T00:00:00.000Z").toString("base64");
+    const decoded = decodeCursor(legacyCursor);
+    expect(decoded).not.toBeNull();
+    expect(decoded!.createdAt.toISOString()).toBe("2026-06-01T00:00:00.000Z");
+    expect(decoded!.id).toBe(Number.MAX_SAFE_INTEGER);
   });
 
   it("returns null for null/empty/garbage input instead of throwing", () => {
@@ -42,5 +64,7 @@ describe("pagination cursor", () => {
   it("rejects a cursor with an invalid date", () => {
     const bad = Buffer.from("not-a-date|5").toString("base64");
     expect(decodeCursor(bad)).toBeNull();
+    const badCalendarDate = Buffer.from("2026-02-30T00:00:00.000Z,5").toString("base64");
+    expect(decodeCursor(badCalendarDate)).toBeNull();
   });
 });

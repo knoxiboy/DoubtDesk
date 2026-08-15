@@ -445,7 +445,7 @@ export async function sendDigestEmail(params: {
 
     let doubtsHtml = "";
     for (const d of doubts) {
-        const doubtLink = `${appUrl}/rooms/${d.id}`;
+        const doubtLink = `${appUrl}/doubts/${d.id}`;
         const safeDoubtSubject = escapeHtml(d.subject);
         const cleanDoubtContent = d.content.length > 100 ? `${d.content.slice(0, 97)}...` : d.content;
         

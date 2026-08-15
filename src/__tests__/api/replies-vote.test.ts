@@ -8,6 +8,13 @@ jest.mock('@clerk/nextjs/server', () => ({
     currentUser: () => currentUserMock(),
 }));
 
+jest.mock('@/lib/ratelimit/api-rate-limit', () => ({
+    enforceApiRateLimit: jest.fn().mockResolvedValue(null),
+}));
+jest.mock('@/lib/ratelimit/ratelimit', () => ({
+    generalLimiter: {},
+}));
+
 const createQueryMock = (data: any) => ({
     from: () => createQueryMock(data),
     where: () => createQueryMock(data),

@@ -551,7 +551,10 @@ export const organizationMembershipsTable = pgTable("organization_memberships", 
     userEmail: varchar({ length: 255 }).notNull(),
     role: varchar({ length: 20 }).notNull(),
     createdAt: timestamp().defaultNow().notNull(),
-});
+}, (table) => ({
+    organizationIdIndex: index("organization_memberships_organization_id_idx").on(table.organizationId),
+    userEmailIndex: index("organization_memberships_user_email_idx").on(table.userEmail),
+}));
 
 export const coverLettersTable = pgTable("cover_letters", {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),

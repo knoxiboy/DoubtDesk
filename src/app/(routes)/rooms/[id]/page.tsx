@@ -429,7 +429,7 @@ export default function ClassroomPage() {
                 {
                   id: "teacher-doubts",
                   label:
-                    classroom?.role === "teacher"
+                    isTeacherRole(classroom?.role)
                       ? "Students Doubt"
                       : "Ask Teacher",
                   icon: GraduationCap,
@@ -748,7 +748,7 @@ export default function ClassroomPage() {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50 dark:bg-zinc-950/20 border border-slate-200 dark:border-zinc-900 p-4 rounded-xl shadow-sm">
               <h2 className="text-lg font-bold tracking-tight px-2">
-                {classroom?.role === "teacher" ? (
+                {isTeacherRole(classroom?.role) ? (
                   <>Students Doubts</>
                 ) : (
                   <>Direct Teacher Doubts</>
@@ -792,7 +792,7 @@ export default function ClassroomPage() {
                     Clear
                   </button>
                 )}
-                {classroom?.role !== "teacher" && (
+                {!isTeacherRole(classroom?.role) && (
                   <button
                     onClick={() => setIsAskModalOpen(true)}
                     className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold uppercase tracking-wider text-xs transition-all duration-300 shadow-md shadow-purple-600/10 flex items-center gap-2 shrink-0"
@@ -874,11 +874,11 @@ export default function ClassroomPage() {
                         <div className="col-span-full py-24 text-center space-y-4 bg-slate-100 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10 rounded-[2.5rem]">
                           <GraduationCap className="w-12 h-12 text-slate-700 mx-auto" />
                           <p className="text-slate-500 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">
-                            {classroom?.role === "teacher"
+                            {isTeacherRole(classroom?.role)
                               ? "No unsolved doubts from students."
                               : "No unsolved teacher doubts."}
                           </p>
-                          {classroom?.role !== "teacher" && (
+                          {!isTeacherRole(classroom?.role) && (
                             <button
                               onClick={() => setIsAskModalOpen(true)}
                               className="text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider text-xs hover:underline underline-offset-4"
@@ -1252,7 +1252,7 @@ function ClassroomInsightsView({
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isTeacher = role === "teacher";
+  const isTeacher = isTeacherRole(role);
 
   const fetchData = async () => {
     try {

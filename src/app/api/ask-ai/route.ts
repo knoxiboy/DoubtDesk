@@ -62,6 +62,16 @@ export async function POST(req: Request): Promise<NextResponse> {
         ? body.message
         : "";
 
+  // Reject empty or whitespace-only prompts before they ever reach the Groq
+  // API. Without this, an empty user message causes Groq to throw, which
+  // was being caught and surfaced as a 502/500 instead of a proper 400.
+  if (!prompt.trim()) {
+    return NextResponse.json(
+      { error: "Prompt cannot be empty" },
+      { status: 400 }
+    );
+  }
+
   if (body.imageBase64 !== undefined) {
     const img = body.imageBase64 as string;
     const validMime = /^data:image\/(png|jpe?g|webp);base64,/.test(img);

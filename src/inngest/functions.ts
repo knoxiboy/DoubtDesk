@@ -2,13 +2,14 @@ import { inngest } from "./client";
 import type { NonRetriableError } from "inngest";
 import fs from "fs";
 import path from "path";
-import os from "os";
 import { db } from "../configs/db";
 import { doubtsTable, usersTable, pendingNotificationsTable, repliesTable, videoJobsTable } from "../configs/schema";
 import { eq, inArray, and, lt } from "drizzle-orm";
 import { emailNotificationLimiter, redisClient } from "@/lib/ratelimit/ratelimit";
 import { sendReplyNotificationEmail, sendDigestEmail } from "@/lib/email/email";
+import { getAnonymousHandle } from "@/lib/anonymity/anonymity";
 import { runVideoPipeline } from "../lib/video/pipeline";
+import { TEMP_ROOT } from "../lib/video/temp";
 
 interface InngestEvent {
     data: Record<string, unknown>;
@@ -43,7 +44,7 @@ export const cleanupTempAssets = inngest.createFunction(
       const now = Date.now();
       let count = 0;
 
-      const tmpRoot = os.tmpdir();
+      const tmpRoot = TEMP_ROOT;
       if (fs.existsSync(tmpRoot)) {
         const entries = fs.readdirSync(tmpRoot);
         for (const entry of entries) {
@@ -212,7 +213,7 @@ export const sendDailyDigest = inngest.createFunction(
             });
           }
           doubtsMap.get(p.doubtId)!.replies.push({
-            replierName: p.replierName,
+            replierName: getAnonymousHandle(p.replierName),
             content: p.replyContent || "",
           });
         }
@@ -303,7 +304,7 @@ export const sendWeeklyDigest = inngest.createFunction(
             });
           }
           doubtsMap.get(p.doubtId)!.replies.push({
-            replierName: p.replierName,
+            replierName: getAnonymousHandle(p.replierName),
             content: p.replyContent || "",
           });
         }

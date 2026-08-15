@@ -38,6 +38,9 @@ const SHARE_MESSAGES = {
     MENU_TELEGRAM: "Share on Telegram"
 };
 
+const TEACHER_ROLES = new Set(["teacher", "owner", "admin"]);
+const isTeacherRole = (role?: string) => TEACHER_ROLES.has(role ?? "");
+
 interface DoubtCardProps {
     doubt: PublicDoubt & {
         tags?: Tag[];
@@ -79,7 +82,7 @@ export default function DoubtCard({ doubt, onUpdate, onViewAISolution, role, ope
     const searchParams = useSearchParams();
     const lastAutoOpenedThread = useRef<string | null>(null);
 
-    const isTeacher = role === 'teacher';
+    const isTeacher = isTeacherRole(role);
 
     const { isSignedIn } = useUser();
 

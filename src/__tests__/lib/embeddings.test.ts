@@ -56,4 +56,33 @@ describe("Embeddings & Vector Duplicate Utilities", () => {
     const duplicates = await findSemanticDuplicates({ content: "What is momentum?" });
     expect(duplicates).toEqual([]);
   });
+
+  it("findSemanticDuplicates excludes hidden doubts from candidate query", async () => {
+    const mockVector = new Array(1536).fill(0.1);
+    (groq.embeddings.create as jest.Mock).mockResolvedValueOnce({
+      data: [{ embedding: mockVector }],
+    });
+
+    const selectMock = db.select as jest.Mock;
+    const whereMock = jest.fn().mockReturnThis();
+    selectMock.mockReturnValue({
+      from: jest.fn().mockReturnThis(),
+      where: whereMock,
+      orderBy: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockResolvedValue([]),
+    });
+
+    await findSemanticDuplicates({ content: "What is momentum?" });
+
+    expect(whereMock).toHaveBeenCalledTimes(1);
+    const whereArg = whereMock.mock.calls[0][0];
+    const hasIsHidden = (expr: any): boolean => {
+      if (!expr || typeof expr !== "object") return false;
+      if (expr.name === "isHidden") return true;
+      if (expr.queryChunks)
+        return expr.queryChunks.some((c: any) => hasIsHidden(c));
+      return false;
+    };
+    expect(hasIsHidden(whereArg)).toBe(true);
+  });
 });

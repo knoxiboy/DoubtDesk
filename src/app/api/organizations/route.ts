@@ -42,7 +42,16 @@ export async function GET() {
       )
       .where(eq(organizationMembershipsTable.userEmail, email));
 
-    return NextResponse.json(userOrgs);
+    // Strip ownerEmail for non-owner/non-admin members to prevent PII leakage
+    const sanitizedOrgs = userOrgs.map((org) => {
+      if (org.role === 'owner' || org.role === 'admin') {
+        return org;
+      }
+      const { ownerEmail, ...safe } = org;
+      return safe;
+    });
+
+    return NextResponse.json(sanitizedOrgs);
   } catch (error) {
     const { status, body } = buildErrorResponse(error);
     return NextResponse.json(body, { status });

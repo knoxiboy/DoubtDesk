@@ -8,6 +8,7 @@ import {
   repliesTable,
   tagsTable,
   membershipsTable,
+  usersTable,
 } from "@/configs/schema";
 import { categorizeDoubt } from "@/lib/ai/categorizer";
 import { safeGenerateEmbedding } from "@/lib/ai/embeddings";
@@ -410,6 +411,12 @@ export async function POST(req: Request) {
         createdAt: parsedCreatedAt,
       })
       .returning();
+
+    // Touch the streak heartbeat so the daily cron can award streak bonuses.
+    await db
+      .update(usersTable)
+      .set({ lastContributionAt: new Date() })
+      .where(eq(usersTable.email, email));
 
     try {
       const embeddingInput = `${subject}\n${content || ""}`.trim();

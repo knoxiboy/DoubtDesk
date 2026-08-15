@@ -1,5 +1,18 @@
 process.env.GROQ_API_KEY = "mock-groq-key";
 
+jest.mock("@/lib/ai/groq-client", () => ({
+  groq: {
+    embeddings: {
+      create: jest.fn(),
+    },
+    chat: {
+      completions: {
+        create: jest.fn(),
+      },
+    },
+  },
+}));
+
 import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { requireMembership } from "@/lib/auth/membership-guard";
@@ -183,6 +196,42 @@ describe("Doubt similarity API endpoint", () => {
       status: 503,
       code: "ETIMEDOUT",
     });
+  });
+
+  it("excludes hidden doubts from candidate query", async () => {
+    let capturedWhereArg: any = null;
+    const trackingQuery: any = {
+      from: () => trackingQuery,
+      where: (arg: any) => {
+        capturedWhereArg = arg;
+        return trackingQuery;
+      },
+      orderBy: () => trackingQuery,
+      limit: () => trackingQuery,
+      then: (resolve: any) => Promise.resolve(resolve([])),
+    };
+    dbSelectMock.mockReturnValue(trackingQuery);
+
+    const req = new Request("http://localhost/api/doubts/check-similarity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: "How does photosynthesis convert light into energy?",
+      }),
+    });
+
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(capturedWhereArg).not.toBeNull();
+    const hasIsHidden = (expr: any): boolean => {
+      if (!expr || typeof expr !== "object") return false;
+      if (expr.name === "isHidden") return true;
+      if (expr.queryChunks)
+        return expr.queryChunks.some((c: any) => hasIsHidden(c));
+      return false;
+    };
+    expect(hasIsHidden(capturedWhereArg)).toBe(true);
   });
 
   it("requires authentication for classroom similarity checks", async () => {

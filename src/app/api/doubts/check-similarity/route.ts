@@ -91,6 +91,7 @@ export async function POST(req: Request) {
             : isNull(doubtsTable.classroomId),
           eq(doubtsTable.type, "community"),
           isNull(doubtsTable.deletedAt),
+          eq(doubtsTable.isHidden, false),
         ),
       )
       .orderBy(desc(doubtsTable.createdAt))

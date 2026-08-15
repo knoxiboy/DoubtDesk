@@ -45,6 +45,17 @@ export async function GET(req: Request) {
             .leftJoin(organizationsTable, eq(classroomsTable.organizationId, organizationsTable.id))
             .where(eq(membershipsTable.userEmail, email));
 
+        // Strip sensitive fields (teacherEmail, inviteCode, inviteCodeExpiresAt, allowedEmailDomains)
+        // from non-teacher members. Teachers/owners/admins see them; students do not.
+        const sanitizedJoinedRooms = joinedRooms.map((room) => {
+            const isTeacher = ['teacher', 'owner', 'admin'].includes(room.role);
+            if (isTeacher) {
+                return room;
+            }
+            const { teacherEmail, inviteCode, inviteCodeExpiresAt, allowedEmailDomains, ...safe } = room;
+            return safe;
+        });
+
         // Fetch current DB user
         const [dbUser] = await db
             .select()
@@ -73,7 +84,7 @@ export async function GET(req: Request) {
         }
 
         return NextResponse.json({
-            joined: joinedRooms,
+            joined: sanitizedJoinedRooms,
             recommended: recommendedRooms,
         });
     } catch (error) {

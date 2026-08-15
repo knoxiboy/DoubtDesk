@@ -8,6 +8,7 @@ import { checkAndAwardBadges } from "@/lib/karma/karma-utils";
 // Karma points definitions inside worker
 const KARMA_POINTS: Record<string, number> = {
     answer_upvoted:       +10,
+    answer_unupvoted:     -10,
     answer_accepted:      +25,
     spam_report_accepted: -15,
     answer_downvoted:     -2,
@@ -96,6 +97,28 @@ export const onAnswerUpvoted = inngest.createFunction(
             replyId,
             doubtId,
             note: "Answer received an upvote",
+        });
+
+        return { success: true, userEmail: replyAuthorEmail };
+    }
+);
+
+// ── Answer Un-upvoted (-10 karma) ─────────────────────────────────────────────
+export const onAnswerUnupvoted = inngest.createFunction(
+    { id: "karma-answer-unupvoted", triggers: [{ event: "karma/answer.unupvoted" }] },
+    async ({ event }) => {
+        const { replyAuthorEmail, replyId, doubtId } = event.data as {
+            replyAuthorEmail: string;
+            replyId: number;
+            doubtId: number;
+        };
+
+        await executeKarmaTransaction({
+            userEmail: replyAuthorEmail,
+            eventType: "answer_unupvoted",
+            replyId,
+            doubtId,
+            note: "Answer upvote removed",
         });
 
         return { success: true, userEmail: replyAuthorEmail };

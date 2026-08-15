@@ -983,7 +983,7 @@ export default function DoubtRepliesModal({ doubt, isOpen, onClose, onReplyChang
                                             onFocus={() => setTyping(true)}
                                             onBlur={() => setTyping(false)}
                                             onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
+                                                if (e.key === 'Enter' && !e.repeat && !isPosting) {
                                                     handlePost('comment');
                                                 }
                                             }}
