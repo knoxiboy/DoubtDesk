@@ -125,4 +125,25 @@ describe('Reply Vote API Endpoint', () => {
         expect(res.status).toBe(404);
         expect((globalThis as any).__voteDbMock.insert).not.toHaveBeenCalled();
     });
+
+    it('returns 404 before the self-upvote guard for a deleted parent', async () => {
+        currentUserMock.mockResolvedValue({
+            id: 'clerk_user_id',
+            primaryEmailAddress: { emailAddress: 'author@example.com' },
+        });
+        selectResultQueue.push(
+            [],
+            [{ id: 1, replyId: 1, doubtId: 11, userEmail: 'author@example.com' }],
+            [],
+        );
+
+        const res = await POST(new Request('http://localhost/api/replies/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ replyId: 1 }),
+        }));
+
+        expect(res.status).toBe(404);
+        expect((globalThis as any).__voteDbMock.transaction).not.toHaveBeenCalled();
+    });
 });

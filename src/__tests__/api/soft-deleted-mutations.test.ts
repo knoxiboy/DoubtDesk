@@ -1,4 +1,7 @@
-import { POST as bookmarkPost } from "@/app/api/doubts/[id]/bookmark/route";
+import {
+  DELETE as bookmarkDelete,
+  POST as bookmarkPost,
+} from "@/app/api/doubts/[id]/bookmark/route";
 import { POST as upvotePost } from "@/app/api/doubts/[id]/upvote/route";
 import { POST as flagPost } from "@/app/api/doubts/flag/route";
 import { POST as acceptPost } from "@/app/api/doubts/[id]/accept/route";
@@ -106,6 +109,47 @@ describe("soft-deleted doubt mutations (issue #1355)", () => {
     }));
 
     const res = await bookmarkPost(new Request("http://localhost/api/doubts/42/bookmark", { method: "POST" }), params);
+
+    expect(res.status).toBe(404);
+    expect(txInsert).not.toHaveBeenCalled();
+  });
+
+  it("rechecks active state before deleting a bookmark", async () => {
+    selectResultQueue.push([{ id: 42, classroomId: null }]);
+    const txDelete = jest.fn();
+    (db.transaction as jest.Mock).mockImplementationOnce(async (callback) => callback({
+      execute: jest.fn().mockResolvedValue({ rows: [] }),
+      delete: txDelete,
+    }));
+
+    const res = await bookmarkDelete(
+      new Request("http://localhost/api/doubts/42/bookmark", { method: "DELETE" }),
+      params,
+    );
+
+    expect(res.status).toBe(404);
+    expect(txDelete).not.toHaveBeenCalled();
+  });
+
+  it("rechecks active state before inserting an upvote", async () => {
+    selectResultQueue.push(
+      [{ id: 42, classroomId: null }],
+      [{ id: 9, doubtId: 42, userEmail: "author@example.com" }],
+    );
+    const txInsert = jest.fn();
+    (db.transaction as jest.Mock).mockImplementationOnce(async (callback) => callback({
+      execute: jest.fn().mockResolvedValue({ rows: [] }),
+      insert: txInsert,
+    }));
+
+    const res = await upvotePost(
+      new Request("http://localhost/api/doubts/42/upvote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ replyId: 9 }),
+      }) as any,
+      params,
+    );
 
     expect(res.status).toBe(404);
     expect(txInsert).not.toHaveBeenCalled();

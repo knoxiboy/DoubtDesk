@@ -91,6 +91,16 @@ export default defineConfig({
         storageState: AUTH_FILE,
       },
     },
+    {
+      name: 'presence',
+      testDir: './tests',
+      testMatch: /presence\.spec\.ts/,
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: AUTH_FILE,
+      },
+    },
   ],
   webServer: {
     command: process.env.CI ? 'npm run start' : 'npm run dev',

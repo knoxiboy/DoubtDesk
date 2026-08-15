@@ -103,10 +103,18 @@ export async function POST(
 
         // ── 5 & 6. ATOMIC TRANSACTION: INSERT LIKE & INCREMENT COUNTER ───────
         let updatedReply;
+        let parentMissingAtWrite = false;
 
         try {
             updatedReply = await db.transaction(async (tx) => {
-                
+                const lockedParent = await tx.execute(
+                    sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} AND ${doubtsTable.deletedAt} IS NULL FOR UPDATE`,
+                );
+                if (!lockedParent.rows?.length) {
+                    parentMissingAtWrite = true;
+                    return undefined;
+                }
+
                 // A. FIX: Standardized column input across all vote handlers to use the stable identifier.
                 // Note: If your Drizzle schema explicitly names the column field `userName`, we map the unique 
                 // email string directly into it to preserve the unique multi-column compound index layout.
@@ -151,6 +159,9 @@ export async function POST(
         }
 
         if (!updatedReply) {
+            if (parentMissingAtWrite) {
+                return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+            }
             return NextResponse.json({ 
                 error: "Integrity Error: Counter increment rejected. Thread validation failed at database write." 
             }, { status: 400 });

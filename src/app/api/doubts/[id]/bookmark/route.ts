@@ -91,8 +91,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
             return NextResponse.json({ error: "Unauthorized access to classroom doubt" }, { status: 401 });
         }
 
-        await db.delete(bookmarksTable)
-            .where(and(eq(bookmarksTable.userEmail, email), eq(bookmarksTable.doubtId, doubtId)));
+        const removed = await db.transaction(async (tx) => {
+            const locked = await tx.execute(
+                sql`SELECT ${doubtsTable.id} FROM ${doubtsTable} WHERE ${doubtsTable.id} = ${doubtId} AND ${doubtsTable.deletedAt} IS NULL FOR UPDATE`,
+            );
+            if (!locked.rows?.length) return false;
+
+            await tx.delete(bookmarksTable)
+                .where(and(eq(bookmarksTable.userEmail, email), eq(bookmarksTable.doubtId, doubtId)));
+            return true;
+        });
+
+        if (!removed) {
+            return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
 
         return NextResponse.json({ message: "Bookmark removed" });
     } catch (error) {

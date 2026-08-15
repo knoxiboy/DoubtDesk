@@ -50,15 +50,6 @@ export async function POST(req: Request) {
         // would otherwise leak karma to the wrong account.
         const originalReplyAuthorEmail = reply.userEmail;
 
-        // ── 2. FIX: ANTI-SELF-UPVOTE GUARD ──────────────────────────────────
-        // Blocks authors from liking their own replies and exploiting the karma event trigger
-        if (email && originalReplyAuthorEmail === email) {
-            return NextResponse.json(
-                { error: "Forbidden: You cannot upvote your own reply." },
-                { status: 403 }
-            );
-        }
-
         const [doubt] = await db
             .select({ classroomId: doubtsTable.classroomId })
             .from(doubtsTable)
@@ -67,6 +58,15 @@ export async function POST(req: Request) {
 
         if (!doubt) {
             return NextResponse.json({ error: "Doubt not found" }, { status: 404 });
+        }
+
+        // Validate the active parent before revealing that the authenticated
+        // user owns the reply.
+        if (originalReplyAuthorEmail === email) {
+            return NextResponse.json(
+                { error: "Forbidden: You cannot upvote your own reply." },
+                { status: 403 }
+            );
         }
 
         if (doubt.classroomId) {
