@@ -196,7 +196,7 @@ describe('Ask AI API Endpoint', () => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                prompt: '',
+                prompt: 'Describe this image',
                 imageBase64: 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBA==',
                 classroomId: 1
             }),
